@@ -545,7 +545,7 @@ require __DIR__ . '/auth.php';
 // POST /internal/run-reminders
 // Use header 'X-INTERNAL-RUN-TOKEN' or query param '?token=...'
 Route::middleware(['web'])->group(function () {
-    Route::post('/internal/run-reminders', [\App\Http\Controllers\InternalController::class, 'runReminders'])->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+    Route::post('/internal/run-reminders', [\App\Http\Controllers\InternalController::class, 'runReminders'])->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
 });
 
 
