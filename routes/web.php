@@ -144,7 +144,6 @@ Route::middleware(['auth', 'compliance.consent'])->group(function () {
     Route::post('/deals/{id}/send-gmail', [\App\Http\Controllers\CrmEntityGmailController::class, 'dealSend'])->name('deals.send_gmail');
 
     Route::resource('leads', App\Http\Controllers\LeadController::class);
-    Route::get('/leads/{id}', [App\Http\Controllers\LeadController::class, 'show'])->name('leads.show');
 
     // Add route for converting lead to deal
     Route::get('/leads/{lead}/convert', [App\Http\Controllers\DealController::class, 'createFromLead'])->name('leads.convert');
