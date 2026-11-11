@@ -1,0 +1,159 @@
+/* Shared Select2 single-select look for deal create/edit */
+#label.select2-hidden-accessible + .select2-container .select2-selection--single,
+#user_owner_id.select2-hidden-accessible + .select2-container .select2-selection--single,
+#lead_source.select2-hidden-accessible + .select2-container .select2-selection--single,
+#main_category_id.select2-hidden-accessible + .select2-container .select2-selection--single,
+#stage.select2-hidden-accessible + .select2-container .select2-selection--single,
+#industry_id.select2-hidden-accessible + .select2-container .select2-selection--single {
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    min-height: 38px;
+    height: 38px;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    background: #fff;
+    position: relative;
+}
+
+#label.select2-hidden-accessible + .select2-container .select2-selection__rendered,
+#user_owner_id.select2-hidden-accessible + .select2-container .select2-selection__rendered,
+#lead_source.select2-hidden-accessible + .select2-container .select2-selection__rendered,
+#main_category_id.select2-hidden-accessible + .select2-container .select2-selection__rendered,
+#stage.select2-hidden-accessible + .select2-container .select2-selection__rendered,
+#industry_id.select2-hidden-accessible + .select2-container .select2-selection__rendered {
+    color: #212529;
+    line-height: 24px;
+    padding-left: 0;
+    padding-right: 2rem;
+}
+
+#label.select2-hidden-accessible + .select2-container .select2-selection__arrow,
+#user_owner_id.select2-hidden-accessible + .select2-container .select2-selection__arrow,
+#lead_source.select2-hidden-accessible + .select2-container .select2-selection__arrow,
+#main_category_id.select2-hidden-accessible + .select2-container .select2-selection__arrow,
+#stage.select2-hidden-accessible + .select2-container .select2-selection__arrow,
+#industry_id.select2-hidden-accessible + .select2-container .select2-selection__arrow {
+    height: 36px !important;
+    right: 8px !important;
+    top: 1px !important;
+    transform: none;
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: url('../images/download.svg') no-repeat center center;
+    background-size: 16px 16px;
+}
+
+#label.select2-hidden-accessible + .select2-container .select2-selection__arrow b,
+#user_owner_id.select2-hidden-accessible + .select2-container .select2-selection__arrow b,
+#lead_source.select2-hidden-accessible + .select2-container .select2-selection__arrow b,
+#main_category_id.select2-hidden-accessible + .select2-container .select2-selection__arrow b,
+#stage.select2-hidden-accessible + .select2-container .select2-selection__arrow b,
+#industry_id.select2-hidden-accessible + .select2-container .select2-selection__arrow b {
+    display: none;
+}
+
+#label.select2-hidden-accessible + .select2-container .select2-selection__clear,
+#user_owner_id.select2-hidden-accessible + .select2-container .select2-selection__clear,
+#lead_source.select2-hidden-accessible + .select2-container .select2-selection__clear,
+#main_category_id.select2-hidden-accessible + .select2-container .select2-selection__clear,
+#stage.select2-hidden-accessible + .select2-container .select2-selection__clear,
+#industry_id.select2-hidden-accessible + .select2-container .select2-selection__clear {
+    margin-right: 1.5rem;
+    font-size: 1.1rem;
+    color: #6c757d;
+}
+
+/*
+ * Product/Services (multi) — force same compact height as other fields.
+ * Select2's inline search input normally stretches the box; keep it tiny.
+ */
+#categories.select2-hidden-accessible + .select2-container {
+    width: 100% !important;
+}
+
+#categories.select2-hidden-accessible + .select2-container .select2-selection--multiple {
+    border: 1px solid #ced4da !important;
+    border-radius: 0.375rem !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    max-height: 38px !important;
+    padding: 3px 2.5rem 3px 6px !important;
+    font-size: 1rem !important;
+    background-color: #fff !important;
+    background-image: url('../images/download.svg') !important;
+    background-repeat: no-repeat !important;
+    background-position: right 10px center !important;
+    background-size: 16px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+#categories.select2-hidden-accessible + .select2-container .select2-selection--multiple .select2-selection__rendered {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+}
+
+#categories.select2-hidden-accessible + .select2-container .select2-selection--multiple .select2-selection__choice {
+    background: #f8fafc !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 0.25rem !important;
+    margin: 0 !important;
+    padding: 0 6px !important;
+    font-size: 0.875rem !important;
+    line-height: 26px !important;
+    height: 26px !important;
+    color: #212529 !important;
+    float: none !important;
+    flex: 0 0 auto !important;
+}
+
+#categories.select2-hidden-accessible + .select2-container .select2-selection--multiple .select2-selection__choice__remove {
+    margin-right: 4px !important;
+    color: #6c757d !important;
+    border: 0 !important;
+    background: transparent !important;
+    float: none !important;
+}
+
+#categories.select2-hidden-accessible + .select2-container .select2-selection--multiple .select2-search--inline {
+    float: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    flex: 0 0 auto !important;
+    line-height: 26px !important;
+}
+
+#categories.select2-hidden-accessible + .select2-container .select2-selection--multiple .select2-search--inline .select2-search__field {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    line-height: 26px !important;
+    width: 0.75em !important;
+    min-width: 0.75em !important;
+    font-size: 1rem !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+#categories.select2-hidden-accessible + .select2-container .select2-selection--multiple .select2-selection__clear {
+    position: absolute !important;
+    right: 28px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    margin: 0 !important;
+    z-index: 2;
+}

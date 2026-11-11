@@ -1,0 +1,759 @@
+ body,
+        .bg-light {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        }
+
+       
+
+        /* Sidebar background color updated to match screenshot (#F9F6ED) */
+        .sidebar {
+            background: #fff !important;
+            /* background: #f6f1e5 !important; */
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 1030;
+            width: 280px;
+            transition: left 0.3s;
+        }
+
+        /* Bootstrap Collapse support - allow transitions to work properly */
+        .collapse {
+            overflow: hidden;
+            transition: height 0.35s ease;
+            display: block;
+        }
+
+        .collapse:not(.show) {
+            height: 0;
+            display: block;
+        }
+
+        .collapse.show {
+            height: auto !important;
+            display: block !important;
+            overflow: visible !important;
+        }
+
+        /* Ensure sidebar collapses show when they have .show class */
+        .sidebar .collapse.show {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+
+        .sidebar .collapse.show > ul,
+        .sidebar .collapse.show > div {
+            display: block !important;
+        }
+
+        @media (max-width: 1023px) {
+            /* Desktop offcanvas sidebar only — do not affect .mobile-sidebar drawer */
+            .sidebar.custom-block,
+            #sidebarOffcanvas.sidebar {
+                position: static;
+                width: 100%;
+                height: auto;
+                min-height: 0;
+            }
+
+            main.col-12.col-md-10,
+            main.custom-margin,
+            main.with-top-header {
+                margin-left: 0 !important;
+                max-width: 100% !important;
+                width: 100% !important;
+            }
+        }
+
+        @media (max-width: 1023px) {
+            .sidebar .user-card {
+                justify-content: center !important;
+            }
+        }
+
+        @media (max-width: 1023px) {
+            main.col-12.col-md-10 {
+                margin-left: 0 !important;
+            }
+
+            main.custom-margin,
+            main.with-top-header {
+                margin-left: 0 !important;
+                max-width: 100% !important;
+                width: 100% !important;
+            }
+        }
+
+        .sidebar .nav-link.active
+         {
+            /* background: #F9C74F; */
+            background-color: rgb(239 246 255 / var(--tw-bg-opacity, 1));
+            color: #222;
+            border-radius: 8px;
+            border-right: rgb(37 99 235 / var(--tw-text-opacity, 1)) 4px solid;
+        }
+        .sidebar .nav-link:hover {
+            background: rgb(239 246 255 / var(--tw-bg-opacity, 1));
+            color: #222;
+            border-radius: 8px;
+        }
+
+
+        .sidebar .nav-link:hover i, .sidebar .nav-link.active i {
+            color: rgb(37 99 235 / var(--tw-text-opacity, 1));
+        }
+
+        .sidebar .nav-link {
+            color: #222;
+            font-size: 1.1rem;
+        }
+
+        .sidebar .user-card {
+            /* background: #FFF3CD; */
+            background: #fff;
+            /* border-radius: 12px; */
+            border-top: 1px solid #e5e7eb !important;
+        }
+
+        .card {
+            border-radius: 18px !important;
+        }
+
+        .dashboard-header {
+            background: #FFE6A7;
+            border-radius: 18px;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        @media (min-width: 768px) {
+            .dashboard-header {
+                flex-direction: row;
+                align-items: center;
+            }
+        }
+
+        .status-bar span {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            margin-right: 4px;
+        }
+
+        .status-paid {
+            background: #FFE066;
+        }
+
+        .status-due {
+            background: #FFB4A2;
+        }
+
+        .status-awaiting {
+            background: #FFD6A5;
+        }
+
+        .card.p-3.text-center.border-0.shadow-sm {
+            background: #FFF7E6;
+        }
+
+        .card.p-4.border-0.shadow-sm.h-100 {
+            /* background: #FFF7E6; */
+            background: #FFFF;
+        }
+
+        .btn-dark {
+            background: #F9C74F;
+            border: none;
+            color: #222;
+        }
+
+        .btn-dark:hover {
+            background: #F9844A;
+            color: #fff;
+        }
+
+        .fw-bold,
+        .sidebar .fs-4.fw-bold {
+            color: #222 !important;
+        }
+
+        .fs-custom {
+            color: #fff !important;
+            font-weight: 700;
+        }
+
+        .badge.bg-warning.text-dark {
+            background: #F9C74F !important;
+            color: #222 !important;
+        }
+
+        .text-warning {
+            color: #F9C74F !important;
+        }
+
+        .text-success {
+            color: #43AA8B !important;
+        }
+
+        .text-danger {
+            color: #F3722C !important;
+        }
+
+        .text-secondary {
+            color: #577590 !important;
+        }
+
+        .btn-warning {
+            background: #F9C74F !important;
+            color: #222 !important;
+            border: none;
+        }
+
+        .btn-warning:hover {
+            background: #F9844A !important;
+            color: #fff !important;
+            border: 1px solid #fff !important;
+        }
+
+        .btn-outline-secondary {
+            border-color: #577590 !important;
+            color: #577590 !important;
+        }
+
+        .btn-outline-secondary:hover {
+            background: #577590 !important;
+            color: #fff !important;
+        }
+
+        .btn-secondary {
+            background: #577590 !important;
+            color: #fff !important;
+            border: none;
+        }
+
+        .btn-secondary:hover {
+            background: #F9844A !important;
+            color: #fff !important;
+        }
+        .custom-block {
+            display: none !important;
+        }
+
+        @media (min-width: 1024px ) {
+            .custom-block {
+                display: block !important;
+            }
+            .custom-margin {
+                margin-left: 280px !important;
+                max-width: calc(100% - 280px) !important;
+            }
+
+        }
+
+        @media (min-width: 768px) {
+            .custom-display {
+                display: table-row-group !important;
+            }
+        }
+
+        /* give main content extra bottom space so content doesn't touch viewport bottom */
+        .main-bottom {
+            padding-bottom: 48px;
+        }
+        @media (max-width: 767px) {
+            .main-bottom {
+                padding-bottom: 64px;
+            }
+        }
+
+        /* Slim top header (red-marked section) - minimal, non-invasive styles */
+        .top-slim-header {
+            background: #ffffff;
+            /* white header */
+            /* background: #eef1f9; */
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            height: 70px;
+            display: flex;
+            align-items: center;
+            z-index: 1050;
+            position: sticky;
+            top: 0;
+            margin-top: 0 !important;
+            /* margin-bottom: 20px; */
+            box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+        }
+
+        .top-slim-header .input-group .form-control {
+            min-width: 220px;
+        }
+
+        .top-slim-header .badge-notify {
+            font-size: 0.65rem;
+            transform: translate(6px, -6px);
+        }
+
+        /* Hide the top slim header on tablet and mobile to use the mobile topbar instead */
+        @media (max-width: 1023px) {
+            .top-slim-header { display: none !important; }
+        }
+
+        /* Sidebar collapsed behavior (desktop only) */
+        @media (min-width: 1024px) {
+            .sidebar {
+                transition: width 0.25s ease, left 0.25s ease;
+            }
+
+            .sidebar.collapsed {
+                width: 80px !important;
+                overflow: hidden;
+            }
+
+            body.sidebar-collapsed .custom-margin {
+                margin-left: 80px !important;
+                max-width: calc(100% - 80px) !important;
+            }
+
+            /* Icons-only tiles in collapsed mode (centered square buttons).
+               Reduced padding/size and hide submenu content/icons. */
+            body.sidebar-collapsed .sidebar .nav-link {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 0.35rem !important; /* reduced padding */
+                margin: 0.25rem auto !important; /* tighter spacing */
+                width: 40px;
+                height: 40px;
+                border-radius: 8px;
+                background: transparent;
+                transition: background-color 0.12s ease, transform 0.12s ease;
+                box-shadow: none;
+            }
+
+            /* hide the text label for collapsed mode */
+            body.sidebar-collapsed .sidebar .nav-label,
+            .sidebar.collapsed .nav-label {
+                display: none !important;
+            }
+
+            /* top-level icon styling */
+            body.sidebar-collapsed .sidebar .nav-link i {
+                margin-right: 0 !important;
+                display: inline-block;
+                width: 20px;
+                font-size: 1.05rem;
+                text-align: center;
+            }
+
+            /* temporarily expand collapsed sidebar while hovered (screen-type) */
+            .sidebar.sidebar-hover-expanded {
+                width: 280px !important;
+                overflow: visible;
+            }
+            body.sidebar-collapsed .sidebar.sidebar-hover-expanded .nav-link {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                padding: 0.6rem 0.8rem !important;
+                width: 100% !important;
+                height: auto !important;
+                margin: 0.25rem 0.5rem !important;
+            }
+            body.sidebar-collapsed .sidebar.sidebar-hover-expanded .nav-link .nav-label { display:inline-block !important; }
+
+            /* Sidebar collapse behavior: hide submenu when sidebar is collapsed (icon-only mode) */
+            body.sidebar-collapsed .sidebar .collapse {
+                display: none !important;
+            }
+            body.sidebar-collapsed .sidebar ul.nav ul {
+                display: none !important;
+            }
+            body.sidebar-collapsed .sidebar .sub-items {
+                display: none !important;
+            }
+
+            /* ensure submenu icons (if accidentally visible) remain hidden in collapsed mode */
+            body.sidebar-collapsed .sidebar ul.nav ul .nav-link i,
+            body.sidebar-collapsed .sidebar .sub-items .nav-link i {
+                display: none !important;
+            }
+
+            /* hide chevrons inside the collapsed sidebar (icons-only) but keep any chevrons inside the popover */
+            body.sidebar-collapsed .sidebar i.bi-chevron-down,
+            body.sidebar-collapsed .sidebar i.bi-chevron-right,
+            body.sidebar-collapsed .sidebar i.bi-chevron-left {
+                display: none !important;
+            }
+
+            /* active / hover visuals like the screenshot (rounded square highlight) */
+            body.sidebar-collapsed .sidebar .nav-link.active,
+            body.sidebar-collapsed .sidebar .nav-link:hover {
+                /* background: #F9C74F !important; */
+                background: rgb(239 246 255 / var(--tw-bg-opacity, 1));
+                color: #222 !important;
+                transform: translateY(-1px);
+            }
+
+            /* show only a small avatar in collapsed mode */
+            body.sidebar-collapsed .sidebar .user-card {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 5px !important;
+                height: 64px;
+            }
+            body.sidebar-collapsed .sidebar .user-card img {
+                width: 40px !important;
+                height: 40px !important;
+                border-radius: 50% !important;
+                object-fit: cover !important;
+            }
+            /* hide the name and badge labels */
+            body.sidebar-collapsed .sidebar .user-card > div {
+                display: none !important;
+            }
+            /* default company logo sizing (desktop + mobile) */
+            .sidebar .company-logo {
+                height: 40px;
+                max-width: 120px;
+                object-fit: contain;
+                display: block;
+                margin: 0 auto;
+                transition: height 0.18s ease, max-width 0.18s ease, transform 0.18s ease;
+            }
+
+            /* shrink + center company logo when sidebar is collapsed (desktop) */
+            body.sidebar-collapsed .sidebar .company-logo,
+            .sidebar.collapsed .company-logo {
+                height: 28px !important;
+                max-width: 42px !important;
+                width: auto !important;
+                margin: 6px auto !important;
+                object-fit: contain !important;
+                display: block !important;
+                transform: none !important;
+            }
+
+            /* ensure the logo container stays centered in collapsed mode */
+            body.sidebar-collapsed .sidebar .mb-4,
+            .sidebar.collapsed .mb-4 {
+                justify-content: center !important;
+                padding-left: 0.25rem !important;
+                padding-right: 0.25rem !important;
+            }
+        }
+
+
+        /* user dropdown header inside profile menu */
+        .user-dropdown-header { min-width: 220px; }
+        .user-dropdown-header .fw-semibold { font-weight: 600; }
+        .user-dropdown-header .small { font-size: 0.8rem; }
+
+        .sidebar-hover-pop{
+            position:fixed;
+            left:80px; /* aligns next to collapsed sidebar by default */
+            top:56px;
+            z-index: 2000;
+            background: #f6f1e5; /* match sidebar background */
+            color: #222; /* dark text like sidebar */
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            min-width: 180px;
+            max-width: 340px;
+            transition: visibility 0.2s ease, opacity 0.2s ease;
+            visibility: hidden;
+            opacity: 0;
+        }
+    /* reduce internal padding so content sits close to the edge */
+    .sidebar-hover-pop .popover-inner{background:transparent; padding:0.25rem !important}
+    /* reduce horizontal padding so items can fill the full width */
+    .sidebar-hover-pop .popover-menu { color: #222; padding:0.12rem 0.12rem }
+    .sidebar-hover-pop .popover-menu .nav-link{color:rgba(34,34,34,0.95);padding:0;display:block}
+    .sidebar-hover-pop .popover-menu .nav-link i{margin-right:0.5rem;color:inherit}
+    .sidebar-hover-pop .popover-menu .sub-items .nav-link{padding-left:0.5rem}
+    /* make title row tighter */
+    .sidebar-hover-pop .title-row { display:flex; align-items:center; gap:0; margin-bottom:0.08rem }
+    .sidebar-hover-pop .title-row .icon-wrap { width:16px; height:16px; display:flex; align-items:center; justify-content:center }
+    .sidebar-hover-pop .title-row strong { font-size:0.95rem; white-space:nowrap }
+
+    /* popover sub-items default hidden, toggleable */
+    .sidebar-hover-pop .sub-items { display: none; margin-top: 0.35rem }
+    .sidebar-hover-pop .sub-items.show { display: block }
+    .sidebar-hover-pop .popover-toggle { cursor: pointer; display:flex; align-items:center }
+    .sidebar-hover-pop .popover-toggle i { transition: transform 0.18s ease }
+    .sidebar-hover-pop .popover-toggle.open i { transform: rotate(-180deg) }
+
+    /* layout each popover item so anchor (icon + text) and toggle are on the same horizontal row */
+    .sidebar-hover-pop .popover-item{
+        display:block;
+        padding:0.06rem 0 0.06rem 0;
+    }
+    .sidebar-hover-pop .popover-item .item-row{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:0.125rem;
+        width:100%;
+    }
+    /* anchors should fill the available width so hover/active backgrounds can cover the whole row */
+    .sidebar-hover-pop .popover-item .item-row > a.nav-link{ display:block; width:100%; box-sizing:border-box; align-items:center; gap:0; white-space:nowrap; color:inherit; padding:0; margin:0 }
+    .sidebar-hover-pop .popover-item .item-row > a.nav-link i, .sidebar-hover-pop .item-row .icon-wrap i{ width:14px; text-align:center; margin:0; padding:0 }
+    .sidebar-hover-pop .popover-item .item-row > a.nav-link strong{ font-weight:600; font-size:0.95rem }
+    /* full-row active/hover styling inside the popover */
+    .sidebar-hover-pop .popover-item .item-row > a.nav-link:hover,
+    .sidebar-hover-pop .popover-item .item-row > a.nav-link.active,
+    .sidebar-hover-pop .sub-items a.nav-link:hover,
+    .sidebar-hover-pop .sub-items a.nav-link.active {
+        display:block; width:100%; box-sizing:border-box; background: #F9C74F !important; color:#222 !important; border-radius:8px;
+    }
+    /* sub-items display stacked under their parent item */
+    .sidebar-hover-pop .sub-items{
+        display:none;
+        position:static;
+        margin-top: 0.35rem;
+        padding-left: 0.6rem;
+    }
+    .sidebar-hover-pop .sub-items.show{ display:block }
+    .sidebar-hover-pop .sub-items .popover-item{ padding:0.06rem 0 }
+
+    /* submenu item spacing and hover state */
+    .sidebar-hover-pop .sub-items .popover-item{ padding:0.18rem 0; }
+    .sidebar-hover-pop .sub-items .popover-item > .item-row { padding-left:0.4rem; }
+    /* match the sidebar nav-link padding and rounded highlight */
+    .sidebar-hover-pop .popover-item .item-row > a.nav-link,
+    .sidebar-hover-pop .sub-items a.nav-link {
+        display:block; padding:0.45rem 0.6rem; border-radius:8px; color:inherit; text-decoration:none;
+    }
+    /* match sidebar hover/active accent color for popover items */
+    .sidebar-hover-pop .sub-items a.nav-link:hover,
+    .sidebar-hover-pop .popover-item .item-row > a.nav-link:hover,
+    .sidebar-hover-pop .popover-menu .nav-link:hover {
+        background: #F9C74F !important;
+        color: #222 !important;
+    }
+
+     @media (max-width: 1330px) {
+            .desktop-time-box {
+                display: none !important;
+            }
+        }
+
+/* Hide username in profile dropdown below 1090px */
+@media (max-width: 1090px) {
+    #mobileProfileDropdown .fw-semibold {
+        display: none !important;
+    }
+
+    #mobileProfileDropdown {
+        padding: 0 4px !important;
+    }
+}
+
+/* Dashboard hero: subtle shrink on hover for button and time/date box */
+.dashboard-hero .btn,
+.dashboard-hero .hero-time-box {
+    transition: transform 160ms cubic-bezier(.2,.8,.2,1), opacity 120ms ease;
+    transform-origin: center center;
+}
+.dashboard-hero .hero-time-box { display: inline-block; min-width: 110px; }
+.dashboard-hero .btn {
+    display: inline-block; /* ensure transform does not affect inline layout */
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-font-smoothing:antialiased;
+    border: 1px solid #f9c74f !important;
+}
+.dashboard-hero .btn:hover,
+.dashboard-hero .btn:focus {
+    transform: scale(.985);
+    border: 1px solid #fff !important;
+}
+.dashboard-hero .hero-time-box:hover,
+.dashboard-hero .hero-time-box:focus-within {
+    transform: scale(.995);
+}
+
+/* Reduce motion preference respect */
+@media (prefers-reduced-motion: reduce) {
+    .dashboard-hero .btn,
+    .dashboard-hero .hero-time-box {
+        transition: none !important;
+    }
+}
+
+/* Responsive: stack table rows into cards on small screens using data-label attrs */
+/* @media (max-width: 767.98px) { */
+@media (max-width: 1320.98px) {
+    /* stronger selectors + !important to prevent other styles overriding the responsive rules */
+    .table-responsive > table.table {
+        display: block !important;
+        border-collapse: separate !important;
+        width: 100% !important;
+    }
+    .table-responsive > table.table thead {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+    }
+    .table-responsive > table.table tbody,
+    .table-responsive > table.table tr,
+    .table-responsive > table.table td {
+        display: block !important;
+        width: 100% !important;
+    }
+    .table-responsive > table.table tr {
+        margin-bottom: 0.9rem !important;
+        border: 1px solid rgba(0,0,0,0.08) !important;
+        border-radius: 0.5rem !important;
+        padding: 0.45rem !important;
+        background: #fff !important;
+    }
+    .table-responsive > table.table td {
+        padding: 0.45rem 0.6rem !important;
+        box-sizing: border-box !important;
+        border: none !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 0.6rem !important;
+    }
+    .table-responsive > table.table td:before {
+        content: attr(data-label) " " !important;
+        font-weight: 600 !important;
+        white-space: nowrap !important;
+        color: #333 !important;
+        margin-right: 0.5rem !important;
+        margin-bottom: 10px !important;
+    }
+    .table-responsive > table.table td a { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+}
+
+/* Place three-dots (call actions) at top-right of stacked card rows on very small screens */
+@media (max-width: 678px) {
+    .table-responsive > table.table tr {
+        position: relative !important;
+    }
+
+    /* Position Name cell as relative so dropdown child can be positioned absolutely within it */
+    .table-responsive > table.table td.td-name-with-action {
+        position: relative !important;
+        display: block !important;
+        width: 100% !important;
+    }
+
+    /* Position the action dropdown at the top-right corner of the Name cell */
+    .table-responsive > table.table .calllog-action-dropdown {
+        position: absolute !important;
+        top: 0.3rem !important;
+        right: 0.3rem !important;
+        z-index: 30 !important;
+    }
+
+    .table-responsive > table.table .calllog-sidebar-action {
+        padding: 6px !important;
+        line-height: 1 !important;
+        background: transparent !important;
+        border-radius: 6px !important;
+        color: #222 !important;
+        display: block !important;
+    }
+
+    .table-responsive > table.table .calllog-sidebar-action i {
+        font-size: 1.15rem !important;
+    }
+
+    /* Show horizontal dots, hide vertical dots on mobile */
+    .table-responsive > table.table .calllog-sidebar-action .desktop-dots {
+        display: none !important;
+    }
+
+    .table-responsive > table.table .calllog-sidebar-action .mobile-dots {
+        display: inline !important;
+    }
+
+    /* Ensure dropdown opens downward and to the left from the button */
+    .table-responsive > table.table .calllog-action-dropdown .dropdown-menu {
+        position: absolute !important;
+        right: 0 !important;
+        left: auto !important;
+        top: 100% !important;
+        transform: translate(0, 2px) !important;
+        min-width: 140px !important;
+    }
+
+    /* Center pagination on small screens */
+    .pagination-custom {
+        text-align: center !important;
+    }
+    .pagination-info {
+        justify-content: center !important;
+    }
+}
+
+.btn-custom {
+    background: linear-gradient(90deg, #6a11cb, #2575fc);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: bold;
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: background 0.3s ease;
+}
+
+.btn-custom:hover {
+    background: linear-gradient(90deg, #2575fc, #6a11cb);
+    color: white;
+    text-decoration: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-padding {
+    padding: 10px 20px !important;
+}
+
+.top-slim-footer {
+    background: #ffffff;
+    /* white header */
+    /* background: #eef1f9; */
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    height: 50px;
+    display: flex;
+    align-items: center;
+    z-index: 1050;
+    position: relative;
+    bottom: 0;
+    /* margin-top: 20px; */
+    box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+}
+
+/* Row action (3-dots) menus: avoid clipping inside scrollable tables */
+.table-responsive {
+    overflow-x: auto;
+}
+.table-responsive > .table,
+.table-responsive > table.table {
+    overflow: visible !important;
+}
+.table-responsive td .dropdown,
+.table-responsive th .dropdown,
+.pipeline-body .dropdown,
+.deal-card .dropdown {
+    position: static;
+}
+.table-responsive .dropdown-menu,
+.pipeline-body .dropdown-menu,
+.deal-card .dropdown-menu {
+    z-index: 2000 !important;
+}
+.dropdown-menu[data-bs-popper],
+.dropdown-menu.show {
+    z-index: 2000;
+}

@@ -1,0 +1,25 @@
+ /* Responsive pipeline board: on small screens stack columns vertically */
+#pipeline-board { display: flex; overflow-x: auto; gap: 24px; padding-bottom: 16px; }
+.pipeline-column { min-width: 320px; min-height: 820px; }
+.pipeline-header .badge { float: right; }
+@media (max-width: 767.98px) {
+    #pipeline-board { display: block; }
+    .pipeline-column { min-width: auto; width: 100%; min-height: auto; margin-bottom: 16px; }
+    .pipeline-header { padding: 12px; border-radius: 10px 10px 0 0; display:flex; align-items:center; justify-content:space-between; }
+    .pipeline-header .badge { float: none; margin-left: 8px; }
+    .pipeline-body { max-height: none !important; overflow-y: visible !important; padding: 12px; }
+    .deal-card { padding: 12px; display: block; }
+    .deal-card .d-flex { flex-direction: row; align-items: center; justify-content: space-between; }
+    /* make search input responsive on small screens */
+    #pipeline-search-wrapper { width: 100% !important; max-width: none !important; margin-top: 8px; }
+    #pipeline-title-group { width: 100%; justify-content: space-between; }
+}
+
+/* Layout fixes: allow search wrapper to shrink and ensure dropdowns sit above it */
+#pipeline-search-wrapper { flex: 0 1 auto; min-width: 0; }
+.pipeline-header .dropdown,
+.pipeline-header > .btn,
+.pipeline-header .btn { position: relative; z-index: 2000; }
+/* Ensure dropdown menu always overlays the search form */
+.pipeline-header .dropdown-menu,
+.dropdown-menu { z-index: 5000 !important; pointer-events: auto !important; }

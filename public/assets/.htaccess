@@ -1,0 +1,24 @@
+# User uploads live below this folder: never execute or include them as code.
+<IfModule mod_mime.c>
+    RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .phar .shtml .shtm .stm .cgi .pl .py .asp .aspx .jsp
+    RemoveType .php .phtml .php3 .php4 .php5 .php7 .php8 .phar .shtml .shtm .stm
+</IfModule>
+
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule \.(php\d?|phtml|phar|shtml?|stm|cgi|pl|py|asp|aspx|jsp|sh|html?|xhtml|svgz?|htaccess|htpasswd)$ - [F,L,NC]
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>

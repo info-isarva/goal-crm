@@ -1,0 +1,22 @@
+# name: Run Reminders
+
+# on:
+#   schedule:
+#     - cron: '*/5 * * * *' # every 5 minutes
+#   workflow_dispatch: {}
+
+# jobs:
+#   run:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Trigger reminders endpoint
+#         env:
+#           TOKEN: ${{ secrets.REMINDERS_TOKEN }}
+#         run: |
+#           if [ -z "$TOKEN" ]; then
+#             echo "Missing secret REMINDERS_TOKEN"; exit 1
+#           fi
+#           # Call the internal endpoint using the token in the header
+#           curl -fsS -X POST "https://crm-demo.isarva.in/internal/run-reminders" \
+#             -H "X-INTERNAL-RUN-TOKEN: $TOKEN" -o /tmp/reminders_output || (cat /tmp/reminders_output; exit 1)
+#           echo "Reminders endpoint triggered"

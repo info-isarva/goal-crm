@@ -1,0 +1,2353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CRM API Documentation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f7fa;
+      --surface: #ffffff;
+      --surface2: #f0f2f5;
+      --border: #e2e6ed;
+      --text: #1a202c;
+      --muted: #6b7280;
+      --accent: #3b6ef0;
+      --get: #059669;
+      --get-bg: #ecfdf5;
+      --post: #2563eb;
+      --post-bg: #eff6ff;
+      --del: #dc2626;
+      --del-bg: #fef2f2;
+      --put: #d97706;
+      --put-bg: #fffbeb;
+      --sidebar-w: 280px;
+      --header-h: 64px;
+    }
+
+    body { font-family: 'Inter','Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; font-size:14px; }
+
+    /* HEADER */
+    header { position:fixed; top:0; left:0; right:0; height:var(--header-h); background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 24px; gap:16px; z-index:100; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    .logo { display:flex; align-items:center; gap:10px; }
+    .logo-icon { width:36px; height:36px; background:linear-gradient(135deg,#3b6ef0,#7c5cf5); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; color:#fff; }
+    .logo-text { font-size:18px; font-weight:700; color:var(--text); }
+    .logo-sub { font-size:12px; color:var(--muted); }
+    .header-sep { flex:1; }
+    .base-url-pill { background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:6px 14px; font-size:12px; color:var(--muted); font-family:monospace; }
+    .base-url-pill span { color:var(--accent); }
+    .header-badge { background:#d1fae5; color:#065f46; border:1px solid #a7f3d0; border-radius:20px; padding:4px 12px; font-size:11px; font-weight:700; }
+
+    /* LAYOUT */
+    .layout { display:flex; padding-top:var(--header-h); min-height:100vh; }
+
+    /* SIDEBAR */
+    aside { width:var(--sidebar-w); background:var(--surface); border-right:1px solid var(--border); position:fixed; top:var(--header-h); bottom:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+    aside::-webkit-scrollbar { width:4px; }
+    aside::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+    .search-wrap { padding:12px 16px; }
+    .search-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:8px 12px 8px 32px; color:var(--text); font-size:13px; outline:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' viewBox='0 0 24 24'%3E%3Cpath d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:10px center; transition:border-color .15s; }
+    .search-input:focus { border-color:var(--accent); }
+    .search-input::placeholder { color:var(--muted); }
+    .divider { height:1px; background:var(--border); margin:0 16px 8px; }
+
+    .nav-section { margin-bottom:2px; }
+    .nav-section-header { display:flex; align-items:center; gap:8px; padding:8px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); cursor:pointer; user-select:none; }
+    .nav-section-header:hover { color:var(--text); }
+    .nav-chevron { transition:transform .2s; }
+    .nav-section.collapsed .nav-chevron { transform:rotate(-90deg); }
+    .nav-section.collapsed .nav-items { display:none; }
+    .nav-item { display:flex; align-items:center; gap:8px; padding:6px 16px 6px 24px; color:var(--muted); text-decoration:none; font-size:13px; cursor:pointer; transition:background .15s,color .15s; }
+    .nav-item:hover { background:var(--surface2); color:var(--text); }
+    .nav-item.active { background:#eff6ff; color:var(--accent); border-left:2px solid var(--accent); padding-left:22px; }
+    .method-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+    .dot-get { background:var(--get); }
+    .dot-post { background:var(--post); }
+    .dot-del { background:var(--del); }
+    .nav-count { margin-left:auto; background:var(--surface2); border-radius:10px; padding:1px 7px; font-size:10px; color:var(--muted); }
+
+    /* MAIN */
+    main { margin-left:var(--sidebar-w); flex:1; padding:32px; max-width:960px; }
+
+    /* INTRO */
+    .intro-card { background:linear-gradient(135deg,#eef2ff,#f0f9ff); border:1px solid #c7d7fe; border-radius:12px; padding:32px; margin-bottom:40px; }
+    .intro-card h1 { font-size:28px; font-weight:700; background:linear-gradient(135deg,#1e3a8a,#3b6ef0); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:8px; }
+    .intro-card p { color:var(--muted); font-size:15px; margin-bottom:20px; }
+    .intro-stats { display:flex; gap:16px; flex-wrap:wrap; }
+    .stat { background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px 20px; text-align:center; }
+    .stat-num { font-size:22px; font-weight:700; color:var(--accent); }
+    .stat-label { font-size:11px; color:var(--muted); margin-top:2px; }
+    .auth-note { display:flex; align-items:flex-start; gap:12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:14px 16px; margin-top:20px; }
+    .auth-note-icon { font-size:18px; flex-shrink:0; }
+    .auth-note p { color:var(--muted); font-size:13px; }
+    .auth-note strong { color:var(--text); }
+
+    code { background:#f0f2f5; border:1px solid #d1d5db; border-radius:4px; padding:1px 6px; font-family:monospace; font-size:12px; color:var(--accent); }
+
+    /* SECTION TITLE */
+    .section-title { display:flex; align-items:center; gap:12px; margin:48px 0 20px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+    .section-icon { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; }
+    .section-title h2 { font-size:20px; font-weight:700; }
+    .section-desc { color:var(--muted); font-size:13px; }
+    .section-badge { margin-left:auto; background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:3px 10px; font-size:11px; color:var(--muted); white-space:nowrap; }
+
+    /* ENDPOINT CARD */
+    .endpoint { background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-bottom:12px; overflow:hidden; transition:border-color .2s, box-shadow .2s; }
+    .endpoint:hover { border-color:#b6c8f5; box-shadow:0 2px 8px rgba(59,110,240,.06); }
+    .endpoint.open { border-color:#b6c8f5; box-shadow:0 2px 12px rgba(59,110,240,.08); }
+
+    .endpoint-header { display:flex; align-items:center; gap:12px; padding:14px 18px; cursor:pointer; user-select:none; }
+    .endpoint-header:hover { background:#f8faff; }
+
+    .method-badge { border-radius:5px; padding:3px 10px; font-size:11px; font-weight:700; letter-spacing:.05em; flex-shrink:0; min-width:60px; text-align:center; }
+    .badge-get { background:var(--get-bg); color:var(--get); border:1px solid #a7f3d0; }
+    .badge-post { background:var(--post-bg); color:var(--post); border:1px solid #bfdbfe; }
+    .badge-delete { background:var(--del-bg); color:var(--del); border:1px solid #fecaca; }
+
+    .endpoint-path { font-family:monospace; font-size:13px; color:var(--text); flex:1; font-weight:500; }
+    .path-param { color:#d97706; }
+    .endpoint-name { font-size:12px; color:var(--muted); white-space:nowrap; }
+    .endpoint-chevron { color:var(--muted); transition:transform .2s; margin-left:8px; }
+    .endpoint.open .endpoint-chevron { transform:rotate(180deg); }
+
+    .endpoint-body { display:none; border-top:1px solid var(--border); }
+    .endpoint.open .endpoint-body { display:block; }
+
+    /* TABS */
+    .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); background:var(--surface2); }
+    .tab { padding:10px 20px; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .15s,border-color .15s; user-select:none; }
+    .tab:hover { color:var(--text); }
+    .tab.active { color:var(--accent); border-bottom-color:var(--accent); background:var(--surface); }
+
+    .tab-content { padding:20px 18px; }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+
+    /* TABLE */
+    .param-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .param-table th { text-align:left; padding:8px 12px; background:var(--surface2); color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+    .param-table th:first-child { border-radius:6px 0 0 6px; }
+    .param-table th:last-child { border-radius:0 6px 6px 0; }
+    .param-table td { padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
+    .param-table tr:last-child td { border-bottom:none; }
+    .param-table tr:hover td { background:#f5f8ff; }
+
+    .param-name { font-family:monospace; color:var(--accent); font-size:12px; font-weight:600; }
+    .param-type { display:inline-block; background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:1px 6px; font-size:11px; color:var(--muted); }
+    .param-required { display:inline-block; background:#fef2f2; border:1px solid #fecaca; border-radius:4px; padding:1px 6px; font-size:10px; color:var(--del); font-weight:600; }
+    .param-optional { display:inline-block; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:4px; padding:1px 6px; font-size:10px; color:#15803d; font-weight:600; }
+    .param-desc { color:var(--muted); font-size:12px; }
+    .param-value { font-family:monospace; font-size:12px; color:#d97706; }
+    .note { font-size:12px; color:var(--muted); margin-bottom:14px; padding:8px 12px; background:#fffbeb; border:1px solid #fde68a; border-radius:6px; }
+
+    /* CURL BLOCK */
+    .curl-block { background:#1e293b; border-radius:8px; padding:16px 50px 16px 16px; font-family:monospace; font-size:12px; color:#e2e8f0; overflow-x:auto; white-space:pre; position:relative; line-height:1.7; }
+    .copy-btn { position:absolute; top:10px; right:10px; background:#334155; border:1px solid #475569; border-radius:5px; padding:4px 10px; font-size:11px; color:#94a3b8; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    .copy-btn:hover { background:#475569; color:#e2e8f0; }
+    .copy-btn.copied { color:#34d399; border-color:#34d399; }
+    .curl-kw { color:#f59e0b; }
+    .curl-url { color:#34d399; }
+    .curl-flag { color:#818cf8; }
+    .curl-header { color:#a5b4fc; }
+    .curl-value { color:#fca5a5; }
+
+    /* EMPTY NOTE */
+    .empty { color:var(--muted); font-size:13px; }
+
+    [id] { scroll-margin-top:calc(var(--header-h) + 16px); }
+
+    @media (max-width:768px) { aside { display:none; } main { margin-left:0; padding:16px; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">C</div>
+    <div>
+      <div class="logo-text">CRM API</div>
+      <div class="logo-sub">Mobile API Documentation</div>
+    </div>
+  </div>
+  <div class="header-sep"></div>
+  <div class="base-url-pill">Base URL: <span>crm-demo.isarva.in</span></div>
+  <div class="header-badge">v1.0</div>
+</header>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside>
+  <div class="search-wrap">
+    <input class="search-input" type="text" placeholder="Search endpoints…" oninput="filterNav(this.value)" />
+  </div>
+  <div class="divider"></div>
+
+  <div class="nav-section" id="nav-auth">
+    <div class="nav-section-header" onclick="toggleSection('nav-auth')"><span class="nav-chevron">▾</span>Authentication<span class="nav-count">3</span></div>
+    <div class="nav-items">
+      <a class="nav-item" onclick="jumpTo('login')"><span class="method-dot dot-post"></span>Login</a>
+      <a class="nav-item" onclick="jumpTo('logout')"><span class="method-dot dot-get"></span>Logout</a>
+      <a class="nav-item" onclick="jumpTo('save-token')"><span class="method-dot dot-post"></span>Save Device Token</a>
+    </div>
+  </div>
+
+  <div class="nav-section" id="nav-leads">
+    <div class="nav-section-header" onclick="toggleSection('nav-leads')"><span class="nav-chevron">▾</span>Leads<span class="nav-count">6</span></div>
+    <div class="nav-items">
+      <a class="nav-item" onclick="jumpTo('leads-list')"><span class="method-dot dot-get"></span>List Leads</a>
+      <a class="nav-item" onclick="jumpTo('leads-detail')"><span class="method-dot dot-get"></span>Lead Detail</a>
+      <a class="nav-item" onclick="jumpTo('leads-create')"><span class="method-dot dot-post"></span>Create Lead</a>
+      <a class="nav-item" onclick="jumpTo('leads-update')"><span class="method-dot dot-post"></span>Update Lead</a>
+      <a class="nav-item" onclick="jumpTo('leads-convert')"><span class="method-dot dot-post"></span>Convert Lead</a>
+      <a class="nav-item" onclick="jumpTo('leads-delete')"><span class="method-dot dot-del"></span>Delete Lead</a>
+    </div>
+  </div>
+
+  <div class="nav-section" id="nav-deals">
+    <div class="nav-section-header" onclick="toggleSection('nav-deals')"><span class="nav-chevron">▾</span>Deals<span class="nav-count">6</span></div>
+    <div class="nav-items">
+      <a class="nav-item" onclick="jumpTo('deals-list')"><span class="method-dot dot-get"></span>List Deals</a>
+      <a class="nav-item" onclick="jumpTo('deals-detail')"><span class="method-dot dot-get"></span>Deal Detail</a>
+      <a class="nav-item" onclick="jumpTo('deals-create')"><span class="method-dot dot-post"></span>Create Deal</a>
+      <a class="nav-item" onclick="jumpTo('deals-update')"><span class="method-dot dot-post"></span>Update Deal</a>
+      <a class="nav-item" onclick="jumpTo('deals-switch-stage')"><span class="method-dot dot-post"></span>Switch Stage</a>
+      <a class="nav-item" onclick="jumpTo('deals-delete')"><span class="method-dot dot-del"></span>Delete Deal</a>
+    </div>
+  </div>
+
+  <div class="nav-section" id="nav-orgs">
+    <div class="nav-section-header" onclick="toggleSection('nav-orgs')"><span class="nav-chevron">▾</span>Organizations<span class="nav-count">8</span></div>
+    <div class="nav-items">
+      <a class="nav-item" onclick="jumpTo('org-list')"><span class="method-dot dot-get"></span>List Organizations</a>
+      <a class="nav-item" onclick="jumpTo('org-detail')"><span class="method-dot dot-get"></span>Organization Detail</a>
+      <a class="nav-item" onclick="jumpTo('org-autocomplete')"><span class="method-dot dot-get"></span>Autocomplete</a>
+      <a class="nav-item" onclick="jumpTo('org-owners')"><span class="method-dot dot-get"></span>Organization Owners</a>
+      <a class="nav-item" onclick="jumpTo('org-create')"><span class="method-dot dot-post"></span>Create Organization</a>
+      <a class="nav-item" onclick="jumpTo('org-create-modal')"><span class="method-dot dot-post"></span>Create (Quick Modal)</a>
+      <a class="nav-item" onclick="jumpTo('org-update')"><span class="method-dot dot-post"></span>Update Organization</a>
+      <a class="nav-item" onclick="jumpTo('org-delete')"><span class="method-dot dot-del"></span>Delete Organization</a>
+    </div>
+  </div>
+
+  <div class="nav-section" id="nav-contacts">
+    <div class="nav-section-header" onclick="toggleSection('nav-contacts')"><span class="nav-chevron">▾</span>Contacts<span class="nav-count">8</span></div>
+    <div class="nav-items">
+      <a class="nav-item" onclick="jumpTo('contact-list')"><span class="method-dot dot-get"></span>List Contacts</a>
+      <a class="nav-item" onclick="jumpTo('contact-by-org')"><span class="method-dot dot-get"></span>Contacts by Org</a>
+      <a class="nav-item" onclick="jumpTo('contact-detail')"><span class="method-dot dot-get"></span>Contact Detail</a>
+      <a class="nav-item" onclick="jumpTo('contact-autocomplete')"><span class="method-dot dot-get"></span>Autocomplete</a>
+      <a class="nav-item" onclick="jumpTo('contact-create')"><span class="method-dot dot-post"></span>Create Contact</a>
+      <a class="nav-item" onclick="jumpTo('contact-create-modal')"><span class="method-dot dot-post"></span>Create (Quick Modal)</a>
+      <a class="nav-item" onclick="jumpTo('contact-update')"><span class="method-dot dot-post"></span>Update Contact</a>
+      <a class="nav-item" onclick="jumpTo('contact-delete')"><span class="method-dot dot-del"></span>Delete Contact</a>
+    </div>
+  </div>
+
+  <div class="nav-section" id="nav-notes">
+    <div class="nav-section-header" onclick="toggleSection('nav-notes')"><span class="nav-chevron">▾</span>Notes<span class="nav-count">3</span></div>
+    <div class="nav-items">
+      <a class="nav-item" onclick="jumpTo('note-create')"><span class="method-dot dot-post"></span>Create Note</a>
+      <a class="nav-item" onclick="jumpTo('note-update')"><span class="method-dot dot-post"></span>Update Note</a>
+      <a class="nav-item" onclick="jumpTo('note-delete')"><span class="method-dot dot-del"></span>Delete Note</a>
+    </div>
+  </div>
+
+  <div class="nav-section" id="nav-tasks">
+    <div class="nav-section-header" onclick="toggleSection('nav-tasks')"><span class="nav-chevron">▾</span>Tasks<span class="nav-count">5</span></div>
+    <div class="nav-items">
+      <a class="nav-item" onclick="jumpTo('task-list')"><span class="method-dot dot-get"></span>List Tasks</a>
+      <a class="nav-item" onclick="jumpTo('task-detail')"><span class="method-dot dot-get"></span>Task Detail</a>
+      <a class="nav-item" onclick="jumpTo('task-create')"><span class="method-dot dot-post"></span>Create Task</a>
+      <a class="nav-item" onclick="jumpTo('task-update')"><span class="method-dot dot-post"></span>Update Task</a>
+      <a class="nav-item" onclick="jumpTo('task-delete')"><span class="method-dot dot-del"></span>Delete Task</a>
+    </div>
+  </div>
+
+  <div class="nav-section" id="nav-meetings">
+    <div class="nav-section-header" onclick="toggleSection('nav-meetings')"><span class="nav-chevron">▾</span>Meetings<span class="nav-count">3</span></div>
+    <div class="nav-items">
+      <a class="nav-item" onclick="jumpTo('meeting-create')"><span class="method-dot dot-post"></span>Create Meeting</a>
+      <a class="nav-item" onclick="jumpTo('meeting-update')"><span class="method-dot dot-post"></span>Update Meeting</a>
+      <a class="nav-item" onclick="jumpTo('meeting-delete')"><span class="method-dot dot-del"></span>Delete Meeting</a>
+    </div>
+  </div>
+
+  <div class="nav-section" id="nav-calllogs">
+    <div class="nav-section-header" onclick="toggleSection('nav-calllogs')"><span class="nav-chevron">▾</span>Call Logs<span class="nav-count">1</span></div>
+    <div class="nav-items">
+      <a class="nav-item" onclick="jumpTo('calllog-create')"><span class="method-dot dot-post"></span>Create Call Log</a>
+    </div>
+  </div>
+
+  <div class="nav-section" id="nav-reports">
+    <div class="nav-section-header" onclick="toggleSection('nav-reports')"><span class="nav-chevron">▾</span>Reports<span class="nav-count">5</span></div>
+    <div class="nav-items">
+      <a class="nav-item" onclick="jumpTo('report-leads')"><span class="method-dot dot-get"></span>Leads Report</a>
+      <a class="nav-item" onclick="jumpTo('report-converted')"><span class="method-dot dot-get"></span>Converted Leads</a>
+      <a class="nav-item" onclick="jumpTo('report-deals')"><span class="method-dot dot-get"></span>Deals Report</a>
+      <a class="nav-item" onclick="jumpTo('report-revenue')"><span class="method-dot dot-get"></span>Revenue Report</a>
+      <a class="nav-item" onclick="jumpTo('report-user-perf')"><span class="method-dot dot-get"></span>User Performance</a>
+    </div>
+  </div>
+
+  <div class="nav-section" id="nav-misc">
+    <div class="nav-section-header" onclick="toggleSection('nav-misc')"><span class="nav-chevron">▾</span>Reference &amp; Utility<span class="nav-count">12</span></div>
+    <div class="nav-items">
+      <a class="nav-item" onclick="jumpTo('dashboard')"><span class="method-dot dot-get"></span>Dashboard</a>
+      <a class="nav-item" onclick="jumpTo('profile')"><span class="method-dot dot-get"></span>Profile</a>
+      <a class="nav-item" onclick="jumpTo('change-password')"><span class="method-dot dot-post"></span>Change Password</a>
+      <a class="nav-item" onclick="jumpTo('notifications')"><span class="method-dot dot-get"></span>Notifications</a>
+      <a class="nav-item" onclick="jumpTo('notification-mark')"><span class="method-dot dot-get"></span>Mark as Read</a>
+      <a class="nav-item" onclick="jumpTo('lead-sources')"><span class="method-dot dot-get"></span>Lead Sources</a>
+      <a class="nav-item" onclick="jumpTo('lead-statuses')"><span class="method-dot dot-get"></span>Lead Statuses</a>
+      <a class="nav-item" onclick="jumpTo('priorities')"><span class="method-dot dot-get"></span>Priorities</a>
+      <a class="nav-item" onclick="jumpTo('stages')"><span class="method-dot dot-get"></span>Stages</a>
+      <a class="nav-item" onclick="jumpTo('categories')"><span class="method-dot dot-get"></span>Categories</a>
+      <a class="nav-item" onclick="jumpTo('users-list')"><span class="method-dot dot-get"></span>Users List</a>
+      <a class="nav-item" onclick="jumpTo('permissions')"><span class="method-dot dot-get"></span>User Permissions</a>
+    </div>
+  </div>
+
+  <div class="nav-section" id="nav-public">
+    <div class="nav-section-header" onclick="toggleSection('nav-public')"><span class="nav-chevron">▾</span>Public APIs<span class="nav-count">2</span></div>
+    <div class="nav-items">
+      <a class="nav-item" onclick="jumpTo('generate-lead')"><span class="method-dot dot-post"></span>Generate Lead</a>
+      <a class="nav-item" onclick="jumpTo('product-categories')"><span class="method-dot dot-get"></span>Product Categories</a>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main>
+
+  <!-- INTRO -->
+  <div class="intro-card">
+    <h1>CRM API Documentation</h1>
+    <p>Complete reference for the CRM Mobile API. All endpoints require Bearer token authentication unless marked as public.</p>
+    <div class="intro-stats">
+      <div class="stat"><div class="stat-num">50+</div><div class="stat-label">Endpoints</div></div>
+      <div class="stat"><div class="stat-num">12</div><div class="stat-label">Modules</div></div>
+      <div class="stat"><div class="stat-num">REST</div><div class="stat-label">Protocol</div></div>
+      <div class="stat"><div class="stat-num">JSON</div><div class="stat-label">Response</div></div>
+    </div>
+    <div class="auth-note">
+      <div class="auth-note-icon">🔐</div>
+      <div><p><strong>Authentication:</strong> All protected endpoints require <code>Authorization: Bearer &lt;token&gt;</code> and <code>Accept: application/json</code> headers. Obtain a token via the <strong>Login API</strong>.</p></div>
+    </div>
+  </div>
+
+  <!-- ═══ AUTHENTICATION ═══ -->
+  <div class="section-title" id="s-auth">
+    <div class="section-icon" style="background:#d1fae5">🔑</div>
+    <div><h2>Authentication</h2><div class="section-desc">Login, logout and device token management</div></div>
+    <span class="section-badge">3 endpoints</span>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="endpoint" id="login">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/login</span>
+      <span class="endpoint-name">Login API</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'login','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'login','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="login" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code> &nbsp;|&nbsp; No auth required</div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">email</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">User email address</td></tr>
+              <tr><td class="param-name">password</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">User password</td></tr>
+              <tr><td class="param-name">google_token</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Google OAuth token (alternative to password)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="login" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/login</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"email=user@example.com"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"password=123456"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGOUT -->
+  <div class="endpoint" id="logout">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/logout</span>
+      <span class="endpoint-name">Logout API</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'logout','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'logout','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="logout" data-p="params">
+          <p class="empty">No query parameters. Requires <code>Authorization: Bearer &lt;token&gt;</code> header. Invalidates the current session token.</p>
+        </div>
+        <div class="tab-panel" data-ep="logout" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/logout</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAVE TOKEN -->
+  <div class="endpoint" id="save-token">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/save-token</span>
+      <span class="endpoint-name">Save Device Token</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'save-token','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'save-token','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="save-token" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code> &nbsp;|&nbsp; Registers FCM push notification token</div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">token</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Firebase Cloud Messaging device token</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="save-token" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/save-token</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"token=YOUR_FCM_DEVICE_TOKEN"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LEADS ═══ -->
+  <div class="section-title" id="s-leads">
+    <div class="section-icon" style="background:#dbeafe">📋</div>
+    <div><h2>Leads</h2><div class="section-desc">Manage sales leads through their lifecycle</div></div>
+    <span class="section-badge">6 endpoints</span>
+  </div>
+
+  <!-- LIST LEADS -->
+  <div class="endpoint" id="leads-list">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/leads</span>
+      <span class="endpoint-name">List Leads</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'leads-list','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'leads-list','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="leads-list" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">title</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Filter by lead title/name</td></tr>
+              <tr><td class="param-name">category</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Category ID e.g. <code>1</code></td></tr>
+              <tr><td class="param-name">lead_source</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Lead source ID</td></tr>
+              <tr><td class="param-name">status</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">e.g. <code>Lost Lead</code>, <code>New</code></td></tr>
+              <tr><td class="param-name">priority</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>high</code> / <code>medium</code> / <code>low</code></td></tr>
+              <tr><td class="param-name">owner</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Owner user ID</td></tr>
+              <tr><td class="param-name">from_date</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Format: <code>dd-mm-yyyy</code></td></tr>
+              <tr><td class="param-name">to_date</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Format: <code>dd-mm-yyyy</code></td></tr>
+              <tr><td class="param-name">view</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>Converted Leads</code> to filter converted only</td></tr>
+              <tr><td class="param-name">page</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Page number for pagination</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="leads-list" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> \
+  <span class="curl-url">"http://crm-demo.isarva.in/api/mobile/leads?title=&amp;status=&amp;priority=high&amp;from_date=&amp;to_date=&amp;page=1"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEAD DETAIL -->
+  <div class="endpoint" id="leads-detail">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/leads/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Lead Detail</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'leads-detail','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'leads-detail','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="leads-detail" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Lead ID e.g. <code>483</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="leads-detail" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/leads/483</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE LEAD -->
+  <div class="endpoint" id="leads-create">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/leads</span>
+      <span class="endpoint-name">Create Lead</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'leads-create','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'leads-create','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="leads-create" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code></div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">title</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Lead title</td></tr>
+              <tr><td class="param-name">organization_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Linked organization ID</td></tr>
+              <tr><td class="param-name">people_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Linked contact person ID</td></tr>
+              <tr><td class="param-name">customer_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Linked customer ID</td></tr>
+              <tr><td class="param-name">amount</td><td><span class="param-type">number</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Deal value</td></tr>
+              <tr><td class="param-name">status</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Status ID</td></tr>
+              <tr><td class="param-name">label</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>low</code> / <code>medium</code> / <code>high</code></td></tr>
+              <tr><td class="param-name">lead_source</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Lead source ID</td></tr>
+              <tr><td class="param-name">user_owner_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Assigned owner user ID</td></tr>
+              <tr><td class="param-name">description</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Additional notes</td></tr>
+              <tr><td class="param-name">categories[]</td><td><span class="param-type">integer[]</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Category IDs e.g. <code>categories[0]=3</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="leads-create" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/leads</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"title=New Website Lead"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"amount=50000"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"label=high"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"lead_source=2"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"user_owner_id=3"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPDATE LEAD -->
+  <div class="endpoint" id="leads-update">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/leads/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Update Lead</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'leads-update','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'leads-update','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="leads-update" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code> &nbsp;|&nbsp; Same fields as Create Lead. Send only fields to update.</div>
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Lead ID to update</td></tr>
+              <tr><td class="param-name">title, amount, status, label…</td><td><span class="param-type">body</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Any field from Create Lead</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="leads-update" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/leads/483</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"title=Updated Lead Title"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"status=2"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONVERT LEAD -->
+  <div class="endpoint" id="leads-convert">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/deals/store-from-lead/<span class="path-param">{lead_id}</span></span>
+      <span class="endpoint-name">Convert Lead to Deal</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'leads-convert','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'leads-convert','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="leads-convert" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code> &nbsp;|&nbsp; Converts an existing lead into a deal</div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">title</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Deal title</td></tr>
+              <tr><td class="param-name">amount</td><td><span class="param-type">number</span></td><td><span class="param-required">required</span></td><td class="param-desc">Deal value</td></tr>
+              <tr><td class="param-name">stage</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">e.g. <code>Closed won</code>, <code>Needs Analysis</code></td></tr>
+              <tr><td class="param-name">probability</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Win probability 0–100</td></tr>
+              <tr><td class="param-name">close_date</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Format: <code>dd-mm-yyyy</code></td></tr>
+              <tr><td class="param-name">label</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>low</code> / <code>medium</code> / <code>high</code></td></tr>
+              <tr><td class="param-name">lead_source</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Lead source ID</td></tr>
+              <tr><td class="param-name">user_owner_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Owner user ID</td></tr>
+              <tr><td class="param-name">reason_for_loss</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Reason if deal is lost</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="leads-convert" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/deals/store-from-lead/483</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"title=New Deal from Lead"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"amount=75000"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"stage=Needs Analysis"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"probability=40"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE LEAD -->
+  <div class="endpoint" id="leads-delete">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-delete">DELETE</span>
+      <span class="endpoint-path">/api/mobile/leads/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Delete Lead</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'leads-delete','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'leads-delete','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="leads-delete" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Lead ID to delete. This action is irreversible.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="leads-delete" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">DELETE</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/leads/483</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ DEALS ═══ -->
+  <div class="section-title" id="s-deals">
+    <div class="section-icon" style="background:#fef3c7">💼</div>
+    <div><h2>Deals</h2><div class="section-desc">Sales deals and pipeline stage management</div></div>
+    <span class="section-badge">6 endpoints</span>
+  </div>
+
+  <!-- LIST DEALS -->
+  <div class="endpoint" id="deals-list">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/deals</span>
+      <span class="endpoint-name">List Deals</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'deals-list','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'deals-list','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="deals-list" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">title</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Search by deal title</td></tr>
+              <tr><td class="param-name">category</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Category ID</td></tr>
+              <tr><td class="param-name">lead_source</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Lead source ID</td></tr>
+              <tr><td class="param-name">from_date</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Format: <code>dd-mm-yyyy</code></td></tr>
+              <tr><td class="param-name">to_date</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Format: <code>dd-mm-yyyy</code></td></tr>
+              <tr><td class="param-name">page</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Page number for pagination</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="deals-list" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> \
+  <span class="curl-url">"http://crm-demo.isarva.in/api/mobile/deals?title=&amp;category=&amp;from_date=&amp;page=1"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEAL DETAIL -->
+  <div class="endpoint" id="deals-detail">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/deals/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Deal Detail</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'deals-detail','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'deals-detail','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="deals-detail" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Deal ID e.g. <code>65</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="deals-detail" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/deals/65</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE DEAL -->
+  <div class="endpoint" id="deals-create">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/deals</span>
+      <span class="endpoint-name">Create Deal</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'deals-create','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'deals-create','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="deals-create" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code></div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">title</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Deal title</td></tr>
+              <tr><td class="param-name">amount</td><td><span class="param-type">number</span></td><td><span class="param-required">required</span></td><td class="param-desc">Deal value</td></tr>
+              <tr><td class="param-name">stage</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Pipeline stage e.g. <code>Needs Analysis</code></td></tr>
+              <tr><td class="param-name">probability</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Win probability 0–100</td></tr>
+              <tr><td class="param-name">close_date</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Expected close date <code>dd-mm-yyyy</code></td></tr>
+              <tr><td class="param-name">organization_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Linked organization</td></tr>
+              <tr><td class="param-name">people_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Linked contact person</td></tr>
+              <tr><td class="param-name">customer_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Linked customer</td></tr>
+              <tr><td class="param-name">label</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>low</code> / <code>medium</code> / <code>high</code></td></tr>
+              <tr><td class="param-name">lead_source</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Lead source ID</td></tr>
+              <tr><td class="param-name">user_owner_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Deal owner user ID</td></tr>
+              <tr><td class="param-name">description</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Additional notes</td></tr>
+              <tr><td class="param-name">categories[]</td><td><span class="param-type">integer[]</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Category IDs array</td></tr>
+              <tr><td class="param-name">reason_for_loss</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Reason if deal lost</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="deals-create" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/deals</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"title=Website Redesign"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"amount=50000"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"stage=Needs Analysis"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"probability=20"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"label=high"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"close_date=12-01-2026"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPDATE DEAL -->
+  <div class="endpoint" id="deals-update">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/deals/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Update Deal</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'deals-update','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'deals-update','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="deals-update" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code> &nbsp;|&nbsp; Same fields as Create Deal. All fields optional on update.</div>
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Deal ID to update</td></tr>
+              <tr><td class="param-name">title, amount, stage…</td><td><span class="param-type">body</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Any field from Create Deal</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="deals-update" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/deals/60</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"title=Updated Deal Name"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"amount=60000"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"stage=Closed won"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SWITCH STAGE -->
+  <div class="endpoint" id="deals-switch-stage">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/deals/<span class="path-param">{id}</span>/switch-stage</span>
+      <span class="endpoint-name">Switch Deal Stage</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'deals-switch','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'deals-switch','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="deals-switch" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code> &nbsp;|&nbsp; Moves a deal to a different pipeline stage</div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">stage</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Target stage name e.g. <code>Needs Analysis</code></td></tr>
+              <tr><td class="param-name">probability</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Win probability 0–100</td></tr>
+              <tr><td class="param-name">amount</td><td><span class="param-type">number</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Updated deal amount</td></tr>
+              <tr><td class="param-name">close_date</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>dd-mm-yyyy</code></td></tr>
+              <tr><td class="param-name">reason_for_loss</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Required when moving to a loss stage</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="deals-switch" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/deals/67/switch-stage</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"stage=Needs Analysis"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"probability=20"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE DEAL -->
+  <div class="endpoint" id="deals-delete">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-delete">DELETE</span>
+      <span class="endpoint-path">/api/mobile/deals/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Delete Deal</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'deals-delete','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'deals-delete','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="deals-delete" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Deal ID to delete. Permanently removes deal and all activities.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="deals-delete" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">DELETE</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/deals/62</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ORGANIZATIONS ═══ -->
+  <div class="section-title" id="s-orgs">
+    <div class="section-icon" style="background:#ede9fe">🏢</div>
+    <div><h2>Organizations</h2><div class="section-desc">Company / organization records management</div></div>
+    <span class="section-badge">8 endpoints</span>
+  </div>
+
+  <!-- LIST ORGS -->
+  <div class="endpoint" id="org-list">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/organizations</span>
+      <span class="endpoint-name">List Organizations</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'org-list','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'org-list','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="org-list" data-p="params">
+          <p class="empty">Returns a paginated list of all organizations. No required query parameters.</p>
+        </div>
+        <div class="tab-panel" data-ep="org-list" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/organizations</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORG DETAIL -->
+  <div class="endpoint" id="org-detail">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/organizations/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Organization Detail</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'org-detail','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'org-detail','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="org-detail" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody><tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Organization ID</td></tr></tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="org-detail" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/organizations/1</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORG AUTOCOMPLETE -->
+  <div class="endpoint" id="org-autocomplete">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/organizations/autocomplete</span>
+      <span class="endpoint-name">Organization Autocomplete</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'org-autocomplete','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'org-autocomplete','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="org-autocomplete" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody><tr><td class="param-name">q</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Search term for autocomplete dropdown</td></tr></tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="org-autocomplete" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> \
+  <span class="curl-url">"http://crm-demo.isarva.in/api/mobile/organizations/autocomplete?q=acme"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORG OWNERS -->
+  <div class="endpoint" id="org-owners">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/organizations/<span class="path-param">{id}</span>/owners</span>
+      <span class="endpoint-name">Organization Owners</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'org-owners','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'org-owners','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="org-owners" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody><tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Organization ID</td></tr></tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="org-owners" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/organizations/1/owners</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE ORG -->
+  <div class="endpoint" id="org-create">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/organizations</span>
+      <span class="endpoint-name">Create Organization</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'org-create','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'org-create','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="org-create" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code></div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">name</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Organization name</td></tr>
+              <tr><td class="param-name">industry_type</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Industry type ID</td></tr>
+              <tr><td class="param-name">organization_type</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Organization type ID</td></tr>
+              <tr><td class="param-name">website</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Website URL</td></tr>
+              <tr><td class="param-name">address</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Street address</td></tr>
+              <tr><td class="param-name">city</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">City</td></tr>
+              <tr><td class="param-name">pincode</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Postal/ZIP code</td></tr>
+              <tr><td class="param-name">country</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Country</td></tr>
+              <tr><td class="param-name">phone</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Phone number</td></tr>
+              <tr><td class="param-name">email</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Email address</td></tr>
+              <tr><td class="param-name">description</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">About the organization</td></tr>
+              <tr><td class="param-name">number_of_employees</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Headcount</td></tr>
+              <tr><td class="param-name">user_owner_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Assigned owner user ID</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="org-create" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/organizations</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"name=Acme Corporation"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"website=https://acme.com"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"city=Bangalore"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"phone=+919876543210"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"user_owner_id=3"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE ORG MODAL -->
+  <div class="endpoint" id="org-create-modal">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/organizations/company-create</span>
+      <span class="endpoint-name">Create Organization (Quick Modal)</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'org-create-modal','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'org-create-modal','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="org-create-modal" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code> &nbsp;|&nbsp; Lightweight creation for inline modal forms</div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">org_name</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Organization name</td></tr>
+              <tr><td class="param-name">org_website</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Website URL</td></tr>
+              <tr><td class="param-name">org_address</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Address</td></tr>
+              <tr><td class="param-name">org_phone</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Phone number</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="org-create-modal" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/organizations/company-create</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"org_name=Quick Company"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"org_phone=+919876543210"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPDATE ORG -->
+  <div class="endpoint" id="org-update">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/organizations/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Update Organization</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'org-update','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'org-update','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="org-update" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code> &nbsp;|&nbsp; Same fields as Create Organization. All fields optional.</div>
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Organization ID to update</td></tr>
+              <tr><td class="param-name">name, website, city…</td><td><span class="param-type">body</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Any field from Create Organization</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="org-update" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/organizations/1</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"name=Acme Corp Updated"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"number_of_employees=150"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE ORG -->
+  <div class="endpoint" id="org-delete">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-delete">DELETE</span>
+      <span class="endpoint-path">/api/mobile/organizations/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Delete Organization</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'org-delete','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'org-delete','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="org-delete" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody><tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Organization ID to permanently delete</td></tr></tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="org-delete" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">DELETE</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/organizations/1</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CONTACTS ═══ -->
+  <div class="section-title" id="s-contacts">
+    <div class="section-icon" style="background:#fce7f3">👤</div>
+    <div><h2>Contacts</h2><div class="section-desc">Contact persons associated with organizations</div></div>
+    <span class="section-badge">8 endpoints</span>
+  </div>
+
+  <div class="endpoint" id="contact-list">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/contacts</span>
+      <span class="endpoint-name">List All Contacts</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'contact-list','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'contact-list','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="contact-list" data-p="params"><p class="empty">Returns all contact persons with pagination. No required query parameters.</p></div>
+        <div class="tab-panel" data-ep="contact-list" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/contacts</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="contact-by-org">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/organizations/<span class="path-param">{org_id}</span>/contacts</span>
+      <span class="endpoint-name">Contacts by Organization</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'contact-by-org','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'contact-by-org','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="contact-by-org" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody><tr><td class="param-name">org_id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Organization ID to get contacts for</td></tr></tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="contact-by-org" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/organizations/1/contacts</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="contact-detail">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/contacts/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Contact Detail</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'contact-detail','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'contact-detail','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="contact-detail" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody><tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Contact person ID</td></tr></tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="contact-detail" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/contacts/1</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="contact-autocomplete">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/contacts/autocomplete</span>
+      <span class="endpoint-name">Contact Autocomplete</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'contact-autocomplete','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'contact-autocomplete','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="contact-autocomplete" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">q</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Search query</td></tr>
+              <tr><td class="param-name">organization</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Filter by organization ID</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="contact-autocomplete" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> \
+  <span class="curl-url">"http://crm-demo.isarva.in/api/mobile/contacts/autocomplete?q=john&amp;organization=1"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="contact-create">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/contacts</span>
+      <span class="endpoint-name">Create Contact</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'contact-create','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'contact-create','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="contact-create" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code></div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">first_name</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">First name</td></tr>
+              <tr><td class="param-name">last_name</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Last name</td></tr>
+              <tr><td class="param-name">gender</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>male</code> / <code>female</code> / <code>other</code></td></tr>
+              <tr><td class="param-name">dob</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Date of birth <code>dd-mm-yyyy</code></td></tr>
+              <tr><td class="param-name">phone</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Phone number</td></tr>
+              <tr><td class="param-name">mobile</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Mobile number</td></tr>
+              <tr><td class="param-name">email</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Email address</td></tr>
+              <tr><td class="param-name">job_title</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Job title / designation</td></tr>
+              <tr><td class="param-name">lead_source</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Lead source ID</td></tr>
+              <tr><td class="param-name">address</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Address</td></tr>
+              <tr><td class="param-name">notes</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Additional notes</td></tr>
+              <tr><td class="param-name">owner_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Assigned owner user ID</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="contact-create" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/contacts</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"first_name=John"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"last_name=Doe"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"mobile=+919876543210"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"email=john@example.com"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"job_title=Manager"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"owner_id=3"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="contact-create-modal">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/contacts/createPerson</span>
+      <span class="endpoint-name">Create Contact (Quick Modal)</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'contact-create-modal','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'contact-create-modal','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="contact-create-modal" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code> &nbsp;|&nbsp; Lightweight inline modal creation</div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">person_first_name</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">First name</td></tr>
+              <tr><td class="param-name">person_last_name</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Last name</td></tr>
+              <tr><td class="param-name">person_org_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Organization ID to link</td></tr>
+              <tr><td class="param-name">person_phone</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Phone number</td></tr>
+              <tr><td class="param-name">person_email</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Email address</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="contact-create-modal" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/contacts/createPerson</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"person_first_name=Jane"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"person_last_name=Smith"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"person_org_id=1"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="contact-update">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/contacts/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Update Contact</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'contact-update','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'contact-update','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="contact-update" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code> &nbsp;|&nbsp; Same fields as Create Contact. All fields optional.</div>
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Contact ID to update</td></tr>
+              <tr><td class="param-name">first_name, mobile, email…</td><td><span class="param-type">body</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Any field from Create Contact</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="contact-update" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/contacts/421</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"first_name=John Updated"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"mobile=8762361473"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="contact-delete">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-delete">DELETE</span>
+      <span class="endpoint-path">/api/mobile/contacts/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Delete Contact</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'contact-delete','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'contact-delete','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="contact-delete" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody><tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Contact ID to permanently delete</td></tr></tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="contact-delete" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">DELETE</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/contacts/386</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ NOTES ═══ -->
+  <div class="section-title" id="s-notes">
+    <div class="section-icon" style="background:#fef9c3">📝</div>
+    <div><h2>Notes</h2><div class="section-desc">Activity notes linked to leads, deals or contacts</div></div>
+    <span class="section-badge">3 endpoints</span>
+  </div>
+
+  <div class="endpoint" id="note-create">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/notes</span>
+      <span class="endpoint-name">Create Note</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'note-create','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'note-create','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="note-create" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code></div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">content</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Note body text</td></tr>
+              <tr><td class="param-name">related_type</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc"><code>lead</code> / <code>deal</code> / <code>contact</code></td></tr>
+              <tr><td class="param-name">related_id</td><td><span class="param-type">integer</span></td><td><span class="param-required">required</span></td><td class="param-desc">ID of the related entity</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="note-create" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/notes</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"content=Follow up call scheduled"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"related_type=lead"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"related_id=483"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="note-update">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/notes/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Update Note</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'note-update','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'note-update','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="note-update" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Note ID</td></tr>
+              <tr><td class="param-name">content</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Updated note content</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="note-update" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/notes/12</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"content=Updated note content here"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="note-delete">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-delete">DELETE</span>
+      <span class="endpoint-path">/api/mobile/notes/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Delete Note</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'note-delete','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'note-delete','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="note-delete" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody><tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Note ID to delete</td></tr></tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="note-delete" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">DELETE</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/notes/12</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TASKS ═══ -->
+  <div class="section-title" id="s-tasks">
+    <div class="section-icon" style="background:#cffafe">✅</div>
+    <div><h2>Tasks</h2><div class="section-desc">To-do tasks with reminders and assignments</div></div>
+    <span class="section-badge">5 endpoints</span>
+  </div>
+
+  <div class="endpoint" id="task-list">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/tasks</span>
+      <span class="endpoint-name">List Tasks</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'task-list','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'task-list','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="task-list" data-p="params"><p class="empty">Returns all tasks for the authenticated user. No required query parameters.</p></div>
+        <div class="tab-panel" data-ep="task-list" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/tasks</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="task-detail">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/tasks/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Task Detail</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'task-detail','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'task-detail','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="task-detail" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody><tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Task ID</td></tr></tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="task-detail" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/tasks/5</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="task-create">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/tasks/create</span>
+      <span class="endpoint-name">Create Task</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'task-create','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'task-create','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="task-create" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code></div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">name</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Task title</td></tr>
+              <tr><td class="param-name">due_at</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Due datetime e.g. <code>14-01-2026 03:35:00 PM</code></td></tr>
+              <tr><td class="param-name">description</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Task description</td></tr>
+              <tr><td class="param-name">user_assigned_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Assigned-to user ID</td></tr>
+              <tr><td class="param-name">related_type</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>lead</code> / <code>deal</code> / <code>contact</code></td></tr>
+              <tr><td class="param-name">related_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">ID of linked entity</td></tr>
+              <tr><td class="param-name">priority</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>high</code> / <code>medium</code> / <code>low</code></td></tr>
+              <tr><td class="param-name">status</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>Not Started</code> / <code>In Progress</code> / <code>Completed</code></td></tr>
+              <tr><td class="param-name">user_owner_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Task owner user ID</td></tr>
+              <tr><td class="param-name">reminder_notifications_enabled</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>1</code> = on, <code>0</code> = off</td></tr>
+              <tr><td class="param-name">reminder_offset</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Minutes before due to send reminder e.g. <code>5</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="task-create" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/tasks/create</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"name=Follow up with client"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"due_at=14-01-2026 03:35:00 PM"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"priority=high"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"status=Not Started"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"related_type=lead"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"related_id=483"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="task-update">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/tasks/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Update Task</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'task-update','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'task-update','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="task-update" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code> &nbsp;|&nbsp; Same fields as Create Task. All optional on update.</div>
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Task ID to update</td></tr>
+              <tr><td class="param-name">name, status, due_at…</td><td><span class="param-type">body</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Any field from Create Task</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="task-update" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/tasks/5</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"status=Completed"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="task-delete">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-delete">DELETE</span>
+      <span class="endpoint-path">/api/mobile/tasks/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Delete Task</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'task-delete','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'task-delete','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="task-delete" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody><tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Task ID to delete</td></tr></tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="task-delete" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">DELETE</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/tasks/5</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MEETINGS ═══ -->
+  <div class="section-title" id="s-meetings">
+    <div class="section-icon" style="background:#d1fae5">📅</div>
+    <div><h2>Meetings</h2><div class="section-desc">Schedule and manage meetings with participants</div></div>
+    <span class="section-badge">3 endpoints</span>
+  </div>
+
+  <div class="endpoint" id="meeting-create">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/meetings</span>
+      <span class="endpoint-name">Create Meeting</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'meeting-create','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'meeting-create','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="meeting-create" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code></div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">name</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Meeting title/name</td></tr>
+              <tr><td class="param-name">start_at</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Start datetime <code>dd-mm-yyyy HH:mm:ss</code></td></tr>
+              <tr><td class="param-name">finish_at</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">End datetime <code>dd-mm-yyyy HH:mm:ss</code></td></tr>
+              <tr><td class="param-name">related_type</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>lead</code> / <code>deal</code> / <code>contact</code></td></tr>
+              <tr><td class="param-name">related_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Linked entity ID</td></tr>
+              <tr><td class="param-name">description</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Meeting agenda/notes</td></tr>
+              <tr><td class="param-name">user_owner_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Meeting organizer user ID</td></tr>
+              <tr><td class="param-name">venue</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">e.g. <code>Client Location</code>, <code>Office</code></td></tr>
+              <tr><td class="param-name">location</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Physical address</td></tr>
+              <tr><td class="param-name">user_participant_id[0][type]</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>user</code> for internal participants</td></tr>
+              <tr><td class="param-name">user_participant_id[0][id]</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Participant user ID</td></tr>
+              <tr><td class="param-name">host_reminder</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Reminder in minutes before meeting</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="meeting-create" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/meetings</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"name=Product Demo"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"start_at=20-01-2026 10:00:00"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"finish_at=20-01-2026 11:00:00"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"venue=Client Location"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"related_type=deal"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"related_id=65"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="meeting-update">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/meetings/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Update Meeting</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'meeting-update','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'meeting-update','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="meeting-update" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code> &nbsp;|&nbsp; Same fields as Create Meeting. All optional on update.</div>
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Meeting ID to update</td></tr>
+              <tr><td class="param-name">name, start_at, finish_at…</td><td><span class="param-type">body</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Any field from Create Meeting</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="meeting-update" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/meetings/10</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"name=Updated Meeting Name"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"finish_at=20-01-2026 12:00:00"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="meeting-delete">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-delete">DELETE</span>
+      <span class="endpoint-path">/api/mobile/meetings/<span class="path-param">{id}</span></span>
+      <span class="endpoint-name">Delete Meeting</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'meeting-delete','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'meeting-delete','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="meeting-delete" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody><tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Meeting ID to delete</td></tr></tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="meeting-delete" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">DELETE</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/meetings/10</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CALL LOGS ═══ -->
+  <div class="section-title" id="s-calllogs">
+    <div class="section-icon" style="background:#fee2e2">📞</div>
+    <div><h2>Call Logs</h2><div class="section-desc">Record and track phone call activities</div></div>
+    <span class="section-badge">1 endpoint</span>
+  </div>
+
+  <div class="endpoint" id="calllog-create">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/mobile/callLogs</span>
+      <span class="endpoint-name">Create Call Log</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'calllog-create','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'calllog-create','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="calllog-create" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code></div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">mobile_number</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Caller's mobile number</td></tr>
+              <tr><td class="param-name">name</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Contact person name</td></tr>
+              <tr><td class="param-name">company_name</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Company name</td></tr>
+              <tr><td class="param-name">call_status</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">e.g. <code>Answered</code> / <code>Missed</code></td></tr>
+              <tr><td class="param-name">lead_status</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Lead status after call</td></tr>
+              <tr><td class="param-name">type</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Call type</td></tr>
+              <tr><td class="param-name">title</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Call subject</td></tr>
+              <tr><td class="param-name">discription</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Call notes / summary</td></tr>
+              <tr><td class="param-name">start_at</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Call start datetime</td></tr>
+              <tr><td class="param-name">finish_at</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Call end datetime</td></tr>
+              <tr><td class="param-name">user_owner_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Owner user ID</td></tr>
+              <tr><td class="param-name">user_assigned_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Assigned user ID</td></tr>
+              <tr><td class="param-name">user_call_participant_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Participant user ID</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="calllog-create" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/callLogs</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"mobile_number=+919876543210"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"name=John Doe"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"call_status=Answered"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"title=Initial Discussion"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ REPORTS ═══ -->
+  <div class="section-title" id="s-reports">
+    <div class="section-icon" style="background:#f3e8ff">📊</div>
+    <div><h2>Reports</h2><div class="section-desc">Analytics and performance reporting</div></div>
+    <span class="section-badge">5 endpoints</span>
+  </div>
+
+  <div class="endpoint" id="report-leads">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/reports/leads</span>
+      <span class="endpoint-name">Leads Report</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'report-leads','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'report-leads','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="report-leads" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">filter</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>today</code> / <code>this_week</code> / <code>this_month</code> / <code>last_month</code> / <code>this_year</code> / <code>between</code></td></tr>
+              <tr><td class="param-name">start_date</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Required when <code>filter=between</code></td></tr>
+              <tr><td class="param-name">end_date</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Required when <code>filter=between</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="report-leads" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> \
+  <span class="curl-url">"http://crm-demo.isarva.in/api/mobile/reports/leads?filter=this_month"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="report-converted">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/reports/converted-leads</span>
+      <span class="endpoint-name">Converted Leads Report</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'report-converted','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'report-converted','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="report-converted" data-p="params"><p class="empty">Returns statistics of leads converted to deals. No required query parameters.</p></div>
+        <div class="tab-panel" data-ep="report-converted" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">https://crm-demo.isarva.in/api/mobile/reports/converted-leads</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="report-deals">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/reports/deals</span>
+      <span class="endpoint-name">Deals Report</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'report-deals','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'report-deals','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="report-deals" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">filter</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>today</code> / <code>this_week</code> / <code>this_month</code> / <code>last_month</code> / <code>this_year</code></td></tr>
+              <tr><td class="param-name">stage</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Filter by deal stage</td></tr>
+              <tr><td class="param-name">start_date</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Custom range start</td></tr>
+              <tr><td class="param-name">end_date</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Custom range end</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="report-deals" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> \
+  <span class="curl-url">"http://crm-demo.isarva.in/api/mobile/reports/deals?filter=last_month&amp;stage=Closed+won"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="report-revenue">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/reports/deals/monthly-revenue</span>
+      <span class="endpoint-name">Revenue Report</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'report-revenue','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'report-revenue','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="report-revenue" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">filter</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc"><code>this_year</code> / <code>last_year</code> / <code>between</code></td></tr>
+              <tr><td class="param-name">start_date</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Custom range start</td></tr>
+              <tr><td class="param-name">end_date</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Custom range end</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="report-revenue" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> \
+  <span class="curl-url">"https://crm-demo.isarva.in/api/mobile/reports/deals/monthly-revenue?filter=this_year"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="report-user-perf">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/api/mobile/reports/user-performance</span>
+      <span class="endpoint-name">Monthly User Performance</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'report-user-perf','params')">Query Params</div>
+        <div class="tab" onclick="tab(this,'report-user-perf','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="report-user-perf" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">year</td><td><span class="param-type">integer</span></td><td><span class="param-required">required</span></td><td class="param-desc">Year e.g. <code>2025</code></td></tr>
+              <tr><td class="param-name">month</td><td><span class="param-type">integer</span></td><td><span class="param-required">required</span></td><td class="param-desc">Month 1–12 e.g. <code>12</code></td></tr>
+              <tr><td class="param-name">user_id</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Filter by specific user ID</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="report-user-perf" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> \
+  <span class="curl-url">"http://crm-demo.isarva.in/api/mobile/reports/user-performance?year=2025&amp;month=12"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ REFERENCE & UTILITY ═══ -->
+  <div class="section-title" id="s-misc">
+    <div class="section-icon" style="background:#e2e8f0">⚙️</div>
+    <div><h2>Reference &amp; Utility</h2><div class="section-desc">Dashboard, profile, lookups and notifications</div></div>
+    <span class="section-badge">12 endpoints</span>
+  </div>
+
+  <!-- Helper macro for simple GET endpoints -->
+  <div class="endpoint" id="dashboard">
+    <div class="endpoint-header" onclick="toggleEp(this)"><span class="method-badge badge-get">GET</span><span class="endpoint-path">/api/mobile/dashboard</span><span class="endpoint-name">Dashboard</span><span class="endpoint-chevron">▾</span></div>
+    <div class="endpoint-body">
+      <div class="tabs"><div class="tab active" onclick="tab(this,'dashboard','params')">Query Params</div><div class="tab" onclick="tab(this,'dashboard','curl')">cURL</div></div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="dashboard" data-p="params"><p class="empty">Returns summary dashboard data. No required parameters.</p></div>
+        <div class="tab-panel" data-ep="dashboard" data-p="curl"><div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/dashboard</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="profile">
+    <div class="endpoint-header" onclick="toggleEp(this)"><span class="method-badge badge-get">GET</span><span class="endpoint-path">/api/mobile/profile</span><span class="endpoint-name">User Profile</span><span class="endpoint-chevron">▾</span></div>
+    <div class="endpoint-body">
+      <div class="tabs"><div class="tab active" onclick="tab(this,'profile','params')">Query Params</div><div class="tab" onclick="tab(this,'profile','curl')">cURL</div></div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="profile" data-p="params"><p class="empty">Returns authenticated user's profile, role and permissions. No required parameters.</p></div>
+        <div class="tab-panel" data-ep="profile" data-p="curl"><div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/profile</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="change-password">
+    <div class="endpoint-header" onclick="toggleEp(this)"><span class="method-badge badge-post">POST</span><span class="endpoint-path">/api/mobile/profile/change-password</span><span class="endpoint-name">Change Password</span><span class="endpoint-chevron">▾</span></div>
+    <div class="endpoint-body">
+      <div class="tabs"><div class="tab active" onclick="tab(this,'change-password','params')">Body Params</div><div class="tab" onclick="tab(this,'change-password','curl')">cURL</div></div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="change-password" data-p="params">
+          <div class="note">Content-Type: <code>multipart/form-data</code></div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">current_password</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Current password</td></tr>
+              <tr><td class="param-name">new_password</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">New password (min 6 chars)</td></tr>
+              <tr><td class="param-name">confirm_password</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Must match new_password</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="change-password" data-p="curl"><div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/profile/change-password</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"current_password=oldpass"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"new_password=newpass123"</span> \
+  <span class="curl-flag">-F</span> <span class="curl-value">"confirm_password=newpass123"</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="notifications">
+    <div class="endpoint-header" onclick="toggleEp(this)"><span class="method-badge badge-get">GET</span><span class="endpoint-path">/api/mobile/notifications</span><span class="endpoint-name">Notification List</span><span class="endpoint-chevron">▾</span></div>
+    <div class="endpoint-body">
+      <div class="tabs"><div class="tab active" onclick="tab(this,'notifications','params')">Query Params</div><div class="tab" onclick="tab(this,'notifications','curl')">cURL</div></div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="notifications" data-p="params"><p class="empty">Returns all notifications for the user, newest first.</p></div>
+        <div class="tab-panel" data-ep="notifications" data-p="curl"><div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/notifications</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="notification-mark">
+    <div class="endpoint-header" onclick="toggleEp(this)"><span class="method-badge badge-get">GET</span><span class="endpoint-path">/api/mobile/notifications/mark-read/<span class="path-param">{id}</span></span><span class="endpoint-name">Mark Notification Read</span><span class="endpoint-chevron">▾</span></div>
+    <div class="endpoint-body">
+      <div class="tabs"><div class="tab active" onclick="tab(this,'notification-mark','params')">Query Params</div><div class="tab" onclick="tab(this,'notification-mark','curl')">cURL</div></div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="notification-mark" data-p="params">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody><tr><td class="param-name">id</td><td><span class="param-type">path</span></td><td><span class="param-required">required</span></td><td class="param-desc">Notification UUID</td></tr></tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="notification-mark" data-p="curl"><div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> \
+  <span class="curl-url">http://crm-demo.isarva.in/api/mobile/notifications/mark-read/ff668694-2d51-45f7-ba5e-3aa17e4a1d39</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="lead-sources">
+    <div class="endpoint-header" onclick="toggleEp(this)"><span class="method-badge badge-get">GET</span><span class="endpoint-path">/api/mobile/other/lead-sources</span><span class="endpoint-name">Lead Sources</span><span class="endpoint-chevron">▾</span></div>
+    <div class="endpoint-body">
+      <div class="tabs"><div class="tab active" onclick="tab(this,'lead-sources','params')">Query Params</div><div class="tab" onclick="tab(this,'lead-sources','curl')">cURL</div></div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="lead-sources" data-p="params"><p class="empty">Returns all available lead source options. No parameters required.</p></div>
+        <div class="tab-panel" data-ep="lead-sources" data-p="curl"><div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/other/lead-sources</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="lead-statuses">
+    <div class="endpoint-header" onclick="toggleEp(this)"><span class="method-badge badge-get">GET</span><span class="endpoint-path">/api/mobile/other/lead-statuses</span><span class="endpoint-name">Lead Statuses</span><span class="endpoint-chevron">▾</span></div>
+    <div class="endpoint-body">
+      <div class="tabs"><div class="tab active" onclick="tab(this,'lead-statuses','params')">Query Params</div><div class="tab" onclick="tab(this,'lead-statuses','curl')">cURL</div></div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="lead-statuses" data-p="params"><p class="empty">Returns all lead status options. No parameters required.</p></div>
+        <div class="tab-panel" data-ep="lead-statuses" data-p="curl"><div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/other/lead-statuses</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="priorities">
+    <div class="endpoint-header" onclick="toggleEp(this)"><span class="method-badge badge-get">GET</span><span class="endpoint-path">/api/mobile/other/priorities</span><span class="endpoint-name">Priority Options</span><span class="endpoint-chevron">▾</span></div>
+    <div class="endpoint-body">
+      <div class="tabs"><div class="tab active" onclick="tab(this,'priorities','params')">Query Params</div><div class="tab" onclick="tab(this,'priorities','curl')">cURL</div></div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="priorities" data-p="params"><p class="empty">Returns priority levels: high, medium, low.</p></div>
+        <div class="tab-panel" data-ep="priorities" data-p="curl"><div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/other/priorities</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="stages">
+    <div class="endpoint-header" onclick="toggleEp(this)"><span class="method-badge badge-get">GET</span><span class="endpoint-path">/api/mobile/other/stages</span><span class="endpoint-name">Deal Stages</span><span class="endpoint-chevron">▾</span></div>
+    <div class="endpoint-body">
+      <div class="tabs"><div class="tab active" onclick="tab(this,'stages','params')">Query Params</div><div class="tab" onclick="tab(this,'stages','curl')">cURL</div></div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="stages" data-p="params"><p class="empty">Returns all configured pipeline stages.</p></div>
+        <div class="tab-panel" data-ep="stages" data-p="curl"><div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/other/stages</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="categories">
+    <div class="endpoint-header" onclick="toggleEp(this)"><span class="method-badge badge-get">GET</span><span class="endpoint-path">/api/mobile/other/categories</span><span class="endpoint-name">Category List</span><span class="endpoint-chevron">▾</span></div>
+    <div class="endpoint-body">
+      <div class="tabs"><div class="tab active" onclick="tab(this,'categories','params')">Query Params</div><div class="tab" onclick="tab(this,'categories','curl')">cURL</div></div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="categories" data-p="params"><p class="empty">Returns all lead/deal category options.</p></div>
+        <div class="tab-panel" data-ep="categories" data-p="curl"><div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/other/categories</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="users-list">
+    <div class="endpoint-header" onclick="toggleEp(this)"><span class="method-badge badge-get">GET</span><span class="endpoint-path">/api/mobile/other/users</span><span class="endpoint-name">Users List</span><span class="endpoint-chevron">▾</span></div>
+    <div class="endpoint-body">
+      <div class="tabs"><div class="tab active" onclick="tab(this,'users-list','params')">Query Params</div><div class="tab" onclick="tab(this,'users-list','curl')">cURL</div></div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="users-list" data-p="params"><p class="empty">Returns all CRM users for owner/assignee dropdowns.</p></div>
+        <div class="tab-panel" data-ep="users-list" data-p="curl"><div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/other/users</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="permissions">
+    <div class="endpoint-header" onclick="toggleEp(this)"><span class="method-badge badge-get">GET</span><span class="endpoint-path">/api/mobile/other/user-permissions</span><span class="endpoint-name">User Permissions</span><span class="endpoint-chevron">▾</span></div>
+    <div class="endpoint-body">
+      <div class="tabs"><div class="tab active" onclick="tab(this,'permissions','params')">Query Params</div><div class="tab" onclick="tab(this,'permissions','curl')">cURL</div></div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="permissions" data-p="params"><p class="empty">Returns the permission matrix for the authenticated user's role.</p></div>
+        <div class="tab-panel" data-ep="permissions" data-p="curl"><div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">http://crm-demo.isarva.in/api/mobile/other/user-permissions</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Authorization: Bearer &lt;token&gt;"</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Accept: application/json"</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PUBLIC APIs ═══ -->
+  <div class="section-title" id="s-public">
+    <div class="section-icon" style="background:#d1fae5">🌐</div>
+    <div><h2>Public APIs</h2><div class="section-desc">No authentication required</div></div>
+    <span class="section-badge">2 endpoints</span>
+  </div>
+
+  <div class="endpoint" id="generate-lead">
+    <div class="endpoint-header" onclick="toggleEp(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/api/leads</span>
+      <span class="endpoint-name">Generate Lead (Public)</span>
+      <span class="endpoint-chevron">▾</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="tabs">
+        <div class="tab active" onclick="tab(this,'generate-lead','params')">Body Params</div>
+        <div class="tab" onclick="tab(this,'generate-lead','curl')">cURL</div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="generate-lead" data-p="params">
+          <div class="note">Content-Type: <code>application/json</code> &nbsp;|&nbsp; 🌐 No authentication required — used for external lead capture forms</div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="param-name">title</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Lead/enquiry title</td></tr>
+              <tr><td class="param-name">full_name</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Submitter's full name</td></tr>
+              <tr><td class="param-name">email</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Email address</td></tr>
+              <tr><td class="param-name">mobile</td><td><span class="param-type">string</span></td><td><span class="param-required">required</span></td><td class="param-desc">Mobile with country code e.g. <code>+919495526320</code></td></tr>
+              <tr><td class="param-name">organization_name</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Company name</td></tr>
+              <tr><td class="param-name">address</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Address</td></tr>
+              <tr><td class="param-name">website</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Website URL</td></tr>
+              <tr><td class="param-name">description</td><td><span class="param-type">string</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Enquiry description</td></tr>
+              <tr><td class="param-name">categories</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Category ID</td></tr>
+              <tr><td class="param-name">lead_source</td><td><span class="param-type">integer</span></td><td><span class="param-optional">optional</span></td><td class="param-desc">Lead source ID</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-panel" data-ep="generate-lead" data-p="curl">
+          <div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">POST</span> <span class="curl-url">https://crm-demo.isarva.in/api/leads</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Content-Type: application/json"</span> \
+  <span class="curl-flag">-d</span> <span class="curl-value">'{
+    "title": "Demo Request",
+    "full_name": "John Doe",
+    "email": "john@example.com",
+    "mobile": "+919876543210",
+    "organization_name": "Acme Corp",
+    "categories": 1,
+    "lead_source": 19
+  }'</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="product-categories">
+    <div class="endpoint-header" onclick="toggleEp(this)"><span class="method-badge badge-get">GET</span><span class="endpoint-path">/api/product-categories/general</span><span class="endpoint-name">Product Categories (Public)</span><span class="endpoint-chevron">▾</span></div>
+    <div class="endpoint-body">
+      <div class="tabs"><div class="tab active" onclick="tab(this,'product-categories','params')">Query Params</div><div class="tab" onclick="tab(this,'product-categories','curl')">cURL</div></div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-ep="product-categories" data-p="params"><p class="empty">🌐 No authentication required. Returns general product categories for lead capture forms.</p></div>
+        <div class="tab-panel" data-ep="product-categories" data-p="curl"><div class="curl-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="curl-kw">curl</span> -X <span class="curl-kw">GET</span> <span class="curl-url">https://crm-demo.isarva.in/api/product-categories/general</span> \
+  <span class="curl-flag">-H</span> <span class="curl-header">"Content-Type: application/json"</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:80px"></div>
+</main>
+</div>
+
+<script>
+  function toggleEp(header) {
+    header.parentElement.classList.toggle('open');
+  }
+
+  function toggleSection(id) {
+    document.getElementById(id).classList.toggle('collapsed');
+  }
+
+  function tab(el, epId, panel) {
+    const content = el.closest('.endpoint-body');
+    content.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    content.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    const target = content.querySelector(`[data-ep="${epId}"][data-p="${panel}"]`);
+    if (target) target.classList.add('active');
+  }
+
+  function jumpTo(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!el.classList.contains('open')) el.classList.add('open');
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+  }
+
+  function copyCode(btn) {
+    const raw = btn.parentElement.innerText.replace(/^Copy|^Copied!/, '').trim();
+    navigator.clipboard.writeText(raw).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  function filterNav(q) {
+    q = q.toLowerCase();
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.style.display = (!q || item.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    });
+    document.querySelectorAll('.nav-section').forEach(sec => {
+      const vis = [...sec.querySelectorAll('.nav-item')].some(i => i.style.display !== 'none');
+      sec.style.display = vis ? '' : 'none';
+      if (q && vis) sec.classList.remove('collapsed');
+    });
+  }
+</script>
+</body>
+</html>

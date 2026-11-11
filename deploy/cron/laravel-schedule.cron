@@ -1,0 +1,3 @@
+# Run Laravel scheduled tasks every minute (crontab entry)
+# Add this line to the system crontab (crontab -e for the web user or root)
+* * * * * cd /home/crm-demo.isarva.in/public_html && /usr/local/lsws/lsphp82/bin/php artisan schedule:run >> /dev/null 2>&1

@@ -1,0 +1,16 @@
+# Recommended: point the web server DocumentRoot at the public/ folder instead of relying on this file.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+# Never serve project files (.env, dumps, archives, source) even if this folder is the web root
+RewriteRule (^|/)\. - [F,L]
+RewriteRule \.(sql|zip|tar|gz|rar|7z|json|lock|md|log|xml|yml|yaml|env|bak)$ - [F,L,NC]
+RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|tests|vendor|node_modules)(/|$) - [F,L,NC]
+RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# If mod_rewrite is unavailable, deny everything rather than exposing the project root.
+<IfModule !mod_rewrite.c>
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</IfModule>

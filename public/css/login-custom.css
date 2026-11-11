@@ -1,0 +1,322 @@
+ /* logo sizing for login page */
+    .login-logo-wrap { margin-top: 18px; }
+    .login-logo-link { display:inline-block; border-radius:8px; padding:4px; transition:transform .12s ease, box-shadow .12s ease; }
+    /* .login-logo-link:hover, .login-logo-link:focus { transform:translateY(-2px) scale(1.02); box-shadow:0 6px 18px rgba(0,0,0,0.12); text-decoration:none; } */
+    .login-logo { height:48px; max-width:220px; object-fit:contain; display:block; }
+    @media (min-width: 992px) {
+        .login-logo { height:64px; }
+    }
+    /* highlight the forgot password link on hover */
+    .forgot-link {
+        padding: 4px 6px;
+        border-radius: 6px;
+        transition: background-color 0.12s ease, color 0.12s ease, transform 0.08s ease;
+    }
+    .forgot-link:hover, .forgot-link:focus {
+        color: #F9844A !important;
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+
+/* Google CTA outline button */
+.btn-google-outline {
+    background: transparent !important;
+    color: #222 !important;
+    border: 2px solid #2563eb !important;
+    /* border: 2px solid #ffd600 !important; */
+    border-radius: 2rem;
+    font-weight: 700;
+    font-size: 1rem;
+    box-shadow: 0 2px 8px 0 rgba(255, 214, 0, 0.10);
+    padding: 0.75rem 0.5rem;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.btn-google-outline:hover, .btn-google-outline:focus {
+    background: #bacdf7 !important;
+    /* background: #fffde7 !important; */
+    color: #111 !important;
+    box-shadow: 0 4px 16px 0 rgba(255, 214, 0, 0.18);
+}
+.google-icon-colored {
+    color: #ea4335 !important;
+    font-size: 1.3em;
+    vertical-align: middle;
+}
+/* Responsive hero text for login image section */
+.login-hero-text {
+    max-width: 80%;
+    margin: 0 auto;
+    padding: 0 1rem;
+    position: static;
+    top: auto;
+    left: auto;
+}
+.login-hero-title {
+    /* color: #3e2f00; */
+    color: #ffffff;
+    font-size: 2.7rem;
+    /* text-shadow: 0 2px 12px rgba(255,224,130,0.25); */
+    text-align: left;
+    letter-spacing: -1px;
+    line-height: 1.1;
+}
+.login-hero-subtitle {
+    /* color: #6d5c1a; */
+    color: #ffffff;
+    font-size: 1.22rem;
+    /* text-shadow: 0 1px 6px rgba(255,224,130,0.18); */
+    text-align: left;
+    font-weight: 500;
+}
+.login-hero-img {
+    width: 80%;
+    max-width: 420px;
+    margin: 0 auto;
+    display: block;
+    position: relative;
+    z-index: 1;
+}
+@media (max-width: 900px) {
+    .login-hero-text {
+        max-width: 96%;
+        padding: 0 0.5rem;
+    }
+    .login-hero-title {
+        font-size: 2.1rem;
+    }
+    .login-hero-subtitle {
+        font-size: 1.08rem;
+    }
+}
+@media (max-width: 600px) {
+    .login-hero-text {
+        width: 100%;
+        max-width: 100%;
+        padding: 1.2rem 0.5rem 0.5rem 0.5rem;
+        text-align: center;
+    }
+    .login-hero-title {
+        font-size: 1.5rem;
+        text-align: center;
+    }
+    .login-hero-subtitle {
+        font-size: 0.98rem;
+        text-align: center;
+    }
+}
+/* CTA Button Styles */
+.btn-cta {
+    /* background: linear-gradient(90deg, #ffd54f  0%,  #ffe082 100%); */
+    background: #2563eb;  /*linear-gradient(160deg, #1d4ed8 0%, #172554 100%);*/
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1.15rem;
+    border: none;
+    border-radius: 2rem;
+    box-shadow: 0 4px 16px 0 rgba(255, 224, 130, 0.18);
+    padding: 0.75rem 2.5rem;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.btn-cta:hover, .btn-cta:focus {
+    /* background: linear-gradient(90deg, #ffd54f 0%, #ffe082 100%); */
+    background: #1d4ed8;
+    color: #ffffff;
+    box-shadow: 0 6px 24px 0 rgba(255, 224, 130, 0.28);
+}
+/* Modern login page styles for left form, right image, and mobile responsive */
+.login-bg-gradient {
+    /* background: linear-gradient(135deg, #fffbe6 0%, #ffe082 100%); */
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+.login-card-container {
+    display: flex;
+    flex-direction: row;
+    width: 1050px;
+    max-width: 98vw;
+    min-height: 540px;
+    background: rgba(255,255,255,0.95);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+    overflow: hidden;
+}
+.login-form-section {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 3rem 2.5rem 3rem 2.5rem;
+    background: rgba(255,255,255,0.95);
+    border-radius: 2rem;
+}
+.login-image-section {
+    flex: 2 1 0;
+     /* background: linear-gradient(135deg, #fffbe6 0%, #ffe082 100%); */
+     background: linear-gradient(160deg, #1d4ed8 0%, #172554 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    clip-path: ellipse(95% 90% at 100% 50%);
+}
+.login-features::before {
+    content: '';
+    position: absolute;
+    top: -120px;
+    left: -120px;
+    width: 400px;
+    height: 400px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 50%;
+    z-index: 0;
+}
+.login-image-section::after {
+    content: '';
+    position: absolute;
+    bottom: -150px;
+    right: -100px;
+    width: 450px;
+    height: 450px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 50%;
+    z-index: 0;
+}
+.login-image-section img {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: 0;
+    box-shadow: 0 4px 24px 0 rgba(31, 38, 135, 0.10);
+}
+@media (max-width: 900px) {
+    .login-card-container {
+        
+        flex-direction: column;
+        width: 70vw;
+        min-height: 0;
+        border-radius: 10px;
+        /* background: linear-gradient(135deg, #fffbe6 0%, #ffe082 100%); */
+    }
+    .login-image-section {
+        display: none !important;
+        min-height: 220px;
+        order: 1;
+        clip-path: inset(0 0 0 0);
+         background: transparent;
+    }
+    .login-form-section {
+        order: 2;
+        border-radius: 2rem;
+    }
+    .login-image-section img {
+        border-radius: 0;
+    }
+}
+@media (max-width: 600px) {
+    .login-card-container {
+        width: 95vw;
+        border-radius: 10px;
+        box-shadow: none;
+       /* background: linear-gradient(135deg, #fffbe6 0%, #ffe082 100%); */
+    }
+    .login-form-section {
+        padding: 2rem 1rem;
+        order: 2;
+        border-radius: 2rem;
+    }
+    .login-image-section {
+        min-height: 160px;
+        order: 1;
+    }
+}
+
+/* Logo placement inside the hero image section */
+.login-hero-logo-wrap { position: absolute; top: 18px; left: 18px; z-index: 5; }
+.login-hero-logo-wrap a { display:inline-block; border-radius:8px; padding:4px; transition:transform .12s ease, box-shadow .12s ease; }
+.login-hero-logo-wrap a:hover, .login-hero-logo-wrap a:focus { transform:translateY(-2px) scale(1.02); box-shadow:0 6px 18px rgba(0,0,0,0.12); text-decoration:none; }
+.login-hero-logo { height:48px; max-width:180px; object-fit:contain; display:block; }
+@media (min-width: 992px) {
+    .login-hero-logo { height:64px; }
+}
+
+/* highlight the forgot password link on hover */
+.forgot-link {
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: background-color 0.12s ease, color 0.12s ease, transform 0.08s ease;
+}
+.forgot-link:hover, .forgot-link:focus {
+    color: #F9844A !important;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+/* Mobile-specific adjustments for auth pages */
+@media (max-width: 900px) {
+    /* Center logo above the form and increase tap targets */
+    .login-hero-logo-wrap { position: static; display:flex; justify-content:center; padding:12px 0 6px 0; }
+    .login-hero-logo { height:56px; max-width:200px; }
+    .login-form-section { padding: 1.25rem; }
+    .login-form-section .form-control { height:48px; font-size:1rem; }
+    .btn-cta, .btn-google-outline { padding: .9rem 1rem; font-size:1rem; }
+    .login-hero-text { text-align:center; padding: 0 1rem; }
+}
+
+@media (max-width: 420px) {
+    .login-hero-logo { height:48px; }
+    .login-form-section .form-control { height:46px; font-size:.98rem; }
+    .login-form-section { padding: 1rem; }
+}
+
+/* Feature list styling for login image section (right side) */
+.login-features {
+    /* max-width: 380px;
+    align-self: flex-end; */
+    text-align: left;
+    padding: 0.5rem 0.5rem 1rem 0.5rem;
+}
+.login-features-title {
+    color: #16325c;
+    font-size: 1.8rem;
+    margin-bottom: 0.25rem;
+}
+.login-features-subtitle {
+    color: #37628a;
+    margin-bottom: 0.75rem;
+    opacity: 0.95;
+}
+.feature-list { display:block; }
+.feature-card {
+    /* background: rgba(255,255,255,0.92); */
+    /* border-radius: 0.75rem; */
+    padding: 0.7rem 0.9rem 0.7rem 0;
+    /* box-shadow: 0 6px 18px 0 rgba(31, 38, 135, 0.06); */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.feature-icon {
+    width:44px;
+    height:44px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:8px;
+    /* background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    color: #1e3a8a; */
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    font-size: 1.05rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.feature-card .small.text-muted { color: #ffffff; opacity: 0.95; }
+
+.text-color {
+    color: #ffffff !important;
+}
+
+@media (max-width: 900px) {
+    /* hide feature list on smaller screens to keep focus on form */
+    .login-features { display: none; }
+    .login-hero-text { text-align: center; }
+}

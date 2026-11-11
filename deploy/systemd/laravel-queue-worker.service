@@ -1,0 +1,17 @@
+[Unit]
+Description=Laravel Queue Worker (IsarvaCRM)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+Restart=always
+RestartSec=5s
+# Adjust the path to your PHP binary if different
+ExecStart=/usr/local/lsws/lsphp82/bin/php /home/crm-demo.isarva.in/public_html/artisan queue:work --sleep=3 --tries=3 --timeout=60
+
+# Ensure the process has a large enough file descriptor limit
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,347 @@
+/* Settings hub — Zoho-style layout */
+.settings-hub-page {
+    --settings-accent: #2563eb;
+    --settings-accent-soft: #eff6ff;
+    --settings-border: #e2e8f0;
+    --settings-text: #0f172a;
+    --settings-muted: #64748b;
+    --settings-sidebar-width: 248px;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 1.25rem 1.5rem 1.5rem !important;
+}
+
+.settings-hub-page .settings-hub-shell {
+    background: #fff;
+    border: 1px solid var(--settings-border);
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+}
+
+.settings-hub-page .settings-hub-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--settings-border);
+    background: linear-gradient(180deg, #fafbfc 0%, #fff 100%);
+}
+
+.settings-hub-page .settings-hub-topbar-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--settings-text);
+    margin: 0;
+    line-height: 1.3;
+}
+
+.settings-hub-page .settings-hub-topbar-subtitle {
+    font-size: 0.8125rem;
+    color: var(--settings-muted);
+    margin: 0.2rem 0 0;
+}
+
+.settings-hub-page .settings-search-wrap {
+    width: 100%;
+    max-width: 300px;
+    flex-shrink: 0;
+}
+
+.settings-hub-page .settings-search-wrap .input-group {
+    border: 1px solid var(--settings-border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.settings-hub-page .settings-search-wrap .input-group-text,
+.settings-hub-page .settings-search-wrap .form-control {
+    border: 0;
+    background: transparent;
+    font-size: 0.8125rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.settings-hub-page .settings-search-wrap .form-control:focus {
+    box-shadow: none;
+}
+
+.settings-hub-page .settings-hub-body {
+    display: flex;
+    align-items: stretch;
+    min-height: 520px;
+}
+
+.settings-hub-page .settings-hub-sidebar {
+    width: var(--settings-sidebar-width);
+    flex-shrink: 0;
+    border-right: 1px solid var(--settings-border);
+    background: #f8fafc;
+    padding: 1rem 0.75rem;
+}
+
+.settings-hub-page .settings-sidebar-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    padding: 0 0.75rem 0.5rem;
+    margin: 0;
+}
+
+.settings-hub-page .settings-category-nav {
+    gap: 2px;
+}
+
+.settings-hub-page .settings-category-nav .category-filter {
+    width: 100%;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #334155;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    padding: 0.625rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: left;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.settings-hub-page .settings-category-nav .category-filter i:first-child {
+    width: 18px;
+    text-align: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.settings-hub-page .settings-category-nav .category-filter .category-label {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.settings-hub-page .settings-category-nav .category-filter .badge {
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    min-width: 1.5rem;
+    padding: 0.2em 0.45em;
+}
+
+.settings-hub-page .settings-category-nav .category-filter:hover {
+    background: #f1f5f9;
+    color: var(--settings-text);
+}
+
+.settings-hub-page .settings-category-nav .category-filter.active {
+    background: var(--settings-accent-soft);
+    color: var(--settings-accent);
+    box-shadow: inset 3px 0 0 var(--settings-accent);
+    border-radius: 0 8px 8px 0;
+}
+
+.settings-hub-page .settings-category-nav .category-filter.active .badge {
+    background: #dbeafe;
+    color: var(--settings-accent);
+}
+
+.settings-hub-page .settings-hub-main {
+    flex: 1;
+    min-width: 0;
+    padding: 1.25rem 1.5rem 1.5rem;
+    background: #fff;
+}
+
+.settings-hub-page .settings-category-section + .settings-category-section {
+    margin-top: 1.75rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.settings-hub-page .settings-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.settings-hub-page .settings-section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--settings-muted);
+    margin: 0;
+}
+
+.settings-hub-page .settings-section-count {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.settings-hub-page .settings-items-list {
+    border: 1px solid var(--settings-border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.settings-hub-page .settings-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.875rem 1rem;
+    text-decoration: none;
+    color: inherit;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background-color 0.15s ease;
+    min-height: 72px;
+}
+
+.settings-hub-page .settings-item:last-child {
+    border-bottom: 0;
+}
+
+.settings-hub-page .settings-item:hover {
+    background: #f8fafc;
+    color: inherit;
+}
+
+.settings-hub-page .settings-item-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.125rem;
+    flex-shrink: 0;
+    background: color-mix(in srgb, var(--icon-color) 11%, #fff);
+    color: var(--icon-color);
+}
+
+.settings-hub-page .settings-item-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.15rem;
+}
+
+.settings-hub-page .settings-item-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--settings-text);
+    line-height: 1.35;
+    margin: 0;
+}
+
+.settings-hub-page .settings-item-desc {
+    font-size: 0.8125rem;
+    color: var(--settings-muted);
+    line-height: 1.45;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.settings-hub-page .settings-item-arrow {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.settings-hub-page .settings-item:hover .settings-item-arrow {
+    background: var(--settings-accent-soft);
+    color: var(--settings-accent);
+    transform: translateX(2px);
+}
+
+.settings-hub-page .settings-empty-state {
+    text-align: center;
+    padding: 3.5rem 1.5rem;
+    color: var(--settings-muted);
+}
+
+.settings-hub-page .settings-empty-state i {
+    font-size: 2.25rem;
+    opacity: 0.35;
+    display: block;
+    margin-bottom: 0.75rem;
+}
+
+@media (max-width: 991.98px) {
+    .settings-hub-page {
+        padding: 1rem !important;
+    }
+
+    .settings-hub-page .settings-hub-body {
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .settings-hub-page .settings-hub-sidebar {
+        width: 100%;
+        border-right: 0;
+        border-bottom: 1px solid var(--settings-border);
+        padding: 0.75rem;
+    }
+
+    .settings-hub-page .settings-category-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+
+    .settings-hub-page .settings-category-nav .category-filter {
+        width: auto;
+        flex: 0 1 auto;
+        padding: 0.5rem 0.75rem;
+        box-shadow: none !important;
+        border-radius: 999px;
+        border: 1px solid var(--settings-border);
+        background: #fff;
+    }
+
+    .settings-hub-page .settings-category-nav .category-filter.active {
+        border-color: #bfdbfe;
+        box-shadow: none;
+    }
+
+    .settings-hub-page .settings-category-nav .category-filter .badge {
+        display: none;
+    }
+
+    .settings-hub-page .settings-hub-topbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .settings-hub-page .settings-search-wrap {
+        max-width: none;
+    }
+
+    .settings-hub-page .settings-hub-main {
+        padding: 1rem;
+    }
+}

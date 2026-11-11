@@ -1,0 +1,87 @@
+/* body, .card, .table, .btn, .form-control, .form-select {
+    font-family: 'Inter', Arial, sans-serif !important;
+} */
+.card {
+    border-radius: 1.5rem !important;
+    box-shadow: 0 2px 16px 0 rgba(60,72,88,0.07);
+    border: none !important;
+    background: #fff;
+    transition: box-shadow 0.2s, transform 0.15s;
+}
+.card-header {
+    border-radius: 1.5rem 1.5rem 0 0 !important;
+    background: #f9fafb;
+    border-bottom: 1px solid #f3f4f6;
+}
+.card-body {
+    background: #fff;
+    border-radius: 0 0 1.5rem 1.5rem !important;
+}
+.table {
+    border-radius: 1rem;
+    overflow: visible;
+    background: #f9fafb;
+    margin-bottom: 0;
+}
+.table th, .table td {
+    border: none !important;
+    background: transparent !important;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    color: #222;
+}
+.table thead {
+    background: #f3f4f6;
+}
+.table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: #f6f8fa;
+}
+.table-responsive {
+    border-radius: 1rem;
+    overflow-x: auto;
+    overflow-y: visible;
+}
+.btn-primary, .btn-success, .btn-warning, .btn-danger, .btn-info {
+    /* border-radius: 2rem !important; */
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    box-shadow: 0 2px 8px 0 rgba(249,199,79,0.10);
+    transition: background 0.2s, box-shadow 0.2s;
+    padding: 5px 10px;
+}
+.btn-primary:hover, .btn-primary:focus {
+    background: #f9844a !important;
+    color: #fff !important;
+    box-shadow: 0 4px 16px 0 rgba(249,199,79,0.18);
+}
+.dropdown-menu {
+    border-radius: 1rem;
+    box-shadow: 0 2px 16px 0 rgba(60,72,88,0.07);
+}
+.badge {
+    border-radius: 1rem;
+    font-size: 0.95rem;
+    padding: 0.4em 0.8em;
+}
+.form-control, .form-select {
+    border-radius: 1rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    font-size: 1rem;
+    padding: 0.7rem 1rem;
+}
+.form-control:focus, .form-select:focus {
+    border-color: #f9c74f;
+    box-shadow: 0 0 0 2px #f9c74f33;
+}
+@media (max-width: 767.98px) {
+    /* .card {
+        padding: 1.2rem !important;
+    } */
+    .table {
+        font-size: 0.98rem;
+    }
+    .card-header, .card-body {
+        padding: 1rem !important;
+    }
+}

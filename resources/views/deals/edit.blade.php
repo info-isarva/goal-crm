@@ -1,0 +1,1407 @@
+@extends('layouts.app')
+
+@section('content')
+<link rel="stylesheet" href="{{ asset('css/deals-edit-custom.css') }}">
+<div class="container-fluid p-4">
+    <div class="card mt-0">
+        <form method="POST" action="{{ route('deals.update', $deal->id) }}">
+            @csrf
+            @method('PUT')
+            @if(strtolower((string) $deal->stage_name) === 'closed won')
+                <div class="alert alert-warning mb-3">Unable to update: This deal is already Closed Won and cannot be edited.</div>
+            @endif
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Edit deal</h4>
+                <div class="text-end">
+                    <a href="{{ route('deals.show', $deal->id) }}" class="btn btn-light btn-sm">&laquo; Back to Details</a>
+
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row" @if(strtolower((string) $deal->stage_name) === 'closed won') style="pointer-events:none;opacity:0.7;" @endif>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="organization_id" class="form-label">Company Name <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-buildings"></i></span>
+                                <input type="text" class="form-control" id="organization_id" name="organization_id" value="{{ old('organization_id', optional($deal->organization)->name ?? $deal->organization_name) }}" placeholder="Search or add company" autocomplete="off" readonly required>
+                                <div class="dropdown-menu w-100 p-0" id="org-autocomplete-list" style="top:38px; min-width:100%;">
+                                    <div class="p-2 border-bottom bg-white sticky-top" style="z-index:3;">
+                                        <input type="text" id="org-autocomplete-search" class="form-control form-control-sm" placeholder="Search company..." autocomplete="off">
+                                    </div>
+                                    <div id="org-autocomplete-scroll" style="max-height:200px; overflow-y:auto;"></div>
+                                    <div id="org-autocomplete-new" style="border-top:1px solid #eee; background:#fff; position:sticky; bottom:0; z-index:2;"></div>
+                                </div>
+                            </div>
+                            @error('organization_id')
+                            <div id="organization_id_error" class="text-danger small mt-1" style="display:none;"></div>
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                      	<div class="mb-3">
+                            <label for="people_id" class="form-label">Company Contact Person <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control" id="people_id" name="people_id" value="{{ old('people_id', ($deal->person && isset($deal->person->first_name)) ? $deal->person->first_name . ' ' . ($deal->person->last_name ?? '') : ($deal->person_name ?? '')) }}" placeholder="Search or add contact person" autocomplete="off" readonly required>
+                                <span class="input-group-text bg-light" id="person-new-label" style="display:none;"><span class="badge bg-success">New</span></span>
+                                <div class="dropdown-menu w-100 p-0" id="person-autocomplete-list" style="top:38px; min-width:100%;">
+                                    <div class="p-2 border-bottom bg-white sticky-top" style="z-index:3;">
+                                        <input type="text" id="person-autocomplete-search" class="form-control form-control-sm" placeholder="Search contact person..." autocomplete="off">
+                                    </div>
+                                    <div id="person-autocomplete-scroll" style="max-height:200px; overflow-y:auto;"></div>
+                                    <div id="person-autocomplete-new" style="border-top:1px solid #eee; background:#fff; position:sticky; bottom:0; z-index:2;"></div>
+                                </div>
+                            </div>
+                            @error('people_id')
+                            <div id="people_id_error" class="text-danger small mt-1" style="display:none;"></div>
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="customer_id" class="form-label">Company Owner</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                                <input type="text" class="form-control" id="customer_id" name="customer_id" value="{{ old('customer_id', optional($deal->customer)->name ?? $deal->customer_name) }}" placeholder="Search or add company owner name" autocomplete="off" readonly>
+                                <div class="dropdown-menu w-100 p-0" id="customer-autocomplete-list" style="top:38px; min-width:100%;">
+                                    <div class="p-2 border-bottom bg-white sticky-top" style="z-index:3;">
+                                        <input type="text" id="customer-autocomplete-search" class="form-control form-control-sm" placeholder="Search company owner..." autocomplete="off">
+                                    </div>
+                                    <div id="customer-autocomplete-scroll" style="max-height:200px; overflow-y:auto;"></div>
+                                    <div id="customer-autocomplete-new" style="border-top:1px solid #eee; background:#fff; position:sticky; bottom:0; z-index:2;"></div>
+                                </div>
+                            </div>
+                            @error('customer_id')
+                            <div id="customer_id_error" class="text-danger small mt-1" style="display:none;"></div>
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="title" name="title" value="{{ old('title', $deal->title) }}" >
+                            @error('title')
+                                <div id="title_error" class="text-danger small mt-1" style="display:none;"></div>
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3">{{ old('description', $deal->description) }}</textarea>
+                            @error('description')
+                                <div id="description_error" class="text-danger small mt-1" style="display:none;"></div>
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="mb-3">
+                            <label for="lead_source" class="form-label">Lead Source <span class="text-danger">*</span></label>
+                            <select class="form-select" id="lead_source" name="lead_source" >
+                                <option value="">None</option>
+                                @foreach($leadSources as $source)
+                                    <option value="{{ $source->id }}" data-name="{{ $source->name }}" {{ old('lead_source', $deal->lead_source) == $source->id ? 'selected' : '' }}>{{ $source->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('lead_source')
+                                <div id="lead_source_error" class="text-danger small mt-1" style="display:none;"></div>
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        @include('partials.referral_name_field', ['referralNameValue' => $deal->referral_name ?? ''])
+                        <div class="mb-3">
+                            <label for="label" class="form-label">priority <span class="text-danger">*</span></label>
+                            <select class="form-select" id="label" name="label" >
+                                <option value="">None</option>
+                                <option value="high" {{ old('label', $deal->label) == 'high' ? 'selected' : '' }}>High</option>
+                                <option value="normal" {{ old('label', $deal->label) == 'normal' ? 'selected' : '' }}>Normal</option>
+                                <option value="low" {{ old('label', $deal->label) == 'low' ? 'selected' : '' }}>Low</option>
+                            </select>
+                            @error('label')
+                                <div id="label_error" class="text-danger small mt-1" style="display:none;"></div>
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="mb-3">
+                            <label for="user_owner_id" class="form-label">Owner <span class="text-danger">*</span></label>
+                            <select class="form-select" id="user_owner_id" name="user_owner_id">
+                                <option value="">Select owner</option>
+                                @foreach($users as $user)
+                                    <option value="{{ $user->id }}" {{ old('user_owner_id', $deal->user_owner_id) == $user->id ? 'selected' : '' }}>{{ $user->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('user_owner_id')
+                                <div id="user_owner_id_error" class="text-danger small mt-1" style="display:none;"></div>
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="amount" name="amount" value="{{ old('amount', $deal->amount) }}">
+                            @error('amount')
+                                <div id="amount_error" class="text-danger small mt-1" style="display:none;"></div>
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+
+                        <div class="mb-3">
+                            <label for="stage" class="form-label">Stage <span class="text-danger">*</span></label>
+                            <select class="form-select" id="stage" name="stage" onchange="handleStageChange()" @if(strtolower((string) $deal->stage_name) === 'closed won') disabled @endif>
+                                <option value="">None</option>
+                                @foreach($stages as $stage)
+                                    <option value="{{ $stage->id }}" data-name="{{ $stage->name }}" data-probability="{{ $stage->probability ?? 10 }}" {{ (string) old('stage', $deal->stage_id) === (string) $stage->id ? 'selected' : '' }}>{{ $stage->name }} ({{ $stage->probability ?? 'N/A' }}%)</option>
+                                @endforeach
+                            </select>
+                            @if(strtolower((string) $deal->stage_name) === 'closed won')
+                                <input type="hidden" name="stage" value="{{ $deal->stage_id }}">
+                                <div id="stage-locked-msg" class="alert alert-warning mt-2">Unable to change stage: This deal is already Closed Won.</div>
+                            @endif
+                            @error('stage')
+                                <div id="stage_error" class="text-danger small mt-1" style="display:none;"></div>
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="probability" class="form-label">Probability (%)</label>
+                            <input type="number" class="form-control" id="probability" name="probability" min="0" max="999" value="{{ old('probability', $deal->probability ?? 10) }}" oninput="if(this.value.length>3)this.value=this.value.slice(0,3);">
+                            <div class="form-text">Enter a value between 0 and 100. Default is 10.</div>
+                            @error('probability')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-3" id="reason_for_loss_container" style="display: {{ (string) old('stage', $deal->stage_id) === (string) \App\Models\Stage::closedLostId() || strtolower((string) $deal->stage_name) === 'closed lost' ? 'block' : 'none' }};">
+                            <label for="reason_for_loss" class="form-label">Reason for Loss <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="reason_for_loss" name="reason_for_loss" rows="2" placeholder="Please specify the reason">{{ old('reason_for_loss', $deal->reason_for_loss) }}</textarea>
+                            @error('reason_for_loss')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                            <div class="mb-3">
+                            <label for="industry_id" class="form-label">Industries <span class="text-danger">*</span></label>
+                            <select class="form-select" id="industry_id" name="industry_id">
+                                <option value="">None</option>
+                                @foreach($industries as $industry)
+                                    <option value="{{ $industry->id }}" @if((string) old('industry_id', $deal->industry_id) === (string) $industry->id) selected @endif>{{ $industry->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('industry_id')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                            </div>
+                                 <div class="mb-3">
+                                     <label for="categories" class="form-label">Product/Services <span class="text-danger">*</span></label>
+                            @if($categories->isNotEmpty())
+                                @php
+                                $selectedCategories = old('categories', $deal->category);
+                                if (is_null($selectedCategories)) {
+                                    $selectedCategories = [];
+                                } elseif (is_string($selectedCategories)) {
+                                    $selectedCategories = explode(',', $selectedCategories);
+                                }
+                            @endphp
+                            <select class="form-control @error('categories') is-invalid @enderror" id="categories" name="categories[]" multiple>
+                                @foreach($categories as $category)
+                                    <option value="{{ $category->id }}" {{ in_array($category->id, $selectedCategories) ? 'selected' : '' }}>{{ $category->category_name }}</option>
+                                @endforeach
+                            </select>
+                            @else
+                                <p class="text-muted">No categories available.</p>
+                            @endif
+
+                            @error('categories')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="mb-3">
+                            <label for="close_date" class="form-label">Expected Close Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="close_date" name="close_date" value="{{ old('close_date', $deal->close_date ? \Carbon\Carbon::parse($deal->close_date)->format('Y-m-d') : '') }}" >
+                            @error('close_date')
+                                <div id="close_date_error" class="text-danger small mt-1" style="display:none;"></div>
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                         <!-- <div class="mb-3">
+                                <label for="created_at" class="form-label">Created Date <span
+                                        class="text-danger">*</span></label>
+                                 <input type="datetime-local" class="form-control" id="created_at" name="created_at"
+                                    value="{{ old('created_at', $deal->created_at ? $deal->created_at : '') }}" required>
+
+                            </div> -->
+
+                    </div>
+                </div>
+
+            </div>
+            <div class="card-footer text-start">
+                <button type="submit" class="btn btn-custom" @if(strtolower((string) $deal->stage_name) === 'closed won') disabled @endif>Update</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+ <!-- Organization New Modal -->
+    <div class="modal fade" id="orgNewModal" tabindex="-1" aria-labelledby="orgNewModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form id="orgNewForm">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="orgNewModalLabel">Add New Company</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="org_name" class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" placeholder="Enter company name" class="form-control" id="org_name" name="org_name" >
+                            <div id="org_name_error" class="text-danger small mt-1" style="display:none;"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="org_address" class="form-label">Address <span class="text-danger">*</span></label>
+                            <input type="text" placeholder="Enter company address" class="form-control" id="org_address" name="org_address" >
+                            <div id="org_address_error" class="text-danger small mt-1" style="display:none;"></div>
+                        </div>
+                        @include('organizations.partials.ajax_org_location_fields')
+                        <div class="mb-3">
+                            <label for="org_phone" class="form-label">Phone</label>
+                            <input type="text" placeholder="+91 9876543210" class="form-control" id="org_phone" name="org_phone">
+                            <div id="org_phone_error" class="text-danger small mt-1" style="display:none;"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="org_website" class="form-label">Website</label>
+                            <input type="text" placeholder="https://www.example.com" class="form-control" id="org_website" name="org_website">
+                            <div id="org_website_error" class="text-danger small mt-1" style="display:none;"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-custom">Submit</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Customer New Modal -->
+    <div class="modal fade" id="customerNewModal" tabindex="-1" aria-labelledby="customerNewModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form id="customerNewForm">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="customerNewModalLabel">Add New Company Owner </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="cust_name" class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" placeholder="Enter company owner name" class="form-control" id="cust_name" name="cust_name" >
+                            <div id="cust_name_error" class="text-danger small mt-1" style="display:none;"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="cust_org_id" class="form-label">Company Name <span class="text-danger">*</span></label>
+                            <select class="form-select" id="cust_org_id" name="cust_org_id" >
+                                <option value="">Select company</option>
+                                @foreach($organizations as $org)
+                                    <option value="{{ $org->id }}">{{ $org->name }}</option>
+                                @endforeach
+                            </select>
+                            <div id="cust_org_id_error" class="text-danger small mt-1" style="display:none;"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-custom">Submit</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Contact Person New Modal -->
+    <div class="modal fade" id="personNewModal" tabindex="-1" aria-labelledby="personNewModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form id="personNewForm">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="personNewModalLabel">Add New Contact Person</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col mb-3">
+                                <label for="person_first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="person_first_name" name="person_first_name" >
+                                <div id="person_first_name_error" class="text-danger small mt-1" style="display:none;"></div>
+                            </div>
+                            <div class="col mb-3">
+                                <label for="person_last_name" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="person_last_name" name="person_last_name">
+                                <div id="person_last_name_error" class="text-danger small mt-1" style="display:none;"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="person_org_id" class="form-label">Company Name <span class="text-danger">*</span> </label>
+                            <select class="form-select" id="person_org_id" name="person_org_id" >
+                                <option value="">Select company</option>
+                                @foreach($organizations as $org)
+                                    <option value="{{ $org->id }}">{{ $org->name }}</option>
+                                @endforeach
+                            </select>
+                            <div id="person_org_id_error" class="text-danger small mt-1" style="display:none;"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="person_designation" class="form-label">Designation</label>
+                            <input type="text" placeholder="e.g. Manager, Director" class="form-control" id="person_designation" name="person_designation">
+                            <div id="person_designation_error" class="text-danger small mt-1" style="display:none;"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="person_email" class="form-label">Email </label>
+                            <input type="email" placeholder="Enter email address" class="form-control" id="person_email" name="person_email" >
+                            <div id="person_email_error" class="text-danger small mt-1" style="display:none;"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="person_phone" class="form-label">Mobile <span class="text-danger">*</span></label>
+                            <input type="text" placeholder="+91 9876543210" class="form-control" id="person_mobile" name="person_phone" >
+                            <div id="person_phone_error" class="text-danger small mt-1" style="display:none;"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="person_land_number" class="form-label">Land Number</label>
+                            <input type="text" placeholder="+91 80 12345678" class="form-control" id="person_land_number" name="person_land_number">
+                            <div id="person_land_number_error" class="text-danger small mt-1" style="display:none;"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-custom">Submit</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+ @include('partials.industry_new_modal')
+
+ <!-- Bootstrap JS Bundle (for modal functionality) -->
+    <script src="{{asset('js/bootstrap.bundle.min.js')}}"></script>
+    <!-- <script src="{{ asset('js/deals/edit-deals.js') }}"></script> -->
+     <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // CSRF token for AJAX requests
+            const CSRF_TOKEN = (document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content')) || '';
+            // Autocomplete organization list
+            const orgInput = document.getElementById('organization_id');
+            const orgDropdown = document.getElementById('org-autocomplete-list');
+
+            let orgListData = [];
+            function renderOrgList(filter = '') {
+                const scrollDiv = document.getElementById('org-autocomplete-scroll');
+                const newDiv = document.getElementById('org-autocomplete-new');
+                scrollDiv.innerHTML = '';
+                (orgListData.filter(org => org.name.toLowerCase().includes(filter.toLowerCase()))).forEach(org => {
+                    const item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'dropdown-item';
+                    item.textContent = org.name;
+                    item.onclick = function () {
+                        orgInput.value = org.name;
+                        // Clear customer and contact person fields when organization changes
+                        document.getElementById('customer_id').value = '';
+                        document.getElementById('people_id').value = '';
+                        orgDropdown.style.display = 'none';
+
+
+
+                 // Fetch organization details (owner and primary contact) and autofill owner/contact fields
+                        fetch('/organizations/details?name=' + encodeURIComponent(org.name))
+                            .then(res => res.json())
+                                .then(data => {
+                                    // Helper to render a small selectable list below an input
+                                    function renderRelatedList(containerId, items, defaultText, onSelect) {
+                                        // remove existing container if present
+                                        let existing = document.getElementById(containerId);
+                                        if (existing) existing.remove();
+                                        if (!items || items.length === 0) return;
+                                        const container = document.createElement('div');
+                                        container.id = containerId;
+                                        container.style.marginTop = '6px';
+                                        container.style.padding = '6px';
+                                        container.style.border = '1px solid #e9ecef';
+                                        container.style.background = '#fff';
+                                        container.style.borderRadius = '4px';
+                                        container.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
+                                        const list = document.createElement('div');
+                                        list.style.maxHeight = '160px';
+                                        list.style.overflowY = 'auto';
+                                        items.forEach((it, idx) => {
+                                            const btn = document.createElement('button');
+                                            btn.type = 'button';
+                                            btn.className = 'btn btn-sm btn-light w-100 text-start mb-1';
+                                            btn.style.whiteSpace = 'nowrap';
+                                            btn.style.overflow = 'hidden';
+                                            btn.style.textOverflow = 'ellipsis';
+                                            btn.textContent = it.name || it.full_name || it;
+                                            btn.onclick = function(e) {
+                                                e.preventDefault();
+                                                onSelect(it);
+                                                container.remove();
+                                            };
+                                            list.appendChild(btn);
+                                        });
+                                        container.appendChild(list);
+                                        // Insert after the input element
+                                        const anchor = defaultText instanceof Element ? defaultText : document.getElementById(defaultText);
+                                        if (anchor && anchor.parentNode) {
+                                            anchor.parentNode.insertBefore(container, anchor.nextSibling);
+                                        }
+                                    }
+
+                                    // Customers (company owners) list
+                                    if (Array.isArray(data.customers) && data.customers.length > 0) {
+                                        // Default: first customer
+                                        const firstCust = data.customers[0];
+                                        const custInputEl = document.getElementById('customer_id');
+                                        if (custInputEl) custInputEl.value = firstCust.name;
+
+                                        // renderRelatedList('org-related-customers', data.customers, 'customer_id', function(sel) {
+                                        //     const custInputEl2 = document.getElementById('customer_id');
+                                        //     if (custInputEl2) custInputEl2.value = sel.name;
+                                        // });
+                                    } else {
+                                        const custInputEl = document.getElementById('customer_id');
+                                        if (custInputEl) custInputEl.value = '';
+                                        const existingCustList = document.getElementById('org-related-customers');
+                                        if (existingCustList) existingCustList.remove();
+                                    }
+
+                                    // People list (contact persons)
+                                    if (Array.isArray(data.people) && data.people.length > 0) {
+                                        const firstPerson = data.people[0];
+                                        const personInputEl = document.getElementById('people_id');
+                                        if (personInputEl) personInputEl.value = firstPerson.full_name;
+
+                                        // transform people array to objects with full_name property for rendering
+                                        const peopleForRender = data.people.map(p => ({ full_name: p.full_name, id: p.id }));
+                                        // renderRelatedList('org-related-people', peopleForRender, 'people_id', function(sel) {
+                                        //     const personInputEl2 = document.getElementById('people_id');
+                                        //     if (personInputEl2) personInputEl2.value = sel.full_name;
+                                        // });
+                                    } else {
+                                        const personInputEl = document.getElementById('people_id');
+                                        if (personInputEl) personInputEl.value = '';
+                                        const existingPersonList = document.getElementById('org-related-people');
+                                        if (existingPersonList) existingPersonList.remove();
+                                    }
+
+                                    // Owner (user_owner_id) selection if provided
+                                    if (data.owner) {
+                                        const ownerSelect = document.getElementById('user_owner_id');
+                                        if (ownerSelect && data.owner.id) {
+                                            try {
+                                                ownerSelect.value = data.owner.id;
+                                                if (typeof $ !== 'undefined') {
+                                                    $(ownerSelect).val(data.owner.id).trigger('change');
+                                                }
+                                            } catch (e) {}
+                                        }
+                                    }
+                                    if (data.industry_id || data.industry_type) {
+                                        const industrySelect = document.getElementById('industry_id');
+                                        const industryVal = data.industry_id || data.industry_type;
+                                        if (industrySelect && industryVal) {
+                                            try {
+                                                if (typeof $ !== 'undefined') {
+                                                    $(industrySelect).val(String(industryVal)).trigger('change');
+                                                } else {
+                                                    industrySelect.value = String(industryVal);
+                                                }
+                                            } catch (e) {}
+                                        }
+                                    }
+                                })
+                            .catch(() => {
+                                // On error, clear dependent fields
+                                document.getElementById('customer_id').value = '';
+                                document.getElementById('people_id').value = '';
+                            });
+                    };
+                    scrollDiv.appendChild(item);
+                });
+                // Add "New Organization" option at the end, always visible and sticky
+                newDiv.innerHTML = '';
+                const newBtn = document.createElement('a');
+                newBtn.href = "#";
+                newBtn.className = 'dropdown-item text-primary';
+                newBtn.textContent = 'New Company';
+                newBtn.onclick = function (e) {
+                    e.preventDefault();
+                    orgDropdown.style.display = 'none';
+                    setTimeout(function () {
+                        var modal = new bootstrap.Modal(document.getElementById('orgNewModal'));
+                        modal.show();
+                    }, 100);
+                };
+                newDiv.appendChild(newBtn);
+            }
+
+            orgInput.addEventListener('focus', function () {
+                fetch('/organizations/autocomplete?q=')
+                    .then(res => res.json())
+                    .then(data => {
+                        orgListData = data;
+                        renderOrgList();
+                        orgDropdown.style.display = 'block';
+                        document.getElementById('org-autocomplete-search').value = '';
+                    });
+            });
+
+            document.getElementById('org-autocomplete-search').addEventListener('input', function(e) {
+                renderOrgList(e.target.value);
+            });
+
+
+
+            // Click outside to close organization dropdown
+            document.addEventListener('mousedown', function (e) {
+                if (orgDropdown.style.display === 'block') {
+                    if (!orgDropdown.contains(e.target) && e.target !== orgInput) {
+                        orgDropdown.style.display = 'none';
+                    }
+                }
+            });
+
+            // New organization modal submit
+            document.getElementById('orgNewForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                // Hide all error messages first
+                ['org_name_error','org_address_error','org_country_error','org_state_error','org_city_error','org_phone_error','org_website_error'].forEach(function(id){
+                    var el = document.getElementById(id);
+                    if (!el) return;
+                    el.style.display = 'none';
+                    el.textContent = '';
+                });
+                const formData = new FormData(this);
+                const selectedIndustry = document.getElementById('industry_id');
+                if (selectedIndustry && selectedIndustry.value) {
+                    formData.append('industry_type', selectedIndustry.value);
+                }
+                fetch('/organizations/ajax-create', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: formData
+                })
+                    .then(async res => {
+                        if (res.status === 422) {
+                            const data = await res.json();
+                            if (data.errors) {
+                                Object.keys(data.errors).forEach(function(key) {
+                                    const errorDiv = document.getElementById(key + '_error');
+                                    if (errorDiv) {
+                                        errorDiv.textContent = data.errors[key][0];
+                                        errorDiv.style.display = 'block';
+                                    }
+                                });
+                            }
+                            throw new Error('Validation error');
+                        }
+                        return res.json();
+                    })
+                    .then(org => {
+                        orgInput.value = org.name;
+                        if (org.industry_type || org.industry_id) {
+                            const industrySelect = document.getElementById('industry_id');
+                            const industryVal = org.industry_type || org.industry_id;
+                            if (industrySelect && industryVal) {
+                                if (typeof $ !== 'undefined') {
+                                    $(industrySelect).val(String(industryVal)).trigger('change');
+                                } else {
+                                    industrySelect.value = String(industryVal);
+                                }
+                            }
+                        }
+                        // Refresh organization dropdowns in both customer and person modals
+                        loadLatestOrganizations('cust_org_id');
+                        loadLatestOrganizations('person_org_id');
+                        var modal = bootstrap.Modal.getInstance(document.getElementById('orgNewModal'));
+                        modal.hide();
+
+                    })
+                    .catch(()=>{});
+            });
+
+            // Autocomplete customer list
+            const custInput = document.getElementById('customer_id');
+            const custDropdown = document.getElementById('customer-autocomplete-list');
+
+            custInput.addEventListener('focus', function () {
+                // Get selected organization name from orgInput
+                const orgName = orgInput.value;
+                let url = '/customers/autocomplete?q=' + '';
+                if (orgName) {
+                    url += '&organization=' + encodeURIComponent(orgName);
+                }
+                let customerListData = [];
+                function renderCustomerList(filter = '') {
+                    const scrollDiv = document.getElementById('customer-autocomplete-scroll');
+                    const newDiv = document.getElementById('customer-autocomplete-new');
+                    scrollDiv.innerHTML = '';
+                    (customerListData.filter(cust => (cust.name || cust).toLowerCase().includes(filter.toLowerCase()))).forEach(cust => {
+                        const item = document.createElement('button');
+                        item.type = 'button';
+                        item.className = 'dropdown-item';
+                        item.textContent = cust.name || cust;
+                        item.onclick = function () {
+                            custInput.value = cust.name || cust;
+                            custDropdown.style.display = 'none';
+                        };
+                        scrollDiv.appendChild(item);
+                    });
+                    // Add "New Customer" option at the end, always visible and sticky
+                    newDiv.innerHTML = '';
+                    const newBtn = document.createElement('a');
+                    newBtn.href = "#";
+                    newBtn.className = 'dropdown-item text-primary';
+                    newBtn.textContent = 'New Company Owner';
+                    newBtn.onclick = function (e) {
+                        e.preventDefault();
+                        custDropdown.style.display = 'none';
+                        setTimeout(function () {
+                            var modal = new bootstrap.Modal(document.getElementById('customerNewModal'));
+                            modal.show();
+                        }, 100);
+                    };
+                    newDiv.appendChild(newBtn);
+                }
+                fetch(url)
+                    .then(res => res.json())
+                    .then(data => {
+                        customerListData = data;
+                        renderCustomerList();
+                        custDropdown.style.display = 'block';
+                        document.getElementById('customer-autocomplete-search').value = '';
+                    });
+                document.getElementById('customer-autocomplete-search').oninput = function(e) {
+                    renderCustomerList(e.target.value);
+                };
+            });
+
+            // Autocomplete contact person list
+            const personInput = document.getElementById('people_id');
+            const personDropdown = document.getElementById('person-autocomplete-list');
+
+            personInput.addEventListener('focus', function () {
+                // Get selected organization name from orgInput
+                const orgName = orgInput.value;
+                let url = '/people/autocomplete?q=' + '';
+                if (orgName) {
+                    url += '&organization=' + encodeURIComponent(orgName);
+                }
+                let personListData = [];
+                function renderPersonList(filter = '') {
+                    const scrollDiv = document.getElementById('person-autocomplete-scroll');
+                    const newDiv = document.getElementById('person-autocomplete-new');
+                    scrollDiv.innerHTML = '';
+
+                    const filtered = personListData.filter(person => {
+                        const full = ((person.full_name || ((person.first_name || '') + ' ' + (person.last_name || ''))).toLowerCase());
+                        const hay = full + ' ' + String(person.email || '').toLowerCase() + ' ' + String(person.mobile || '') + ' ' + String(person.phone || '');
+                        return String(filter || '').toLowerCase().trim().split(/\s+/).filter(Boolean).every(t => hay.includes(t));
+                    });
+                    const linked = filtered.filter(p => p.linked);
+                    const others = filtered.filter(p => !p.linked);
+
+                    function appendPersonItem(person) {
+                        const full = person.full_name || ((person.first_name || '') + (person.last_name ? ' ' + person.last_name : ''));
+                        const item = document.createElement('button');
+                        item.type = 'button';
+                        item.className = 'dropdown-item d-flex justify-content-between align-items-center';
+                        const nameSpan = document.createElement('span');
+                        nameSpan.textContent = full;
+                        item.appendChild(nameSpan);
+                        if (!person.linked) {
+                            const badge = document.createElement('small');
+                            badge.className = 'text-muted ms-2';
+                            badge.textContent = 'other company';
+                            item.appendChild(badge);
+                        }
+                        item.onclick = function () {
+                            personInput.value = full;
+                            personInput.dataset.personId = person.id || '';
+                            personDropdown.style.display = 'none';
+                        };
+                        scrollDiv.appendChild(item);
+                    }
+
+                    if (linked.length) {
+                        const hdr = document.createElement('div');
+                        hdr.className = 'dropdown-header py-1';
+                        hdr.textContent = 'Company contacts';
+                        scrollDiv.appendChild(hdr);
+                        linked.forEach(appendPersonItem);
+                    }
+                    if (others.length) {
+                        const hdr = document.createElement('div');
+                        hdr.className = 'dropdown-header py-1';
+                        hdr.textContent = linked.length ? 'Other contacts' : 'Existing contacts';
+                        scrollDiv.appendChild(hdr);
+                        others.forEach(appendPersonItem);
+                    }
+                    if (!filtered.length) {
+                        const empty = document.createElement('div');
+                        empty.className = 'p-2 text-muted';
+                        empty.textContent = 'No matching contacts. Use New Contact Person below.';
+                        scrollDiv.appendChild(empty);
+                    }
+
+                    // Add "New Contact Person" option at the end, always visible and sticky
+                    newDiv.innerHTML = '';
+                    const newBtn = document.createElement('a');
+                    newBtn.href = "#";
+                    newBtn.className = 'dropdown-item text-primary';
+                    newBtn.textContent = 'New Contact Person';
+                    newBtn.onclick = function (e) {
+                        e.preventDefault();
+                        personDropdown.style.display = 'none';
+                        setTimeout(function () {
+                            var modal = new bootstrap.Modal(document.getElementById('personNewModal'));
+                            modal.show();
+                        }, 100);
+                    };
+                    newDiv.appendChild(newBtn);
+                }
+                fetch(url)
+                    .then(res => res.json())
+                    .then(data => {
+                        personListData = data;
+                        renderPersonList();
+                        personDropdown.style.display = 'block';
+                        document.getElementById('person-autocomplete-search').value = '';
+                    });
+                let personSearchTimer = null;
+                let personSearchSeq = 0;
+                document.getElementById('person-autocomplete-search').oninput = function (e) {
+                    const term = e.target.value;
+                    renderPersonList(term);
+                    clearTimeout(personSearchTimer);
+                    personSearchTimer = setTimeout(function () {
+                        const seq = ++personSearchSeq;
+                        fetch('/people/autocomplete?q=' + encodeURIComponent(term.trim()) + '&organization=' + encodeURIComponent(orgName))
+                            .then(res => res.json())
+                            .then(data => {
+                                if (seq !== personSearchSeq) return;
+                                personListData = Array.isArray(data) ? data : [];
+                                renderPersonList(term);
+                            })
+                            .catch(() => {});
+                    }, 250);
+                };
+            });
+
+            // Click outside to close contact person dropdown
+            document.addEventListener('mousedown', function (e) {
+                if (personDropdown.style.display === 'block') {
+                    if (!personDropdown.contains(e.target) && e.target !== personInput) {
+                        personDropdown.style.display = 'none';
+                    }
+                }
+            });
+
+            // Click outside to close customer dropdown
+            document.addEventListener('mousedown', function (e) {
+                if (custDropdown.style.display === 'block') {
+                    if (!custDropdown.contains(e.target) && e.target !== custInput) {
+                        custDropdown.style.display = 'none';
+                    }
+                }
+            });
+
+            // Fill organization in customer modal when opened, make readonly if selected
+            document.getElementById('customerNewModal').addEventListener('show.bs.modal', function () {
+                 const orgName = document.getElementById('organization_id').value;
+                const orgSelect = document.getElementById('cust_org_id');
+                if (!orgSelect) return;
+                let foundIndex = -1;
+                for (let i = 0; i < orgSelect.options.length; i++) {
+                    if (orgSelect.options[i].text === orgName) {
+                        foundIndex = i;
+                        break;
+                    }
+                }
+                const readonlyId = 'cust_org_readonly';
+                // If organization is already selected, hide the dropdown and show a readonly input instead
+                if (foundIndex !== -1 && orgName !== '') {
+                    // ensure select has the correct value selected
+                    orgSelect.selectedIndex = foundIndex;
+                    // visually hide the select but keep it enabled so value submits
+                    orgSelect.style.display = 'none';
+                    // insert readonly input if not present
+                    if (!document.getElementById(readonlyId)) {
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'form-control';
+                        input.id = readonlyId;
+                        input.value = orgName;
+                        input.readOnly = true;
+                        orgSelect.parentNode.insertBefore(input, orgSelect);
+                    } else {
+                        const existing = document.getElementById(readonlyId);
+                        existing.value = orgName;
+                        existing.style.display = '';
+                    }
+                    // ensure hidden input for org id exists so AJAX/FormData can reliably include org id
+                    const orgId = orgSelect.options[foundIndex] ? orgSelect.options[foundIndex].value : '';
+                    if (orgId) {
+                        let hid = document.getElementById('cust_org_id_hidden');
+                        if (!hid) {
+                            hid = document.createElement('input');
+                            hid.type = 'hidden';
+                            hid.id = 'cust_org_id_hidden';
+                            hid.name = 'cust_org_id_hidden';
+                            orgSelect.parentNode.insertBefore(hid, orgSelect);
+                        }
+                        hid.value = orgId;
+                    }
+                } else {
+                    // show select and remove readonly input if exists
+                    orgSelect.style.display = '';
+                    const existing = document.getElementById(readonlyId);
+                    if (existing) existing.remove();
+                    const hid = document.getElementById('cust_org_id_hidden');
+                    if (hid) hid.remove();
+                }
+            });
+
+
+            // New customer modal submit with duplicate check
+            document.getElementById('customerNewForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formEl = this;
+                // Hide all error messages first
+                ['cust_name_error', 'cust_org_id_error'].forEach(function(id) {
+                    const el = document.getElementById(id);
+                    if (el) { el.style.display = 'none'; el.textContent = ''; }
+                });
+
+                const custName = (document.getElementById('cust_name').value || '').trim();
+                const orgSelect = document.getElementById('cust_org_id');
+                const orgName = orgSelect && orgSelect.options[orgSelect.selectedIndex] ? orgSelect.options[orgSelect.selectedIndex].text : '';
+
+                // If customer name and organization provided, pre-check for existing owner in same org
+                    if (custName && orgSelect && orgSelect.value) {
+                    const checkUrl = '/customers/autocomplete?q=' + encodeURIComponent(custName) + '&organization=' + encodeURIComponent(orgName);
+                    fetch(checkUrl)
+                        .then(res => res.json())
+                        .then(matches => {
+                            const duplicate = (Array.isArray(matches) ? matches : []).find(item => ((item.name || item).toLowerCase() === custName.toLowerCase()));
+                            if (duplicate) {
+                                // Show validation error under the customer name field instead of prompting
+                                const errorDiv = document.getElementById('cust_name_error');
+                                if (errorDiv) {
+                                    errorDiv.textContent = 'A company owner named "' + custName + '" already exists for "' + orgName + '".';
+                                    errorDiv.style.display = 'block';
+                                } else {
+                                    alert('A company owner named "' + custName + '" already exists for "' + orgName + '".');
+                                }
+                                // focus the name input
+                                const nameInput = document.getElementById('cust_name');
+                                if (nameInput) nameInput.focus();
+                                return;
+                            }
+
+                            // No duplicate or user chose to create new -> proceed with AJAX create
+                            const formData = new FormData(formEl);
+                            // If we inserted a hidden org-id input, ensure the org id is included as 'cust_org_id'
+                            const custHidden = document.getElementById('cust_org_id_hidden');
+                            if (custHidden) formData.set('cust_org_id', custHidden.value);
+                            if (CSRF_TOKEN) formData.append('_token', CSRF_TOKEN);
+                            fetch('/customers/ajax-create', {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                                credentials: 'same-origin',
+                                body: formData
+                            })
+                                .then(async res => {
+                                    if (res.status === 422) {
+                                        const data = await res.json();
+                                        if (data.errors) {
+                                            Object.keys(data.errors).forEach(function(key) {
+                                                const errorDiv = document.getElementById(key + '_error');
+                                                if (errorDiv) {
+                                                    errorDiv.textContent = data.errors[key][0];
+                                                    errorDiv.style.display = 'block';
+                                                }
+                                            });
+                                        }
+                                        throw new Error('Validation error');
+                                    }
+                                    return res.json();
+                                })
+                                .then(cust => {
+                                    // server may return { duplicate: true, id, name } or the created customer
+                                        if (cust && cust.duplicate) {
+                                            // show inline validation error and keep modal open
+                                            const errorDiv = document.getElementById('cust_name_error');
+                                            if (errorDiv) {
+                                                errorDiv.textContent = 'A company owner named "' + (cust.name || '') + '" already exists for the selected organization.';
+                                                errorDiv.style.display = 'block';
+                                            }
+                                            const nameInput = document.getElementById('cust_name');
+                                            if (nameInput) nameInput.focus();
+                                            return;
+                                        }
+                                        custInput.value = cust.name || '';
+                                        try { var modal = bootstrap.Modal.getInstance(document.getElementById('customerNewModal')); if (modal) modal.hide(); } catch (e) {}
+                                })
+                                .catch(() => {});
+                        })
+                        .catch(() => {
+                            // On error checking duplicates, fall back to submitting normally
+                            const formData = new FormData(formEl);
+                            const custHidden = document.getElementById('cust_org_id_hidden');
+                            if (custHidden) formData.set('cust_org_id', custHidden.value);
+                            if (CSRF_TOKEN) formData.append('_token', CSRF_TOKEN);
+                            fetch('/customers/ajax-create', {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                                credentials: 'same-origin',
+                                body: formData
+                            })
+                                .then(async res => {
+                                    if (res.status === 422) {
+                                        const data = await res.json();
+                                        if (data.errors) {
+                                            Object.keys(data.errors).forEach(function(key) {
+                                                const errorDiv = document.getElementById(key + '_error');
+                                                if (errorDiv) {
+                                                    errorDiv.textContent = data.errors[key][0];
+                                                    errorDiv.style.display = 'block';
+                                                }
+                                            });
+                                        }
+                                        throw new Error('Validation error');
+                                    }
+                                    return res.json();
+                                })
+                                .then(cust => {
+                                    if (cust && cust.duplicate) {
+                                        const errorDiv = document.getElementById('cust_name_error');
+                                        if (errorDiv) {
+                                            errorDiv.textContent = 'A company owner named "' + (cust.name || '') + '" already exists for the selected organization.';
+                                            errorDiv.style.display = 'block';
+                                        }
+                                        const nameInput = document.getElementById('cust_name');
+                                        if (nameInput) nameInput.focus();
+                                        return;
+                                    }
+                                    custInput.value = cust.name || '';
+                                    try { var modal = bootstrap.Modal.getInstance(document.getElementById('customerNewModal')); if (modal) modal.hide(); } catch (e) {}
+                                })
+                                .catch(() => {});
+                        });
+                    return;
+                }
+
+                // fallback: submit normally if name/org not provided
+                const formData = new FormData(this);
+                const custHidden = document.getElementById('cust_org_id_hidden');
+                if (custHidden) formData.set('cust_org_id', custHidden.value);
+                fetch('/customers/ajax-create', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: formData
+                    })
+                    .then(async res => {
+                        if (res.status === 422) {
+                            const data = await res.json();
+                            if (data.errors) {
+                                Object.keys(data.errors).forEach(function(key) {
+                                    const errorDiv = document.getElementById(key +
+                                    '_error');
+                                    if (errorDiv) {
+                                        errorDiv.textContent = data.errors[key][0];
+                                        errorDiv.style.display = 'block';
+                                    }
+                                });
+                            }
+                            throw new Error('Validation error');
+                        }
+                        return res.json();
+                    })
+                    .then(cust => {
+                        custInput.value = cust.name
+                        var modal = bootstrap.Modal.getInstance(document.getElementById(
+                            'customerNewModal'));
+                        modal.hide();
+                    })
+                    .catch(() => {});
+            });
+
+             // Fill organization in contact person modal when opened, make readonly if selected
+            document.getElementById('personNewModal').addEventListener('show.bs.modal', function () {
+                const orgName = document.getElementById('organization_id').value;
+                const orgSelect = document.getElementById('person_org_id');
+                if (!orgSelect) return;
+                let foundIndex = -1;
+                for (let i = 0; i < orgSelect.options.length; i++) {
+                    if (orgSelect.options[i].text === orgName) {
+                        foundIndex = i;
+                        break;
+                    }
+                }
+                const readonlyId = 'person_org_readonly';
+                // If organization is already selected, hide the dropdown and show a readonly input instead
+                if (foundIndex !== -1 && orgName !== '') {
+                    orgSelect.selectedIndex = foundIndex;
+                    orgSelect.style.display = 'none';
+                    if (!document.getElementById(readonlyId)) {
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'form-control';
+                        input.id = readonlyId;
+                        input.value = orgName;
+                        input.readOnly = true;
+                        orgSelect.parentNode.insertBefore(input, orgSelect);
+                    } else {
+                        const existing = document.getElementById(readonlyId);
+                        existing.value = orgName;
+                        existing.style.display = '';
+                    }
+                    // ensure hidden input for org id exists so AJAX/FormData can reliably include org id
+                    const orgId = orgSelect.options[foundIndex] ? orgSelect.options[foundIndex].value : '';
+                    if (orgId) {
+                        let hid = document.getElementById('person_org_id_hidden');
+                        if (!hid) {
+                            hid = document.createElement('input');
+                            hid.type = 'hidden';
+                            hid.id = 'person_org_id_hidden';
+                            hid.name = 'person_org_id_hidden';
+                            orgSelect.parentNode.insertBefore(hid, orgSelect);
+                        }
+                        hid.value = orgId;
+                    }
+                } else {
+                    orgSelect.style.display = '';
+                    const existing = document.getElementById(readonlyId);
+                    if (existing) existing.remove();
+                    const hid = document.getElementById('person_org_id_hidden');
+                    if (hid) hid.remove();
+                }
+            });
+            // New contact person modal submit with single word validation
+            document.getElementById('personNewForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                // Hide all error messages first
+                ['person_first_name_error','person_last_name_error','person_org_id_error','person_email_error','person_phone_error','person_designation_error','person_land_number_error'].forEach(function(id){
+                    document.getElementById(id).style.display = 'none';
+                    document.getElementById(id).textContent = '';
+                });
+                const firstName = document.getElementById('person_first_name').value.trim();
+                const lastName = document.getElementById('person_last_name').value.trim();
+                const singleWordRegex = /^\w+$/;
+                let errorMsg = '';
+                if (firstName && !singleWordRegex.test(firstName)) {
+                    errorMsg += 'First name must be a single word.\n';
+                }
+                if (lastName && !singleWordRegex.test(lastName)) {
+                    errorMsg += 'Last name must be a single word.';
+                }
+                if (errorMsg) {
+                    document.getElementById('person_first_name_error').textContent = errorMsg;
+                    document.getElementById('person_first_name_error').style.display = 'block';
+                    return;
+                }
+                const formEl = this;
+                const orgSelect = document.getElementById('person_org_id');
+                const orgName = orgSelect && orgSelect.options[orgSelect.selectedIndex] ? orgSelect.options[orgSelect.selectedIndex].text : '';
+                const q = firstName + (lastName ? ' ' + lastName : '');
+
+                if (firstName) {
+                    const checkUrl = '/people/autocomplete?q=' + encodeURIComponent(q) + (orgName ? '&organization=' + encodeURIComponent(orgName) : '');
+                    fetch(checkUrl)
+                        .then(res => res.json())
+                        .then(matches => {
+                            const duplicate = (Array.isArray(matches) ? matches : []).find(p => (((p.first_name || '') + ' ' + (p.last_name || '')).trim().toLowerCase() === q.trim().toLowerCase()));
+                            if (duplicate) {
+                                const firstErr = document.getElementById('person_first_name_error');
+                                const lastErr = document.getElementById('person_last_name_error');
+                                const msg = 'A contact person named "' + q + '" already exists for "' + (orgName || 'the selected organization') + '".';
+                                if (firstErr) { firstErr.textContent = msg; firstErr.style.display = 'block'; }
+                                // if (lastErr) { lastErr.textContent = msg; lastErr.style.display = 'block'; }
+                                const firstInput = document.getElementById('person_first_name'); if (firstInput) firstInput.focus();
+                                return;
+                            }
+
+                            // submit
+                            const formData = new FormData(formEl);
+                            const personHidden = document.getElementById('person_org_id_hidden');
+                            if (personHidden) formData.set('person_org_id', personHidden.value);
+                            if (CSRF_TOKEN) formData.append('_token', CSRF_TOKEN);
+                            fetch('/people/ajax-create', {
+                                    method: 'POST',
+                                    headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                                    credentials: 'same-origin',
+                                    body: formData
+                                })
+                                .then(async res => {
+                                    if (res.status === 422) {
+                                        const data = await res.json();
+                                        if (data.errors) {
+                                            Object.keys(data.errors).forEach(function(key) {
+                                                const errorDiv = document.getElementById(key + '_error');
+                                                if (errorDiv) {
+                                                    errorDiv.textContent = data.errors[key][0];
+                                                    errorDiv.style.display = 'block';
+                                                }
+                                            });
+                                        }
+                                        throw new Error('Validation error');
+                                    }
+                                    return res.json();
+                                })
+                                .then(person => {
+                                    if (person && person.duplicate) {
+                                        const firstErr = document.getElementById('person_first_name_error');
+                                        const lastErr = document.getElementById('person_last_name_error');
+                                        const msg = 'A contact person named "' + ((person.first_name || '') + (person.last_name ? ' ' + person.last_name : '')).trim() + '" already exists for the selected organization.';
+                                        if (firstErr) { firstErr.textContent = msg; firstErr.style.display = 'block'; }
+                                        // if (lastErr) { lastErr.textContent = msg; lastErr.style.display = 'block'; }
+                                        const firstInput = document.getElementById('person_first_name'); if (firstInput) firstInput.focus();
+                                        return;
+                                    }
+                                    personInput.value = (person.first_name ? person.first_name : '') + (person.last_name ? ' ' + person.last_name : '');
+                                    var modal = bootstrap.Modal.getInstance(document.getElementById('personNewModal'));
+                                    modal.hide();
+                                })
+                                .catch(()=>{});
+                        })
+                        .catch(()=>{
+                            const formData = new FormData(formEl);
+                            const personHidden = document.getElementById('person_org_id_hidden');
+                            if (personHidden) formData.set('person_org_id', personHidden.value);
+                            if (CSRF_TOKEN) formData.append('_token', CSRF_TOKEN);
+                            fetch('/people/ajax-create', {
+                                    method: 'POST',
+                                    headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                                    credentials: 'same-origin',
+                                    body: formData
+                                })
+                                .then(async res => {
+                                    if (res.status === 422) {
+                                        const data = await res.json();
+                                        if (data.errors) {
+                                            Object.keys(data.errors).forEach(function(key) {
+                                                const errorDiv = document.getElementById(key + '_error');
+                                                if (errorDiv) {
+                                                    errorDiv.textContent = data.errors[key][0];
+                                                    errorDiv.style.display = 'block';
+                                                }
+                                            });
+                                        }
+                                        throw new Error('Validation error');
+                                    }
+                                    return res.json();
+                                })
+                                .then(person => {
+                                    if (person && person.duplicate) {
+                                        const firstErr = document.getElementById('person_first_name_error');
+                                        const lastErr = document.getElementById('person_last_name_error');
+                                        const msg = 'A contact person named "' + ((person.first_name || '') + (person.last_name ? ' ' + person.last_name : '')).trim() + '" already exists for the selected organization.';
+                                        if (firstErr) { firstErr.textContent = msg; firstErr.style.display = 'block'; }
+                                        // if (lastErr) { lastErr.textContent = msg; lastErr.style.display = 'block'; }
+                                        const firstInput = document.getElementById('person_first_name'); if (firstInput) firstInput.focus();
+                                        return;
+                                    }
+                                    personInput.value = (person.first_name ? person.first_name : '') + (person.last_name ? ' ' + person.last_name : '');
+                                    var modal = bootstrap.Modal.getInstance(document.getElementById('personNewModal'));
+                                    modal.hide();
+                                })
+                                .catch(()=>{});
+                        });
+                    return;
+                }
+
+                // fallback submit if firstName missing
+                const formData = new FormData(this);
+                const personHidden = document.getElementById('person_org_id_hidden');
+                if (personHidden) formData.set('person_org_id', personHidden.value);
+                if (CSRF_TOKEN) formData.append('_token', CSRF_TOKEN);
+                fetch('/people/ajax-create', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    credentials: 'same-origin',
+                    body: formData
+                })
+                    .then(async res => {
+                        if (res.status === 422) {
+                            const data = await res.json();
+                            if (data.errors) {
+                                Object.keys(data.errors).forEach(function(key) {
+                                    const errorDiv = document.getElementById(key + '_error');
+                                    if (errorDiv) {
+                                        errorDiv.textContent = data.errors[key][0];
+                                        errorDiv.style.display = 'block';
+                                    }
+                                });
+                            }
+                            throw new Error('Validation error');
+                        }
+                        return res.json();
+                    })
+                    .then(person => {
+                        personInput.value = (person.first_name ? person.first_name : '') + (person.last_name ? ' ' + person.last_name : '');
+                        var modal = bootstrap.Modal.getInstance(document.getElementById('personNewModal'));
+                        modal.hide();
+                    })
+                    .catch(()=>{});
+            });
+
+            // --- Fetch and update organization list for modals ---
+            function loadLatestOrganizations(selectId) {
+                return fetch('/organizations/autocomplete?q=')
+                    .then(res => res.json())
+                    .then(data => {
+                        const select = document.getElementById(selectId);
+                        if (select) {
+                            select.innerHTML = '<option value="">Select organization</option>';
+                            data.forEach(item => {
+                                // Use ID as value, name as text
+                                const id = item.id || item.value || item;
+                                const name = item.name || item.label || item;
+                                const option = document.createElement('option');
+                                option.value = id;
+                                option.textContent = name;
+                                select.appendChild(option);
+                            });
+                        }
+                        return data;
+                    });
+            }
+
+            // Before showing New Customer modal
+            const customerNewModal = document.getElementById('customerNewModal');
+            if (customerNewModal) {
+                customerNewModal.addEventListener('show.bs.modal', function () {
+                    loadLatestOrganizations('cust_org_id');
+                });
+            }
+
+            // Before showing New Contact Person modal
+            const personNewModal = document.getElementById('personNewModal');
+            if (personNewModal) {
+                personNewModal.addEventListener('show.bs.modal', function () {
+                    loadLatestOrganizations('person_org_id');
+                });
+            }
+
+              $('#user_owner_id').select2({
+                placeholder: 'Select owner',
+                allowClear: true,
+                width: '100%'
+            });
+            $('#lead_source').select2({
+                placeholder: 'Select industry',
+                allowClear: true,
+                width: '100%'
+            });
+            $('#stage').select2({
+                placeholder: 'Select organization type',
+                allowClear: true,
+                width: '100%'
+            });
+            $('#label').select2({
+                placeholder: 'Select organization',
+                allowClear: true,
+                width: '100%'
+            });
+            $('#industry_id').select2({
+                placeholder: 'Select Industries',
+                allowClear: true,
+                width: '100%'
+            });
+            $('#categories').select2({
+                placeholder: 'Select Product/Services',
+                allowClear: true,
+                width: '100%',
+                closeOnSelect: false
+            });
+            // Compact when empty, grows with the typed text so the full search word is visible
+            function shrinkCategoriesSearch() {
+                $('#categories').next('.select2-container').find('.select2-search__field').each(function () {
+                    var len = (this.value || '').length;
+                    var w = len ? 'calc(' + (len + 2) + 'ch)' : '0.75em';
+                    this.style.setProperty('width', w, 'important');
+                    this.style.setProperty('min-width', w, 'important');
+                    this.style.setProperty('max-width', '100%', 'important');
+                    this.style.setProperty('height', '26px', 'important');
+                    this.style.setProperty('min-height', '26px', 'important');
+                });
+            }
+            shrinkCategoriesSearch();
+            $('#categories').on('select2:select select2:unselect select2:clear select2:open select2:close change', function () {
+                setTimeout(shrinkCategoriesSearch, 0);
+            });
+            $('#categories').next('.select2-container').on('input keyup', '.select2-search__field', shrinkCategoriesSearch);
+        });
+
+
+        $(document).ready(function() {
+    var stageSelect = $('#stage');
+    var probabilityInput = $('#probability');
+    function updateProbability() {
+        var selectedOption = stageSelect.find('option:selected');
+        var prob = selectedOption.data('probability');
+        if (prob !== undefined && prob !== null && prob !== '') {
+            probabilityInput.val(prob);
+        }
+        var stageName = selectedOption.val();
+        // if (stageName) {
+        //     alert('Selected Stage: ' + stageName + '\nProbability: ' + (prob ? prob : 'N/A') + '%');
+        // }
+    }
+    stageSelect.on('change', updateProbability);
+    updateProbability(); // Initial fill
+});
+
+
+function handleStageChange() {
+        var stageSelect = document.getElementById('stage');
+        var selectedOption = stageSelect.options[stageSelect.selectedIndex];
+        var stageName = selectedOption ? (selectedOption.getAttribute('data-name') || '') : '';
+        var reasonContainer = document.getElementById('reason_for_loss_container');
+        var lockedMsg = document.getElementById('stage-locked-msg');
+        if (lockedMsg) {
+            stageSelect.value = '{{ $deal->stage_id }}';
+            lockedMsg.style.display = 'block';
+            setTimeout(function(){ lockedMsg.style.display = 'none'; }, 1800);
+            return;
+        }
+        if (stageName.toLowerCase() === 'closed lost') {
+            reasonContainer.style.display = 'block';
+            // mark textarea required for client-side UX
+            var reasonEl = document.getElementById('reason_for_loss');
+            // if (reasonEl) reasonEl.setAttribute('required', 'required');
+        } else {
+            reasonContainer.style.display = 'none';
+            var reasonEl = document.getElementById('reason_for_loss');
+            if (reasonEl) { reasonEl.removeAttribute('required'); reasonEl.value = ''; }
+        }
+    }
+document.addEventListener('DOMContentLoaded', function() {
+    var stageEl = document.getElementById('stage');
+    if (stageEl) {
+        stageEl.addEventListener('change', handleStageChange);
+        // initial setup
+        handleStageChange();
+    }
+});
+
+    </script>
+@include('organizations.partials.ajax_org_location_scripts')
+@include('partials.referral_name_script')
+@include('partials.industry_new_script')
+
+@endsection
+
