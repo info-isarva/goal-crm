@@ -40,6 +40,16 @@ composer-setup.php
 composer.phar
 inspect_notifications.php
 _tmp_*.py
+scripts/_ssh_*.py
+scripts/_deploy_token_local.txt
+scripts/_ssh_explore.py
+scripts/_ssh_setup_deploy.py
+scripts/_ssh_test_key_and_secrets.py
+scripts/_ssh_enable_autodeploy.py
+scripts/_ssh_fix_perms.py
+scripts/_ssh_finish_deploy.py
+scripts/_ssh_check_php.py
+public/deploy-hook.php
 
 # User uploads (served from public/ but not part of the source code)
 /public/assets/company_image/
