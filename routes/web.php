@@ -111,8 +111,6 @@ Route::middleware(['auth', 'compliance.consent'])->group(function () {
     Route::post('/users/{user}/2fa', [App\Http\Controllers\UserController::class, 'update2FA'])->name('users.2fa.update');
 
     Route::get('/organizations/{id}/people', [\App\Http\Controllers\PersonController::class, 'listForOrganization'])->name('organizations.people');
-
-    Route::get('/organizations/{id}/people', [\App\Http\Controllers\PersonController::class, 'listForOrganization'])->name('organizations.people');
     // AJAX route to add organization to person (modal)
 
     Route::post('/organizations/ajax-create', [App\Http\Controllers\OrganizationController::class, 'ajaxCreate']);
@@ -128,20 +126,17 @@ Route::middleware(['auth', 'compliance.consent'])->group(function () {
     Route::get('/people/autocomplete', [\App\Http\Controllers\PersonController::class, 'autocomplete'])->name('people.autocomplete');
     // AJAX route for people details (autofill)
     Route::get('/people/details', [App\Http\Controllers\PersonController::class, 'details']);
-    // AJAX route to add a person (for modal form)
-    Route::post('/people', [\App\Http\Controllers\PersonController::class, 'store'])->name('people.store');
     // Export people to Excel (respect current filters)
     Route::get('/people/excel', [\App\Http\Controllers\PersonController::class, 'exportExcel'])->name('people.excel');
     Route::get('/people/email-recipients', [\App\Http\Controllers\CrmEntityGmailController::class, 'recipientSearch'])->name('people.email_recipients');
     Route::get('/gmail/email-recipients', [\App\Http\Controllers\CrmEntityGmailController::class, 'recipientSearch'])->name('gmail.email_recipients');
-    Route::resource('people', App\Http\Controllers\PersonController::class)->whereNumber('person');
     Route::post('/people/savePeople', [\App\Http\Controllers\PersonController::class, 'savePeople'])->name('people.save');
-    Route::delete('/people/{id}', [\App\Http\Controllers\PersonController::class, 'destroy'])->name('people.destroy');
     Route::delete('/people/deleteContact/{id}', [\App\Http\Controllers\PersonController::class, 'deleteContact'])->name('people.delete');
+    Route::post('/people/ajax-create', [App\Http\Controllers\PersonController::class, 'ajaxCreate']);
     Route::post('/people/{person}/add-organization', [\App\Http\Controllers\PersonController::class, 'addOrganization'])->name('people.addOrganization');
     Route::delete('/people/{person}/organizations/{organization}', [\App\Http\Controllers\PersonController::class, 'removeOrganization'])->name('people.removeOrganization');
-    Route::put('/people/{id}', [\App\Http\Controllers\PersonController::class, 'update'])->name('people.update');
-    Route::post('/people/ajax-create', [App\Http\Controllers\PersonController::class, 'ajaxCreate']);
+    // Resource routes last so specific paths above match first
+    Route::resource('people', App\Http\Controllers\PersonController::class)->whereNumber('person');
     //Leads Related Routes
     Route::get('/leads/{id}/gmail-compose', [\App\Http\Controllers\CrmEntityGmailController::class, 'leadCompose'])->name('leads.gmail_compose');
     Route::post('/leads/{id}/send-gmail', [\App\Http\Controllers\CrmEntityGmailController::class, 'leadSend'])->name('leads.send_gmail');
