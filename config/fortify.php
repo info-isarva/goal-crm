@@ -151,8 +151,7 @@ return [
         Features::updatePasswords(),
         Features::twoFactorAuthentication([
             'confirm' => true,
-            // Breeze auth.php already registers password.confirm — keep false to avoid duplicate route names
-            'confirmPassword' => false,
+            'confirmPassword' => true,
             // 'window' => 0,
         ]),
     ],
