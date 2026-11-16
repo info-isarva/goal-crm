@@ -103,9 +103,6 @@ body, .card, .table, .btn, .form-control, .form-select {
             <a href="{{ route('tax_rates.create') }}" class="btn btn-primary btn-sm d-flex align-items-center gap-2 @if(!auth()->user()->hasCrmPermission('create_crm_tax_guard')) disabled @endif"><i class="bi bi-plus"></i> Add tax rate</a>
         </div>
         <div class="card-body">
-            @if(session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
             <div class="table-responsive">
                 <table class="table table-bordered table-hover align-middle mb-0" style="overflow:visible;">
                     <thead class="custom-display d-none d-md-table-row-group">

@@ -98,11 +98,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 
-// Sidebar toggle logic (desktop collapse)
+// Sidebar toggle logic (desktop collapse) — uses in-sidebar collapse button only
 (function(){
-    var toggleBtn = document.getElementById('sidebarToggle');
+    var toggleBtn = document.getElementById('sidebarCollapseBtn') || document.getElementById('sidebarToggle');
     var sidebar = document.getElementById('sidebarOffcanvas') || document.querySelector('.sidebar');
     var body = document.body;
+
+    function syncCollapseIcon(collapsed) {
+        if (!toggleBtn) return;
+        var icon = toggleBtn.querySelector('i');
+        if (!icon) return;
+        icon.classList.remove('bi-chevron-double-left', 'bi-chevron-double-right', 'bi-arrow-bar-left', 'bi-arrow-bar-right');
+        icon.classList.add(collapsed ? 'bi-chevron-double-right' : 'bi-chevron-double-left');
+        toggleBtn.setAttribute('title', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+        toggleBtn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+    }
 
     function applyState(collapsed) {
         if(!sidebar) return;
@@ -113,12 +123,14 @@ document.addEventListener('DOMContentLoaded', function() {
             sidebar.classList.remove('collapsed');
             body.classList.remove('sidebar-collapsed');
         }
+        syncCollapseIcon(collapsed);
     }
 
     // Initialize from localStorage (desktop only)
     try {
         var stored = localStorage.getItem('sidebar-collapsed');
         if(stored === '1') applyState(true);
+        else syncCollapseIcon(false);
     } catch(e) { /* ignore */ }
 
     if(toggleBtn) {
@@ -148,9 +160,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 try { window.hideSidebarPopover && window.hideSidebarPopover(); } catch(e){}
             }
             try { localStorage.setItem('sidebar-collapsed', !now ? '1' : '0'); } catch(e){}
-            // rotate chevron icon
-            var icon = toggleBtn.querySelector('i');
-            if(icon) icon.classList.toggle('bi-arrow-bar-right', !now), icon.classList.toggle('bi-arrow-bar-left', now);
             // update nav-link tooltips for collapsed/expanded state if helpers available
             try { window.updateSidebarTooltips && window.updateSidebarTooltips(!now); } catch(e) {}
             try { window.enableSidebarBootstrapTooltips && window.enableSidebarBootstrapTooltips(!now); } catch(e) {}
@@ -619,6 +628,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var btn = document.getElementById('fyDropdownBtn');
     var dropdown = document.getElementById('fyDropdown');
     var container = document.getElementById('fy-selector-container');
+    if (!btn || !dropdown || !container) return;
     btn.addEventListener('click', function(e) {
         e.stopPropagation();
         dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';

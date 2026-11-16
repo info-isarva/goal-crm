@@ -9,10 +9,6 @@
                     <h4 class="mb-0">Company Settings</h4>
                 </div>
                 <div class="card-body">
-                    @if(session('success'))
-                        <div id="company-success-alert" class="alert alert-success">{{ session('success') }}</div>
-                    @endif
-
                     @php $canEdit = $canEdit ?? false; @endphp
                     @unless($canEdit)
                         <div class="alert alert-info">You have view-only access to company settings. Only Admin and Super Admin can edit.</div>

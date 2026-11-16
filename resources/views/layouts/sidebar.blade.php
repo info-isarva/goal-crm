@@ -1,89 +1,49 @@
-<nav class="sidebar shadow-sm min-vh-100 p-0 col-12 col-md-2 custom-block offcanvas-md offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarLabel" style="z-index:1045;">
-    <div class="d-flex flex-column h-100 justify-content-between ">
-        <div class="sidebar-scroll flex-grow-1" style="overflow-y:auto; scrollbar-width: none; scrollbar-color: #f1efea #fffbe6; -webkit-overflow-scrolling: touch;">
-            <div class="mb-4 d-flex align-items-center justify-content-center" style="background: linear-gradient(90deg,  #2575fc, #6a11cb); padding: 14px; ">
-                <!-- <span class="fs-4 fw-bold">
-                    @php $company = \App\Models\Company::first(); @endphp
-                    @if(!empty($company) && !empty($company->logo) && file_exists(public_path('assets/company_image/' . $company->logo)))
-                        <img src="{{ asset('assets/company_image/' . $company->logo) }}" alt="{{ $company->name ?? 'Company' }}" class="company-logo" style="height:40px;max-width:120px;object-fit:contain;">
-                    @else
-                        <img src="{{ asset('images/logoisarva-1.svg') }}" alt="CRM Logo" class="company-logo" style="height:40px;max-width:120px;object-fit:contain;">
-                    @endif
-                </span> -->
-                <div class="d-flex align-items-center justify-content-center">
-                    <div class="d-flex align-items-center justify-content-center bg-white" style="width: 40px; height: 40px; border-radius: 2px; overflow: hidden;">
-                        <i class="fas fa-users text-primary" style="font-size: 1.5rem;"></i>
-                    </div>
-                    <span class="ml-3 text-white nav-label" style="font-size: 1.25rem; font-weight: 700;">CRM</span>
-                </div>
-                <button class="btn btn-outline-secondary d-md-none" type="button" data-bs-dismiss="offcanvas" aria-label="Close">
-                    <i class="bi bi-x-lg"></i>
-                </button>
+@php
+    $roleId = Auth::user()->crm_role_type ?? null;
+    $roleName = null;
+    if ($roleId === 0) {
+        $roleName = 'Super Admin';
+    } elseif (isset($roles) && isset($roles[$roleId])) {
+        $roleName = $roles[$roleId];
+    } else {
+        $roleModel = \App\Models\Role::find($roleId);
+        $roleName = $roleModel ? ucfirst($roleModel->name) : 'User';
+    }
+    $avatar = Auth::user()->avatar;
+@endphp
+<nav class="sidebar min-vh-100 p-0 col-12 col-md-2 custom-block offcanvas-md offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarLabel" style="z-index:1045;">
+    <div class="d-flex flex-column h-100 justify-content-between sidebar-shell">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-mark">
+                @php $company = \App\Models\Company::current(); @endphp
+                <img
+                    src="{{ $company->logo_url ?? asset('images/logoisarva-1.svg') }}"
+                    alt="{{ $company->name ?? 'Isarva' }}"
+                    class="company-logo sidebar-brand-logo"
+                >
             </div>
-            @php
-                $user = Auth::user();
-                $showSidebar = false;
-                if ($user) {
-                    if ($user->{"2fa_enabled"}) {
-                        $showSidebar = session('2fa:passed');
-                    } else {
-                        $showSidebar = true;
-                    }
-                }
-            @endphp
-            <!-- @if($showSidebar) -->
-                <ul class="nav flex-column fw-semibold sidebar-menu-gap pt-2 pb-3 px-3">
-                    {{-- ...existing menu code... --}}
-                    @include('layouts.sidebar_menu')
-                </ul>
-                
-            <!-- @else
-                <ul class="nav flex-column fw-semibold sidebar-menu-gap">
-                    <li class="nav-item">
-                        <form method="POST" action="{{ route('logout') }}" style="display:inline;">
-                            @csrf
-                            <button type="submit" class="nav-link text-danger border-0 bg-transparent" style="width:100%;text-align:left;display:flex;align-items:center;gap:0.5rem;">
-                                <i class="bi bi-box-arrow-right me-2"></i> Logout
-                            </button>
-                        </form>
-                    </li>
-                </ul>
-            @endif -->
+            <button class="btn btn-sm sidebar-close-mobile d-md-none" type="button" data-bs-dismiss="offcanvas" aria-label="Close">
+                <i class="bi bi-x-lg"></i>
+            </button>
         </div>
-        <div class="user-card p-3 d-flex align-items-center gap-2">
-                    @php
-                        $avatar = Auth::user()->avatar;
-                    @endphp
-                    @if($avatar)
-                        <img src="{{ asset('assets/employee_profile_image/' . $avatar) }}" class="rounded-circle"  alt="User" style="width:50px; height:50px; object-fit:cover;">
-                    @else
-                        <img src="{{ asset('user-thumbnail.png') }}" class="rounded-circle" alt="User" style="width:50px; height:50px; object-fit:cover;">
-                    @endif
-                    <div>
-                        <div class="fw-bold">{{ Auth::user()->name }}</div>
-                        @php
-                            $roleId = Auth::user()->crm_role_type;
-                            $roleName = null;
-                            if ($roleId === 0) {
-                                $roleName = 'Super Admin';
-                            } elseif (isset($roles) && isset($roles[$roleId])) {
-                                $roleName = $roles[$roleId];
-                            } else {
-                                // fallback: try to get from DB if not passed in $roles
-                                $roleModel = \App\Models\Role::find($roleId);
-                                $roleName = $roleModel ? ucfirst($roleModel->name) : 'Unknown';
-                            }
-                            $badgeClass = match(strtolower($roleName)) {
-                                'super admin' => 'bg-dark',
-                                'admin' => 'bg-warning text-dark',
-                                'manager' => 'bg-primary',
-                                'employee' => 'bg-info text-dark',
-                                default => 'bg-secondary',
-                            };
-                        @endphp
-                        <span class="badge {{ $badgeClass }}">{{ $roleName }}</span>
-                    </div>
-                </div>
+
+        <div class="sidebar-scroll flex-grow-1">
+            <ul class="nav flex-column sidebar-menu sidebar-menu-gap">
+                @include('layouts.sidebar_menu')
+            </ul>
+        </div>
+
+        <div class="user-card d-flex align-items-center">
+            @if($avatar)
+                <img src="{{ asset('assets/employee_profile_image/' . $avatar) }}" alt="{{ Auth::user()->name }}">
+            @else
+                <span class="user-avatar-fallback" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
+            @endif
+            <div class="user-meta nav-label">
+                <div class="user-name">{{ Auth::user()->name }}</div>
+                <div class="user-role">{{ strtoupper($roleName) }}</div>
+            </div>
+        </div>
     </div>
 </nav>
 
@@ -106,10 +66,11 @@
     }
 
      .sidebar-menu-gap .nav-item {
-        margin-bottom: 0.65rem;
-    }
-    .sidebar-menu-gap .nav-item:last-child {
         margin-bottom: 0;
+    }
+    .sidebar-menu-gap .nav-item.sidebar-section {
+        margin-top: 14px;
+        margin-bottom: 4px;
     }
 </style>
 
@@ -117,14 +78,15 @@
 <style>
     .sidebar-flyout {
         position: fixed;
-        background: #f6f1e5;
-        border: 1px solid rgba(0,0,0,0.1);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-        border-radius: 8px;
+        background: #0d1a2f;
+        border: 1px solid rgba(148,163,184,0.2);
+        box-shadow: 0 12px 28px rgba(2,8,23,0.45);
+        border-radius: 14px;
         padding: 0.5rem;
         z-index: 2000;
         min-width: 180px;
         max-width: 340px;
+        color: #e8eef8;
     }
     .sidebar-flyout::before {
         content: '';
@@ -134,37 +96,37 @@
         height: 0;
         border-top: 8px solid transparent;
         border-bottom: 8px solid transparent;
-        border-right: 8px solid #f6f1e5;
+        border-right: 8px solid #0d1a2f;
         top: var(--arrow-top, 16px);
     }
     .sidebar-flyout .flyout-title {
         font-weight: 600;
-        color: #222;
+        color: #f8fafc;
         display: flex;
         align-items: center;
         gap: .25rem;
         padding: .5rem;
-        border-radius: 6px;
+        border-radius: 10px;
     }
     .sidebar-flyout .flyout-title.clickable { 
         cursor: pointer;
     }
     .sidebar-flyout .flyout-title.clickable:hover {
-        background: #F9C74F;
+        background: rgba(56,189,248,0.16);
     }
     .sidebar-flyout .flyout-submenu {
         margin-top: .25rem;
     }
     .sidebar-flyout .nav-link {
-        padding: .25rem .5rem;
-        color: #222;
-        font-size: 0.95rem;
-        border-radius: 6px;
-        gap: .25rem;
+        padding: .35rem .55rem;
+        color: #d7e0ee;
+        font-size: 0.9rem;
+        border-radius: 10px;
+        gap: .35rem;
     }
     .sidebar-flyout .nav-link:hover {
-        background: #F9C74F;
-        color: #222;
+        background: rgba(56,189,248,0.16);
+        color: #fff;
     }
 </style>
 

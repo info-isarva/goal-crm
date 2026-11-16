@@ -24,6 +24,12 @@ class CallLogController extends Controller
     // Show user's own call logs
     public function index()
     {
+        // Call Logs UI retired — Goal VRM Calling is the active calling workspace.
+        if (Auth::user()->hasCrmPermission('vrm_calling_guard')) {
+            return redirect()->route('goal.vrm.index')
+                ->with('info', 'Call Logs moved to VRM Calling.');
+        }
+
         if(!Auth::user()->hasCrmPermission('manage_crm_call_logs_guard')) {
             abort(403, 'Unauthorized action.');
         }

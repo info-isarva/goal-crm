@@ -28,10 +28,6 @@
             </div>
         </div>
         <div class="card-body">
-            @if(session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
-
             <form method="GET" action="{{ route('product_categories.index') }}" class="mb-3" id="filtersForm">
                 <div class="row g-2 align-items-end">
                     <div class="col-xl-4 col-md-6">

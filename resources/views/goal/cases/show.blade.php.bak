@@ -1,0 +1,1226 @@
+@extends('layouts.app')
+
+@php
+    $cd = old('customer_details', $case->customer_details ?? []) ?: [];
+    $br = old('bm_reco', $case->bm_reco ?? []) ?: [];
+    $col = old('collateral', $case->collateral ?? []) ?: [];
+    $loans = old('existing_loans', $case->existing_loans ?? []) ?: [];
+    $mis = old('branch_mis', $case->branch_mis ?? []) ?: [];
+    $docs = $cd['documents'] ?? [];
+    $app = $cd['applicant'] ?? [];
+    $co = $cd['co_applicant'] ?? [];
+    $res = $cd['residence'] ?? [];
+    $emp = $cd['employment'] ?? [];
+    $prop = $cd['property'] ?? [];
+    $refs = $cd['references'] ?? [];
+    $bt = $loans['bt_source'] ?? [];
+    $loanRows = $loans['rows'] ?? [['', '', '', '', '', '', '', '']];
+    if ($loanRows === []) {
+        $loanRows = [['type' => '', 'bank' => '', 'sanction' => '', 'outstanding' => '', 'emi' => '', 'paid' => '', 'pending' => '', 'bounces' => '']];
+    }
+    $consent = $cd['consent'] ?? null;
+    $canEdit = $canEdit ?? false;
+    $canDisburse = $canDisburse ?? false;
+    $ro = $canEdit ? '' : 'readonly';
+    $dis = $canEdit ? '' : 'disabled';
+    $roleLabel = function ($user) {
+        if (!$user) return null;
+        return match ((int) ($user->crm_role_type ?? -1)) {
+            8 => 'BM', 10 => 'JSM', 11 => 'SM', 12 => 'SSM',
+            default => strtoupper((string) ($user->job_role ?: 'User')),
+        };
+    };
+    $statusClass = match ($case->status) {
+        'Draft' => 'draft',
+        'Ready for Login', 'Bank Login' => 'login',
+        'Bank Query', 'Processing' => 'process',
+        'Sanctioned' => 'ok',
+        'Disbursed' => 'done',
+        'Rejected' => 'bad',
+        default => 'draft',
+    };
+    $v = function ($arr, $key, $fallback = '') {
+        return old($key, data_get($arr, $key, $fallback));
+    };
+@endphp
+
+@push('styles')
+<style>
+.cw-page{
+    --cw-primary:#245BEB;--cw-purple:#7542F5;--cw-border:#E3EAF5;--cw-text:#0f172a;--cw-muted:#64748b;
+    color:var(--cw-text);padding-bottom:96px;
+}
+.cw-page .cw-hero{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    margin-bottom:1rem;
+}
+.cw-page .cw-back{
+    width:42px;height:42px;border-radius:999px;border:1px solid var(--cw-border);background:#fff;
+    color:#1e3a8a;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;flex-shrink:0;
+}
+.cw-page .cw-title{margin:0;font-size:1.45rem;font-weight:800;letter-spacing:-.02em}
+.cw-page .cw-sub{margin-top:6px;font-size:.84rem;color:var(--cw-muted);display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.cw-page .cw-sub i{opacity:.7}
+.cw-page .status-pill{
+    display:inline-flex;align-items:center;padding:.28rem .7rem;border-radius:999px;font-size:.74rem;font-weight:700;
+    background:#f1f5f9;color:#334155;
+}
+.cw-page .status-pill.draft{background:#f1f5f9;color:#475569}
+.cw-page .status-pill.login{background:#eff6ff;color:#1d4ed8}
+.cw-page .status-pill.process{background:#fff7ed;color:#c2410c}
+.cw-page .status-pill.ok{background:#ecfdf5;color:#059669}
+.cw-page .status-pill.done{background:#dbeafe;color:#1e40af}
+.cw-page .status-pill.bad{background:#fef2f2;color:#dc2626}
+.cw-page .product-pill{
+    display:inline-flex;align-items:center;gap:5px;padding:.28rem .7rem;border-radius:999px;
+    font-size:.74rem;font-weight:700;background:#ecfdf5;color:#059669;
+}
+.cw-page .cw-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+.cw-page .cw-progress{
+    display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;padding:12px 14px;
+    background:#fff;border:1px solid var(--cw-border);border-radius:16px;
+}
+.cw-page .cw-step{
+    flex:1;min-width:110px;text-align:center;padding:8px 6px;border-radius:10px;
+    font-size:.72rem;font-weight:700;color:#94a3b8;background:#f8fafc;border:1px solid #eef2f7;
+}
+.cw-page .cw-step.done{color:#059669;background:#ecfdf5;border-color:#a7f3d0}
+.cw-page .cw-step.active{color:#1d4ed8;background:#eff6ff;border-color:#93c5fd}
+.cw-page .cw-step.rejected{color:#dc2626;background:#fef2f2;border-color:#fecaca}
+
+.cw-page .cw-tabs{
+    display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:1rem;
+    scrollbar-width:thin;
+}
+.cw-page .cw-tab{
+    flex:0 0 auto;border:1px solid var(--cw-border);background:#fff;color:#334155;
+    border-radius:999px;padding:8px 14px;font-size:.8rem;font-weight:700;
+    display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+}
+.cw-page .cw-tab i{font-size:.95rem}
+.cw-page .cw-tab.active{
+    background:linear-gradient(90deg,var(--cw-primary),var(--cw-purple));color:#fff;border-color:transparent;
+}
+.cw-page .cw-pane{display:none}
+.cw-page .cw-pane.active{display:block}
+
+.cw-page .sec-card{
+    background:#fff;border:1px solid var(--cw-border);border-radius:16px;overflow:hidden;
+    box-shadow:0 8px 24px rgba(148,163,184,.10);margin-bottom:1rem;
+}
+.cw-page .sec-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;
+    border-bottom:1px solid #eef2f7;background:#fff;
+}
+.cw-page .sec-head-left{display:flex;align-items:center;gap:12px}
+.cw-page .sec-ico{
+    width:38px;height:38px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;
+    background:#ede9fe;color:var(--cw-purple);font-size:1rem;flex-shrink:0;
+}
+.cw-page .sec-ico.ico-blue{background:#dbeafe;color:var(--cw-primary)}
+.cw-page .sec-ico.ico-teal{background:#ccfbf1;color:#0d9488}
+.cw-page .sec-ico.ico-amber{background:#fef3c7;color:#d97706}
+.cw-page .sec-ico.ico-green{background:#dcfce7;color:#16a34a}
+.cw-page .sec-head h6{margin:0;font-size:.98rem;font-weight:800}
+.cw-page .sec-sub{font-size:.78rem;color:var(--cw-muted)}
+.cw-page .sec-body{padding:16px 18px 18px}
+.cw-page .ws-section-title{
+    font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#64748b;
+    background:#f8fafc;padding:.55rem .85rem;border-bottom:1px solid #e5e7eb;border-top:1px solid #e5e7eb;
+}
+.cw-page .ws-table{margin:0}
+.cw-page .ws-table td:first-child{
+    width:28%;font-weight:600;color:#334155;background:#fafbfc;vertical-align:middle;font-size:.84rem;
+}
+.cw-page .ws-table .form-control,.cw-page .ws-table .form-select{font-size:.875rem;min-height:38px;border-radius:8px}
+.cw-page .form-label{font-size:.76rem;font-weight:700;color:#475569;margin-bottom:6px}
+.cw-page .form-control,.cw-page .form-select{
+    min-height:42px;border-radius:10px;border:1px solid var(--cw-border);background:#f8fafc;font-size:.88rem;
+}
+.cw-page .form-control:focus,.cw-page .form-select:focus{
+    border-color:#93c5fd;background:#fff;box-shadow:0 0 0 3px rgba(36,91,235,.12);
+}
+.cw-page .form-control:disabled,.cw-page .form-control[readonly]{background:#eef4ff;color:#64748b}
+.cw-page .reco-cover{
+    background:linear-gradient(135deg,#eff6ff,#f5f3ff);border:1px solid #dbeafe;border-radius:14px;padding:1rem 1.15rem;margin-bottom:1rem;
+}
+.cw-page .doc-badge{
+    display:inline-block;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:999px;background:#eff6ff;color:var(--cw-primary);
+}
+.cw-page .doc-badge.req{background:#fef2f2;color:#dc2626}
+.cw-page .doc-badge.ok{background:#ecfdf5;color:#059669}
+.cw-page .doc-badge.warn{background:#fff7ed;color:#c2410c}
+
+.cw-page .cw-footer{
+    position:sticky;bottom:58px;z-index:30;width:100%;
+    margin:8px 0;border:1px solid var(--cw-border);border-radius:16px;overflow:hidden;
+    background:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+    box-shadow:0 8px 22px rgba(148,163,184,.14);
+}
+.cw-page .btn-save{
+    height:42px;padding:0 18px;border-radius:10px;font-weight:700;font-size:.86rem;border:0;color:#fff;
+    background:linear-gradient(90deg,var(--cw-primary),var(--cw-purple));
+    display:inline-flex;align-items:center;gap:6px;box-shadow:0 8px 16px rgba(36,91,235,.22);
+}
+.cw-page .btn-save:disabled{opacity:.65}
+.cw-page .btn-ghost{
+    height:42px;padding:0 14px;border-radius:10px;font-weight:700;font-size:.86rem;
+    border:1px solid var(--cw-border);background:#fff;color:#334155;text-decoration:none;
+    display:inline-flex;align-items:center;gap:6px;
+}
+.cw-page .btn-apply{
+    height:42px;padding:0 16px;border-radius:10px;font-weight:700;font-size:.86rem;border:0;color:#fff;
+    background:var(--cw-primary);display:inline-flex;align-items:center;gap:6px;
+}
+.cw-page .hint{font-size:.78rem;color:var(--cw-muted);margin-top:6px}
+.cw-page .hint.err{color:#b91c1c}
+.cw-page .task-item{
+    display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eef2f7;
+}
+.cw-page .task-item:last-child{border-bottom:0}
+@media (max-width:767.98px){
+    .cw-page .cw-step{min-width:46%}
+    .cw-page .ws-table td:first-child{width:40%}
+}
+</style>
+@endpush
+
+@section('content')
+<div class="container-fluid p-4 cw-page" id="cwPage" data-active-tab="{{ $activeTab }}">
+    <div class="cw-hero">
+        <div class="d-flex align-items-start gap-3">
+            <a href="{{ route('goal.cases.index') }}" class="cw-back" title="Back"><i class="bi bi-arrow-left"></i></a>
+            <div>
+                <h1 class="cw-title">{{ $case->case_no }} · {{ $case->customer_name }}</h1>
+                <div class="cw-sub">
+                    <span class="status-pill {{ $statusClass }}">{{ $case->status }}</span>
+                    @if($case->product)
+                        <span class="product-pill"><i class="bi bi-house-door"></i> {{ $case->product }}</span>
+                    @endif
+                    @if($case->lead)
+                        <span><i class="bi bi-link-45deg"></i> <a href="{{ route('goal.leads.show', $case->lead) }}">{{ $case->lead->ref_no }}</a></span>
+                    @endif
+                    @if($case->orgUnit)
+                        <span><i class="bi bi-building"></i> {{ $case->orgUnit->name }}</span>
+                    @endif
+                    <span><i class="bi bi-person"></i> Owner {{ $roleLabel($case->owner) }} — {{ $case->owner?->name ?? '—' }}</span>
+                    <span><i class="bi bi-person-badge"></i> BM — {{ $branchManager?->name ?? '—' }}</span>
+                    @if($case->loan_amount)
+                        <span><i class="bi bi-currency-rupee"></i> {{ number_format((float) $case->loan_amount, 0) }}</span>
+                    @endif
+                </div>
+            </div>
+        </div>
+        <div class="cw-actions">
+            <a href="{{ route('goal.cases.index') }}" class="btn-ghost"><i class="bi bi-grid"></i> Cases</a>
+        </div>
+    </div>
+
+    <div class="cw-progress" aria-label="Case progress">
+        @foreach($progress as $step)
+            <div class="cw-step {{ $step['state'] }}">{{ $step['label'] }}</div>
+        @endforeach
+    </div>
+
+    @if(isset($errors) && $errors->any())
+        <div class="alert alert-danger py-2 small">
+            <strong>Please fix:</strong>
+            <ul class="mb-0 mt-1">
+                @foreach($errors->all() as $err)<li>{{ $err }}</li>@endforeach
+            </ul>
+        </div>
+    @endif
+    @if(session('success'))
+        <div class="alert alert-success py-2 small">{{ session('success') }}</div>
+    @endif
+
+    <div class="cw-tabs" role="tablist">
+        @foreach([
+            'customer' => ['Customer Details', 'bi-person-vcard'],
+            'bm_reco' => ['BM Reco', 'bi-lightbulb'],
+            'loans' => ['Existing Loans', 'bi-bank2'],
+            'collateral' => ['Collateral', 'bi-house'],
+            'documents' => ['Documents', 'bi-file-earmark-check'],
+            'bank' => ['Bank / Disb', 'bi-arrow-left-right'],
+            'mis' => ['Branch MIS', 'bi-clipboard-data'],
+            'tasks' => ['Tasks', 'bi-calendar-check'],
+        ] as $key => $meta)
+            <button type="button" class="cw-tab {{ $activeTab === $key ? 'active' : '' }}" data-cw-tab="{{ $key }}">
+                <i class="bi {{ $meta[1] }}"></i> {{ $meta[0] }}
+            </button>
+        @endforeach
+    </div>
+
+    <form method="POST" action="{{ route('goal.cases.workspace', $case) }}" id="cwWorkspaceForm" novalidate>
+        @csrf
+        <input type="hidden" name="cw_tab" id="cw_tab" value="{{ $activeTab }}">
+
+        {{-- ========== CUSTOMER ========== --}}
+        <div class="cw-pane {{ $activeTab === 'customer' ? 'active' : '' }}" data-pane="customer">
+            <div class="sec-card">
+                <div class="sec-head">
+                    <div class="sec-head-left">
+                        <span class="sec-ico"><i class="bi bi-person-vcard"></i></span>
+                        <div>
+                            <h6>Customer Details</h6>
+                            <div class="sec-sub">Applicant · Co-Applicant · Property · References</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ws-section-title">Identity &amp; contact</div>
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0 ws-table align-middle">
+                        <thead><tr><th>Details</th><th>Applicant</th><th>Co-Applicant</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td>Name <span class="text-danger">*</span></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[applicant][name]" value="{{ $app['name'] ?? $case->customer_name }}" {{ $ro }} required></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[co_applicant][name]" value="{{ $co['name'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Father Name</td>
+                                <td><input class="form-control form-control-sm" name="customer_details[applicant][father_name]" value="{{ $app['father_name'] ?? '' }}" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[co_applicant][father_name]" value="{{ $co['father_name'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Mother Name</td>
+                                <td><input class="form-control form-control-sm" name="customer_details[applicant][mother_name]" value="{{ $app['mother_name'] ?? '' }}" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[co_applicant][mother_name]" value="{{ $co['mother_name'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Mobile Number</td>
+                                <td><input class="form-control form-control-sm js-mobile" name="customer_details[applicant][mobile]" value="{{ $app['mobile'] ?? $case->mobile }}" maxlength="10" inputmode="numeric" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm js-mobile" name="customer_details[co_applicant][mobile]" value="{{ $co['mobile'] ?? '' }}" maxlength="10" inputmode="numeric" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Age</td>
+                                <td><input class="form-control form-control-sm" name="customer_details[applicant][age]" value="{{ $app['age'] ?? '' }}" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[co_applicant][age]" value="{{ $co['age'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Marital Status</td>
+                                <td>
+                                    <select class="form-select form-select-sm" name="customer_details[applicant][marital_status]" {{ $dis }}>
+                                        @foreach(['', 'Married', 'Single', 'Others'] as $opt)
+                                            <option value="{{ $opt }}" @selected(($app['marital_status'] ?? '') === $opt)>{{ $opt ?: 'Select' }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm" name="customer_details[co_applicant][marital_status]" {{ $dis }}>
+                                        @foreach(['', 'Married', 'Single', 'Others'] as $opt)
+                                            <option value="{{ $opt }}" @selected(($co['marital_status'] ?? '') === $opt)>{{ $opt ?: 'Select' }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Relationship with applicant</td>
+                                <td><input class="form-control form-control-sm" name="customer_details[applicant][relationship]" value="{{ $app['relationship'] ?? 'Self' }}" readonly></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[co_applicant][relationship]" value="{{ $co['relationship'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Personal Mail ID</td>
+                                <td><input type="email" class="form-control form-control-sm" name="customer_details[applicant][email]" value="{{ $app['email'] ?? ($cd['email'] ?? '') }}" {{ $ro }}></td>
+                                <td><input type="email" class="form-control form-control-sm" name="customer_details[co_applicant][email]" value="{{ $co['email'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Official Mail ID</td>
+                                <td><input type="email" class="form-control form-control-sm" name="customer_details[applicant][official_email]" value="{{ $app['official_email'] ?? '' }}" {{ $ro }}></td>
+                                <td><input type="email" class="form-control form-control-sm" name="customer_details[co_applicant][official_email]" value="{{ $co['official_email'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="ws-section-title">Residence</div>
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0 ws-table align-middle">
+                        <thead><tr><th>Details</th><th>Applicant</th><th>Co-Applicant</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td>Present Residence Address and Pincode</td>
+                                <td colspan="2"><input class="form-control form-control-sm" name="customer_details[residence][present_address]" value="{{ $res['present_address'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>No. of Years at above Residence</td>
+                                <td><input class="form-control form-control-sm" name="customer_details[residence][years_applicant]" value="{{ $res['years_applicant'] ?? '' }}" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[residence][years_co]" value="{{ $res['years_co'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Permanent Address &amp; Pin Code</td>
+                                <td colspan="2"><input class="form-control form-control-sm" name="customer_details[residence][permanent_address]" value="{{ $res['permanent_address'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="ws-section-title">Employment</div>
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0 ws-table align-middle">
+                        <thead><tr><th>Details</th><th>Applicant</th><th>Co-Applicant</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td>Office address &amp; Pincode</td>
+                                <td colspan="2"><input class="form-control form-control-sm" name="customer_details[employment][office_address]" value="{{ $emp['office_address'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Employment Type</td>
+                                <td><input class="form-control form-control-sm" name="customer_details[employment][type_applicant]" value="{{ $emp['type_applicant'] ?? ($cd['employment_type'] ?? '') }}" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[employment][type_co]" value="{{ $emp['type_co'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Total job experience</td>
+                                <td><input class="form-control form-control-sm" name="customer_details[employment][total_exp_applicant]" value="{{ $emp['total_exp_applicant'] ?? ($cd['work_experience_years'] ?? '') }}" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[employment][total_exp_co]" value="{{ $emp['total_exp_co'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Present company job experience</td>
+                                <td><input class="form-control form-control-sm" name="customer_details[employment][present_exp_applicant]" value="{{ $emp['present_exp_applicant'] ?? '' }}" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[employment][present_exp_co]" value="{{ $emp['present_exp_co'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Designation</td>
+                                <td><input class="form-control form-control-sm" name="customer_details[employment][designation_applicant]" value="{{ $emp['designation_applicant'] ?? '' }}" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[employment][designation_co]" value="{{ $emp['designation_co'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Industry Type</td>
+                                <td><input class="form-control form-control-sm" name="customer_details[employment][industry_applicant]" value="{{ $emp['industry_applicant'] ?? '' }}" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[employment][industry_co]" value="{{ $emp['industry_co'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Employer / Business Name</td>
+                                <td><input class="form-control form-control-sm" name="customer_details[employment][employer_applicant]" value="{{ $emp['employer_applicant'] ?? ($cd['employer_name'] ?? '') }}" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[employment][employer_co]" value="{{ $emp['employer_co'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Monthly / Net Income</td>
+                                <td><input class="form-control form-control-sm js-decimal" data-decimals="2" name="customer_details[employment][income_applicant]" value="{{ $emp['income_applicant'] ?? ($cd['monthly_income'] ?? '') }}" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm js-decimal" data-decimals="2" name="customer_details[employment][income_co]" value="{{ $emp['income_co'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="ws-section-title">Property</div>
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0 ws-table align-middle">
+                        <thead><tr><th>Details</th><th colspan="2">Value</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td>Property Address and Pin Code</td>
+                                <td colspan="2"><input class="form-control form-control-sm" name="customer_details[property][address]" value="{{ $prop['address'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Property Market Value</td>
+                                <td colspan="2"><input class="form-control form-control-sm" name="customer_details[property][market_value]" value="{{ $prop['market_value'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Property SR value</td>
+                                <td colspan="2"><input class="form-control form-control-sm" name="customer_details[property][sr_value]" value="{{ $prop['sr_value'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="ws-section-title">References</div>
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0 ws-table align-middle">
+                        <thead><tr><th>Details</th><th>Reference 1</th><th>Reference 2</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td>Name</td>
+                                <td><input class="form-control form-control-sm" name="customer_details[references][ref1_name]" value="{{ $refs['ref1_name'] ?? '' }}" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[references][ref2_name]" value="{{ $refs['ref2_name'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Mobile Number</td>
+                                <td><input class="form-control form-control-sm js-mobile" name="customer_details[references][ref1_mobile]" value="{{ $refs['ref1_mobile'] ?? '' }}" maxlength="10" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm js-mobile" name="customer_details[references][ref2_mobile]" value="{{ $refs['ref2_mobile'] ?? '' }}" maxlength="10" {{ $ro }}></td>
+                            </tr>
+                            <tr>
+                                <td>Address</td>
+                                <td><input class="form-control form-control-sm" name="customer_details[references][ref1_address]" value="{{ $refs['ref1_address'] ?? '' }}" {{ $ro }}></td>
+                                <td><input class="form-control form-control-sm" name="customer_details[references][ref2_address]" value="{{ $refs['ref2_address'] ?? '' }}" {{ $ro }}></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="sec-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Product</label>
+                            <input class="form-control" name="product" value="{{ old('product', $case->product) }}" {{ $ro }}>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Requested Amount (₹)</label>
+                            <input type="text" inputmode="decimal" data-decimals="2" class="form-control js-decimal" name="loan_amount" value="{{ old('loan_amount', $case->loan_amount) }}" {{ $ro }}>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Preferred Contact Time</label>
+                            <input class="form-control" name="customer_details[preferred_contact_time]" value="{{ $cd['preferred_contact_time'] ?? '' }}" {{ $ro }}>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Consent</label>
+                            <input class="form-control" value="{{ is_array($consent) && !empty($consent['recorded']) ? ('Recorded · ' . ($consent['recorded_at'] ?? '')) : ($case->lead?->consent_recorded ? 'Recorded on lead' : 'Not recorded') }}" readonly>
+                        </div>
+                    </div>
+                    {{-- Hidden sync fields for top-level identity --}}
+                    <input type="hidden" name="customer_name" id="cw_customer_name" value="{{ old('customer_name', $case->customer_name) }}">
+                    <input type="hidden" name="mobile" id="cw_mobile" value="{{ old('mobile', $case->mobile) }}">
+                </div>
+            </div>
+        </div>
+
+        {{-- ========== BM RECO ========== --}}
+        <div class="cw-pane {{ $activeTab === 'bm_reco' ? 'active' : '' }}" data-pane="bm_reco">
+            <div class="reco-cover">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <div class="fw-bold"><i class="bi bi-lightbulb me-1 text-primary"></i> BM Recommendation — Goal Corporation</div>
+                        <div class="small text-muted mt-1">Proposal brief for <strong>{{ strtoupper($case->customer_name) }}</strong></div>
+                    </div>
+                    <div class="text-end small text-muted">Saved with workspace · Export from Branch MIS if needed</div>
+                </div>
+            </div>
+            <div class="sec-card">
+                <div class="sec-head">
+                    <div class="sec-head-left">
+                        <span class="sec-ico ico-amber"><i class="bi bi-people"></i></span>
+                        <h6>Borrower Profile</h6>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0 ws-table align-middle">
+                        <thead><tr><th>Field</th><th>Applicant</th><th>Co-Applicant</th></tr></thead>
+                        <tbody>
+                            @foreach([
+                                ['name', 'Name'],
+                                ['age', 'Age'],
+                                ['dob', 'DOB'],
+                                ['relationship', 'Relationship'],
+                                ['profession', 'Profession'],
+                                ['gross_income', 'Gross Income'],
+                                ['net_income', 'Net Income'],
+                                ['pan', 'PAN NO'],
+                            ] as [$key, $label])
+                                <tr>
+                                    <td>{{ $label }}</td>
+                                    <td><input class="form-control form-control-sm" name="bm_reco[profile][applicant][{{ $key }}]" value="{{ data_get($br, "profile.applicant.$key", $key === 'name' ? ($app['name'] ?? $case->customer_name) : '') }}" {{ $ro }}></td>
+                                    <td><input class="form-control form-control-sm" name="bm_reco[profile][co_applicant][{{ $key }}]" value="{{ data_get($br, "profile.co_applicant.$key", $key === 'name' ? ($co['name'] ?? '') : '') }}" {{ $ro }}></td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="sec-card">
+                <div class="sec-head">
+                    <div class="sec-head-left">
+                        <span class="sec-ico ico-blue"><i class="bi bi-clipboard-check"></i></span>
+                        <h6>Requirement &amp; Eligibility</h6>
+                    </div>
+                </div>
+                <div class="sec-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Recommended Amount</label>
+                            <input class="form-control js-decimal" data-decimals="2" name="bm_reco[amount]" value="{{ $br['amount'] ?? $br['recommended_amount'] ?? '' }}" {{ $ro }}>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Requirement</label>
+                            <input class="form-control" name="bm_reco[requirement]" value="{{ $br['requirement'] ?? '' }}" {{ $ro }}>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Eligibility</label>
+                            <input class="form-control" name="bm_reco[eligibility]" value="{{ $br['eligibility'] ?? '' }}" {{ $ro }}>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Suggested Bank</label>
+                            <input class="form-control" name="bm_reco[suggested_bank]" value="{{ $br['suggested_bank'] ?? '' }}" {{ $ro }}>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">App &amp; Co-App Background</label>
+                            <textarea class="form-control" rows="3" name="bm_reco[background]" {{ $ro }}>{{ $br['background'] ?? '' }}</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Mitigants</label>
+                            <textarea class="form-control" rows="4" name="bm_reco[mitigants]" {{ $ro }}>{{ $br['mitigants'] ?? '' }}</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Deviation</label>
+                            <input class="form-control mb-2" name="bm_reco[deviation]" value="{{ $br['deviation'] ?? '' }}" {{ $ro }}>
+                            <label class="form-label">Remarks</label>
+                            <textarea class="form-control" rows="2" name="bm_reco[remarks]" {{ $ro }}>{{ $br['remarks'] ?? '' }}</textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Recommended By</label>
+                            <input class="form-control" name="bm_reco[by]" value="{{ $br['by'] ?? $br['recommended_by'] ?? ($branchManager?->name ?? '') }}" {{ $ro }}>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Recommendation Date</label>
+                            <input type="date" class="form-control" name="bm_reco[date]" value="{{ $br['date'] ?? '' }}" {{ $dis }}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sec-card">
+                <div class="sec-head">
+                    <div class="sec-head-left">
+                        <span class="sec-ico ico-teal"><i class="bi bi-telephone"></i></span>
+                        <h6>Recommendation contacts</h6>
+                    </div>
+                </div>
+                <div class="sec-body">
+                    <div class="row g-3">
+                        @foreach([
+                            ['sm_name', 'SM Name', $case->owner?->name],
+                            ['asm_name', 'ASM Name', ''],
+                            ['rsm_name', 'RSM Name', ''],
+                            ['sm_mobile', 'SM Contact Number', $case->owner?->mobile],
+                            ['asm_mobile', 'ASM Contact Number', ''],
+                            ['rsm_mobile', 'RSM Contact Number', ''],
+                            ['bm_name', 'BM Name', $branchManager?->name],
+                            ['bm_mobile', 'BM Contact Number', $branchManager?->mobile],
+                        ] as [$key, $label, $default])
+                            <div class="col-md-4">
+                                <label class="form-label">{{ $label }}</label>
+                                <input class="form-control" name="bm_reco[contacts][{{ $key }}]" value="{{ data_get($br, "contacts.$key", $default) }}" {{ $ro }}>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ========== EXISTING LOANS ========== --}}
+        <div class="cw-pane {{ $activeTab === 'loans' ? 'active' : '' }}" data-pane="loans">
+            <div class="sec-card">
+                <div class="sec-head">
+                    <div class="sec-head-left">
+                        <span class="sec-ico ico-blue"><i class="bi bi-bank2"></i></span>
+                        <h6>Existing HL (BT source)</h6>
+                    </div>
+                </div>
+                <div class="sec-body">
+                    <div class="row g-3">
+                        @foreach([
+                            ['loan_type', 'Loan Type'],
+                            ['loan_amt', 'Loan Amt'],
+                            ['roi', 'ROI %'],
+                            ['tenor', 'Tenor'],
+                            ['emi', 'EMI'],
+                        ] as [$key, $label])
+                            <div class="col">
+                                <label class="form-label">{{ $label }}</label>
+                                <input class="form-control" name="existing_loans[bt_source][{{ $key }}]" value="{{ $bt[$key] ?? '' }}" {{ $ro }}>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            <div class="sec-card">
+                <div class="sec-head">
+                    <div class="sec-head-left">
+                        <span class="sec-ico"><i class="bi bi-table"></i></span>
+                        <h6>Loan details of Applicant / Co-Applicant</h6>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th>Type of Loan</th><th>Bank Details</th><th>Sanction Amount</th><th>Outstanding</th>
+                                <th>EMI</th><th>EMI Paid</th><th>EMI Pending</th><th>Bounces</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($loanRows as $i => $row)
+                                @php
+                                    $row = is_array($row) ? $row : [];
+                                @endphp
+                                <tr>
+                                    <td><input class="form-control form-control-sm" name="existing_loans[rows][{{ $i }}][type]" value="{{ $row['type'] ?? '' }}" {{ $ro }}></td>
+                                    <td><input class="form-control form-control-sm" name="existing_loans[rows][{{ $i }}][bank]" value="{{ $row['bank'] ?? '' }}" {{ $ro }}></td>
+                                    <td><input class="form-control form-control-sm" name="existing_loans[rows][{{ $i }}][sanction]" value="{{ $row['sanction'] ?? '' }}" {{ $ro }}></td>
+                                    <td><input class="form-control form-control-sm" name="existing_loans[rows][{{ $i }}][outstanding]" value="{{ $row['outstanding'] ?? '' }}" {{ $ro }}></td>
+                                    <td><input class="form-control form-control-sm" name="existing_loans[rows][{{ $i }}][emi]" value="{{ $row['emi'] ?? '' }}" {{ $ro }}></td>
+                                    <td><input class="form-control form-control-sm" name="existing_loans[rows][{{ $i }}][paid]" value="{{ $row['paid'] ?? '' }}" {{ $ro }}></td>
+                                    <td><input class="form-control form-control-sm" name="existing_loans[rows][{{ $i }}][pending]" value="{{ $row['pending'] ?? '' }}" {{ $ro }}></td>
+                                    <td><input class="form-control form-control-sm" name="existing_loans[rows][{{ $i }}][bounces]" value="{{ $row['bounces'] ?? '' }}" {{ $ro }}></td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- ========== COLLATERAL ========== --}}
+        <div class="cw-pane {{ $activeTab === 'collateral' ? 'active' : '' }}" data-pane="collateral">
+            <div class="sec-card">
+                <div class="sec-head">
+                    <div class="sec-head-left">
+                        <span class="sec-ico ico-green"><i class="bi bi-house"></i></span>
+                        <h6>Collateral Details</h6>
+                    </div>
+                </div>
+                <div class="sec-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Type of Collateral</label>
+                            <input class="form-control" name="collateral[type]" value="{{ $col['type'] ?? '' }}" {{ $ro }}>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Type of Khata</label>
+                            <input class="form-control" name="collateral[khata]" value="{{ $col['khata'] ?? '' }}" {{ $ro }}>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Property Address</label>
+                            <input class="form-control" name="collateral[address]" value="{{ $col['address'] ?? ($prop['address'] ?? '') }}" {{ $ro }}>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">LA/BU Area</label>
+                            <input class="form-control" name="collateral[area]" value="{{ $col['area'] ?? '' }}" {{ $ro }}>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Construction Stage</label>
+                            <input class="form-control" name="collateral[stage]" value="{{ $col['stage'] ?? '' }}" {{ $ro }}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ========== DOCUMENTS ========== --}}
+        <div class="cw-pane {{ $activeTab === 'documents' ? 'active' : '' }}" data-pane="documents">
+            <div class="sec-card">
+                <div class="sec-head">
+                    <div class="sec-head-left">
+                        <span class="sec-ico ico-blue"><i class="bi bi-file-earmark-check"></i></span>
+                        <div>
+                            <h6>Documents</h6>
+                            <div class="sec-sub">Rejected documents require a reason. Verified docs needed before bank login.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th>Document</th>
+                                <th>File</th>
+                                <th>Uploaded</th>
+                                <th style="width:140px">Status</th>
+                                <th>Reviewer</th>
+                                <th>Rejection reason</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($docs as $i => $doc)
+                                <tr>
+                                    <td>
+                                        <strong>{{ $doc['label'] ?? $doc['key'] ?? 'Document' }}</strong>
+                                        @if(!empty($doc['mandatory']))
+                                            <span class="doc-badge req">Mandatory</span>
+                                        @endif
+                                        <input type="hidden" name="customer_details[documents][{{ $i }}][key]" value="{{ $doc['key'] ?? '' }}">
+                                        <input type="hidden" name="customer_details[documents][{{ $i }}][label]" value="{{ $doc['label'] ?? '' }}">
+                                        <input type="hidden" name="customer_details[documents][{{ $i }}][mandatory]" value="{{ !empty($doc['mandatory']) ? 1 : 0 }}">
+                                        <input type="hidden" name="customer_details[documents][{{ $i }}][file_name]" value="{{ $doc['file_name'] ?? '' }}">
+                                        <input type="hidden" name="customer_details[documents][{{ $i }}][uploaded_at]" value="{{ $doc['uploaded_at'] ?? '' }}">
+                                        <input type="hidden" name="customer_details[documents][{{ $i }}][storage_path]" value="{{ $doc['storage_path'] ?? '' }}">
+                                    </td>
+                                    <td class="small">{{ $doc['file_name'] ?? '—' }}</td>
+                                    <td class="small">{{ $doc['uploaded_at'] ?? '—' }}</td>
+                                    <td>
+                                        <select name="customer_details[documents][{{ $i }}][status]" class="form-select form-select-sm js-doc-status" data-reason-target="docReason{{ $i }}" {{ $dis }}>
+                                            @foreach(['Pending','Uploaded','Verified','Rejected'] as $st)
+                                                <option value="{{ $st }}" @selected(($doc['status'] ?? 'Pending') === $st)>{{ $st }}</option>
+                                            @endforeach
+                                        </select>
+                                    </td>
+                                    <td><input class="form-control form-control-sm" name="customer_details[documents][{{ $i }}][reviewer]" value="{{ $doc['reviewer'] ?? '' }}" {{ $ro }}></td>
+                                    <td>
+                                        <input class="form-control form-control-sm" id="docReason{{ $i }}" name="customer_details[documents][{{ $i }}][rejection_reason]" value="{{ $doc['rejection_reason'] ?? '' }}" {{ $ro }}
+                                               @if(($doc['status'] ?? '') === 'Rejected') required @endif>
+                                        @error("customer_details.documents.$i.rejection_reason")
+                                            <div class="hint err">{{ $message }}</div>
+                                        @enderror
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="6" class="text-muted p-3">No documents linked yet. Upload during Create Case or add product docs later.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- ========== BRANCH MIS (saved with workspace) ========== --}}
+        <div class="cw-pane {{ $activeTab === 'mis' ? 'active' : '' }}" data-pane="mis">
+            <div class="sec-card">
+                <div class="sec-head">
+                    <div class="sec-head-left">
+                        <span class="sec-ico ico-amber"><i class="bi bi-clipboard-data"></i></span>
+                        <div>
+                            <h6>Branch MIS</h6>
+                            <div class="sec-sub">Case detail — branch-wise updation fields</div>
+                        </div>
+                    </div>
+                    <a href="{{ route('goal.branch-mis') }}" class="btn-ghost"><i class="bi bi-grid"></i> MIS grid</a>
+                </div>
+                <div class="ws-section-title">Case identity</div>
+                <div class="sec-body">
+                    <div class="row g-3">
+                        @foreach([
+                            ['ref_number', 'Ref Number', $case->lead?->ref_no],
+                            ['lan_number', 'LAN Number', $case->application_ref],
+                            ['customer_name', 'Customer Name', $case->customer_name],
+                            ['customer_contact', 'Customer Contact', $case->mobile],
+                            ['month', 'Month', ''],
+                            ['location', 'Location', $case->orgUnit?->name],
+                            ['code', 'Code', ''],
+                        ] as [$key, $label, $default])
+                            <div class="col-md-3">
+                                <label class="form-label">{{ $label }}</label>
+                                <input class="form-control form-control-sm" name="branch_mis[{{ $key }}]" value="{{ $mis[$key] ?? $default }}" {{ $ro }}>
+                            </div>
+                        @endforeach
+                        <div class="col-md-3">
+                            <label class="form-label">MIS Status</label>
+                            <select class="form-select form-select-sm" name="branch_mis[mis_status]" {{ $dis }}>
+                                @foreach(['Login','Sanctioned','Disbursed','Closed'] as $st)
+                                    <option value="{{ $st }}" @selected(($mis['mis_status'] ?? '') === $st)>{{ $st }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="ws-section-title">Login · Sanction · Disbursement</div>
+                <div class="sec-body">
+                    <div class="row g-3">
+                        @foreach([
+                            ['login_date', 'Login Date', 'date'],
+                            ['login_amount', 'Login Amount', 'text'],
+                            ['sanction_date', 'Sanction Dt', 'date'],
+                            ['sanction_amount', 'Sanc Amt', 'text'],
+                            ['disb_date', 'Disb Date', 'date'],
+                            ['disb_amount', 'Disb amt', 'text'],
+                            ['product', 'Product', 'text'],
+                            ['sub_product', 'Sub Product', 'text'],
+                            ['source', 'Source', 'text'],
+                            ['source_name', 'Source Name', 'text'],
+                        ] as [$key, $label, $type])
+                            <div class="col-md-3">
+                                <label class="form-label">{{ $label }}</label>
+                                <input type="{{ $type }}" class="form-control form-control-sm" name="branch_mis[{{ $key }}]" value="{{ $mis[$key] ?? ($key === 'product' ? $case->product : ($key === 'sanction_amount' ? $case->sanction_amount : ($key === 'sanction_date' ? optional($case->sanction_date)->format('Y-m-d') : ''))) }}" {{ $dis }}>
+                            </div>
+                        @endforeach
+                        <div class="col-md-3">
+                            <label class="form-label">OTC/PDD Status</label>
+                            <select class="form-select form-select-sm" name="branch_mis[otc_pdd]" {{ $dis }}>
+                                @foreach(['', 'OTC Cleared', 'Pending PDD', 'PDD Cleared'] as $st)
+                                    <option value="{{ $st }}" @selected(($mis['otc_pdd'] ?? '') === $st)>{{ $st ?: 'Select' }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="ws-section-title">Banker</div>
+                <div class="sec-body">
+                    <div class="row g-3">
+                        @foreach([
+                            ['bank_name', 'Bank Name', $case->lender_name],
+                            ['banker_name', 'Banker Name', ''],
+                            ['banker_contact', 'Banker Contact', ''],
+                            ['banker_mail', 'Banker Mail ID', ''],
+                        ] as [$key, $label, $default])
+                            <div class="col-md-3">
+                                <label class="form-label">{{ $label }}</label>
+                                <input class="form-control form-control-sm" name="branch_mis[{{ $key }}]" value="{{ $mis[$key] ?? $default }}" {{ $ro }}>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                <div class="ws-section-title">Commercials</div>
+                <div class="sec-body">
+                    <div class="row g-3">
+                        @foreach([
+                            ['payin_pct', 'PayIn%'],
+                            ['payin_amt', 'Payin Amt'],
+                            ['payout_pct', 'Payout %'],
+                            ['payout_amount', 'Payout Amount'],
+                            ['net_revenue', 'Net Revenue'],
+                            ['payout_month', 'Payout Month'],
+                        ] as [$key, $label])
+                            <div class="col-md-2">
+                                <label class="form-label">{{ $label }}</label>
+                                <input class="form-control form-control-sm" name="branch_mis[{{ $key }}]" value="{{ $mis[$key] ?? '' }}" {{ $ro }}>
+                            </div>
+                        @endforeach
+                        <div class="col-md-12">
+                            <label class="form-label">SM Remark</label>
+                            <input class="form-control form-control-sm" name="branch_mis[sm_remark]" value="{{ $mis['sm_remark'] ?? '' }}" {{ $ro }}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if($canEdit)
+            <div class="cw-footer">
+                <div class="hint mb-0">Changes on Customer, BM Reco, Loans, Collateral, Documents and Branch MIS save together.</div>
+                <button type="submit" class="btn-save"><i class="bi bi-check2-circle"></i> Save workspace</button>
+            </div>
+        @endif
+    </form>
+
+    {{-- ========== BANK / DISB (separate form for transitions) ========== --}}
+    <div class="cw-pane {{ $activeTab === 'bank' ? 'active' : '' }}" data-pane="bank">
+        <div class="sec-card border border-primary-subtle">
+            <div class="sec-head">
+                <div class="sec-head-left">
+                    <span class="sec-ico ico-blue"><i class="bi bi-signpost-2"></i></span>
+                    <div>
+                        <h6>Case status machine</h6>
+                        <div class="sec-sub">Only legal next statuses appear. Required fields depend on the target status.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="sec-body">
+                @if($canEdit)
+                    <form method="POST" action="{{ route('goal.cases.transition', $case) }}" id="cwTransitionForm">
+                        @csrf
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label">Current status</label>
+                                <input class="form-control fw-semibold" value="{{ $case->status }}" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Move to <span class="text-danger">*</span></label>
+                                <select name="to_status" id="cwToStatus" class="form-select" required @disabled(empty($next))>
+                                    @forelse($next as $s)
+                                        <option value="{{ $s }}">{{ $s }}</option>
+                                    @empty
+                                        <option value="" disabled selected>— terminal —</option>
+                                    @endforelse
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="cwRejectWrap">
+                                <label class="form-label">Rejection / transition note</label>
+                                <input class="form-control" name="rejection_reason" id="cwRejectReason" placeholder="Required for Rejected">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn-apply w-100" @disabled(empty($next))><i class="bi bi-arrow-right-circle"></i> Apply</button>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-1" id="cwLenderFields">
+                            <div class="col-md-4">
+                                <label class="form-label">Lender <span class="text-danger cw-req-lender d-none">*</span></label>
+                                <input class="form-control" name="lender_name" id="cwLender" value="{{ $case->lender_name }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Application / LAN ref</label>
+                                <input class="form-control" name="application_ref" value="{{ $case->application_ref }}">
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-1 d-none" id="cwQueryFields">
+                            <div class="col-md-8">
+                                <label class="form-label">Bank query <span class="text-danger">*</span></label>
+                                <input class="form-control" name="bank_query" id="cwQueryText" value="{{ $case->bank_query }}" placeholder="Query details">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Query due <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" name="bank_query_due" id="cwQueryDue" value="{{ optional($case->bank_query_due)->format('Y-m-d') }}">
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-1 d-none" id="cwSancFields">
+                            <div class="col-md-4">
+                                <label class="form-label">Sanction amount <span class="text-danger">*</span></label>
+                                <input type="text" inputmode="decimal" data-decimals="2" class="form-control js-decimal" name="sanction_amount" id="cwSancAmt" value="{{ $case->sanction_amount }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Sanction date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" name="sanction_date" id="cwSancDate" value="{{ optional($case->sanction_date)->format('Y-m-d') }}">
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-1 d-none" id="cwDisbFields">
+                            <div class="col-12"><div class="fw-semibold small text-primary"><i class="bi bi-coin"></i> PD-01 — Disbursement (opens PMS + Accounts)</div></div>
+                            <div class="col-md-3">
+                                <label class="form-label">Disb amount <span class="text-danger">*</span></label>
+                                <input type="text" inputmode="decimal" data-decimals="2" class="form-control js-decimal" name="amount" id="cwDisbAmt" @disabled(!$canDisburse)>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Disb date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" name="disbursed_on" id="cwDisbDate" @disabled(!$canDisburse)>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Bank reference <span class="text-danger">*</span></label>
+                                <input class="form-control" name="bank_reference" id="cwDisbRef" @disabled(!$canDisburse)>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Evidence note</label>
+                                <input class="form-control" name="evidence_note" @disabled(!$canDisburse)>
+                            </div>
+                            @unless($canDisburse)
+                                <div class="col-12 hint err">You need record_disbursement_guard to mark Disbursed.</div>
+                            @endunless
+                        </div>
+                        @error('to_status')<div class="alert alert-danger py-2 mt-3 mb-0 small">{{ $message }}</div>@enderror
+                    </form>
+                @else
+                    <div class="hint">You do not have permission to change case status.</div>
+                @endif
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="sec-card h-100">
+                    <div class="sec-head"><div class="sec-head-left"><span class="sec-ico ico-green"><i class="bi bi-award"></i></span><h6>Sanction</h6></div></div>
+                    <div class="sec-body">
+                        <div class="mb-2"><label class="form-label">Amount</label><input class="form-control" value="{{ $case->sanction_amount ?: '—' }}" readonly></div>
+                        <div class="mb-2"><label class="form-label">Date</label><input class="form-control" value="{{ optional($case->sanction_date)->format('d M Y') ?: '—' }}" readonly></div>
+                        <div class="mb-0"><label class="form-label">Rejection reason</label><input class="form-control" value="{{ $case->rejection_reason ?: '—' }}" readonly></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="sec-card h-100">
+                    <div class="sec-head"><div class="sec-head-left"><span class="sec-ico ico-teal"><i class="bi bi-cash-stack"></i></span><h6>Disbursements</h6></div></div>
+                    <div class="sec-body">
+                        <ul class="mb-2 small ps-3">
+                            @forelse($case->disbursements as $d)
+                                <li>#{{ $d->id }} · ₹{{ number_format($d->amount, 2) }} · {{ optional($d->disbursed_on)->format('d M Y') }} · {{ $d->bank_reference }} {{ $d->verified_at ? '· verified' : '' }}</li>
+                            @empty
+                                <li class="text-muted">No disbursements yet.</li>
+                            @endforelse
+                        </ul>
+                        <div class="small text-muted mb-1">Post-disbursement queues</div>
+                        <ul class="mb-0 small ps-3">
+                            @forelse($case->pmsItems as $p)
+                                <li>PMS #{{ $p->id }} — {{ $p->status }}</li>
+                            @empty
+                                @unless($case->accountsItems->isNotEmpty())
+                                    <li class="text-muted">No PD-01 queues yet.</li>
+                                @endunless
+                            @endforelse
+                            @foreach($case->accountsItems as $a)
+                                <li>Accounts #{{ $a->id }} — {{ $a->status }} {{ $a->report_number }}</li>
+                            @endforeach
+                            @foreach($case->payouts as $p)
+                                <li>Payout #{{ $p->id }} — {{ $p->status }} (expected {{ number_format($p->expected_amount, 2) }})</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ========== TASKS ========== --}}
+    <div class="cw-pane {{ $activeTab === 'tasks' ? 'active' : '' }}" data-pane="tasks">
+        <div class="row g-3">
+            <div class="col-lg-7">
+                <div class="sec-card">
+                    <div class="sec-head">
+                        <div class="sec-head-left">
+                            <span class="sec-ico ico-teal"><i class="bi bi-calendar-check"></i></span>
+                            <h6>Tasks / visits</h6>
+                        </div>
+                    </div>
+                    <div class="sec-body">
+                        @forelse($case->tasks as $t)
+                            <div class="task-item">
+                                <div>
+                                    <div class="fw-semibold">{{ $t->title }}</div>
+                                    <div class="hint mb-0">{{ ucfirst($t->task_type) }} · {{ $t->status }}@if($t->due_at) · due {{ $t->due_at }}@endif</div>
+                                    @if($t->notes)<div class="small text-muted mt-1">{{ $t->notes }}</div>@endif
+                                </div>
+                                <span class="doc-badge">{{ $t->status }}</span>
+                            </div>
+                        @empty
+                            <div class="text-muted">No tasks yet.</div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                @if($canEdit)
+                    <div class="sec-card">
+                        <div class="sec-head">
+                            <div class="sec-head-left">
+                                <span class="sec-ico"><i class="bi bi-plus-circle"></i></span>
+                                <h6>Add visit / task</h6>
+                            </div>
+                        </div>
+                        <div class="sec-body">
+                            <form method="POST" action="{{ route('goal.cases.tasks', $case) }}">
+                                @csrf
+                                <div class="mb-2">
+                                    <label class="form-label">Title <span class="text-danger">*</span></label>
+                                    <input name="title" class="form-control" placeholder="Title" required>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Type</label>
+                                    <select name="task_type" class="form-select">
+                                        <option value="visit">Visit</option>
+                                        <option value="followup">Follow-up</option>
+                                        <option value="document">Document</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Due</label>
+                                    <input type="text" name="due_at" class="form-control js-datetimepicker" data-min-date="today" placeholder="dd-mm-yyyy --:--" autocomplete="off">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Notes</label>
+                                    <textarea name="notes" class="form-control" rows="2"></textarea>
+                                </div>
+                                <button class="btn-apply" type="submit"><i class="bi bi-plus-lg"></i> Add task</button>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+(function () {
+    var page = document.getElementById('cwPage');
+    if (!page) return;
+    var tabInput = document.getElementById('cw_tab');
+
+    function activateTab(key) {
+        page.querySelectorAll('.cw-tab').forEach(function (btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-cw-tab') === key);
+        });
+        page.querySelectorAll('.cw-pane').forEach(function (pane) {
+            pane.classList.toggle('active', pane.getAttribute('data-pane') === key);
+        });
+        if (tabInput) tabInput.value = key;
+        page.setAttribute('data-active-tab', key);
+        try { history.replaceState(null, '', '?tab=' + encodeURIComponent(key)); } catch (e) {}
+    }
+
+    page.querySelectorAll('.cw-tab').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            activateTab(btn.getAttribute('data-cw-tab'));
+        });
+    });
+
+    // Sync hidden identity fields from applicant inputs before workspace save
+    var wsForm = document.getElementById('cwWorkspaceForm');
+    if (wsForm) {
+        wsForm.addEventListener('submit', function () {
+            var nameEl = wsForm.querySelector('[name="customer_details[applicant][name]"]');
+            var mobEl = wsForm.querySelector('[name="customer_details[applicant][mobile]"]');
+            var hiddenName = document.getElementById('cw_customer_name');
+            var hiddenMob = document.getElementById('cw_mobile');
+            if (nameEl && hiddenName && nameEl.value) hiddenName.value = nameEl.value;
+            if (mobEl && hiddenMob && mobEl.value) hiddenMob.value = mobEl.value;
+        });
+    }
+
+    page.querySelectorAll('.js-mobile').forEach(function (el) {
+        el.addEventListener('input', function () {
+            el.value = String(el.value || '').replace(/\D+/g, '').slice(0, 10);
+        });
+    });
+
+    page.querySelectorAll('.js-doc-status').forEach(function (sel) {
+        var sync = function () {
+            var id = sel.getAttribute('data-reason-target');
+            var reason = id ? document.getElementById(id) : null;
+            if (!reason) return;
+            if (sel.value === 'Rejected') {
+                reason.setAttribute('required', 'required');
+            } else {
+                reason.removeAttribute('required');
+            }
+        };
+        sel.addEventListener('change', sync);
+        sync();
+    });
+
+    // Transition conditional fields
+    var toSel = document.getElementById('cwToStatus');
+    function syncTransitionFields() {
+        var to = toSel ? toSel.value : '';
+        var q = document.getElementById('cwQueryFields');
+        var s = document.getElementById('cwSancFields');
+        var d = document.getElementById('cwDisbFields');
+        var lenderReq = document.querySelectorAll('.cw-req-lender');
+        if (q) q.classList.toggle('d-none', to !== 'Bank Query');
+        if (s) s.classList.toggle('d-none', to !== 'Sanctioned');
+        if (d) d.classList.toggle('d-none', to !== 'Disbursed');
+        lenderReq.forEach(function (el) {
+            el.classList.toggle('d-none', to !== 'Bank Login');
+        });
+        var lender = document.getElementById('cwLender');
+        if (lender) {
+            if (to === 'Bank Login') lender.setAttribute('required', 'required');
+            else lender.removeAttribute('required');
+        }
+        var qt = document.getElementById('cwQueryText');
+        var qd = document.getElementById('cwQueryDue');
+        if (qt && qd) {
+            if (to === 'Bank Query') { qt.setAttribute('required', 'required'); qd.setAttribute('required', 'required'); }
+            else { qt.removeAttribute('required'); qd.removeAttribute('required'); }
+        }
+        var sa = document.getElementById('cwSancAmt');
+        var sd = document.getElementById('cwSancDate');
+        if (sa && sd) {
+            if (to === 'Sanctioned') { sa.setAttribute('required', 'required'); sd.setAttribute('required', 'required'); }
+            else { sa.removeAttribute('required'); sd.removeAttribute('required'); }
+        }
+        var da = document.getElementById('cwDisbAmt');
+        var dd = document.getElementById('cwDisbDate');
+        var dr = document.getElementById('cwDisbRef');
+        if (da && dd && dr) {
+            if (to === 'Disbursed') {
+                da.setAttribute('required', 'required');
+                dd.setAttribute('required', 'required');
+                dr.setAttribute('required', 'required');
+            } else {
+                da.removeAttribute('required');
+                dd.removeAttribute('required');
+                dr.removeAttribute('required');
+            }
+        }
+        var rr = document.getElementById('cwRejectReason');
+        if (rr) {
+            if (to === 'Rejected') rr.setAttribute('required', 'required');
+            else rr.removeAttribute('required');
+        }
+    }
+    if (toSel) {
+        toSel.addEventListener('change', syncTransitionFields);
+        syncTransitionFields();
+    }
+
+    if (window.IsarvaDatepicker) {
+        window.IsarvaDatepicker.init(page);
+    }
+
+    activateTab(page.getAttribute('data-active-tab') || 'customer');
+})();
+</script>
+@endpush

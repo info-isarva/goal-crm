@@ -20,10 +20,6 @@
                         </div>
                     </div>
                     <div class="card-body p-4">
-                        @if(session('success'))
-                            <div class="alert alert-success">{{ session('success') }}</div>
-                        @endif
-
                         @php $canEdit = $canEdit ?? false; @endphp
                         @unless($canEdit)
                             <div class="alert alert-info d-flex align-items-center" role="alert">

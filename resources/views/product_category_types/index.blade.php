@@ -19,10 +19,6 @@
             </div>
         </div>
         <div class="card-body">
-            @if(session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
-
             <form method="GET" class="mb-3 row g-2 align-items-end">
                 <div class="col-md-5">
                     <label class="form-label mb-1">Search</label>

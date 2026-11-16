@@ -30,6 +30,12 @@ class LeadController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+
+        // Goal Loan CRM uses /goal/leads — classic /leads is not used for these users
+        if (\App\Services\Goal\GoalDashboardService::userUsesGoalDashboard($user)) {
+            return redirect()->route('goal.leads.index');
+        }
+
         $view = request('view');
         $query = Lead::with(['customer', 'organization', 'person', 'owner', 'leadSource']);
 

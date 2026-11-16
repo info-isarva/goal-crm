@@ -6,9 +6,12 @@ use App\Models\User;
 use App\Models\Permission;
 use App\Models\Company;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
 use App\Mail\UserWelcomeMail;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
+use App\Support\SafeUpload;
 
 class UserController extends Controller
 {
@@ -48,6 +51,46 @@ class UserController extends Controller
         return $permissions->filter(function ($permission) use ($allowed) {
             return in_array($permission->guard_name, $allowed, true);
         })->values();
+    }
+
+    /**
+     * Users available in Reports To / Assign Manager dropdowns.
+     * Active users only; excludes Super Admin and optional self (edit).
+     */
+    protected function reportingUsersQuery(?int $excludeUserId = null)
+    {
+        return User::query()
+            ->where('status', 1)
+            ->where(function ($q) {
+                $q->whereNull('crm_role_type')
+                    ->orWhere('crm_role_type', '!=', 0);
+            })
+            ->when($excludeUserId, fn ($q) => $q->where('id', '!=', $excludeUserId))
+            ->orderBy('name');
+    }
+
+    /**
+     * Role → default permission guards for the Add/Edit User UI.
+     * MD (4) and CEO (5) always receive every assignable module permission.
+     */
+    protected function buildRolePermissionsMap($crmRoles, $permissions): array
+    {
+        $allowedGuards = $permissions->pluck('guard_name')->map(fn ($g) => (string) $g)->values()->all();
+        $fullAccessRoleIds = [4, 5]; // MD, CEO
+        $map = [];
+
+        foreach ($crmRoles as $role) {
+            $roleId = (int) $role->id;
+            if (in_array($roleId, $fullAccessRoleIds, true)) {
+                $map[$roleId] = $allowedGuards;
+                continue;
+            }
+
+            $rolePerms = $role->permissions()->pluck('guard_name')->map(fn ($g) => (string) $g)->all();
+            $map[$roleId] = array_values(array_intersect($rolePerms, $allowedGuards));
+        }
+
+        return $map;
     }
 
     protected function filterAssignableGuards(array $guards): array
@@ -159,35 +202,294 @@ class UserController extends Controller
         return redirect()->route('users.index')->with('success', '2FA status updated for user.');
     }
 
-    public function index()
+    /**
+     * Activate / deactivate a user account.
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        if (!auth()->user()->hasCrmPermission('edit_crm_user_guard')) {
+            abort(403, 'Unauthorized action.');
+        }
+        $user = User::findOrFail($id);
+        $this->ensureCanManageUser($user);
+        if ((int) $user->crm_role_type === 0) {
+            return redirect()->route('users.index')->with('error', 'Super Admin status cannot be changed here.');
+        }
+        if ((int) $user->id === (int) auth()->id()) {
+            return redirect()->route('users.index')->with('error', 'You cannot deactivate your own account.');
+        }
+
+        $status = (int) $request->input('status', $user->status ? 0 : 1) === 1 ? 1 : 0;
+        $user->status = $status;
+        $user->updated_by = auth()->id();
+        $user->save();
+
+        return redirect()->route('users.index')->with(
+            'success',
+            $status === 1 ? 'User activated successfully.' : 'User deactivated successfully.'
+        );
+    }
+
+    /**
+     * Send password reset link to the user (existing Laravel password broker).
+     */
+    public function sendPasswordReset(Request $request, $id)
+    {
+        if (!auth()->user()->hasCrmPermission('edit_crm_user_guard')) {
+            abort(403, 'Unauthorized action.');
+        }
+        $user = User::findOrFail($id);
+        $this->ensureCanManageUser($user);
+
+        $status = Password::sendResetLink(['email' => $user->email]);
+
+        if ($status === Password::RESET_LINK_SENT) {
+            return redirect()->route('users.index')->with('success', 'Password reset link sent to '.$user->email);
+        }
+
+        return redirect()->route('users.index')->with('error', __($status));
+    }
+
+    /**
+     * Export filtered users as CSV (Excel-friendly) or PDF.
+     */
+    public function export(Request $request)
+    {
+        if (!auth()->user()->hasCrmPermission('manage_crm_user_guard')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $format = strtolower((string) $request->get('format', 'csv'));
+        [$query] = $this->applyUserListFilters($this->manageableUsersQuery(), $request);
+        $rows = $query->get();
+        $roles = \App\Models\Role::pluck('name', 'id');
+
+        $lines = [['#', 'Name', 'Email', 'Mobile', 'CRM Role', 'Status', '2FA', 'Sales Target']];
+        foreach ($rows as $i => $u) {
+            $role = ((int) $u->crm_role_type === 0)
+                ? 'Super Admin'
+                : ($roles[$u->crm_role_type] ?? 'Unknown');
+            $lines[] = [
+                $i + 1,
+                $u->name,
+                $u->email,
+                $u->mobile ?? '',
+                $role,
+                (int) $u->status === 1 ? 'Active' : 'Inactive',
+                $u->{"2fa_enabled"} ? 'Enabled' : 'Disabled',
+                number_format((float) ($u->sales_target ?? 0), 2, '.', ''),
+            ];
+        }
+
+        if ($format === 'pdf') {
+            $html = '<h2 style="font-family:DejaVu Sans,sans-serif;">Users Export</h2>';
+            $html .= '<table border="1" cellpadding="6" cellspacing="0" width="100%" style="border-collapse:collapse;font-family:DejaVu Sans,sans-serif;font-size:11px;">';
+            foreach ($lines as $ri => $line) {
+                $html .= '<tr>';
+                foreach ($line as $cell) {
+                    $tag = $ri === 0 ? 'th' : 'td';
+                    $html .= '<'.$tag.'>'.e((string) $cell).'</'.$tag.'>';
+                }
+                $html .= '</tr>';
+            }
+            $html .= '</table>';
+
+            $mpdf = new \Mpdf\Mpdf(['mode' => 'utf-8', 'format' => 'A4-L']);
+            $mpdf->WriteHTML($html);
+
+            return response($mpdf->Output('users-export.pdf', 'S'), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="users-export.pdf"',
+            ]);
+        }
+
+        $csv = collect($lines)->map(function ($r) {
+            return collect($r)->map(function ($c) {
+                return '"'.str_replace('"', '""', (string) $c).'"';
+            })->implode(',');
+        })->implode("\n");
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="users-export.csv"',
+        ]);
+    }
+
+    /**
+     * Base query for users the current actor may manage/list.
+     */
+    protected function manageableUsersQuery(?User $currentUser = null)
+    {
+        $currentUser = $currentUser ?: auth()->user();
+        $isSuperAdmin = $this->isSuperAdmin($currentUser);
+        $query = User::query();
+
+        if ($isSuperAdmin) {
+            return $query;
+        }
+        if ((int) $currentUser->crm_role_type === 1) {
+            return $query->where('crm_role_type', '!=', 0);
+        }
+        if ((int) $currentUser->crm_role_type === 2) {
+            return $query->where('assign_manager', $currentUser->id);
+        }
+
+        return $query->where('status', 1);
+    }
+
+    protected function applyUserListFilters($query, Request $request)
+    {
+        $search = trim((string) $request->get('q', ''));
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('crm_role_type') && $request->crm_role_type !== '') {
+            $query->where('crm_role_type', (int) $request->crm_role_type);
+        }
+
+        if ($request->filled('status') && $request->status !== '') {
+            $query->where('status', (int) $request->status);
+        }
+
+        if ($request->filled('two_fa') && $request->two_fa !== '') {
+            $query->where('2fa_enabled', (int) $request->two_fa === 1 ? 1 : 0);
+        }
+
+        $sort = in_array($request->get('sort'), ['name', 'email', 'crm_role_type', 'status', 'sales_target', 'created_at'], true)
+            ? $request->get('sort')
+            : 'name';
+        $dir = strtolower((string) $request->get('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $query->orderBy($sort, $dir);
+
+        return [$query, $sort, $dir];
+    }
+
+    public function index(Request $request)
     {
         if (!auth()->user()->hasCrmPermission('manage_crm_user_guard')) {
             abort(403, 'Unauthorized action.');
         }
         $currentUser = auth()->user();
         $isSuperAdmin = $this->isSuperAdmin($currentUser);
-        if ($isSuperAdmin) {
-            $users = User::orderBy('name')->paginate(10);
-        } elseif ((int) $currentUser->crm_role_type === 1) {
-            $users = User::whereIn('crm_role_type', [1, 2, 3])
-                ->where('status', 1)
-                ->orderBy('name')
-                ->paginate(10);
-        } elseif ((int) $currentUser->crm_role_type === 2) {
-            $users = User::where('assign_manager', $currentUser->id)
-                ->where('status', 1)
-                ->orderBy('name')
-                ->paginate(10);
-        } else {
-            $users = User::where('status', 1)->orderBy('name')->paginate(10);
+
+        $perPage = (int) $request->get('per_page', 10);
+        if (!in_array($perPage, [10, 25, 50, 100], true)) {
+            $perPage = 10;
         }
+
+        $baseQuery = $this->manageableUsersQuery($currentUser)->with(['orgUnit']);
+        [$listQuery, $sort, $dir] = $this->applyUserListFilters(clone $baseQuery, $request);
+        $users = $listQuery->paginate($perPage)->withQueryString();
+
+        // KPI cards from manageable set (unfiltered by search/role/status/2fa)
+        $kpiBase = $this->manageableUsersQuery($currentUser);
+        $listStats = [
+            'total' => (clone $kpiBase)->count(),
+            'active' => (clone $kpiBase)->where('status', 1)->count(),
+            'inactive' => (clone $kpiBase)->where('status', 0)->count(),
+            'two_fa' => (clone $kpiBase)->where('2fa_enabled', 1)->count(),
+        ];
+
         $roles = \App\Models\Role::pluck('name', 'id');
         $allPermissions = \App\Models\Permission::orderBy('name')->pluck('name')->toArray();
         $company = Company::current();
         $userCount = User::countNonSuperAdmins();
         $maxUsers = $company->maxUsersLimit();
 
-        return view('users.index', compact('users', 'roles', 'allPermissions', 'userCount', 'maxUsers'));
+        $filters = [
+            'q' => $request->get('q', ''),
+            'crm_role_type' => $request->get('crm_role_type', ''),
+            'status' => $request->get('status', ''),
+            'two_fa' => $request->get('two_fa', ''),
+            'per_page' => $perPage,
+            'sort' => $sort,
+            'dir' => $dir,
+        ];
+
+        // Hierarchy view: Goal Loan roles only (MD→CEO→RD→CH→BM→VRM/Sales + PMS/Accounts).
+        $goalHierarchyRoles = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+        $hierarchyQuery = User::query()
+            ->with(['orgUnit'])
+            ->withCount('directReports')
+            ->whereIn('crm_role_type', $goalHierarchyRoles)
+            ->where('status', 1)
+            ->orderBy('name');
+        if (!$isSuperAdmin && (int) $currentUser->crm_role_type === 2) {
+            $hierarchyQuery->where('assign_manager', $currentUser->id);
+        }
+        $hierarchyUsers = $hierarchyQuery->get();
+        $hierarchyRoles = \App\Models\Role::query()
+            ->whereIn('id', $goalHierarchyRoles)
+            ->orderBy('id')
+            ->pluck('name', 'id');
+
+        $orgUnits = \App\Models\GoalOrgUnit::query()
+            ->active()
+            ->with([
+                'children' => fn ($q) => $q->active()->orderBy('name'),
+                'children.children' => fn ($q) => $q->active()->orderBy('name'),
+                'children.children.children' => fn ($q) => $q->active()->orderBy('name'),
+            ])
+            ->whereNull('parent_id')
+            ->orderBy('name')
+            ->get();
+
+        $usersByOrgUnit = $hierarchyUsers->groupBy('goal_org_unit_id');
+        $topLevelUsers = $hierarchyUsers->filter(fn ($u) => empty($u->reports_to_user_id))->values();
+        $managersCount = $hierarchyUsers->filter(fn ($u) => (int) $u->direct_reports_count > 0)->count();
+        $maxDepth = $this->hierarchyMaxDepth($hierarchyUsers);
+        $hierarchyStats = [
+            'total' => $hierarchyUsers->count(),
+            'top_level' => $topLevelUsers->count(),
+            'managers' => $managersCount,
+            'levels' => max(1, $maxDepth),
+        ];
+
+        return view('users.index', compact(
+            'users',
+            'roles',
+            'allPermissions',
+            'userCount',
+            'maxUsers',
+            'listStats',
+            'filters',
+            'hierarchyUsers',
+            'hierarchyRoles',
+            'orgUnits',
+            'usersByOrgUnit',
+            'topLevelUsers',
+            'hierarchyStats',
+            'company'
+        ));
+    }
+
+    /** Depth of reporting tree (1 = only roots / no reports). */
+    protected function hierarchyMaxDepth($users): int
+    {
+        if ($users->isEmpty()) {
+            return 1;
+        }
+        $byManager = $users->groupBy(fn ($u) => (int) ($u->reports_to_user_id ?? 0));
+        $walk = function ($parentId, $depth) use (&$walk, $byManager) {
+            $children = $byManager->get($parentId, collect());
+            if ($children->isEmpty()) {
+                return $depth;
+            }
+            $max = $depth;
+            foreach ($children as $child) {
+                $max = max($max, $walk((int) $child->id, $depth + 1));
+            }
+
+            return $max;
+        };
+
+        // Virtual root at depth 0 so MD→CEO counts as 2 levels.
+        return max(1, $walk(0, 0));
     }
 
     public function create()
@@ -201,21 +503,18 @@ class UserController extends Controller
 
         $crmRoles = \App\Models\Role::orderBy('name')->get();
         $permissions = $this->assignablePermissions();
-        $rolePermissionsMap = [];
-        $allowedGuards = $permissions->pluck('guard_name')->all();
-        foreach ($crmRoles as $role) {
-            $rolePerms = $role->permissions()->pluck('guard_name')->toArray();
-            $rolePermissionsMap[$role->id] = array_values(array_intersect($rolePerms, $allowedGuards));
-        }
+        $rolePermissionsMap = $this->buildRolePermissionsMap($crmRoles, $permissions);
         $selectedRoleId = old('crm_role_type', $crmRoles[0]->id ?? null);
         $defaultPermissions = isset($rolePermissionsMap[$selectedRoleId]) ? $rolePermissionsMap[$selectedRoleId] : [];
         $groupedPermissions = $permissions->groupBy(function ($item) {
             return $item->parentPermission ? $item->parentPermission->name : 'No Parent';
         });
-        $managers = User::where('crm_role_type', '2')->get();
+        $managers = $this->reportingUsersQuery()->get();
         $company = Company::current();
         $userCount = User::countNonSuperAdmins();
         $maxUsers = $company->maxUsersLimit();
+        $goalOrgUnits = \App\Models\GoalOrgUnit::query()->active()->orderBy('type')->orderBy('name')->get();
+        $jobRoles = ['md','ceo','rd','cluster','bm','vrm','jsm','sm','ssm','pms','accounts'];
 
         return view('users.create', compact(
             'crmRoles',
@@ -225,7 +524,9 @@ class UserController extends Controller
             'groupedPermissions',
             'managers',
             'userCount',
-            'maxUsers'
+            'maxUsers',
+            'goalOrgUnits',
+            'jobRoles'
         ));
     }
 
@@ -253,6 +554,7 @@ class UserController extends Controller
                 'unique:users,email',
                 'regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/',
             ],
+            'mobile' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]{7,20}$/'],
             'password' => 'required|string|min:8|confirmed',
             'password_confirmation' => 'required_with:password|same:password',
             'crm_role_type' => $this->roleTypeRules(),
@@ -263,10 +565,18 @@ class UserController extends Controller
             ],
             'crm_page_right' => 'array',
             'status' => 'integer|in:0,1',
+            'goal_org_unit_id' => 'nullable|exists:goal_org_units,id',
+            'reports_to_user_id' => 'nullable|exists:users,id',
+            'job_role' => 'nullable|string|max:30',
+            'avatar' => ['nullable', 'image', 'max:2048', 'mimes:jpg,jpeg,png,gif'],
         ], [
             'name.regex' => 'Name must start with a letter and may only contain letters, spaces, dots, apostrophes, and hyphens.',
             'email.regex' => 'Please enter a valid email address.',
+            'mobile.regex' => 'Please enter a valid mobile / phone number.',
             'assign_manager' => 'Assign Manager is required when the role is Employee.',
+            'avatar.image' => 'The avatar must be an image file.',
+            'avatar.max' => 'The avatar size may not exceed 2MB.',
+            'avatar.mimes' => 'The avatar must be a file of type: jpg, jpeg, png, gif.',
         ]);
 
         $plainPassword = $validated['password'];
@@ -275,14 +585,27 @@ class UserController extends Controller
         $user = new User();
         $user->name = $validated['name'];
         $user->email = $validated['email'];
+        $user->mobile = $validated['mobile'] ?? null;
         $user->password = $plainPassword;
         $user->crm_role_type = $validated['crm_role_type'];
         $user->sales_target = $validated['sales_target'] ?? 0;
         $user->crm_page_right = json_encode($pageRights);
         $user->assign_manager = $validated['assign_manager'] ?? null;
+        $user->goal_org_unit_id = $validated['goal_org_unit_id'] ?? null;
+        $user->reports_to_user_id = $validated['reports_to_user_id'] ?? ($validated['assign_manager'] ?? null);
+        $user->job_role = $validated['job_role'] ?? $this->jobRoleFromCrmRole((int) $validated['crm_role_type']);
         $user->status = $validated['status'] ?? 1;
         $user->created_by = auth()->id();
         $user->save();
+
+        if ($request->hasFile('avatar')) {
+            $avatarPath = $this->storeUserAvatar($request->file('avatar'), $user);
+            if ($avatarPath === null) {
+                return back()->withErrors(['avatar' => 'The avatar must be a file of type: jpg, jpeg, png, gif.'])->withInput();
+            }
+            $user->avatar = $avatarPath;
+            $user->save();
+        }
 
         $verificationUrl = URL::temporarySignedRoute(
             'verification.verify',
@@ -290,9 +613,25 @@ class UserController extends Controller
             ['id' => $user->id, 'hash' => sha1($user->email)]
         );
 
-        Mail::to($user->email)->send(new UserWelcomeMail($user, $plainPassword, $verificationUrl));
+        $mailSent = true;
+        $mailError = null;
+        try {
+            Mail::to($user->email)->send(new UserWelcomeMail($user, $plainPassword, $verificationUrl));
+        } catch (\Throwable $e) {
+            $mailSent = false;
+            $mailError = $e->getMessage();
+            report($e);
+        }
 
-        return redirect()->route('users.index')->with('success', 'User created successfully! Verification email sent.');
+        if ($mailSent) {
+            return redirect()->route('users.index')
+                ->with('success', 'User created successfully! Verification email sent.');
+        }
+
+        return redirect()->route('users.index')->with(
+            'success',
+            'User created successfully, but the welcome email could not be sent. Please check mail settings.'
+        )->with('warning', $mailError ? 'Mail error: SMTP authentication failed.' : null);
     }
 
     public function edit($id)
@@ -308,18 +647,15 @@ class UserController extends Controller
 
         $crmRoles = \App\Models\Role::orderBy('name')->get();
         $permissions = $this->assignablePermissions();
-        $rolePermissionsMap = [];
-        $allowedGuards = $permissions->pluck('guard_name')->all();
-        foreach ($crmRoles as $role) {
-            $rolePerms = $role->permissions()->pluck('guard_name')->toArray();
-            $rolePermissionsMap[$role->id] = array_values(array_intersect($rolePerms, $allowedGuards));
-        }
+        $rolePermissionsMap = $this->buildRolePermissionsMap($crmRoles, $permissions);
         $selectedRoleId = old('crm_role_type', $user->crm_role_type);
         $defaultPermissions = isset($rolePermissionsMap[$selectedRoleId]) ? $rolePermissionsMap[$selectedRoleId] : [];
         $groupedPermissions = $permissions->groupBy(function ($item) {
             return $item->parentPermission ? $item->parentPermission->name : 'No Parent';
         });
-        $managers = User::where('crm_role_type', 2)->get();
+        $managers = $this->reportingUsersQuery($user->id)->get();
+        $goalOrgUnits = \App\Models\GoalOrgUnit::query()->active()->orderBy('type')->orderBy('name')->get();
+        $jobRoles = ['md','ceo','rd','cluster','bm','vrm','jsm','sm','ssm','pms','accounts'];
 
         return view('users.edit', compact(
             'user',
@@ -328,7 +664,9 @@ class UserController extends Controller
             'rolePermissionsMap',
             'defaultPermissions',
             'groupedPermissions',
-            'managers'
+            'managers',
+            'goalOrgUnits',
+            'jobRoles'
         ));
     }
 
@@ -358,6 +696,7 @@ class UserController extends Controller
                 'unique:users,email,' . $user->id,
                 'regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/',
             ],
+            'mobile' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]{7,20}$/'],
             'password' => 'nullable|string|min:8|confirmed',
             'crm_role_type' => $this->roleTypeRules($user),
             'crm_page_right' => 'array',
@@ -367,10 +706,18 @@ class UserController extends Controller
                 'exists:users,id',
             ],
             'status' => 'integer|in:0,1',
+            'goal_org_unit_id' => 'nullable|exists:goal_org_units,id',
+            'reports_to_user_id' => 'nullable|exists:users,id',
+            'job_role' => 'nullable|string|max:30',
+            'avatar' => ['nullable', 'image', 'max:2048', 'mimes:jpg,jpeg,png,gif'],
         ], [
             'name.regex' => 'Name must start with a letter and may only contain letters, spaces, dots, apostrophes, and hyphens.',
             'email.regex' => 'Please enter a valid email address.',
+            'mobile.regex' => 'Please enter a valid mobile / phone number.',
             'assign_manager' => 'Assign Manager is required when the role is Employee.',
+            'avatar.image' => 'The avatar must be an image file.',
+            'avatar.max' => 'The avatar size may not exceed 2MB.',
+            'avatar.mimes' => 'The avatar must be a file of type: jpg, jpeg, png, gif.',
         ]);
 
         $pageRights = $this->filterAssignableGuards($validated['crm_page_right'] ?? []);
@@ -392,6 +739,7 @@ class UserController extends Controller
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
+        $user->mobile = $validated['mobile'] ?? null;
         if (!empty($validated['password'])) {
             $user->password = $validated['password'];
         }
@@ -403,8 +751,20 @@ class UserController extends Controller
         } else {
             $user->assign_manager = null;
         }
+        $user->goal_org_unit_id = $validated['goal_org_unit_id'] ?? null;
+        $user->reports_to_user_id = $validated['reports_to_user_id'] ?? ($validated['assign_manager'] ?? $user->reports_to_user_id);
+        $user->job_role = $validated['job_role'] ?? $this->jobRoleFromCrmRole((int) $validated['crm_role_type']);
         $user->status = $validated['status'] ?? $user->status;
         $user->updated_by = auth()->id();
+
+        if ($request->hasFile('avatar')) {
+            $avatarPath = $this->storeUserAvatar($request->file('avatar'), $user, true);
+            if ($avatarPath === null) {
+                return back()->withErrors(['avatar' => 'The avatar must be a file of type: jpg, jpeg, png, gif.'])->withInput();
+            }
+            $user->avatar = $avatarPath;
+        }
+
         $user->save();
 
         return redirect()->route('users.index')->with('success', 'User updated successfully!');
@@ -426,5 +786,53 @@ class UserController extends Controller
         $user->delete();
 
         return redirect()->route('users.index')->with('success', 'User deleted successfully!');
+    }
+
+    /**
+     * Store avatar under public/assets/employee_profile_image/avatars/{user_id}.
+     * Returns relative path stored on users.avatar, or null if file type is invalid.
+     */
+    protected function storeUserAvatar($file, User $user, bool $replaceExisting = false): ?string
+    {
+        $extension = SafeUpload::imageExtension($file);
+        if ($extension === null) {
+            return null;
+        }
+
+        if ($replaceExisting && $user->avatar) {
+            $oldPath = public_path('assets/employee_profile_image/' . $user->avatar);
+            if (is_file($oldPath)) {
+                @unlink($oldPath);
+            }
+        }
+
+        $folder = 'avatars/' . $user->id;
+        $filename = Str::random(32) . '.' . $extension;
+        $relativeDir = 'assets/employee_profile_image/' . $folder;
+        $destination = public_path($relativeDir);
+        if (!is_dir($destination)) {
+            mkdir($destination, 0755, true);
+        }
+
+        $file->move($destination, $filename);
+
+        return $folder . '/' . $filename;
+    }
+
+    protected function jobRoleFromCrmRole(int $roleId): ?string
+    {
+        return [
+            4 => 'md',
+            5 => 'ceo',
+            6 => 'rd',
+            7 => 'cluster',
+            8 => 'bm',
+            9 => 'vrm',
+            10 => 'jsm',
+            11 => 'sm',
+            12 => 'ssm',
+            13 => 'pms',
+            14 => 'accounts',
+        ][$roleId] ?? null;
     }
 }

@@ -30,10 +30,10 @@
         'social_ads.*',
     ];
 @endphp
-<li class="nav-item mb-2">
+<li class="nav-item">
     <a class="nav-link {{ request()->routeIs($settingsActiveRoutes) ? 'active' : '' }}"
        href="{{ route('settings.index') }}">
-        <i class="bi bi-gear-fill me-2"></i>
+        <i class="bi bi-gear-fill"></i>
         <span class="nav-label">Settings</span>
     </a>
 </li>

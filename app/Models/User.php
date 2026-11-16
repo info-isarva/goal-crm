@@ -19,6 +19,50 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(UserDetail::class, 'user_id');
     }
 
+    public function orgUnit()
+    {
+        return $this->belongsTo(GoalOrgUnit::class, 'goal_org_unit_id');
+    }
+
+    public function manager()
+    {
+        return $this->belongsTo(self::class, 'reports_to_user_id');
+    }
+
+    public function directReports()
+    {
+        return $this->hasMany(self::class, 'reports_to_user_id');
+    }
+
+    /**
+     * Org unit IDs this user may see (own unit + descendants for managers).
+     */
+    public function goalScopedOrgUnitIds(): array
+    {
+        if ($this->isSuperAdmin() || in_array((int) ($this->crm_role_type ?? -1), [1, 4, 5], true)) {
+            return GoalOrgUnit::query()->pluck('id')->all();
+        }
+
+        if (!$this->goal_org_unit_id) {
+            return [];
+        }
+
+        $unit = $this->orgUnit;
+        if (!$unit) {
+            return [(int) $this->goal_org_unit_id];
+        }
+
+        // RD / Cluster Head / BM see subtree; branch staff see own branch.
+        if (in_array($unit->type, [GoalOrgUnit::TYPE_REGION, GoalOrgUnit::TYPE_CLUSTER], true)
+            || in_array($this->job_role, ['rd', 'cluster', 'bm'], true)
+            || in_array((int) $this->crm_role_type, [6, 7, 8], true)
+        ) {
+            return $unit->descendantIds();
+        }
+
+        return [(int) $this->goal_org_unit_id];
+    }
+
     /**
      * The attributes that are mass assignable.
      *
@@ -38,6 +82,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'sales_target',
         'crm_page_right',
         'crm_role_type',
+        'goal_org_unit_id',
+        'reports_to_user_id',
+        'job_role',
         'google_id',
         'google_token',
         'google_refresh_token',

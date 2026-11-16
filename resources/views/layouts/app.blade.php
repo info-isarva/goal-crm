@@ -34,6 +34,12 @@
     <link href="{{ asset('css/hub-page-skeleton.css') }}?v={{ @filemtime(public_path('css/hub-page-skeleton.css')) }}" rel="stylesheet">
     <!-- Select2 CSS -->
     <link href="{{ asset('css/select2.min.css') }}" rel="stylesheet" />
+    <link href="{{ asset('css/select2-theme.css') }}?v={{ @filemtime(public_path('css/select2-theme.css')) }}" rel="stylesheet" />
+    <!-- Flatpickr (global date / datetime) -->
+    <link href="{{ asset('css/flatpickr.min.css') }}" rel="stylesheet" />
+    <link href="{{ asset('css/flatpickr-theme.css') }}?v={{ @filemtime(public_path('css/flatpickr-theme.css')) }}" rel="stylesheet" />
+    <!-- Global toastr-style flash notifications -->
+    <link href="{{ asset('css/app-toastr.css') }}?v={{ @filemtime(public_path('css/app-toastr.css')) }}" rel="stylesheet" />
 
     <!-- Font Awesome for time/date icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -45,6 +51,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="{{ asset('js/swal.min.js') }}"></script>
     <script src="{{ asset('js/swal.js') }}"></script>
+    <script src="{{ asset('js/app-toastr.js') }}?v={{ @filemtime(public_path('js/app-toastr.js')) }}"></script>
     @stack('styles')
     <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
 
@@ -63,8 +70,7 @@
         <div class="min-vh-100 bg-light">
             <div class="row g-0">
                 @include('layouts.sidebar')
-                <main class="col-12 col-lg-12   custom-margin  @auth with-top-header @endauth d-flex flex-column min-vh-100"
-                    style="max-width:calc(100%-280px);">
+                <main class="col-12 col-lg-12 custom-margin @auth with-top-header @endauth d-flex flex-column min-vh-100">
 
                     @auth
 
@@ -173,71 +179,81 @@
                             }
                         @endphp
 
-                        <div class="top-slim-header px-3">
-                            <div class="d-flex align-items-center py-2 w-100" style="gap: 0;">
-                                <!-- Left side: Dashboard title and sidebar toggle -->
-                                <div class="d-flex align-items-center" style="gap: 12px;">
-                                    <button class="btn btn-sm btn-outline-secondary" id="sidebarToggle">
-                                        <i class="bi bi-arrow-bar-left"></i>
+                        @php
+                            $__selectedFyId = session('selected_financial_year', null);
+                            $__activeFy = \App\Models\FinancialYear::where('active', 1)->first();
+                            $__selectedFy = $__selectedFyId
+                                ? \App\Models\FinancialYear::find($__selectedFyId)
+                                : $__activeFy;
+                            $__buttonLabel = $__selectedFy
+                                ? \Carbon\Carbon::parse($__selectedFy->from_date)->format('M, Y') .
+                                    ' - ' .
+                                    \Carbon\Carbon::parse($__selectedFy->to_date)->format('M, Y')
+                                : 'Select Year';
+                            $__isCurrent = $__selectedFy && $__selectedFy->active;
+                            $__usesGoal = \App\Services\Goal\GoalDashboardService::userUsesGoalDashboard(Auth::user());
+                            $__headerSearchAction = $__usesGoal
+                                ? route('goal.leads.index')
+                                : route('leads.index');
+                            $__unreadCount = Auth::user() ? Auth::user()->unreadNotifications()->count() : 0;
+                            $__avatar = Auth::user()->avatar ?? null;
+                            $__hasAvatar = $__avatar && file_exists(public_path('assets/employee_profile_image/' . $__avatar));
+                        @endphp
+
+                        <div class="top-slim-header">
+                            <div class="top-header-inner">
+                                {{-- 1. Sidebar toggle --}}
+                                <div class="header-left-tools">
+                                    <button type="button"
+                                            class="header-sidebar-toggle d-none d-lg-inline-flex"
+                                            id="sidebarCollapseBtn"
+                                            title="Collapse sidebar"
+                                            aria-label="Collapse sidebar">
+                                        <i class="bi bi-chevron-double-left"></i>
                                     </button>
-                                    <h5 class="mb-0" id="pageTitle">
-                                        <span>@yield('page_title', $generatedTitle)</span>
-                                    </h5>
                                 </div>
-                                <!-- Spacer to push right section -->
-                                <div style="flex:1 1 auto;"></div>
 
+                                {{-- 2. Global search --}}
+                                <form class="header-search" method="GET" action="{{ $__headerSearchAction }}" role="search">
+                                    <i class="bi bi-search header-search-ico" aria-hidden="true"></i>
+                                    <input type="search"
+                                           name="q"
+                                           id="globalHeaderSearch"
+                                           class="header-search-input"
+                                           value="{{ request('q') }}"
+                                           placeholder="Search for leads, cases, branches..."
+                                           autocomplete="off"
+                                           aria-label="Global search">
+                                    <kbd class="header-search-kbd" title="Keyboard shortcut">Ctrl + K</kbd>
+                                </form>
 
-                                <!-- Right side: Notifications + Profile dropdown -->
-                                <div class="d-flex align-items-center" style="gap: 16px;">
-                                    <!-- Financial Year Dropdown -->
-                                    <div class="d-flex align-items-center me-3 position-relative fy-desktop-dropdown"
-                                        id="fy-selector-container">
-                                        @php
-                                            $__selectedFyId = session('selected_financial_year', null);
-                                            $__activeFy = \App\Models\FinancialYear::where('active', 1)->first();
-                                            $__selectedFy = $__selectedFyId
-                                                ? \App\Models\FinancialYear::find($__selectedFyId)
-                                                : $__activeFy;
-                                            $__buttonLabel = $__selectedFy
-                                                ? \Carbon\Carbon::parse($__selectedFy->from_date)->format('M, Y') .
-                                                    ' - ' .
-                                                    \Carbon\Carbon::parse($__selectedFy->to_date)->format('M, Y')
-                                                : 'Select Year';
-                                            $__isCurrent = $__selectedFy && $__selectedFy->active;
-                                        @endphp
-                                        <div class="d-flex align-items-center px-3 py-1 rounded-3"
-                                            style="background: rgb(239 246 255 / var(--tw-bg-opacity, 1) 1);color: #000;gap: 10px;min-width: 270px;border: 2px solid rgb(239 246 255 / var(--tw-bg-opacity, 1) 1);">
-                                            <i class="bi bi-calendar-event" style="font-size:1.3rem;"></i>
-                                            <span class="fw-semibold" style="font-size:16px;">FY:</span>
-                                            <button type="button"
-                                                class="btn btn-light d-flex align-items-center px-3 py-1 rounded-2"
-                                                id="fyDropdownBtn"
-                                                style="font-size:15px; font-weight:500; border:2px solid #e3eafc; box-shadow:none;">
-                                                {{ $__buttonLabel }}
+                                {{-- 3–6. Right cluster: FY → Calendar → Notifications → Profile --}}
+                                <div class="header-right-tools">
+                                    <div class="fy-desktop-dropdown position-relative" id="fy-selector-container">
+                                        <div class="header-fy-wrap">
+                                            <i class="bi bi-calendar2-check header-fy-ico" aria-hidden="true"></i>
+                                            <span class="header-fy-label">FY:</span>
+                                            <button type="button" class="header-fy-btn" id="fyDropdownBtn">
+                                                <span class="header-fy-btn-text">{{ $__buttonLabel }}</span>
                                                 @if ($__isCurrent)
-                                                    <span class="badge bg-success ms-2"
-                                                        style="font-size:13px;">Current</span>
+                                                    <span class="badge bg-success header-fy-badge">Current</span>
                                                 @elseif($__selectedFyId)
-                                                    <span class="badge bg-primary ms-2"
-                                                        style="font-size:13px;">Selected</span>
+                                                    <span class="badge bg-primary header-fy-badge">Selected</span>
                                                 @endif
+                                                <i class="bi bi-chevron-down"></i>
                                             </button>
                                         </div>
-                                        <!-- Dropdown -->
-                                        <div id="fyDropdown" class="position-absolute shadow-lg rounded-3"
-                                            style="top:48px; left:0; min-width:270px; background:#fff; z-index:1000; display:none;">
-                                            <div class="px-3 pt-3 pb-2 border-bottom fw-semibold text-dark"
-                                                style="font-size:15px;"><i class="bi bi-calendar-event me-2"></i> Select
-                                                Financial Year</div>
+                                        <div id="fyDropdown" class="header-fy-menu">
+                                            <div class="header-fy-menu-title">
+                                                <i class="bi bi-calendar-event me-2"></i> Select Financial Year
+                                            </div>
                                             @php
                                                 $fys = \App\Models\FinancialYear::orderBy('from_date', 'desc')->get();
                                                 $selectedFyId = session('selected_financial_year', null);
                                             @endphp
                                             @foreach ($fys as $fy)
-                                                <div class="d-flex align-items-center justify-content-between px-3 py-2 fy-item"
-                                                    data-fy-id="{{ $fy->id }}"
-                                                    style="border-bottom:1px solid #f0f0f0; cursor:pointer;">
+                                                <div class="d-flex align-items-center justify-content-between fy-item"
+                                                    data-fy-id="{{ $fy->id }}">
                                                     <span>{{ $fy->from_date->format('M, Y') }} -
                                                         {{ $fy->to_date->format('M, Y') }}</span>
                                                     <div class="d-flex align-items-center" style="gap:8px;">
@@ -250,114 +266,39 @@
                                                     </div>
                                                 </div>
                                             @endforeach
-
                                         </div>
                                     </div>
 
-                                    <!-- Notifications dropdown -->
-                                    <style>
-                                        /* Visual styling for unread notifications in header */
-                                        .notif-item.unread {
-                                            background: #fff8e6;
-                                            font-weight: 600;
-                                            border-left: 4px solid #f39c12;
-                                        }
-
-                                        .notif-item {
-                                            transition: background .12s ease;
-                                        }
-
-                                        .notif-item .notif-body {
-                                            display: block;
-                                        }
-                                    </style>
-                                    <!-- Calendar Icon -->
-                                <div class="d-flex align-items-center me-3">
-                                    <a href="{{ route('calendar.events') }}" 
-                                    class="btn btn-light d-flex align-items-center justify-content-center"
-                                    style="width:42px; height:42px; border:2px solid #e3eafc;">
-                                    
-                                        <i class="fas fa-calendar-alt" style="font-size:1.3rem;"></i>
+                                    <a href="{{ route('calendar.events') }}"
+                                       class="header-icon-btn"
+                                       title="Calendar"
+                                       aria-label="Open calendar">
+                                        <i class="bi bi-calendar3"></i>
                                     </a>
-                                </div>
 
-                                @if(in_array((int) (Auth::user()->crm_role_type ?? -1), [2, 3], true))
-                                    <style>
-                                        #weeklyTargetAnnouncement {
-                                            display: none;
-                                            align-items: center;
-                                            gap: 8px;
-                                            border-radius: 8px;
-                                            padding: 7px 12px;
-                                            font-size: 13px;
-                                            font-weight: 600;
-                                            cursor: pointer;
-                                            border: 1px solid transparent;
-                                            max-width: 280px;
-                                            white-space: nowrap;
-                                            line-height: 1.2;
-                                            transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
-                                        }
-                                        #weeklyTargetAnnouncement.is-unread,
-                                        #weeklyTargetAnnouncement.is-read {
-                                            display: inline-flex;
-                                            background: #fff4e5;
-                                            color: #c62828;
-                                            border-color: #ffb74d;
-                                        }
-                                        #weeklyTargetAnnouncement.is-unread {
-                                            background: #ffe0b2;
-                                            color: #b71c1c;
-                                            border-color: #fb8c00;
-                                            box-shadow: 0 1px 2px rgba(251, 140, 0, 0.18);
-                                        }
-                                        #weeklyTargetAnnouncement.is-read {
-                                            font-weight: 500;
-                                            opacity: 0.95;
-                                        }
-                                        #weeklyTargetAnnouncement:hover {
-                                            filter: brightness(0.98);
-                                        }
-                                        #weeklyTargetAnnouncement .wta-pct {
-                                            background: rgba(198, 40, 40, 0.12);
-                                            color: #c62828;
-                                            border-radius: 999px;
-                                            padding: 2px 8px;
-                                            font-size: 12px;
-                                            font-weight: 700;
-                                        }
-                                        #weeklyTargetAnnouncement.is-unread .wta-pct {
-                                            background: #c62828;
-                                            color: #fff;
-                                        }
-                                    </style>
-                                    <button type="button"
-                                        id="weeklyTargetAnnouncement"
-                                        class="btn btn-sm"
-                                        title="Weekly target alert — click to view">
-                                        <i class="bi bi-megaphone-fill"></i>
-                                        <span class="wta-text">Weekly Target</span>
-                                        <span class="wta-pct" id="weeklyTargetAnnouncementPct">0%</span>
-                                    </button>
-                                @endif
-                                    
+                                    @if(in_array((int) (Auth::user()->crm_role_type ?? -1), [2, 3], true))
+                                        <button type="button"
+                                            id="weeklyTargetAnnouncement"
+                                            class="btn btn-sm header-wta-btn"
+                                            title="Weekly target alert — click to view">
+                                            <i class="bi bi-megaphone-fill"></i>
+                                            <span class="wta-text">Weekly Target</span>
+                                            <span class="wta-pct" id="weeklyTargetAnnouncementPct">0%</span>
+                                        </button>
+                                    @endif
+
                                     <div class="dropdown">
-                                        <button class="btn btn-sm btn-light position-relative" type="button"
+                                        <button class="header-icon-btn position-relative" type="button"
                                             id="notificationDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false"
-                                            style="padding:8px 10px;">
-                                            <i class="bi bi-bell" style="font-size:1.1rem;"></i>
-                                            @php $unreadCount = Auth::user() ? Auth::user()->unreadNotifications()->count() : 0; @endphp
-                                            @if ($unreadCount > 0)
-                                                <span id="notifCount"
-                                                    class="badge bg-danger position-absolute top-0 start-100 translate-middle"
-                                                    style="font-size:11px;">{{ $unreadCount }}</span>
+                                            title="Notifications" aria-label="Notifications">
+                                            <i class="bi bi-bell"></i>
+                                            @if ($__unreadCount > 0)
+                                                <span id="notifCount" class="header-notif-badge">{{ $__unreadCount > 99 ? '99+' : $__unreadCount }}</span>
                                             @endif
                                         </button>
-                                        <ul class="dropdown-menu dropdown-menu-end p-0"
-                                            aria-labelledby="notificationDropdownBtn"
-                                            style="min-width:320px; max-height:420px; overflow:auto;">
-                                            <li
-                                                class="px-3 py-2 border-bottom fw-semibold d-flex align-items-center justify-content-between">
+                                        <ul class="dropdown-menu dropdown-menu-end p-0 header-notif-menu"
+                                            aria-labelledby="notificationDropdownBtn">
+                                            <li class="px-3 py-2 border-bottom fw-semibold d-flex align-items-center justify-content-between">
                                                 Notifications
                                                 <a href="#" id="markAllRead" class="btn btn-sm btn-link">Mark all</a>
                                             </li>
@@ -381,39 +322,30 @@
                                                     <li class="px-3 py-3 text-muted small">No notifications</li>
                                                 @endforelse
                                             </div>
-                                            <li>
-                                                <hr class="dropdown-divider m-0">
-                                            </li>
-                                            <li><a class="dropdown-item text-center"
-                                                    href="{{ route('notifications.index') }}">View all</a></li>
+                                            <li><hr class="dropdown-divider m-0"></li>
+                                            <li><a class="dropdown-item text-center" href="{{ route('notifications.index') }}">View all</a></li>
                                         </ul>
                                     </div>
 
                                     <div class="dropdown">
-                                        <button
-                                            class="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center"
-                                            type="button" id="mobileProfileDropdown" data-bs-toggle="dropdown"
-                                            aria-expanded="false"
-                                            style="padding: 0 8px; display: flex; align-items: center;">
-                                            @php $avatar = Auth::user()->avatar; @endphp
-                                            @if ($avatar && file_exists(public_path('assets/employee_profile_image/' . $avatar)))
-                                                <img src="{{ asset('assets/employee_profile_image/' . $avatar) }}"
-                                                    class="rounded-circle shadow-sm border"
-                                                    style="width:40px; height:40px; object-fit:cover;" alt="User">
+                                        <button class="header-profile-btn" type="button" id="mobileProfileDropdown"
+                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                            @if ($__hasAvatar)
+                                                <img src="{{ asset('assets/employee_profile_image/' . $__avatar) }}"
+                                                    class="header-profile-avatar" alt="{{ Auth::user()->name }}">
                                             @else
-                                                <img src="{{ asset('user-thumbnail.png') }}"
-                                                    class="rounded-circle shadow-sm border"
-                                                    style="width:40px; height:40px;object-fit:cover;" alt="User">
+                                                <span class="header-profile-avatar header-profile-fallback" aria-hidden="true">
+                                                    <i class="bi bi-person-fill"></i>
+                                                </span>
                                             @endif
-                                            <span class="fw-semibold text-dark ms-2"
-                                                style="font-size: 16px;">{{ Auth::user()->name }}</span>
-                                            <i class="bi bi-chevron-down ms-2"></i>
+                                            <span class="header-profile-name">{{ Auth::user()->name }}</span>
+                                            <i class="bi bi-chevron-down header-profile-caret"></i>
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end"
                                             aria-labelledby="mobileProfileDropdown">
                                             <li class="px-3 py-2 user-dropdown-header">
                                                 <div class="d-flex align-items-center gap-2">
-                                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
+                                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
                                                         style="width:32px;height:32px;">
                                                         {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 2)) }}</div>
                                                     <div>
@@ -422,18 +354,13 @@
                                                     </div>
                                                 </div>
                                             </li>
-                                            <li>
-                                                <hr class="dropdown-divider m-0">
-                                            </li>
-                                            <li><a class="dropdown-item" href="{{ route('profile.edit') }}">Profile</a>
-                                            </li>
-                                            <li><a class="dropdown-item" href="{{ route('password.edit') }}">Change
-                                                    Password</a></li>
+                                            <li><hr class="dropdown-divider m-0"></li>
+                                            <li><a class="dropdown-item" href="{{ route('profile.edit') }}">Profile</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('password.edit') }}">Change Password</a></li>
                                             <li>
                                                 <form method="POST" action="{{ route('logout') }}" class="m-0">
                                                     @csrf
-                                                    <button type="submit" class="dropdown-item text-danger">Sign
-                                                        out</button>
+                                                    <button type="submit" class="dropdown-item text-danger">Sign out</button>
                                                 </form>
                                             </li>
                                         </ul>
@@ -501,49 +428,39 @@
                         </div>
                     @endif
 
-                    {{-- Flash messages (success/error/validation) --}}
-                    
-                        @if (session('success'))
-                        <div class="container-fluid p-3">
-                            <div id="app-flash-success" class="alert alert-success alert-dismissible fade show" role="alert">
-                                <i class="bi bi-check-circle-fill me-2"></i>{!! session('success') !!}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"
-                                    aria-label="Close"></button>
-                            </div>
-                        </div>
-                        @endif
-
-                        @if (session('error'))
-                        <div class="container-fluid p-3">
-                            <div id="app-flash-error" class="alert alert-danger alert-dismissible fade show" role="alert">
-                                <i class="bi bi-exclamation-octagon-fill me-2"></i>{!! session('error') !!}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"
-                                    aria-label="Close"></button>
-                            </div>
-                        </div>
-                        @endif
-
+                    {{-- Flash messages → global toastr (session success/error/warning/info) --}}
+                    @php
+                        $__flashToast = [];
+                        if (session()->has('success')) {
+                            $__flashToast[] = ['type' => 'success', 'message' => session('success')];
+                        }
+                        if (session()->has('error')) {
+                            $__flashToast[] = ['type' => 'error', 'message' => session('error')];
+                        } elseif (isset($errors) && $errors->any()) {
+                            $__flashToast[] = ['type' => 'error', 'message' => $errors->first()];
+                        }
+                        if (session()->has('warning')) {
+                            $__flashToast[] = ['type' => 'warning', 'message' => session('warning')];
+                        }
+                        if (session()->has('info')) {
+                            $__flashToast[] = ['type' => 'info', 'message' => session('info')];
+                        }
+                        if (session()->has('status') && !session()->has('success')) {
+                            $__flashToast[] = ['type' => 'success', 'message' => session('status')];
+                        }
+                    @endphp
+                    @if(count($__flashToast))
                         <script>
                             document.addEventListener('DOMContentLoaded', function () {
-                                ['app-flash-success', 'app-flash-error'].forEach(function (id) {
-                                    var el = document.getElementById(id);
-                                    if (!el) return;
-                                    // Slowly fade out after 4s, then remove
-                                    setTimeout(function () {
-                                        el.style.transition = 'opacity 1.2s ease';
-                                        el.style.opacity = '0';
-                                        setTimeout(function () {
-                                            try {
-                                                var bsAlert = bootstrap.Alert.getOrCreateInstance(el);
-                                                bsAlert.close();
-                                            } catch (e) {
-                                                if (el.parentNode) el.parentNode.removeChild(el);
-                                            }
-                                        }, 1200);
-                                    }, 4000);
+                                if (!window.toastr) return;
+                                var flashes = @json($__flashToast);
+                                flashes.forEach(function (item) {
+                                    var fn = toastr[item.type] || toastr.info;
+                                    fn.call(toastr, item.message);
                                 });
                             });
                         </script>
+                    @endif
 
                     @php
                         $__reportBackTitle = null;
@@ -558,7 +475,9 @@
 
                     @php
                         $__settingsBackTitle = null;
-                        if (auth()->check() && $__currentRoute && $__currentRoute !== 'settings.index') {
+                        // Custom-hero pages render their own title / back controls
+                        $__settingsSkipBackHeader = in_array($__currentRoute, ['users.index', 'users.create', 'users.edit'], true);
+                        if (auth()->check() && $__currentRoute && $__currentRoute !== 'settings.index' && !$__settingsSkipBackHeader) {
                             $__settingsTitles = \App\Http\Controllers\SettingsController::pageTitles();
                             if (\App\Http\Controllers\SettingsController::isSettingsSubPage($__currentRoute)) {
                                 $__settingsBackTitle = $__settingsTitles[$__currentRoute]
@@ -614,7 +533,7 @@
                     @yield('content')
 <!-- Footer Section -->
 
-                    <div class="top-slim-footer px-3 mt-auto" >
+                    <div class="top-slim-footer px-3" >
                         <div class="container-fluid text-center">
                             <div class="d-flex flex-wrap justify-content-between align-items-center">
                                 <p class="text-sm text-gray-500 mb-0">© 2026 CRM. All rights reserved.</p>
@@ -669,6 +588,23 @@
                         });
                     });
                 });
+
+                // Header global search: Ctrl/Cmd + K focuses the search field
+                var globalSearch = document.getElementById('globalHeaderSearch');
+                if (globalSearch) {
+                    document.addEventListener('keydown', function(e) {
+                        var key = (e.key || '').toLowerCase();
+                        if ((e.ctrlKey || e.metaKey) && key === 'k') {
+                            var tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+                            if (tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable)) {
+                                if (e.target !== globalSearch) return;
+                            }
+                            e.preventDefault();
+                            globalSearch.focus();
+                            globalSearch.select();
+                        }
+                    });
+                }
             });
         </script>
         {{-- Bootstrap and DataTables JS --}}
@@ -679,6 +615,10 @@
         <script src="{{ asset('js/custom-script.js') }}"></script>
         <script src="{{ asset('js/hub-page-skeleton.js') }}?v={{ @filemtime(public_path('js/hub-page-skeleton.js')) }}"></script>
         <script src="{{ asset('js/select2.min.js') }}"></script>
+        <script src="{{ asset('js/select2-init.js') }}?v={{ @filemtime(public_path('js/select2-init.js')) }}"></script>
+        <script src="{{ asset('js/flatpickr.min.js') }}"></script>
+        <script src="{{ asset('js/flatpickr-init.js') }}?v={{ @filemtime(public_path('js/flatpickr-init.js')) }}"></script>
+        <script src="{{ asset('js/decimal-input.js') }}?v={{ @filemtime(public_path('js/decimal-input.js')) }}"></script>
         @yield('scripts')
         @stack('scripts')
         <script>

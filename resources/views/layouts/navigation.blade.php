@@ -167,17 +167,11 @@
             </div>
             <ul class="nav flex-column fw-semibold sidebar-menu-gap">
                 <li class="nav-item"><a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><i class="bi bi-house-door me-2"></i> <span class="nav-label">Home</span></a></li>
-                {{-- Top-level Call Logs menu item --}}
-
-                @if( Auth::user()->hasCrmPermission('create_crm_call_logs_guard') || Auth::user()->hasCrmPermission('edit_crm_call_logs_guard')  || Auth::user()->hasCrmPermission('manage_crm_call_logs_guard'))
-                <li class="nav-item mb-2">
-                    <a class="nav-link {{ request()->routeIs('calllogs.index') ? 'active' : '' }}" href="{{ route('calllogs.index') }}">
-                        <i class="bi bi-telephone-inbound me-2"></i> <span class="nav-label">Call Logs</span>
-                    </a>
-                </li>
-
-                @endif
-                @if((auth()->user()->hasCrmPermission('view_crm_leads_guard') || auth()->user()->hasCrmPermission('create_crm_leads_guard') || auth()->user()->hasCrmPermission('edit_crm_leads_guard') || auth()->user()->hasCrmPermission('delete_crm_leads_guard') || auth()->user()->hasCrmPermission('manage_crm_leads_guard')) && auth()->user()->hasCrmPermission('manage_crm_leads_guard'))
+                @include('layouts.sidebar_menu_goal')
+                {{-- Classic CRM Leads unused for Goal Loan — Loan Leads is under Goal menu --}}
+                @if(!\App\Services\Goal\GoalDashboardService::userUsesGoalDashboard(auth()->user())
+                    && (auth()->user()->hasCrmPermission('view_crm_leads_guard') || auth()->user()->hasCrmPermission('create_crm_leads_guard') || auth()->user()->hasCrmPermission('edit_crm_leads_guard') || auth()->user()->hasCrmPermission('delete_crm_leads_guard') || auth()->user()->hasCrmPermission('manage_crm_leads_guard'))
+                    && auth()->user()->hasCrmPermission('manage_crm_leads_guard'))
                 <li class="nav-item"><a class="nav-link {{ request()->routeIs('leads.*') ? 'active' : '' }}" href="{{ route('leads.index') }}"><i class="bi bi-people-fill me-2"></i> <span class="nav-label">Leads</span></a></li>
                 @endif
 

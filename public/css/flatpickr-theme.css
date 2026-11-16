@@ -1,0 +1,175 @@
+/**
+ * Global Flatpickr theme — matches form-control (md) + CRM accents
+ */
+:root {
+    --fp-border: #dbe3ee;
+    --fp-focus: #c4b5fd;
+    --fp-ring: rgba(124, 58, 237, 0.14);
+    --fp-primary: #7c3aed;
+    --fp-primary-hover: #6d28d9;
+    --fp-text: #0f172a;
+    --fp-muted: #64748b;
+    --fp-radius: 10px;
+}
+
+/* Input sizing when used with Bootstrap md (default form-control) */
+input.form-control.js-datepicker,
+input.form-control.js-datetimepicker,
+.flatpickr-input.form-control,
+.form-control.flatpickr-input {
+    background-color: #fff;
+    cursor: pointer;
+}
+
+/* Hide native calendar icon leftovers */
+input.js-datepicker::-webkit-calendar-picker-indicator,
+input.js-datetimepicker::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+}
+
+.flatpickr-calendar {
+    border: 1px solid var(--fp-border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14) !important;
+    font-family: inherit;
+    padding: 6px;
+    z-index: 1200 !important;
+}
+
+.flatpickr-months {
+    align-items: center;
+    padding: 4px 2px 2px;
+}
+
+.flatpickr-months .flatpickr-month {
+    height: 36px;
+}
+
+.flatpickr-current-month {
+    font-size: 0.92rem !important;
+    font-weight: 700;
+    color: var(--fp-text);
+    padding-top: 0 !important;
+}
+
+.flatpickr-months .flatpickr-prev-month,
+.flatpickr-months .flatpickr-next-month {
+    fill: var(--fp-muted);
+    padding: 6px;
+    border-radius: 8px;
+}
+
+.flatpickr-months .flatpickr-prev-month:hover,
+.flatpickr-months .flatpickr-next-month:hover {
+    background: #f5f3ff;
+}
+
+.flatpickr-months .flatpickr-prev-month:hover svg,
+.flatpickr-months .flatpickr-next-month:hover svg {
+    fill: var(--fp-primary);
+}
+
+span.flatpickr-weekday {
+    color: var(--fp-muted);
+    font-weight: 700;
+    font-size: 0.72rem;
+}
+
+.flatpickr-day {
+    border-radius: 8px;
+    color: var(--fp-text);
+    font-weight: 500;
+    max-width: 36px;
+    height: 36px;
+    line-height: 36px;
+}
+
+.flatpickr-day:hover,
+.flatpickr-day:focus {
+    background: #f5f3ff;
+    border-color: #f5f3ff;
+    color: var(--fp-primary);
+}
+
+.flatpickr-day.today {
+    border-color: var(--fp-primary);
+    color: var(--fp-primary);
+    font-weight: 700;
+}
+
+.flatpickr-day.today:hover {
+    background: #f5f3ff;
+    border-color: var(--fp-primary);
+    color: var(--fp-primary-hover);
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange,
+.flatpickr-day.selected:hover,
+.flatpickr-day.startRange:hover,
+.flatpickr-day.endRange:hover {
+    background: var(--fp-primary) !important;
+    border-color: var(--fp-primary) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 10px rgba(124, 58, 237, 0.28);
+}
+
+.flatpickr-day.inRange {
+    background: #ede9fe;
+    border-color: #ede9fe;
+    box-shadow: none;
+    color: var(--fp-primary);
+}
+
+.flatpickr-day.flatpickr-disabled,
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay {
+    color: #cbd5e1;
+}
+
+.flatpickr-time {
+    border-top: 1px solid #eef2f7 !important;
+    max-height: 42px;
+}
+
+.flatpickr-time input {
+    font-weight: 600;
+    color: var(--fp-text);
+}
+
+.flatpickr-time .flatpickr-am-pm {
+    font-weight: 700;
+    color: var(--fp-muted);
+}
+
+.flatpickr-time input:hover,
+.flatpickr-time .flatpickr-am-pm:hover,
+.flatpickr-time input:focus,
+.flatpickr-time .flatpickr-am-pm:focus {
+    background: #f5f3ff;
+}
+
+/* Focus ring on alt input */
+.form-control.flatpickr-input:focus,
+input.flatpickr-input.form-control:focus {
+    border-color: var(--fp-focus) !important;
+    box-shadow: 0 0 0 3px var(--fp-ring) !important;
+}
+
+/* Keep left icon padding when wrapped */
+.input-icon > .flatpickr-wrapper,
+.input-icon > input.flatpickr-input,
+.input-icon .flatpickr-input {
+    width: 100%;
+}
+.input-icon > input.flatpickr-input,
+.input-icon input.flatpickr-input.form-control {
+    padding-left: 2.1rem;
+}
+
+/* Modal stacking */
+.modal .flatpickr-calendar {
+    z-index: 1205 !important;
+}

@@ -249,11 +249,8 @@ class DealController extends Controller
 
         $leadSources = \App\Models\LeadSource::orderBy('name')->get();
         $priorities = [ ['value'=>'high','label'=>'High'], ['value'=>'normal','label'=>'Normal'], ['value'=>'low','label'=>'Low'] ];
-         // Fetch active categories for the filter
+        // Fetch active categories for the filter (empty collection is fine — view has "All" option)
         $categories = \App\Models\ProductCategory::where('status', 1)->orderBy('category_name')->get();
-        if (!$categories || $categories->isEmpty()) {
-            $categories = collect(['No Categories Available']); // Default fallback
-        }
         return view('deals.pipeline', compact('stages', 'deals', 'leadSources', 'priorities', 'user', 'categories'));
     }
 

@@ -44,9 +44,6 @@
             </div>
         </div>
         <div class="card-body">
-            @if(session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
             <!-- Search/Filter Bar -->
             <form method="GET" action="{{ route('deals.index') }}" class="mb-3">
                 <div class="row g-2 align-items-end">

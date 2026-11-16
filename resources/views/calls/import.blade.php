@@ -9,10 +9,6 @@
             </h4>
         </div>
         <div class="card-body text-center">
-            @if(session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
-
             <div class="my-4">
                 <i class="bi bi-calendar-x display-4 text-muted"></i>
                 <h5 class="fw-bold">No Call Logs Imported</h5>

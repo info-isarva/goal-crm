@@ -17,9 +17,6 @@
         </div>
 
         <div class="card-body p-4">
-            @if(session('success'))
-                <div class="alert alert-success py-2">{{ session('success') }}</div>
-            @endif
             @if($errors->any())
                 <div class="alert alert-danger py-2">
                     <ul class="mb-0 small">

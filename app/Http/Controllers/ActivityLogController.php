@@ -13,12 +13,15 @@ class ActivityLogController extends Controller
         }
         $query = ActivityLog::with('user');
         if ($request->filled('user_name')) {
-            $query->whereHas('user', function($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->user_name . '%');
-                $q->orWhere('email', 'like', '%' . $request->user_name . '%');
-                $q->orWhere('module', 'like', '%' . $request->user_name . '%');
-                $q->orWhere('action', 'like', '%' . $request->user_name . '%');
-                $q->orWhere('type', 'like', '%' . $request->user_name . '%');
+            $term = $request->user_name;
+            $query->where(function ($q) use ($term) {
+                $q->whereHas('user', function ($uq) use ($term) {
+                    $uq->where('name', 'like', '%' . $term . '%')
+                        ->orWhere('email', 'like', '%' . $term . '%');
+                })
+                    ->orWhere('module', 'like', '%' . $term . '%')
+                    ->orWhere('action', 'like', '%' . $term . '%')
+                    ->orWhere('type', 'like', '%' . $term . '%');
             });
         }
         if($request->filled('module')) {

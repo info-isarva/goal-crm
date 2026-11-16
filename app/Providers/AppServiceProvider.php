@@ -2,25 +2,12 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
 use App\Observers\ActivityLogObserver;
-use Illuminate\Support\Facades\Blade;
-use App\Models\Company;
-use App\Models\User;
-use App\Models\Deal;
-use App\Models\Customer;
-use App\Models\Organization;
-use App\Models\Person;
-use App\Models\Lead;
-use App\Models\Meeting;
-use App\Models\Note;
-use App\Models\Product;
-use App\Models\ProductCategory;
-use App\Models\Role;
-use App\Models\Stage;
-use App\Models\Task;
-use App\Models\TaxRate;
 use App\Services\EmailService;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\ServiceProvider;
+use ReflectionClass;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -54,20 +41,43 @@ class AppServiceProvider extends ServiceProvider
 
         EmailService::applyConfiguration();
 
-    // Register activity logger for all main models
-    User::observe(ActivityLogObserver::class);
-    Deal::observe(ActivityLogObserver::class);
-    Customer::observe(ActivityLogObserver::class);
-    Organization::observe(ActivityLogObserver::class);
-    Person::observe(ActivityLogObserver::class);
-    Lead::observe(ActivityLogObserver::class);
-    Meeting::observe(ActivityLogObserver::class);
-    Note::observe(ActivityLogObserver::class);
-    Product::observe(ActivityLogObserver::class);
-    ProductCategory::observe(ActivityLogObserver::class);
-    Role::observe(ActivityLogObserver::class);
-    Stage::observe(ActivityLogObserver::class);
-    Task::observe(ActivityLogObserver::class);
-    TaxRate::observe(ActivityLogObserver::class);
+        $this->registerActivityLogObservers();
+    }
+
+    /**
+     * Attach ActivityLogObserver to every Eloquent model under app/Models
+     * (except those listed in config/audit.php exclude_models).
+     */
+    protected function registerActivityLogObservers(): void
+    {
+        $exclude = config('audit.exclude_models', []);
+        $modelsPath = app_path('Models');
+
+        if (!is_dir($modelsPath)) {
+            return;
+        }
+
+        foreach (glob($modelsPath . DIRECTORY_SEPARATOR . '*.php') ?: [] as $file) {
+            $class = 'App\\Models\\' . basename($file, '.php');
+
+            if (!class_exists($class)) {
+                continue;
+            }
+
+            if (in_array($class, $exclude, true)) {
+                continue;
+            }
+
+            if (!is_subclass_of($class, Model::class)) {
+                continue;
+            }
+
+            $reflection = new ReflectionClass($class);
+            if ($reflection->isAbstract()) {
+                continue;
+            }
+
+            $class::observe(ActivityLogObserver::class);
+        }
     }
 }

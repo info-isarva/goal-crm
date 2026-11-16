@@ -1,15 +1,17 @@
 <?php
+
 namespace App\Listeners;
 
 use App\Helpers\ActivityLogger;
+use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Auth\Events\Registered;
 
 class ActivityEventSubscriber
 {
-    public function handleLogin(Login $event)
+    public function handleLogin(Login $event): void
     {
         ActivityLogger::log([
             'type' => 'login',
@@ -19,7 +21,7 @@ class ActivityEventSubscriber
         ]);
     }
 
-    public function handleLogout(Logout $event)
+    public function handleLogout(Logout $event): void
     {
         ActivityLogger::log([
             'type' => 'logout',
@@ -29,7 +31,7 @@ class ActivityEventSubscriber
         ]);
     }
 
-    public function handleRegistered(Registered $event)
+    public function handleRegistered(Registered $event): void
     {
         ActivityLogger::log([
             'type' => 'register',
@@ -39,7 +41,7 @@ class ActivityEventSubscriber
         ]);
     }
 
-    public function handlePasswordReset(PasswordReset $event)
+    public function handlePasswordReset(PasswordReset $event): void
     {
         ActivityLogger::log([
             'type' => 'password_reset',
@@ -49,11 +51,26 @@ class ActivityEventSubscriber
         ]);
     }
 
-    public function subscribe($events)
+    public function handleFailed(Failed $event): void
+    {
+        ActivityLogger::log([
+            'type' => 'login_failed',
+            'module' => 'User',
+            'action' => 'login_failed',
+            'user_id' => $event->user->id ?? null,
+            'details' => [
+                'email' => $event->credentials['email'] ?? ($event->credentials['username'] ?? null),
+                'guard' => $event->guard,
+            ],
+        ]);
+    }
+
+    public function subscribe($events): void
     {
         $events->listen(Login::class, [self::class, 'handleLogin']);
         $events->listen(Logout::class, [self::class, 'handleLogout']);
         $events->listen(Registered::class, [self::class, 'handleRegistered']);
         $events->listen(PasswordReset::class, [self::class, 'handlePasswordReset']);
+        $events->listen(Failed::class, [self::class, 'handleFailed']);
     }
 }

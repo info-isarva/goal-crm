@@ -1,0 +1,355 @@
+/**
+ * Global dropdown design (native .form-select + Select2)
+ * Matches Create Loan Lead / ISARVA form mockup:
+ * light grey border, 8px radius, blue focus ring, blue selected option
+ */
+:root {
+    --s2-border: #d1d5db;
+    --s2-border-focus: #93c5fd;
+    --s2-ring: rgba(59, 130, 246, 0.18);
+    --s2-text: #0f172a;
+    --s2-muted: #94a3b8;
+    --s2-bg: #fff;
+    --s2-primary: #2563eb;
+    --s2-primary-hover: #1d4ed8;
+    --s2-radius: 8px;
+    --s2-height-md: 38px;
+    --s2-font-md: 0.9375rem;
+    --s2-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+}
+
+/* ═══════════════════════════════════════════
+   Native Bootstrap .form-select (all modules)
+   ═══════════════════════════════════════════ */
+select.form-select {
+    min-height: var(--s2-height-md);
+    height: var(--s2-height-md);
+    padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+    font-size: var(--s2-font-md);
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--s2-text);
+    background-color: var(--s2-bg);
+    background-image: var(--s2-chevron);
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 12px 12px;
+    border: 1px solid var(--s2-border);
+    border-radius: var(--s2-radius);
+    box-shadow: none;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+select.form-select:focus,
+select.form-select:focus-visible {
+    border-color: var(--s2-border-focus);
+    outline: 0;
+    box-shadow: 0 0 0 3px var(--s2-ring);
+}
+
+select.form-select:disabled {
+    background-color: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+    opacity: 0.9;
+}
+
+select.form-select.is-invalid,
+select.form-select.is-invalid:focus {
+    border-color: #fca5a5 !important;
+}
+
+select.form-select.is-invalid:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12) !important;
+}
+
+select.form-select option {
+    color: var(--s2-text);
+    background: #fff;
+    padding: 0.5rem 0.75rem;
+}
+
+select.form-select option:checked,
+select.form-select option:hover {
+    background: linear-gradient(0deg, var(--s2-primary) 0%, var(--s2-primary) 100%);
+    color: #fff;
+}
+
+/* Compact rows-per-page / toolbar selects */
+select.form-select-compact,
+.per-page-wrap select,
+.dataTables_length select {
+    min-height: 34px;
+    height: 34px;
+    min-width: 56px;
+    width: auto;
+    padding: 0 28px 0 12px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    border: 1px solid #dbe2ea;
+    border-radius: var(--s2-radius);
+    background-color: #fff;
+    background-image: var(--s2-chevron);
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 11px 11px;
+    appearance: none;
+    -webkit-appearance: none;
+    color: #1a1c32;
+}
+
+select.form-select-compact:focus,
+.per-page-wrap select:focus,
+.dataTables_length select:focus {
+    border-color: var(--s2-border-focus);
+    box-shadow: 0 0 0 3px var(--s2-ring);
+    outline: 0;
+}
+
+/* ═══════════════════════════════════════════
+   Select2 container
+   ═══════════════════════════════════════════ */
+.select2-container {
+    width: 100% !important;
+    font-size: var(--s2-font-md);
+    z-index: 1;
+}
+
+.select2-container--open,
+.modal .select2-container--open,
+.offcanvas .select2-container--open {
+    z-index: 1100;
+}
+
+/* Single selection — matches form-select */
+.select2-container--default .select2-selection--single {
+    height: var(--s2-height-md);
+    min-height: var(--s2-height-md);
+    border: 1px solid var(--s2-border);
+    border-radius: var(--s2-radius);
+    background-color: var(--s2-bg);
+    outline: 0;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: var(--s2-text);
+    line-height: calc(var(--s2-height-md) - 2px);
+    padding-left: 0.75rem;
+    padding-right: 2rem;
+    font-size: var(--s2-font-md);
+    font-weight: 500;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: var(--s2-muted);
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: calc(var(--s2-height-md) - 2px);
+    width: 28px;
+    right: 2px;
+    top: 0;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow b {
+    border-color: #64748b transparent transparent transparent;
+    border-width: 5px 4px 0 4px;
+    margin-left: -4px;
+    margin-top: -2px;
+}
+
+.select2-container--default.select2-container--open .select2-selection--single .select2-selection__arrow b {
+    border-color: transparent transparent #64748b transparent;
+    border-width: 0 4px 5px 4px;
+    margin-top: -3px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__clear {
+    height: calc(var(--s2-height-md) - 2px);
+    margin-right: 1.75rem;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+/* Focus / open — blue ring */
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--single,
+.select2-container--default.select2-container--focus .select2-selection--multiple,
+.select2-container--default.select2-container--open .select2-selection--multiple {
+    border-color: var(--s2-border-focus) !important;
+    box-shadow: 0 0 0 3px var(--s2-ring);
+}
+
+/* Multiple selection */
+.select2-container--default .select2-selection--multiple {
+    min-height: var(--s2-height-md);
+    border: 1px solid var(--s2-border);
+    border-radius: var(--s2-radius);
+    background-color: var(--s2-bg);
+    padding: 4px 6px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__rendered {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 0;
+    margin: 0;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    color: #1e40af;
+    font-size: 0.875rem;
+    padding: 2px 8px;
+    margin: 0;
+    height: auto;
+    line-height: 1.4;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    color: #64748b;
+    margin-right: 4px;
+    border: none;
+    background: transparent;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+    color: #dc2626;
+    background: transparent;
+}
+
+.select2-container--default .select2-selection--multiple .select2-search--inline .select2-search__field {
+    margin-top: 0;
+    height: 28px;
+    font-size: var(--s2-font-md);
+    padding: 0 4px;
+}
+
+/* Dropdown panel */
+.select2-dropdown {
+    border: 1px solid #cbd5e1;
+    border-radius: var(--s2-radius);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    overflow: hidden;
+    z-index: 1101;
+    background: #fff;
+    margin-top: 2px;
+}
+
+.select2-container--default .select2-search--dropdown {
+    padding: 8px;
+}
+
+.select2-container--default .select2-search--dropdown .select2-search__field {
+    border: 1px solid var(--s2-border);
+    border-radius: 6px;
+    padding: 0.375rem 0.75rem;
+    font-size: var(--s2-font-md);
+    outline: 0;
+    height: var(--s2-height-md);
+}
+
+.select2-container--default .select2-search--dropdown .select2-search__field:focus {
+    border-color: var(--s2-border-focus);
+    box-shadow: 0 0 0 3px var(--s2-ring);
+}
+
+.select2-results {
+    padding: 4px 0;
+}
+
+.select2-container--default .select2-results > .select2-results__options {
+    max-height: 260px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.select2-container--default .select2-results > .select2-results__options::-webkit-scrollbar {
+    width: 6px;
+}
+
+.select2-container--default .select2-results > .select2-results__options::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+}
+
+.select2-container--default .select2-results__option {
+    padding: 0.55rem 0.85rem;
+    font-size: var(--s2-font-md);
+    color: var(--s2-text);
+    line-height: 1.4;
+}
+
+.select2-container--default .select2-results__option--disabled {
+    color: #94a3b8;
+}
+
+/* Selected + hover — solid primary blue (mockup) */
+.select2-container--default .select2-results__option--highlighted.select2-results__option--selectable,
+.select2-container--default .select2-results__option--selected.select2-results__option--highlighted {
+    background-color: var(--s2-primary) !important;
+    color: #fff !important;
+}
+
+.select2-container--default .select2-results__option--selected {
+    background-color: #eff6ff;
+    color: var(--s2-primary);
+    font-weight: 600;
+}
+
+.select2-container--default .select2-results__option--selected.select2-results__option--highlighted {
+    background-color: var(--s2-primary) !important;
+    color: #fff !important;
+}
+
+.select2-container--default .select2-results__message {
+    color: #64748b;
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+}
+
+/* Icon-prefixed fields */
+.input-icon > .select2-container .select2-selection--single .select2-selection__rendered {
+    padding-left: 30px;
+}
+
+.input-icon > .select2-container {
+    width: 100% !important;
+}
+
+.input-icon > select.form-select {
+    padding-left: 30px;
+}
+
+/* Invalid state with Select2 */
+.is-invalid + .select2-container--default .select2-selection--single,
+.field.is-invalid .select2-container--default .select2-selection--single,
+.was-validated select:invalid + .select2-container--default .select2-selection--single {
+    border-color: #fca5a5 !important;
+}
+
+.field.is-invalid .select2-container--default.select2-container--focus .select2-selection--single,
+.field.is-invalid .select2-container--default.select2-container--open .select2-selection--single {
+    border-color: #f87171 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+/* Disabled */
+.select2-container--default.select2-container--disabled .select2-selection--single,
+.select2-container--default.select2-container--disabled .select2-selection--multiple {
+    background-color: #f1f5f9;
+    cursor: not-allowed;
+    opacity: 0.85;
+}
+
+/* Fallback before Select2 hydrates */
+select.form-select.js-select2:not(.select2-hidden-accessible) {
+    min-height: var(--s2-height-md);
+}

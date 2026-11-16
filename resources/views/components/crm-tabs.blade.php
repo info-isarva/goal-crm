@@ -237,9 +237,6 @@
                                 </div>
                             </div>
                             <div class="tab-pane fade" id="notes" role="tabpanel" aria-labelledby="notes-tab">
-                                @if(session('success'))
-                                    <div class="alert alert-success">{{ session('success') }}</div>
-                                @endif
                                 <form action="{{ route('notes.store') }}" method="POST" class="mb-3">
                                     @csrf
                                     <input type="hidden" name="related_type" value="{{$type}}">
@@ -315,9 +312,6 @@
                                 @endforelse
                             </div>
                             <div class="tab-pane fade" id="tasks" role="tabpanel" aria-labelledby="tasks-tab">
-                                @if(session('success'))
-                                    <div class="alert alert-success">{{ session('success') }}</div>
-                                @endif
                                 <form action="{{ route('tasks.store') }}" method="POST" class="mb-3">
                                     @csrf
                                     <input type="hidden" name="related_type" value="{{$type}}">
@@ -394,9 +388,6 @@
                                 @endforelse
                             </div>
                             <div class="tab-pane fade" id="calls" role="tabpanel" aria-labelledby="calls-tab">
-                                @if(session('success'))
-                                    <div class="alert alert-success">{{ session('success') }}</div>
-                                @endif
                                 <form action="{{ route('calls.store') }}" method="POST" class="mb-3">
                                     @csrf
                                     <input type="hidden" name="related_type" value="{{$type}}">
@@ -500,9 +491,6 @@
                                 @endforelse
                             </div>
                             <div class="tab-pane fade" id="meetings" role="tabpanel" aria-labelledby="meetings-tab">
-                                @if(session('success'))
-                                    <div class="alert alert-success">{{ session('success') }}</div>
-                                @endif
                                 <form action="{{ route('meetings.store') }}" method="POST" class="mb-3">
                                     @csrf
                                     <input type="hidden" name="related_type" value="{{$type}}">

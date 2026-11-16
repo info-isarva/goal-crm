@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\Person;
 use App\Models\Meeting;
 use App\Models\Task;
+use App\Services\Goal\GoalDashboardService;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -17,6 +18,18 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->user();
+
+        // Goal Loan CRM role-based analytics dashboard (prototype-aligned)
+        if (GoalDashboardService::userUsesGoalDashboard($user)) {
+            $goalPeriod = request('period', 'this_month');
+            $goalAllowed = ['today', 'this_month', 'last_month', 'this_year'];
+            if (!in_array($goalPeriod, $goalAllowed, true)) {
+                $goalPeriod = 'this_month';
+            }
+            $dash = app(GoalDashboardService::class)->build($user, $goalPeriod);
+
+            return view('goal.dashboard', compact('dash', 'user'));
+        }
 
         $period = request('period', 'this_month');
         $allowedPeriods = ['this_month', 'last_month', '6_months', 'year', 'previous_year'];

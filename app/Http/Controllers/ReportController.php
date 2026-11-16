@@ -326,14 +326,6 @@ class ReportController extends Controller
                 'permission' => 'product_wise_reports_guard',
             ],
             [
-                'id' => 'call_logs',
-                'name' => 'Call Logs Report',
-                'description' => 'Inbound and outbound call activity by user.',
-                'folder' => 'User Reports',
-                'route' => 'calllogs.report',
-                'permission' => 'view_calls_reports_guard',
-            ],
-            [
                 'id' => 'monthly_target',
                 'name' => 'Monthly Target Report',
                 'description' => 'Target vs achievement for the month.',

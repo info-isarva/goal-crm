@@ -56,6 +56,8 @@ Route::prefix('social-ads/webhook')->name('social_ads.webhook.')->middleware('th
 Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->middleware(['auth',  'compliance.consent'])->name('dashboard');
 
 Route::middleware(['auth', 'compliance.consent'])->group(function () {
+    require __DIR__ . '/goal.php';
+
     // AJAX autocomplete / autofill for organization and customer pickers
     Route::get('/organizations/autocomplete', [\App\Http\Controllers\OrganizationController::class, 'autocomplete'])->name('organizations.autocomplete');
     Route::get('/organizations/details', [\App\Http\Controllers\OrganizationController::class, 'details'])->name('organizations.details');
@@ -105,10 +107,12 @@ Route::middleware(['auth', 'compliance.consent'])->group(function () {
     // Export organizations (respect current filters)
     Route::get('/organizations/excel', [\App\Http\Controllers\OrganizationController::class, 'exportExcel'])->name('organizations.excel');
     Route::resource('organizations', App\Http\Controllers\OrganizationController::class);
-    // User CRUD routes
+    // User management (export before resource so /users/export is not captured as {user})
+    Route::get('/users/export', [App\Http\Controllers\UserController::class, 'export'])->name('users.export');
     Route::resource('users', App\Http\Controllers\UserController::class);
-    // Admin: Update 2FA status for user
     Route::post('/users/{user}/2fa', [App\Http\Controllers\UserController::class, 'update2FA'])->name('users.2fa.update');
+    Route::post('/users/{user}/status', [App\Http\Controllers\UserController::class, 'updateStatus'])->name('users.status.update');
+    Route::post('/users/{user}/send-password-reset', [App\Http\Controllers\UserController::class, 'sendPasswordReset'])->name('users.password.reset');
 
     Route::get('/organizations/{id}/people', [\App\Http\Controllers\PersonController::class, 'listForOrganization'])->name('organizations.people');
     // AJAX route to add organization to person (modal)
