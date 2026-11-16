@@ -19,18 +19,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    {{-- Bootstrap 5 & DataTables CSS --}}
-    <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"> -->
-    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    {{-- DataTables (non-Bootstrap) --}}
+    <link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet">
 
-    <!-- Scripts -->
+    <!-- Scripts (Tailwind via Vite) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <!-- Bootstrap 5 and Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Icons only (not Bootstrap CSS framework) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
-    <!---Custom CSS --->
+    <!---Custom CSS (Tailwind via Vite above; app chrome extras below) --->
     <link href="{{ asset('css/custom-style.css') }}" rel="stylesheet">
     <link href="{{ asset('css/isarva-typography.css') }}?v={{ @filemtime(public_path('css/isarva-typography.css')) }}" rel="stylesheet">
     <link href="{{ asset('css/hub-page-skeleton.css') }}?v={{ @filemtime(public_path('css/hub-page-skeleton.css')) }}" rel="stylesheet">
@@ -68,11 +66,10 @@
         @endisset
 
         <!-- Page Content -->
-        <!-- <div class="container-fluid min-vh-100 bg-light"> -->
-        <div class="min-vh-100 bg-light">
-            <div class="row g-0">
+        <div class="min-h-screen bg-slate-50">
+            <div class="flex min-h-screen flex-col lg:flex-row">
                 @include('layouts.sidebar')
-                <main class="col-12 col-lg-12 custom-margin @auth with-top-header @endauth d-flex flex-column min-vh-100">
+                <main class="custom-margin @auth with-top-header @endauth flex min-h-screen w-full flex-1 flex-col">
 
                     @auth
 
@@ -609,10 +606,9 @@
                 }
             });
         </script>
-        {{-- Bootstrap and DataTables JS --}}
+        {{-- DataTables JS (no Bootstrap) --}}
         <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-        <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="{{ asset('js/tw-ui.js') }}?v={{ @filemtime(public_path('js/tw-ui.js')) }}"></script>
 
         <script src="{{ asset('js/custom-script.js') }}"></script>
         <script src="{{ asset('js/hub-page-skeleton.js') }}?v={{ @filemtime(public_path('js/hub-page-skeleton.js')) }}"></script>

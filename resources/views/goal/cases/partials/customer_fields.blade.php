@@ -1,216 +1,465 @@
-﻿            <div class="sec-card">
-                <div class="sec-head">
-                    <div class="sec-head-left">
-                        <span class="sec-ico"><i class="bi bi-person-vcard"></i></span>
-                        <div>
-                            <h6>Customer Details</h6>
-                            <div class="sec-sub">Applicant · Co-Applicant · Property · References</div>
-                        </div>
-                    </div>
-                </div>
+﻿@php
+    $consentText = is_array($consent) && !empty($consent['recorded'])
+        ? ('Recorded · ' . ($consent['recorded_at'] ?? ''))
+        : ($case->lead?->consent_recorded ? 'Recorded on lead' : 'Not recorded');
+    $consentOk = $consentText !== 'Not recorded';
 
-                <div class="ws-section-title">Identity &amp; contact</div>
-                <div class="table-responsive">
-                    <table class="table table-bordered mb-0 ws-table align-middle">
-                        <thead><tr><th>Details</th><th>Applicant</th><th>Co-Applicant</th></tr></thead>
-                        <tbody>
-                            <tr>
-                                <td>Name <span class="text-danger">*</span></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[applicant][name]" value="{{ $app['name'] ?? $case->customer_name }}" {{ $ro }} required></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[co_applicant][name]" value="{{ $co['name'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Father Name</td>
-                                <td><input class="form-control form-control-sm" name="customer_details[applicant][father_name]" value="{{ $app['father_name'] ?? '' }}" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[co_applicant][father_name]" value="{{ $co['father_name'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Mother Name</td>
-                                <td><input class="form-control form-control-sm" name="customer_details[applicant][mother_name]" value="{{ $app['mother_name'] ?? '' }}" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[co_applicant][mother_name]" value="{{ $co['mother_name'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Mobile Number</td>
-                                <td><input class="form-control form-control-sm js-mobile" name="customer_details[applicant][mobile]" value="{{ $app['mobile'] ?? $case->mobile }}" maxlength="10" inputmode="numeric" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm js-mobile" name="customer_details[co_applicant][mobile]" value="{{ $co['mobile'] ?? '' }}" maxlength="10" inputmode="numeric" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Age</td>
-                                <td><input class="form-control form-control-sm" name="customer_details[applicant][age]" value="{{ $app['age'] ?? '' }}" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[co_applicant][age]" value="{{ $co['age'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Marital Status</td>
-                                <td>
-                                    <select class="form-select form-select-sm" name="customer_details[applicant][marital_status]" {{ $dis }}>
-                                        @foreach(['', 'Married', 'Single', 'Others'] as $opt)
-                                            <option value="{{ $opt }}" @selected(($app['marital_status'] ?? '') === $opt)>{{ $opt ?: 'Select' }}</option>
-                                        @endforeach
-                                    </select>
-                                </td>
-                                <td>
-                                    <select class="form-select form-select-sm" name="customer_details[co_applicant][marital_status]" {{ $dis }}>
-                                        @foreach(['', 'Married', 'Single', 'Others'] as $opt)
-                                            <option value="{{ $opt }}" @selected(($co['marital_status'] ?? '') === $opt)>{{ $opt ?: 'Select' }}</option>
-                                        @endforeach
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Relationship with applicant</td>
-                                <td><input class="form-control form-control-sm" name="customer_details[applicant][relationship]" value="{{ $app['relationship'] ?? 'Self' }}" readonly></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[co_applicant][relationship]" value="{{ $co['relationship'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Personal Mail ID</td>
-                                <td><input type="email" class="form-control form-control-sm" name="customer_details[applicant][email]" value="{{ $app['email'] ?? ($cd['email'] ?? '') }}" {{ $ro }}></td>
-                                <td><input type="email" class="form-control form-control-sm" name="customer_details[co_applicant][email]" value="{{ $co['email'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Official Mail ID</td>
-                                <td><input type="email" class="form-control form-control-sm" name="customer_details[applicant][official_email]" value="{{ $app['official_email'] ?? '' }}" {{ $ro }}></td>
-                                <td><input type="email" class="form-control form-control-sm" name="customer_details[co_applicant][official_email]" value="{{ $co['official_email'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+    $relOptsBase = ['Self' => 'Self', 'Spouse' => 'Spouse', 'Father' => 'Father', 'Mother' => 'Mother', 'Son' => 'Son', 'Daughter' => 'Daughter', 'Brother' => 'Brother', 'Sister' => 'Sister', 'Other' => 'Other'];
+    $relApp = $app['relationship'] ?? 'Self';
+    $relCo = $co['relationship'] ?? '';
+    $relAppOpts = $relOptsBase;
+    if ($relApp !== '' && !array_key_exists($relApp, $relAppOpts)) {
+        $relAppOpts = [$relApp => $relApp] + $relAppOpts;
+    }
+    $relCoOpts = ['' => 'Select'] + $relOptsBase;
+    unset($relCoOpts['Self']);
+    if ($relCo !== '' && !array_key_exists($relCo, $relCoOpts)) {
+        $relCoOpts[$relCo] = $relCo;
+    }
+    $maritalOpts = ['' => 'Select', 'Married' => 'Married', 'Single' => 'Single', 'Others' => 'Others'];
 
-                <div class="ws-section-title">Residence</div>
-                <div class="table-responsive">
-                    <table class="table table-bordered mb-0 ws-table align-middle">
-                        <thead><tr><th>Details</th><th>Applicant</th><th>Co-Applicant</th></tr></thead>
-                        <tbody>
-                            <tr>
-                                <td>Present Residence Address and Pincode</td>
-                                <td colspan="2"><input class="form-control form-control-sm" name="customer_details[residence][present_address]" value="{{ $res['present_address'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>No. of Years at above Residence</td>
-                                <td><input class="form-control form-control-sm" name="customer_details[residence][years_applicant]" value="{{ $res['years_applicant'] ?? '' }}" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[residence][years_co]" value="{{ $res['years_co'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Permanent Address &amp; Pin Code</td>
-                                <td colspan="2"><input class="form-control form-control-sm" name="customer_details[residence][permanent_address]" value="{{ $res['permanent_address'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+    $empTypeOpts = ['' => 'Select', 'Salaried' => 'Salaried', 'Self Employed' => 'Self Employed', 'Business' => 'Business', 'Professional' => 'Professional', 'Other' => 'Other'];
+    $empTypeApp = $emp['type_applicant'] ?? ($cd['employment_type'] ?? '');
+    if ($empTypeApp !== '' && !array_key_exists($empTypeApp, $empTypeOpts)) {
+        $empTypeOpts[$empTypeApp] = $empTypeApp;
+    }
+    $empTypeCo = $emp['type_co'] ?? '';
+    $industryOpts = ['' => 'Select', 'IT / Software' => 'IT / Software', 'Banking / Finance' => 'Banking / Finance', 'Manufacturing' => 'Manufacturing', 'Healthcare' => 'Healthcare', 'Education' => 'Education', 'Retail' => 'Retail', 'Real Estate' => 'Real Estate', 'Government' => 'Government', 'Other' => 'Other'];
+    $indApp = $emp['industry_applicant'] ?? '';
+    $indCo = $emp['industry_co'] ?? '';
+    if ($indApp !== '' && !array_key_exists($indApp, $industryOpts)) {
+        $industryOpts[$indApp] = $indApp;
+    }
+    if ($indCo !== '' && !array_key_exists($indCo, $industryOpts)) {
+        $industryOpts[$indCo] = $indCo;
+    }
+@endphp
 
-                <div class="ws-section-title">Employment</div>
-                <div class="table-responsive">
-                    <table class="table table-bordered mb-0 ws-table align-middle">
-                        <thead><tr><th>Details</th><th>Applicant</th><th>Co-Applicant</th></tr></thead>
-                        <tbody>
-                            <tr>
-                                <td>Office address &amp; Pincode</td>
-                                <td colspan="2"><input class="form-control form-control-sm" name="customer_details[employment][office_address]" value="{{ $emp['office_address'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Employment Type</td>
-                                <td><input class="form-control form-control-sm" name="customer_details[employment][type_applicant]" value="{{ $emp['type_applicant'] ?? ($cd['employment_type'] ?? '') }}" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[employment][type_co]" value="{{ $emp['type_co'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Total job experience</td>
-                                <td><input class="form-control form-control-sm" name="customer_details[employment][total_exp_applicant]" value="{{ $emp['total_exp_applicant'] ?? ($cd['work_experience_years'] ?? '') }}" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[employment][total_exp_co]" value="{{ $emp['total_exp_co'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Present company job experience</td>
-                                <td><input class="form-control form-control-sm" name="customer_details[employment][present_exp_applicant]" value="{{ $emp['present_exp_applicant'] ?? '' }}" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[employment][present_exp_co]" value="{{ $emp['present_exp_co'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Designation</td>
-                                <td><input class="form-control form-control-sm" name="customer_details[employment][designation_applicant]" value="{{ $emp['designation_applicant'] ?? '' }}" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[employment][designation_co]" value="{{ $emp['designation_co'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Industry Type</td>
-                                <td><input class="form-control form-control-sm" name="customer_details[employment][industry_applicant]" value="{{ $emp['industry_applicant'] ?? '' }}" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[employment][industry_co]" value="{{ $emp['industry_co'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Employer / Business Name</td>
-                                <td><input class="form-control form-control-sm" name="customer_details[employment][employer_applicant]" value="{{ $emp['employer_applicant'] ?? ($cd['employer_name'] ?? '') }}" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[employment][employer_co]" value="{{ $emp['employer_co'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Monthly / Net Income</td>
-                                <td><input class="form-control form-control-sm js-decimal" data-decimals="2" name="customer_details[employment][income_applicant]" value="{{ $emp['income_applicant'] ?? ($cd['monthly_income'] ?? '') }}" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm js-decimal" data-decimals="2" name="customer_details[employment][income_co]" value="{{ $emp['income_co'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="ws-section-title">Property</div>
-                <div class="table-responsive">
-                    <table class="table table-bordered mb-0 ws-table align-middle">
-                        <thead><tr><th>Details</th><th colspan="2">Value</th></tr></thead>
-                        <tbody>
-                            <tr>
-                                <td>Property Address and Pin Code</td>
-                                <td colspan="2"><input class="form-control form-control-sm" name="customer_details[property][address]" value="{{ $prop['address'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Property Market Value</td>
-                                <td colspan="2"><input class="form-control form-control-sm" name="customer_details[property][market_value]" value="{{ $prop['market_value'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Property SR value</td>
-                                <td colspan="2"><input class="form-control form-control-sm" name="customer_details[property][sr_value]" value="{{ $prop['sr_value'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="ws-section-title">References</div>
-                <div class="table-responsive">
-                    <table class="table table-bordered mb-0 ws-table align-middle">
-                        <thead><tr><th>Details</th><th>Reference 1</th><th>Reference 2</th></tr></thead>
-                        <tbody>
-                            <tr>
-                                <td>Name</td>
-                                <td><input class="form-control form-control-sm" name="customer_details[references][ref1_name]" value="{{ $refs['ref1_name'] ?? '' }}" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[references][ref2_name]" value="{{ $refs['ref2_name'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Mobile Number</td>
-                                <td><input class="form-control form-control-sm js-mobile" name="customer_details[references][ref1_mobile]" value="{{ $refs['ref1_mobile'] ?? '' }}" maxlength="10" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm js-mobile" name="customer_details[references][ref2_mobile]" value="{{ $refs['ref2_mobile'] ?? '' }}" maxlength="10" {{ $ro }}></td>
-                            </tr>
-                            <tr>
-                                <td>Address</td>
-                                <td><input class="form-control form-control-sm" name="customer_details[references][ref1_address]" value="{{ $refs['ref1_address'] ?? '' }}" {{ $ro }}></td>
-                                <td><input class="form-control form-control-sm" name="customer_details[references][ref2_address]" value="{{ $refs['ref2_address'] ?? '' }}" {{ $ro }}></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="sec-body">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label class="form-label">Product</label>
-                            <input class="form-control" name="product" value="{{ old('product', $case->product) }}" {{ $ro }}>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Requested Amount (₹)</label>
-                            <input type="text" inputmode="decimal" data-decimals="2" class="form-control js-decimal" name="loan_amount" value="{{ old('loan_amount', $case->loan_amount) }}" {{ $ro }}>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Preferred Contact Time</label>
-                            <input class="form-control" name="customer_details[preferred_contact_time]" value="{{ $cd['preferred_contact_time'] ?? '' }}" {{ $ro }}>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Consent</label>
-                            <input class="form-control" value="{{ is_array($consent) && !empty($consent['recorded']) ? ('Recorded · ' . ($consent['recorded_at'] ?? '')) : ($case->lead?->consent_recorded ? 'Recorded on lead' : 'Not recorded') }}" readonly>
-                        </div>
-                    </div>
-                    {{-- Hidden sync fields for top-level identity --}}
-                    <input type="hidden" name="customer_name" id="cw_customer_name" value="{{ old('customer_name', $case->customer_name) }}">
-                    <input type="hidden" name="mobile" id="cw_mobile" value="{{ old('mobile', $case->mobile) }}">
+<div class="cw-cust" id="cwCustomerLayout" data-party="applicant">
+    {{-- Customer Details header --}}
+    <div class="cw-card-tw">
+        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div class="flex items-center gap-3">
+                <span class="cw-ico cw-ico-blue"><i class="bi bi-grid-1x2"></i></span>
+                <div>
+                    <h6 class="cw-card-title">Customer Details</h6>
+                    <div class="mt-1 text-xs text-slate-500">Applicant · Co-Applicant · Property · References</div>
                 </div>
             </div>
+            @if($case->lead)
+                <a href="{{ route('goal.leads.show', $case->lead) }}" class="cw-profile-btn">
+                    <i class="bi bi-person"></i> View Customer Profile
+                </a>
+            @else
+                <button type="button" class="cw-profile-btn" disabled>
+                    <i class="bi bi-person"></i> View Customer Profile
+                </button>
+            @endif
+        </div>
+    </div>
+
+    {{-- Identity & Contact --}}
+    <div class="cw-card-tw">
+        <div class="cw-card-head">
+            <span class="cw-ico"><i class="bi bi-person"></i></span>
+            <h6 class="cw-card-title">Identity &amp; Contact</h6>
+        </div>
+        <div class="cw-identity-split">
+            {{-- Applicant --}}
+            <div class="cw-party-col">
+                <div class="cw-party-head cw-party-head-app">
+                    <i class="bi bi-person-fill"></i><span>Applicant</span>
+                </div>
+                <div class="cw-party-body">
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Name <span class="text-red-500">*</span></label>
+                        <input class="cw-input" name="customer_details[applicant][name]" value="{{ $app['name'] ?? $case->customer_name }}" placeholder="Enter name" {{ $ro }} required>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Father Name</label>
+                        <input class="cw-input" name="customer_details[applicant][father_name]" value="{{ $app['father_name'] ?? '' }}" placeholder="Enter father name" {{ $ro }}>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Mother Name</label>
+                        <input class="cw-input" name="customer_details[applicant][mother_name]" value="{{ $app['mother_name'] ?? '' }}" placeholder="Enter mother name" {{ $ro }}>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Mobile Number <span class="text-red-500">*</span></label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
+                            <input class="cw-input js-mobile" name="customer_details[applicant][mobile]" value="{{ $app['mobile'] ?? $case->mobile }}" maxlength="10" inputmode="numeric" placeholder="10-digit mobile" {{ $ro }}>
+                        </div>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Age</label>
+                        <input class="cw-input" name="customer_details[applicant][age]" value="{{ $app['age'] ?? '' }}" placeholder="Enter age" {{ $ro }}>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Marital Status</label>
+                        <select class="cw-select js-select2" name="customer_details[applicant][marital_status]" {{ $dis }}>
+                            @foreach($maritalOpts as $val => $label)
+                                <option value="{{ $val }}" @selected(($app['marital_status'] ?? '') === $val)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Relationship with applicant</label>
+                        <select class="cw-select js-select2 cw-rel-self" name="customer_details[applicant][relationship]" {{ $dis }}>
+                            @foreach($relAppOpts as $val => $label)
+                                <option value="{{ $val }}" @selected($relApp === $val)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Personal Mail ID</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-envelope"></i></span>
+                            <input type="email" class="cw-input" name="customer_details[applicant][email]" value="{{ $app['email'] ?? ($cd['email'] ?? '') }}" placeholder="name@email.com" {{ $ro }}>
+                        </div>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Official Mail ID</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-envelope-at"></i></span>
+                            <input type="email" class="cw-input" name="customer_details[applicant][official_email]" value="{{ $app['official_email'] ?? '' }}" placeholder="work@company.com" {{ $ro }}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Co-Applicant --}}
+            <div class="cw-party-col">
+                <div class="cw-party-head cw-party-head-co">
+                    <i class="bi bi-people-fill"></i><span>Co-Applicant</span>
+                </div>
+                <div class="cw-party-body">
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Name</label>
+                        <input class="cw-input" name="customer_details[co_applicant][name]" value="{{ $co['name'] ?? '' }}" placeholder="Enter name" {{ $ro }}>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Father Name</label>
+                        <input class="cw-input" name="customer_details[co_applicant][father_name]" value="{{ $co['father_name'] ?? '' }}" placeholder="Enter father name" {{ $ro }}>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Mother Name</label>
+                        <input class="cw-input" name="customer_details[co_applicant][mother_name]" value="{{ $co['mother_name'] ?? '' }}" placeholder="Enter mother name" {{ $ro }}>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Mobile Number</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
+                            <input class="cw-input js-mobile" name="customer_details[co_applicant][mobile]" value="{{ $co['mobile'] ?? '' }}" maxlength="10" inputmode="numeric" placeholder="10-digit mobile" {{ $ro }}>
+                        </div>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Age</label>
+                        <input class="cw-input" name="customer_details[co_applicant][age]" value="{{ $co['age'] ?? '' }}" placeholder="Enter age" {{ $ro }}>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Marital Status</label>
+                        <select class="cw-select js-select2" name="customer_details[co_applicant][marital_status]" {{ $dis }}>
+                            @foreach($maritalOpts as $val => $label)
+                                <option value="{{ $val }}" @selected(($co['marital_status'] ?? '') === $val)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Relationship with applicant</label>
+                        <select class="cw-select js-select2" name="customer_details[co_applicant][relationship]" {{ $dis }}>
+                            @foreach($relCoOpts as $val => $label)
+                                <option value="{{ $val }}" @selected($relCo === $val)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Personal Mail ID</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-envelope"></i></span>
+                            <input type="email" class="cw-input" name="customer_details[co_applicant][email]" value="{{ $co['email'] ?? '' }}" placeholder="name@email.com" {{ $ro }}>
+                        </div>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Official Mail ID</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-envelope-at"></i></span>
+                            <input type="email" class="cw-input" name="customer_details[co_applicant][official_email]" value="{{ $co['official_email'] ?? '' }}" placeholder="work@company.com" {{ $ro }}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Residence --}}
+    <div class="cw-card-tw">
+        <div class="cw-card-head">
+            <span class="cw-ico"><i class="bi bi-house-door"></i></span>
+            <h6 class="cw-card-title">Residence</h6>
+        </div>
+        <div class="space-y-3 px-4 pb-4">
+            <div class="grid grid-cols-1 items-end gap-3 lg:grid-cols-12">
+                <div class="lg:col-span-8">
+                    <label class="cw-label">Present Residence Address</label>
+                    <div class="cw-input-group">
+                        <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
+                        <input class="cw-input" name="customer_details[residence][present_address]" value="{{ $res['present_address'] ?? '' }}" placeholder="Enter present address" {{ $ro }}>
+                    </div>
+                </div>
+                <div class="lg:col-span-4">
+                    <label class="cw-label">Pincode</label>
+                    <input class="cw-input" name="customer_details[residence][present_pincode]" value="{{ $res['present_pincode'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }}>
+                </div>
+            </div>
+
+            <div class="cw-years-box">
+                <div class="cw-label mb-2">No. of Years at above Residence</div>
+                <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <div>
+                        <label class="cw-mini-label">Applicant</label>
+                        <input class="cw-input" name="customer_details[residence][years_applicant]" value="{{ $res['years_applicant'] ?? '' }}" placeholder="Enter years" {{ $ro }}>
+                    </div>
+                    <div>
+                        <label class="cw-mini-label">Co-Applicant</label>
+                        <input class="cw-input" name="customer_details[residence][years_co]" value="{{ $res['years_co'] ?? '' }}" placeholder="Enter years" {{ $ro }}>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 items-end gap-3 lg:grid-cols-12">
+                <div class="lg:col-span-8">
+                    <label class="cw-label">Permanent Address</label>
+                    <div class="cw-input-group">
+                        <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
+                        <input class="cw-input" name="customer_details[residence][permanent_address]" value="{{ $res['permanent_address'] ?? '' }}" placeholder="Enter permanent address" {{ $ro }}>
+                    </div>
+                </div>
+                <div class="lg:col-span-4">
+                    <label class="cw-label">Pincode</label>
+                    <input class="cw-input" name="customer_details[residence][permanent_pincode]" value="{{ $res['permanent_pincode'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }}>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Employment --}}
+    <div class="cw-card-tw">
+        <div class="cw-card-head">
+            <span class="cw-ico"><i class="bi bi-briefcase"></i></span>
+            <h6 class="cw-card-title">Employment</h6>
+        </div>
+        <div class="px-4 pb-4">
+            <div class="cw-emp-grid">
+                <div class="cw-emp-row">
+                    <div></div>
+                    <div class="cw-party-head cw-party-head-app mb-0"><i class="bi bi-person-fill"></i><span>Applicant</span></div>
+                    <div class="cw-party-head cw-party-head-co mb-0"><i class="bi bi-people-fill"></i><span>Co-Applicant</span></div>
+                </div>
+
+                <div class="cw-emp-row-span">
+                    <label class="cw-label-inline">Office Address &amp; Pincode</label>
+                    <div class="cw-emp-span-fields">
+                        <div class="cw-input-group min-w-0 flex-1">
+                            <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
+                            <input class="cw-input" name="customer_details[employment][office_address]" value="{{ $emp['office_address'] ?? '' }}" placeholder="Enter office address" {{ $ro }}>
+                        </div>
+                        <input class="cw-input cw-pin" name="customer_details[employment][office_pincode]" value="{{ $emp['office_pincode'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }}>
+                    </div>
+                </div>
+
+                <div class="cw-emp-row">
+                    <label class="cw-label-inline">Employment Type</label>
+                    <div>
+                        <select class="cw-select js-select2" name="customer_details[employment][type_applicant]" {{ $dis }}>
+                            @foreach($empTypeOpts as $val => $label)
+                                <option value="{{ $val }}" @selected($empTypeApp === $val)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <select class="cw-select js-select2" name="customer_details[employment][type_co]" {{ $dis }}>
+                            @foreach(['' => 'Select', 'Salaried' => 'Salaried', 'Self Employed' => 'Self Employed', 'Business' => 'Business', 'Professional' => 'Professional', 'Other' => 'Other'] as $val => $label)
+                                <option value="{{ $val }}" @selected($empTypeCo === $val)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="cw-emp-row">
+                    <label class="cw-label-inline">Total job experience</label>
+                    <div><input class="cw-input" name="customer_details[employment][total_exp_applicant]" value="{{ $emp['total_exp_applicant'] ?? ($cd['work_experience_years'] ?? '') }}" placeholder="Enter years" {{ $ro }}></div>
+                    <div><input class="cw-input" name="customer_details[employment][total_exp_co]" value="{{ $emp['total_exp_co'] ?? '' }}" placeholder="Enter years" {{ $ro }}></div>
+                </div>
+
+                <div class="cw-emp-row">
+                    <label class="cw-label-inline">Present company job experience</label>
+                    <div><input class="cw-input" name="customer_details[employment][present_exp_applicant]" value="{{ $emp['present_exp_applicant'] ?? '' }}" placeholder="Enter years" {{ $ro }}></div>
+                    <div><input class="cw-input" name="customer_details[employment][present_exp_co]" value="{{ $emp['present_exp_co'] ?? '' }}" placeholder="Enter years" {{ $ro }}></div>
+                </div>
+
+                <div class="cw-emp-row">
+                    <label class="cw-label-inline">Designation</label>
+                    <div><input class="cw-input" name="customer_details[employment][designation_applicant]" value="{{ $emp['designation_applicant'] ?? '' }}" placeholder="Enter designation" {{ $ro }}></div>
+                    <div><input class="cw-input" name="customer_details[employment][designation_co]" value="{{ $emp['designation_co'] ?? '' }}" placeholder="Enter designation" {{ $ro }}></div>
+                </div>
+
+                <div class="cw-emp-row">
+                    <label class="cw-label-inline">Industry Type</label>
+                    <div>
+                        <select class="cw-select js-select2" name="customer_details[employment][industry_applicant]" {{ $dis }}>
+                            @foreach($industryOpts as $val => $label)
+                                <option value="{{ $val }}" @selected($indApp === $val)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <select class="cw-select js-select2" name="customer_details[employment][industry_co]" {{ $dis }}>
+                            @foreach($industryOpts as $val => $label)
+                                <option value="{{ $val }}" @selected($indCo === $val)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="cw-emp-row">
+                    <label class="cw-label-inline">Employer / Business Name</label>
+                    <div><input class="cw-input" name="customer_details[employment][employer_applicant]" value="{{ $emp['employer_applicant'] ?? ($cd['employer_name'] ?? '') }}" placeholder="Enter employer / business name" {{ $ro }}></div>
+                    <div><input class="cw-input" name="customer_details[employment][employer_co]" value="{{ $emp['employer_co'] ?? '' }}" placeholder="Enter employer / business name" {{ $ro }}></div>
+                </div>
+
+                <div class="cw-emp-row">
+                    <label class="cw-label-inline">Monthly / Net Income</label>
+                    <div>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
+                            <input class="cw-input js-decimal" data-decimals="2" name="customer_details[employment][income_applicant]" value="{{ $emp['income_applicant'] ?? ($cd['monthly_income'] ?? '') }}" placeholder="Enter amount" {{ $ro }}>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
+                            <input class="cw-input js-decimal" data-decimals="2" name="customer_details[employment][income_co]" value="{{ $emp['income_co'] ?? '' }}" placeholder="Enter amount" {{ $ro }}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Property | References --}}
+    <div class="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div class="cw-card-tw mb-0 h-full">
+            <div class="cw-card-head border-b border-slate-100">
+                <span class="cw-ico cw-ico-blue"><i class="bi bi-building"></i></span>
+                <h6 class="cw-card-title">Property</h6>
+            </div>
+            <div class="space-y-3 px-4 py-3">
+                <div class="grid grid-cols-12 gap-3">
+                    <div class="col-span-8">
+                        <label class="cw-label">Property Address</label>
+                        <input class="cw-input" name="customer_details[property][address]" value="{{ $prop['address'] ?? '' }}" placeholder="Enter property address" {{ $ro }}>
+                    </div>
+                    <div class="col-span-4">
+                        <label class="cw-label">Pincode</label>
+                        <input class="cw-input" name="customer_details[property][pincode]" value="{{ $prop['pincode'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }}>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div>
+                        <label class="cw-label">Property Market Value</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
+                            <input class="cw-input js-decimal" data-decimals="2" name="customer_details[property][market_value]" value="{{ $prop['market_value'] ?? '' }}" placeholder="0.00" {{ $ro }}>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="cw-label">Property SR Value</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
+                            <input class="cw-input js-decimal" data-decimals="2" name="customer_details[property][sr_value]" value="{{ $prop['sr_value'] ?? '' }}" placeholder="0.00" {{ $ro }}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cw-card-tw mb-0 h-full">
+            <div class="cw-card-head border-b border-slate-100">
+                <span class="cw-ico cw-ico-blue"><i class="bi bi-people"></i></span>
+                <h6 class="cw-card-title">References</h6>
+            </div>
+            <div class="grid grid-cols-1 gap-3 px-4 py-3 md:grid-cols-2">
+                <div class="cw-ref-box">
+                    <div class="cw-ref-title">Reference 1</div>
+                    <div class="mb-2">
+                        <label class="cw-label">Name</label>
+                        <input class="cw-input" name="customer_details[references][ref1_name]" value="{{ $refs['ref1_name'] ?? '' }}" placeholder="Enter name" {{ $ro }}>
+                    </div>
+                    <div class="mb-2">
+                        <label class="cw-label">Mobile</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
+                            <input class="cw-input js-mobile" name="customer_details[references][ref1_mobile]" value="{{ $refs['ref1_mobile'] ?? '' }}" maxlength="10" placeholder="Mobile" {{ $ro }}>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="cw-label">Address</label>
+                        <input class="cw-input" name="customer_details[references][ref1_address]" value="{{ $refs['ref1_address'] ?? '' }}" placeholder="Enter address" {{ $ro }}>
+                    </div>
+                </div>
+                <div class="cw-ref-box">
+                    <div class="cw-ref-title">Reference 2</div>
+                    <div class="mb-2">
+                        <label class="cw-label">Name</label>
+                        <input class="cw-input" name="customer_details[references][ref2_name]" value="{{ $refs['ref2_name'] ?? '' }}" placeholder="Enter name" {{ $ro }}>
+                    </div>
+                    <div class="mb-2">
+                        <label class="cw-label">Mobile</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
+                            <input class="cw-input js-mobile" name="customer_details[references][ref2_mobile]" value="{{ $refs['ref2_mobile'] ?? '' }}" maxlength="10" placeholder="Mobile" {{ $ro }}>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="cw-label">Address</label>
+                        <input class="cw-input" name="customer_details[references][ref2_address]" value="{{ $refs['ref2_address'] ?? '' }}" placeholder="Enter address" {{ $ro }}>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Product & Consent --}}
+    <div class="cw-card-tw">
+        <div class="grid grid-cols-1 items-end gap-3 px-4 py-3 md:grid-cols-4">
+            <div>
+                <label class="cw-label">Product</label>
+                <input class="cw-input cw-product-input" name="product" value="{{ old('product', $case->product) }}" placeholder="e.g. Home Loan" {{ $ro }}>
+            </div>
+            <div>
+                <label class="cw-label">Requested Amount</label>
+                <div class="cw-input-group">
+                    <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
+                    <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal" name="loan_amount" value="{{ old('loan_amount', $case->loan_amount) }}" placeholder="0.00" {{ $ro }}>
+                </div>
+            </div>
+            <div>
+                <label class="cw-label">Preferred Contact Time</label>
+                <div class="cw-input-group">
+                    <span class="cw-input-group-ico"><i class="bi bi-clock"></i></span>
+                    <input class="cw-input" name="customer_details[preferred_contact_time]" value="{{ $cd['preferred_contact_time'] ?? '' }}" placeholder="e.g. 10am - 1pm" {{ $ro }}>
+                </div>
+            </div>
+            <div>
+                <label class="cw-label">Consent</label>
+                <div class="cw-consent {{ $consentOk ? 'cw-consent-ok' : 'cw-consent-warn' }}">
+                    @if($consentOk)<i class="bi bi-check-lg"></i>@else<i class="bi bi-exclamation-circle"></i>@endif
+                    <span>{{ $consentText }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="hidden" name="customer_name" id="cw_customer_name" value="{{ old('customer_name', $case->customer_name) }}">
+    <input type="hidden" name="mobile" id="cw_mobile" value="{{ old('mobile', $case->mobile) }}">
+</div>

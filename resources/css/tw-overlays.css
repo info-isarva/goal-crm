@@ -1,0 +1,158 @@
+/**
+ * Modal / collapse / tab panes — unlayered so they override Tailwind's
+ * `.collapse { visibility: collapse }` utility and keep JS shims working.
+ */
+
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1055;
+    overflow-x: hidden;
+    overflow-y: auto;
+    outline: 0;
+}
+.modal.show { display: block; }
+.modal-dialog {
+    position: relative;
+    width: auto;
+    margin: 1.75rem auto;
+    max-width: 500px;
+    pointer-events: none;
+}
+.modal-dialog.modal-lg { max-width: 800px; }
+.modal-dialog.modal-xl { max-width: 1140px; }
+.modal-dialog.modal-sm { max-width: 300px; }
+.modal-content {
+    pointer-events: auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+}
+.modal-header,
+.modal-footer {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.15rem;
+}
+.modal-header {
+    justify-content: space-between;
+    border-bottom: 1px solid #eef2f7;
+}
+.modal-footer {
+    justify-content: flex-end;
+    gap: 0.5rem;
+    border-top: 1px solid #eef2f7;
+}
+.modal-body { padding: 1rem 1.15rem; }
+.modal-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.tw-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background: rgba(15, 23, 42, 0.45);
+    display: none;
+}
+.tw-modal-backdrop.show { display: block; }
+body.tw-modal-open { overflow: hidden; }
+
+/* Accordion / collapse panels (not Tailwind visibility:collapse) */
+.collapse {
+    visibility: visible !important;
+}
+.collapse:not(.show) {
+    display: none;
+}
+.collapsing {
+    height: 0;
+    overflow: hidden;
+    transition: height 0.2s ease;
+}
+
+.tab-content > .tab-pane { display: none; }
+.tab-content > .active { display: block; }
+.tab-content > .tab-pane.show.active { display: block; }
+
+/* Modal fade — show/hide only (no Bootstrap JS animation) */
+.modal.fade .modal-dialog { transform: none; }
+
+/* Dropdown alignment */
+.dropdown-menu-end {
+    right: 0;
+    left: auto;
+}
+.dropdown-menu-start {
+    left: 0;
+    right: auto;
+}
+
+/* Accordion (customer extras + shared CRM panels) */
+.accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.accordion-item {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+.accordion-item + .accordion-item {
+    margin-top: 0.5rem;
+}
+.accordion-header {
+    margin: 0;
+}
+.accordion-button {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #0f172a;
+    text-align: left;
+    background: #fff;
+    border: 0;
+    cursor: pointer;
+}
+.accordion-button::after {
+    content: '';
+    margin-left: auto;
+    width: 0.75rem;
+    height: 0.75rem;
+    flex-shrink: 0;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%230f172a'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 01.708 0L8 10.293l5.646-5.647a.5.5 0 01.708.708l-6 6a.5.5 0 01-.708 0l-6-6a.5.5 0 010-.708z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-size: 0.75rem;
+    transition: transform 0.2s ease;
+}
+.accordion-button:not(.collapsed)::after {
+    transform: rotate(-180deg);
+}
+.accordion-button:not(.collapsed) {
+    background: #f8fafc;
+    color: #0f172a;
+    box-shadow: inset 0 -1px 0 #eef2f7;
+}
+.accordion-button.collapsed {
+    background: #fff;
+}
+.accordion-body {
+    padding: 1rem;
+}
+.accordion-collapse.collapse:not(.show) {
+    display: none;
+}

@@ -368,7 +368,6 @@
  @include('partials.industry_new_modal')
 
  <!-- Bootstrap JS Bundle (for modal functionality) -->
-<script src="{{asset('js/bootstrap.bundle.min.js')}}"></script>
 <!-- <script src="{{asset('js/deals/create-deals.js')}}"></script> -->
  <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -1381,7 +1380,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var selectedOpt = createStage.options[createStage.selectedIndex];
                     var prob = selectedOpt ? selectedOpt.getAttribute('data-probability') : null;
                     if (prob !== null && prob !== '') {
-                        // only update if not manually edited by user recently â€“ but for now set value
+                        // only update if not manually edited by user recently – but for now set value
                         probabilityInput.value = prob;
                     }
                 }

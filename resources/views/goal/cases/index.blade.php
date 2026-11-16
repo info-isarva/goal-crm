@@ -105,8 +105,17 @@
 }
 .lc-page .filter-grid .form-control,
 .lc-page .filter-grid .form-select{
-    min-height:40px;border-radius:10px;border-color:#d1d5db;font-size:.9rem;
+    min-height:40px;height:40px;border-radius:10px;border:1px solid #d1d5db;font-size:.9rem;background:#fff;
 }
+.lc-page .filter-grid .select2-container{width:100%!important}
+.lc-page .filter-grid .select2-container--default .select2-selection--single{
+    height:40px!important;min-height:40px!important;border:1px solid #d1d5db!important;
+    border-radius:10px!important;background:#fff!important;
+}
+.lc-page .filter-grid .select2-container--default .select2-selection--single .select2-selection__rendered{
+    line-height:38px!important;padding-left:.75rem!important;color:#0f172a!important;
+}
+.lc-page .lc-filter-card,.lc-page .filter-grid{overflow:visible!important;position:relative;z-index:5}
 .lc-page .lc-search{position:relative}
 .lc-page .lc-search > i{
     position:absolute;left:12px;top:50%;transform:translateY(-50%);

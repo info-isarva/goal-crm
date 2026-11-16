@@ -102,31 +102,6 @@
             box-shadow: none;
         }
 
-        .sidebar .sidebar-close-mobile {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 32px;
-            height: 32px;
-            border-radius: 10px;
-            border: 1px solid rgba(148, 163, 184, 0.28);
-            background: rgba(148, 163, 184, 0.1);
-            color: #cbd5e1;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            flex-shrink: 0;
-            z-index: 2;
-            transition: background .15s ease, color .15s ease, border-color .15s ease;
-        }
-        .sidebar .sidebar-close-mobile:hover {
-            background: rgba(56, 189, 248, 0.16);
-            border-color: rgba(56, 189, 248, 0.45);
-            color: #fff;
-        }
-
         /* Collapse control lives in the main header (outside sidebar) */
         .header-sidebar-toggle {
             width: 36px;

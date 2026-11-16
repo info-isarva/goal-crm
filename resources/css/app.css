@@ -1,3 +1,26 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import './tw-components.css';
+@import './customer-tw.css';
+@import 'tailwindcss/utilities';
+@import './tw-grid.css';
+@import './tw-tables.css';
+@import './tw-overlays.css';
+
+@layer base {
+    html {
+        @apply antialiased;
+    }
+    body {
+        @apply bg-slate-50 font-sans text-slate-900;
+    }
+    a {
+        @apply text-inherit;
+    }
+    button,
+    input,
+    select,
+    textarea {
+        @apply font-sans;
+    }
+}

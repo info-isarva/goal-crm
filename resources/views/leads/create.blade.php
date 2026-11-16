@@ -378,7 +378,6 @@
     @include('partials.industry_new_modal')
 
     <!-- Bootstrap JS Bundle (for modal functionality) -->
-    <script src="{{asset('js/bootstrap.bundle.min.js')}}"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -450,7 +449,7 @@
                 hiddenInput.value  = orgId;
                 orgSelect.parentNode.insertBefore(hiddenInput, orgSelect);
             } else {
-                // No org selected â€” just make sure the select is visible
+                // No org selected — just make sure the select is visible
                 orgSelect.style.display = '';
             }
         }
@@ -558,7 +557,7 @@
         });
 
         // -----------------------------------------------------------------------
-        // NEW ORGANIZATION MODAL â€” submit
+        // NEW ORGANIZATION MODAL — submit
         // On success: set orgInput, store orgId, push to local list
         // -----------------------------------------------------------------------
         document.getElementById('orgNewForm').addEventListener('submit', function (e) {
@@ -709,7 +708,7 @@
         });
 
         // -----------------------------------------------------------------------
-        // NEW CUSTOMER MODAL â€” show.bs.modal
+        // NEW CUSTOMER MODAL — show.bs.modal
         // Loads latest org list THEN pre-selects & locks the currently chosen company
         // -----------------------------------------------------------------------
         const customerNewModalEl = document.getElementById('customerNewModal');
@@ -770,7 +769,7 @@
         }
 
         // -----------------------------------------------------------------------
-        // NEW CUSTOMER MODAL â€” submit with duplicate check
+        // NEW CUSTOMER MODAL — submit with duplicate check
         // -----------------------------------------------------------------------
         document.getElementById('customerNewForm').addEventListener('submit', function (e) {
             e.preventDefault();
@@ -996,7 +995,7 @@
         });
 
         // -----------------------------------------------------------------------
-        // NEW CONTACT PERSON MODAL â€” show.bs.modal
+        // NEW CONTACT PERSON MODAL — show.bs.modal
         // Loads latest org list THEN pre-selects & locks the currently chosen company
         // -----------------------------------------------------------------------
         const personNewModalEl = document.getElementById('personNewModal');
@@ -1061,7 +1060,7 @@
         }
 
         // -----------------------------------------------------------------------
-        // NEW CONTACT PERSON MODAL â€” submit with single-word & duplicate check
+        // NEW CONTACT PERSON MODAL — submit with single-word & duplicate check
         // -----------------------------------------------------------------------
         document.getElementById('personNewForm').addEventListener('submit', function (e) {
             e.preventDefault();

@@ -149,9 +149,19 @@
     display: block; font-size: 0.75rem; font-weight: 700; color: #64748b;
     margin: 0 0 5px; text-transform: uppercase; letter-spacing: .03em;
 }
-.vrm-page .filter-grid .form-control {
-    border-radius: 8px; border-color: #d1d5db;
+.vrm-page .filter-grid .form-control,
+.vrm-page .filter-grid .form-select {
+    min-height: 38px; height: 38px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff;
 }
+.vrm-page .filter-grid .select2-container { width: 100% !important; }
+.vrm-page .filter-grid .select2-container--default .select2-selection--single {
+    height: 38px !important; min-height: 38px !important; border: 1px solid #d1d5db !important;
+    border-radius: 8px !important; background: #fff !important;
+}
+.vrm-page .filter-grid .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 36px !important; padding-left: 0.75rem !important; color: #0f172a !important;
+}
+.vrm-page .filter-card, .vrm-page .filter-grid { overflow: visible !important; position: relative; z-index: 5; }
 /* .form-select / Select2 use global dropdown theme */
 .vrm-page .btn-apply {
     height: 31px; border-radius: 8px; border: none; background: #7c3aed; color: #fff;

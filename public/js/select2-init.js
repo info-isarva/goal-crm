@@ -13,7 +13,8 @@
     var SELECTOR = [
         'select.js-select2',
         'select.select2',
-        'select.form-select'
+        'select.form-select',
+        'select.cw-select'
     ].join(', ');
 
     var SKIP_SELECTOR = [
@@ -29,6 +30,7 @@
     ].join(', ');
 
     function resolveParent($el) {
+        // Filters/tables → body (above KPI cards). Modals/offcanvas keep local parent.
         var $modal = $el.closest('.modal');
         if ($modal.length) {
             return $modal;
@@ -118,5 +120,26 @@
     // Re-init when Bootstrap modal opens (dynamic content / first paint)
     $(document).on('shown.bs.modal', '.modal', function () {
         initAll(this);
+    });
+
+    // Ensure open panels keep Select2's measured width + sit above page chrome
+    $(document).on('select2:open', function () {
+        window.setTimeout(function () {
+            var $open = $('body > .select2-container--open').last();
+            if (!$open.length) {
+                $open = $('.select2-container--open').last();
+            }
+            if (!$open.length) return;
+            $open.css('z-index', 10050);
+            var $drop = $open.find('.select2-dropdown');
+            if ($drop.length) {
+                $drop.css({
+                    'z-index': 10051,
+                    'background': '#fff',
+                    'visibility': 'visible',
+                    'opacity': '1'
+                });
+            }
+        }, 0);
     });
 })(window, window.jQuery);

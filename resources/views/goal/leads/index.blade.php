@@ -40,12 +40,24 @@
     display:block;font-size:.72rem;font-weight:700;color:#64748b;
     margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em;
 }
-.ll-page .filter-grid .form-control{
-    min-height:38px;border-radius:10px;border-color:#d1d5db;font-size:.9rem;
+.ll-page .filter-grid .form-control,
+.ll-page .filter-grid .form-select{
+    min-height:38px;height:38px;border-radius:10px;border:1px solid #d1d5db;font-size:.9rem;background:#fff;
 }
-.ll-page .filter-grid .form-control:focus{
+.ll-page .filter-grid .form-control:focus,
+.ll-page .filter-grid .form-select:focus{
     border-color:#93c5fd;box-shadow:0 0 0 3px rgba(59,130,246,.16);
 }
+.ll-page .filter-grid .select2-container{width:100%!important}
+.ll-page .filter-grid .select2-container--default .select2-selection--single{
+    height:38px!important;min-height:38px!important;border:1px solid #d1d5db!important;
+    border-radius:10px!important;background:#fff!important;
+}
+.ll-page .filter-grid .select2-container--default .select2-selection--single .select2-selection__rendered{
+    line-height:36px!important;padding-left:.75rem!important;font-size:.9rem!important;color:#0f172a!important;
+}
+.ll-page .filter-card,.ll-page .filter-grid{overflow:visible!important;position:relative;z-index:5}
+.ll-page .kpi-row{position:relative;z-index:1}
 .ll-page .filter-actions{display:flex;align-items:end;gap:8px}
 .ll-page .btn-apply{
     height:38px;border-radius:10px;border:none;background:#2563eb;color:#fff;

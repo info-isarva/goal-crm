@@ -179,7 +179,7 @@
 
 .gd-page .panel{
     background:#fff;border:1px solid #e8eef5;border-radius:16px;
-    box-shadow:0 6px 18px rgba(15,23,42,.05);height:100%;overflow:hidden;
+    box-shadow:0 6px 18px rgba(15,23,42,.05);height:100%;overflow:visible;
     display:flex;flex-direction:column;
 }
 .gd-page .panel-h{

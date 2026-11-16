@@ -1,0 +1,291 @@
+/**
+ * Shared CRM table + pagination (DataTables + Laravel pager).
+ */
+
+/* —— Table shell —— */
+.crm-table-shell,
+.table-card,
+.ba-card {
+    background: #fff;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 16px;
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 10px 28px rgba(148, 163, 184, 0.16),
+        0 22px 48px rgba(148, 163, 184, 0.10);
+}
+
+.crm-table-inset,
+.leads-table-wrap {
+    border: 1px solid #e8edf5;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+}
+
+/* —— Generic table look —— */
+.crm-table thead th,
+.table-card table thead th,
+.ba-table-wrap table thead th,
+.leads-table-wrap table thead th {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #64748b;
+    background: #f1f5f9 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    white-space: nowrap;
+    padding: 0.8rem 0.95rem !important;
+}
+
+.crm-table tbody td,
+.table-card table tbody td,
+.ba-table-wrap table tbody td,
+.leads-table-wrap table tbody td {
+    font-size: 0.875rem;
+    color: #334155;
+    vertical-align: middle;
+    border-bottom: 1px solid #eef2f7 !important;
+    padding: 0.85rem 0.95rem !important;
+    background: #fff;
+}
+
+.crm-table tbody tr:hover td,
+.table-card table tbody tr:hover td,
+.ba-table-wrap table tbody tr:hover td,
+.leads-table-wrap table tbody tr:hover td {
+    background: #f8fbff !important;
+}
+
+.crm-table tbody tr:last-child td,
+.table-card table tbody tr:last-child td,
+.ba-table-wrap table tbody tr:last-child td {
+    border-bottom: 0 !important;
+}
+
+/* —— Footer bar —— */
+.crm-table-footer,
+.table-footer-bar,
+.ba-dt-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 16px;
+    padding: 0.95rem 1.15rem;
+    border-top: 1px solid #eef2f7;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    color: #64748b;
+    font-size: 0.84rem;
+}
+
+.crm-table-footer .foot-showing,
+.ba-dt-foot .dataTables_info,
+.table-footer-bar .foot-showing {
+    font-weight: 600;
+    color: #64748b;
+    margin: 0;
+    padding: 0;
+    float: none !important;
+}
+
+.crm-table-footer .foot-right,
+.ba-dt-right,
+.table-footer-bar .foot-right {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+    margin-left: auto;
+}
+
+/* —— Length / rows select —— */
+.dataTables_wrapper .dataTables_length,
+.per-page-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    float: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-weight: 500;
+    color: #64748b;
+}
+
+.dataTables_wrapper .dataTables_length label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-weight: 500;
+}
+
+.dataTables_wrapper .dataTables_length select,
+.per-page-wrap select,
+.form-select-compact {
+    height: 34px;
+    min-width: 56px;
+    border: 1px solid #dbe2ea;
+    border-radius: 8px;
+    padding: 0 28px 0 12px;
+    background-color: #fff;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: #1a1c32;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 11px 11px;
+}
+
+.dataTables_wrapper .dataTables_length select:focus,
+.per-page-wrap select:focus {
+    border-color: #93c5fd;
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+}
+
+/* —— DataTables native pager (.paginate_button) —— */
+.dataTables_wrapper .dataTables_paginate {
+    float: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    text-align: right;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    box-sizing: border-box;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 34px;
+    margin: 0 !important;
+    padding: 0 10px !important;
+    border: 0 !important;
+    border-radius: 8px !important;
+    background: transparent !important;
+    color: #475569 !important;
+    font-size: 0.84rem !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    cursor: pointer;
+    text-decoration: none !important;
+    box-shadow: none !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.disabled):not(.current) {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+    background: #2563eb !important;
+    color: #fff !important;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.28) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.previous,
+.dataTables_wrapper .dataTables_paginate .paginate_button.next {
+    background: #eff6ff !important;
+    color: #2563eb !important;
+    padding: 0 !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.previous:hover:not(.disabled),
+.dataTables_wrapper .dataTables_paginate .paginate_button.next:hover:not(.disabled) {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled,
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled:hover {
+    background: #f1f5f9 !important;
+    color: #cbd5e1 !important;
+    cursor: default !important;
+    box-shadow: none !important;
+}
+
+.dataTables_wrapper .dataTables_paginate span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* —— Laravel / Bootstrap-style pager —— */
+.pagination {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pagination .page-item {
+    display: flex;
+}
+
+.pagination .page-link {
+    box-sizing: border-box;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 34px;
+    margin: 0;
+    padding: 0 10px;
+    border: 0 !important;
+    border-radius: 8px !important;
+    background: transparent !important;
+    color: #475569 !important;
+    font-size: 0.84rem;
+    font-weight: 600;
+    text-decoration: none !important;
+    box-shadow: none !important;
+}
+
+.pagination .page-link:hover {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+.pagination .page-item.active .page-link,
+.pagination .page-item.active .page-link:hover {
+    background: #2563eb !important;
+    color: #fff !important;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.28) !important;
+}
+
+.pagination .page-item.us-page-arrow .page-link,
+.pagination .page-item.previous .page-link,
+.pagination .page-item.next .page-link {
+    background: #eff6ff !important;
+    color: #2563eb !important;
+}
+
+.pagination .page-item.us-page-arrow .page-link:hover,
+.pagination .page-item.previous .page-link:hover,
+.pagination .page-item.next .page-link:hover {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+}
+
+.pagination .page-item.disabled .page-link,
+.pagination .page-item.disabled .page-link:hover {
+    background: #f1f5f9 !important;
+    color: #cbd5e1 !important;
+    pointer-events: none;
+    box-shadow: none !important;
+}
+
+.us-pager-nav .pagination {
+    gap: 6px;
+}

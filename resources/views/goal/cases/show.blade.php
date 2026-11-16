@@ -72,7 +72,15 @@
 <style>
 .cw-page{
     --cw-primary:#2563EB;--cw-purple:#7C3AED;--cw-border:#E2E8F0;--cw-text:#0f172a;--cw-muted:#64748b;
-    color:var(--cw-text);padding-bottom:96px;
+    color:var(--cw-text);padding-bottom:96px;background:transparent;
+}
+.cw-page .cw-actions .dropdown{position:relative;z-index:30}
+.cw-page .cw-actions .dropdown-menu{z-index:40;min-width:220px}
+.cw-page .cw-table-card .table-responsive,
+.cw-page .cw-card{overflow:visible}
+.cw-page .pill-pending{
+    display:inline-flex;align-items:center;padding:.2rem .65rem;border-radius:999px;
+    font-size:.72rem;font-weight:700;background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA;
 }
 .cw-page .cw-hero{
     display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:16px 20px;margin-bottom:1.1rem;
@@ -104,11 +112,16 @@
     display:inline-flex;align-items:center;gap:4px;padding:0;cursor:pointer;text-decoration:none;
 }
 .cw-page .cw-summary-card{
-    background:#fff;border:1px solid var(--cw-border);border-radius:16px;
-    box-shadow:0 6px 20px rgba(148,163,184,.12);margin-bottom:1rem;overflow:hidden;
+    background:#fff;border:1px solid rgba(226,232,240,.9);border-radius:16px;
+    box-shadow:
+        0 1px 2px rgba(15,23,42,.04),
+        0 10px 28px rgba(148,163,184,.16),
+        0 22px 48px rgba(148,163,184,.10);
+    margin-bottom:1rem;overflow:hidden;
 }
 .cw-page .case-ribbon{
     display:flex;align-items:center;gap:0;padding:16px 14px 14px;
+    background:linear-gradient(180deg,#F8FAFF 0%,#FFFFFF 100%);
 }
 .cw-page .case-ribbon .rb-lead{
     width:46px;height:46px;border-radius:12px;flex-shrink:0;margin-right:10px;
@@ -168,32 +181,45 @@
 .cw-page .lender-chip.icici{background:#FFF7ED;color:#C2410C}
 .cw-page .lender-chip.sbi{background:#EFF6FF;color:#1D4ED8}
 .cw-page .lender-chip.axis{background:#F5F3FF;color:#7C3AED}
-.cw-page .doc-type-ico{color:#7C3AED;font-size:.95rem}
-.cw-page .cw-table-card .card-header{padding:.65rem .9rem !important}
-.cw-page .cw-table-card .table{margin:0}
-.cw-page .cw-table-card .table > :not(caption) > * > *{padding:.42rem .85rem}
+.cw-page .doc-type-ico{color:#1E3A8A;font-size:.95rem}
+.cw-page .cw-table-card .card-header,
+.cw-page .cw-table-card > .sec-head{padding:.85rem 1.15rem .75rem !important}
+.cw-page .cw-table-card .cw-table-wrap{padding:.2rem 1.15rem .85rem}
+.cw-page .cw-table-card .table-responsive{
+    border:1px solid #E6EDF5;border-radius:12px;overflow:hidden;background:#fff;
+}
+.cw-page .cw-table-card .table{
+    margin:0;background:#fff;border-collapse:separate;border-spacing:0;width:100%;
+}
+.cw-page .cw-table-card .table > :not(caption) > * > *{padding:.6rem .7rem;border:0}
 .cw-page .cw-table-card .table thead th{
-    font-size:.72rem;text-transform:none;letter-spacing:0;color:#64748b;font-weight:600;
-    background:#F8FAFC;border-bottom:1px solid #E2E8F0;white-space:nowrap;padding-top:.5rem;padding-bottom:.5rem;
+    font-size:.74rem;text-transform:none;letter-spacing:0;color:#475569;font-weight:600;
+    background:#EEF2FF;border-bottom:1px solid #E0E7FF;white-space:nowrap;
 }
+.cw-page .cw-table-card .table thead th:first-child{padding-left:1rem}
+.cw-page .cw-table-card .table thead th:last-child{padding-right:1rem}
 .cw-page .cw-table-card .table tbody td{
-    font-size:.84rem;color:#0f172a;border-bottom:1px solid #F1F5F9;vertical-align:middle;
+    font-size:.84rem;color:#0f172a;vertical-align:middle;background:#fff;
+    border-bottom:1px solid #E8EEF5;
 }
+.cw-page .cw-table-card .table tbody td:first-child{padding-left:1rem}
+.cw-page .cw-table-card .table tbody td:last-child{padding-right:1rem}
 .cw-page .cw-table-card .table tbody tr:last-child td{border-bottom:0}
+.cw-page .cw-table-card .table tbody tr:hover td{background:#F8FAFC}
 .cw-page .cw-table-card .cw-table-note{
-    padding:.4rem .85rem .55rem;font-size:.75rem;color:#94A3B8;font-style:italic;border-top:1px solid #F1F5F9;
+    padding:.55rem .15rem 0;margin-top:.35rem;font-size:.75rem;color:#94A3B8;font-style:italic;border-top:0;
 }
 .cw-page .cw-table-card .cw-table-note i{font-style:normal;margin-right:4px;color:#94A3B8}
 .cw-page .cw-table-card .btn-action{
     width:28px;height:28px;padding:0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;
-    border:1px solid #E2E8F0;background:#fff;color:#64748b;
+    border:1px solid #CBD5E1;background:#fff;color:#334155;
 }
-.cw-page .cw-table-card .btn-action:hover{border-color:#BFDBFE;color:#2563EB;background:#EFF6FF}
+.cw-page .cw-table-card .btn-action:hover{border-color:#93C5FD;color:#1E3A8A;background:#DBEAFE}
 .cw-page .cw-table-card .btn-download{
     width:30px;height:30px;padding:0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;
-    border:1px solid #BFDBFE;background:#EFF6FF;color:#2563EB;
+    border:1px solid #93C5FD;background:#DBEAFE;color:#1E3A8A;
 }
-.cw-page .cw-table-card .btn-download:hover{background:#DBEAFE;color:#1D4ED8}
+.cw-page .cw-table-card .btn-download:hover{background:#BFDBFE;color:#1E3A8A}
 .cw-page .cw-progress{
     display:flex;align-items:flex-start;gap:0;padding:8px 10px 18px;
     border-top:1px solid #EEF2F7;
@@ -229,8 +255,12 @@
 .cw-page .cw-step.active:not(:last-child)::after{background:#E2E8F0}
 .cw-page .cw-tabs{
     display:flex;align-items:center;width:100%;gap:0;overflow-x:auto;
-    margin-bottom:1rem;padding:6px;background:#fff;border:1px solid #E2E8F0;
-    border-radius:999px;box-shadow:0 6px 18px rgba(148,163,184,.14);scrollbar-width:none;
+    margin-bottom:1rem;padding:6px;background:#fff;border:1px solid rgba(226,232,240,.85);
+    border-radius:999px;
+    box-shadow:
+        0 1px 2px rgba(15,23,42,.04),
+        0 10px 28px rgba(148,163,184,.16);
+    scrollbar-width:none;
 }
 .cw-page .cw-tabs::-webkit-scrollbar{display:none}
 .cw-page .cw-tab{
@@ -265,8 +295,12 @@
 .cw-page .cw-pane{display:none !important}
 .cw-page .cw-pane.active{display:block !important}
 .cw-page .sec-card{
-    background:#fff;border:1px solid var(--cw-border);border-radius:16px;overflow:hidden;
-    box-shadow:0 8px 24px rgba(148,163,184,.10);height:100%;
+    background:#fff;border:1px solid rgba(226,232,240,.85);border-radius:16px;overflow:hidden;
+    box-shadow:
+        0 1px 2px rgba(15,23,42,.04),
+        0 10px 28px rgba(148,163,184,.16),
+        0 22px 48px rgba(148,163,184,.10);
+    height:100%;
 }
 .cw-page .overview-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,.95fr);gap:12px;align-items:start}
 .cw-page .overview-main,.cw-page .overview-side{display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -277,20 +311,22 @@
 .cw-page .sec-head-left{display:flex;align-items:center;gap:10px}
 .cw-page .sec-ico{
     width:34px;height:34px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
-    background:#F5F3FF;color:#7C3AED;font-size:.95rem;flex-shrink:0;border:1px solid #E9D5FF;
+    background:#BFDBFE;color:#1E3A8A;font-size:.95rem;flex-shrink:0;border:1px solid #93C5FD;
 }
-.cw-page .sec-ico.ico-blue{background:#dbeafe;color:var(--cw-primary);border-color:#BFDBFE}
-.cw-page .sec-ico.ico-amber{background:#fef3c7;color:#d97706;border-color:#FDE68A}
-.cw-page .sec-ico.ico-green{background:#dcfce7;color:#16a34a;border-color:#BBF7D0}
-.cw-page .sec-ico.ico-teal{background:#ccfbf1;color:#0d9488;border-color:#99F6E4}
-.cw-page .sec-ico.ico-violet-solid{background:#7C3AED;color:#fff;border-color:#7C3AED}
+.cw-page .sec-ico.ico-blue{background:#BFDBFE;color:#1E3A8A;border-color:#93C5FD}
+.cw-page .sec-ico.ico-amber{background:#FDE68A;color:#92400E;border-color:#F59E0B}
+.cw-page .sec-ico.ico-green{background:#BBF7D0;color:#14532D;border-color:#86EFAC}
+.cw-page .sec-ico.ico-teal{background:#99F6E4;color:#115E59;border-color:#5EEAD4}
+.cw-page .sec-ico.ico-solid-blue{background:#1D4ED8;color:#fff;border-color:#1D4ED8}
+.cw-page .sec-ico.ico-solid-green{background:#15803D;color:#fff;border-color:#15803D}
 .cw-page .cw-card{overflow:hidden}
 .cw-page .cw-card .card-header{padding:.75rem 1rem !important}
 .cw-page .cw-card .card-body{padding:.65rem 1rem .85rem !important}
 .cw-page .cw-card .list-group-item{padding:.55rem 1rem !important}
-.cw-page .cw-card.query-alert{border-left:4px solid #f59e0b !important}
-.cw-page .text-purple{color:#7C3AED !important}
-.cw-page .cw-sanc-violet{background:#F5F3FF;border:1px solid #E9D5FF}
+.cw-page .cw-card.query-alert,
+.cw-page .sec-card.query-alert{border-left:4px solid #f59e0b !important}
+.cw-page .text-theme{color:#1E3A8A !important}
+.cw-page .cw-sanc-blue{background:#EFF6FF;border:1px solid #DBEAFE}
 .cw-page .cw-sanc-green{background:#ECFDF5;border:1px solid #D1FAE5}
 .cw-page .sec-head h6{margin:0;font-size:var(--font-size-card-title,16px);font-weight:var(--font-semibold,600);color:#0f172a;letter-spacing:var(--letter-spacing-tight,-.01em)}
 .cw-page .sec-sub{font-size:.78rem;color:#94a3b8;margin-top:2px;font-weight:500}
@@ -326,7 +362,7 @@
 .cw-page .detail-row .d-value.is-strong{font-weight:700;color:#0f172a}
 .cw-page .detail-row .d-value a{color:#2563EB;text-decoration:none;font-weight:600}
 .cw-page .detail-row .d-value a:hover{text-decoration:underline}
-.cw-page .detail-row .d-value i{color:#2563EB;font-size:.9rem;flex-shrink:0}
+.cw-page .detail-row .d-value i{color:#1E3A8A;font-size:.9rem;flex-shrink:0}
 .cw-page .pill-soft{
     display:inline-flex;align-items:center;gap:5px;padding:.22rem .65rem;border-radius:999px;
     font-size:.75rem;font-weight:650;line-height:1.2;
@@ -344,7 +380,7 @@
 .cw-page .own-row:first-child{padding-top:0}
 .cw-page .own-row .own-ico{
     width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;
-    color:#64748b;font-size:.92rem;flex-shrink:0;
+    color:#334155;font-size:.92rem;flex-shrink:0;
 }
 .cw-page .own-row .d-label{font-size:.84rem;font-weight:500;color:#64748b;line-height:1.35}
 .cw-page .own-row .d-sep{color:#94a3b8;font-weight:500;font-size:.84rem}
@@ -353,7 +389,7 @@
     min-width:0;flex-wrap:wrap;line-height:1.35;
 }
 .cw-page .own-row .d-value i{color:#64748b;font-size:.9rem;flex-shrink:0}
-.cw-page .own-row .d-value .val-ico{color:#7C3AED}
+.cw-page .own-row .d-value .val-ico{color:#1E3A8A}
 .cw-page .query-block{display:flex;flex-direction:column;gap:12px}
 .cw-page .query-block .q-label{font-size:.84rem;font-weight:500;color:#64748b;margin-bottom:4px}
 .cw-page .query-block .q-value{
@@ -401,11 +437,25 @@
 .cw-page .ws-table{margin:0}
 .cw-page .ws-table td:first-child{width:28%;font-weight:600;color:#334155;background:#fafbfc;vertical-align:middle;font-size:.84rem}
 .cw-page .form-label{font-size:.76rem;font-weight:700;color:#475569;margin-bottom:6px}
-.cw-page .form-control,.cw-page .form-select{
+/* Default (md) — do NOT apply to Bootstrap form-sm / Customer tab */
+.cw-page .form-control:not(.form-control-sm),
+.cw-page .form-select:not(.form-select-sm){
     min-height:42px;border-radius:10px;border:1px solid var(--cw-border);background:#f8fafc;font-size:.88rem;
 }
 .cw-page .form-control:focus,.cw-page .form-select:focus{border-color:#93c5fd;background:#fff;box-shadow:0 0 0 3px rgba(36,91,235,.12)}
 .cw-page .form-control:disabled,.cw-page .form-control[readonly]{background:#eef4ff;color:#64748b}
+/* Bootstrap 5 form-sm — restore compact sizing */
+.cw-page .form-control-sm,
+.cw-page .form-select-sm{
+    min-height:31px !important;height:31px !important;
+    padding:.25rem .5rem !important;font-size:.875rem !important;border-radius:.375rem !important;
+    background:#fff !important;border:1px solid #E2E8F0 !important;
+}
+.cw-page .input-group-sm > .form-control,
+.cw-page .input-group-sm > .form-select,
+.cw-page .input-group-sm > .input-group-text{
+    min-height:31px !important;height:31px !important;
+}
 .cw-page .table thead th{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:700;border-bottom-color:#E2E8F0}
 .cw-page .table td{padding:.45rem .85rem;border-color:#F1F5F9}
 .cw-page .cw-table-card .table thead th{text-transform:none;letter-spacing:0;font-weight:600}
@@ -417,36 +467,255 @@
 .cw-page .empty-state i{font-size:1.5rem;opacity:.45;display:block;margin-bottom:6px}
 .cw-page .timeline{list-style:none;margin:0;padding:0}
 .cw-page .timeline li{
-    display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #EEF2F7;
+    display:flex;align-items:center;gap:12px;padding:10px 0;position:relative;border-bottom:0;
 }
-.cw-page .timeline li:last-child{border-bottom:0;padding-bottom:0}
+.cw-page .timeline li:last-child{padding-bottom:0}
 .cw-page .timeline li:first-child{padding-top:0}
-.cw-page .tl-dot{
-    width:34px;height:34px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
-    flex-shrink:0;background:#F5F3FF;color:var(--cw-purple);font-size:.95rem;border:1px solid #E9D5FF;
+.cw-page .timeline li:not(:last-child)::before{
+    content:"";position:absolute;left:15px;top:36px;bottom:-2px;width:2px;background:#E2E8F0;
 }
-.cw-page .tl-dot.green{background:#DCFCE7;color:#16A34A;border-color:#BBF7D0}
-.cw-page .tl-dot.blue{background:#DBEAFE;color:var(--cw-primary);border-color:#BFDBFE}
-.cw-page .tl-dot.amber{background:#FEF3C7;color:#D97706;border-color:#FDE68A}
+.cw-page .tl-dot{
+    width:32px;height:32px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
+    flex-shrink:0;background:#1D4ED8;color:#fff;font-size:.85rem;border:0;position:relative;z-index:1;
+}
+.cw-page .tl-dot.green{background:#15803D;color:#fff}
+.cw-page .tl-dot.blue{background:#1D4ED8;color:#fff}
+.cw-page .tl-dot.teal{background:#0F766E;color:#fff}
+.cw-page .tl-dot.amber{background:#B45309;color:#fff}
 .cw-page .tl-body{
     flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:12px;
 }
 .cw-page .tl-title{font-size:.88rem;font-weight:600;color:#0f172a;line-height:1.35}
-.cw-page .tl-time{font-size:.78rem;font-weight:500;color:#94A3B8;white-space:nowrap;flex-shrink:0}
-.cw-page .tl-dot.amber{background:#fef3c7;color:#d97706}
+.cw-page .tl-time{font-size:.78rem;font-weight:500;color:#64748B;white-space:nowrap;flex-shrink:0}
 .cw-page .query-alert{border-left:4px solid #f59e0b}
 .cw-page .cw-pane.active .cw-footer{
     position:sticky;bottom:58px;z-index:30;width:100%;
     margin:8px 0;border:1px solid var(--cw-border);border-radius:16px;overflow:hidden;
     background:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
-    box-shadow:0 8px 22px rgba(148,163,184,.14);
+    box-shadow:
+        0 1px 2px rgba(15,23,42,.04),
+        0 10px 28px rgba(148,163,184,.16),
+        0 22px 48px rgba(148,163,184,.10);
 }
 .cw-page .cw-footer{display:none}
 .cw-page .btn-save{
     height:42px;padding:0 18px;border-radius:10px;font-weight:700;font-size:.86rem;border:0;color:#fff;
-    background:linear-gradient(90deg,var(--cw-primary),var(--cw-purple));
-    display:inline-flex;align-items:center;gap:6px;
+    background:#1D4ED8;display:inline-flex;align-items:center;gap:6px;
 }
+.cw-page .btn-save:hover{background:#1E40AF;color:#fff}
+.cw-page .cust-layout .cust-card{
+    border-radius:16px !important;border:1px solid #E8EEF5 !important;
+    box-shadow:
+        0 1px 2px rgba(15,23,42,.04),
+        0 10px 28px rgba(148,163,184,.16),
+        0 22px 48px rgba(148,163,184,.10) !important;
+    overflow:visible !important; /* allow Select2; dropdown itself is on body */
+}
+.cw-page .cust-layout{overflow-x:clip;max-width:100%}
+.cw-page .cust-layout .cust-card .card-header{
+    padding:.7rem 1.15rem !important;background:#fff !important;
+    border-bottom:1px solid #EEF2F7 !important;
+}
+.cw-page .cust-layout .cust-card .card-body{padding:1rem 1.15rem 1.1rem !important}
+.cw-page .cust-layout .cust-card .card-header h6{
+    font-size:.95rem;font-weight:700;color:#0f172a;letter-spacing:-.01em;
+}
+.cw-page .cust-layout .row.g-cust{--bs-gutter-x:1rem;--bs-gutter-y:.85rem}
+/* Bootstrap form-sm baseline — consistent sizes */
+.cw-page .cust-layout .form-label{
+    font-size:.875rem;font-weight:600;color:#334155;margin-bottom:4px;display:block;
+}
+.cw-page .cust-layout .form-control,
+.cw-page .cust-layout .form-control-sm{
+    min-height:31px !important;height:31px !important;
+    padding:.25rem .5rem !important;font-size:.875rem !important;
+    border-radius:.375rem !important;border:1px solid #E2E8F0 !important;
+    background-color:#fff !important;color:#0f172a;
+}
+.cw-page .cust-layout .form-control::placeholder{color:#94a3b8}
+.cw-page .cust-layout .form-control:focus{
+    border-color:#93C5FD !important;background-color:#fff !important;box-shadow:0 0 0 3px rgba(37,99,235,.12);
+}
+.cw-page .cust-layout .input-group-sm > .form-control,
+.cw-page .cust-layout .input-group-sm > .input-group-text{
+    min-height:31px !important;height:31px !important;
+}
+/* Select2 (sm) inside Customer tab — beat global select2-theme 38px */
+.cw-page .cust-layout .select2-container{width:100%!important;font-size:.875rem}
+.cw-page .cust-layout .select2-container--default .select2-selection--single{
+    height:31px !important;min-height:31px !important;
+    border:1px solid #E2E8F0 !important;border-radius:.375rem !important;background-color:#fff;
+}
+.cw-page .cust-layout .select2-container--default .select2-selection--single .select2-selection__rendered{
+    color:#0f172a;line-height:29px !important;padding-left:.5rem;padding-right:1.75rem;
+    font-size:.875rem !important;font-weight:500;
+}
+.cw-page .cust-layout .select2-container--default .select2-selection--single .select2-selection__placeholder{color:#94a3b8}
+.cw-page .cust-layout .select2-container--default .select2-selection--single .select2-selection__arrow{
+    height:29px !important;width:26px;top:0;right:2px;
+}
+.cw-page .cust-layout .select2-container--default.select2-container--focus .select2-selection--single,
+.cw-page .cust-layout .select2-container--default.select2-container--open .select2-selection--single{
+    border-color:#93C5FD;box-shadow:0 0 0 3px rgba(37,99,235,.12);
+}
+/* Relationship Self — blue face, dropdown options stay readable */
+.cw-page .cust-layout select.cust-rel-self + .select2-container .select2-selection--single{
+    background-color:#EFF6FF;border-color:#BFDBFE;
+}
+.cw-page .cust-layout select.cust-rel-self + .select2-container .select2-selection__rendered{
+    color:#2563EB !important;font-weight:600;
+}
+.cw-page .cust-layout select.cust-rel-self + .select2-container .select2-selection__arrow b{
+    border-color:#2563EB transparent transparent transparent;
+}
+.cw-page .cust-layout select.cust-rel-self + .select2-container.select2-container--open .select2-selection__arrow b{
+    border-color:transparent transparent #2563EB transparent;
+}
+/* Seamless icon-inside-input */
+.cw-page .cust-layout .input-group{
+    border:1px solid #E2E8F0;border-radius:.375rem;background:#fff;overflow:hidden;
+    transition:border-color .15s,box-shadow .15s;
+}
+.cw-page .cust-layout .input-group:focus-within{
+    border-color:#93C5FD;box-shadow:0 0 0 3px rgba(37,99,235,.12);
+}
+.cw-page .cust-layout .input-group .input-group-text{
+    background:transparent;border:0;color:#64748b;min-width:2rem;padding-left:.5rem;
+    justify-content:center;border-radius:0 !important;
+}
+.cw-page .cust-layout .input-group .input-group-text .bi{font-size:.875rem;color:#64748b}
+.cw-page .cust-layout .input-group .form-control{
+    border:0 !important;box-shadow:none !important;background:transparent !important;
+    border-radius:0 !important;
+}
+.cw-page .cust-layout .input-group .form-control:focus{box-shadow:none !important}
+.cw-page .cust-layout .input-group .input-group-text:not(:has(.bi)){
+    font-weight:600;color:#1E3A8A;padding-left:.75rem;
+}
+.cw-page .cust-profile-btn{
+    border-radius:999px;font-weight:600;font-size:.8rem;padding:.45rem 1.05rem;
+    display:inline-flex;align-items:center;gap:6px;border-width:1.5px;
+}
+.cw-page .cust-party-toggle{
+    background:#F1F5F9;border-radius:999px;padding:3px;border:1px solid #E2E8F0;
+}
+.cw-page .cust-party-btn{
+    border:0 !important;background:transparent;color:#0f172a;font-weight:600;font-size:.72rem;
+    border-radius:999px !important;padding:.28rem .85rem;min-width:100px;
+}
+.cw-page .cust-party-btn.active{
+    background:#2563EB !important;color:#fff !important;box-shadow:0 4px 12px rgba(37,99,235,.28);
+}
+.cw-page .cust-party-panel{display:none}
+.cw-page .cust-party-panel.is-active{display:block}
+/* Side-by-side Applicant | Co-Applicant identity */
+.cw-page .cust-layout .cust-identity-head,
+.cw-page .cust-layout .cust-section-head{
+    background:#fff !important;padding:.65rem 1rem .4rem !important;
+    border-bottom:0 !important;
+}
+.cw-page .cust-layout .cust-identity-head h6,
+.cw-page .cust-layout .cust-section-head h6{
+    color:#0f172a;font-size:.95rem;font-weight:700;
+}
+.cw-page .cust-layout .cust-years-block{
+    background:#F8FAFC;border:1px solid #E8EEF5;border-radius:10px;padding:.75rem .9rem;
+}
+.cw-page .cust-layout .cust-mini-label{
+    font-size:.75rem !important;color:#64748B !important;margin-bottom:4px !important;
+}
+/* Employment comparison grid: label | Applicant | Co-Applicant */
+.cw-page .cust-emp-grid{display:flex;flex-direction:column;gap:.55rem}
+.cw-page .cust-emp-head-row,
+.cw-page .cust-emp-row{
+    display:grid;grid-template-columns:minmax(140px,1.1fr) 1fr 1fr;gap:.65rem;align-items:center;
+}
+.cw-page .cust-emp-row-span{
+    grid-template-columns:minmax(140px,1.1fr) minmax(0,2fr);align-items:center;
+}
+.cw-page .cust-emp-label-col .form-label{margin:0;font-size:.875rem}
+.cw-page .cust-emp-span-fields{display:flex;gap:.5rem;align-items:center;min-width:0}
+.cw-page .cust-emp-span-fields .cust-pin-sm{max-width:120px;flex:0 0 120px}
+.cw-page .cust-emp-head-row .cust-party-col-head{margin-bottom:0}
+@media (max-width:991.98px){
+    .cw-page .cust-emp-head-row,
+    .cw-page .cust-emp-row,
+    .cw-page .cust-emp-row-span{
+        grid-template-columns:1fr;gap:.35rem;
+    }
+    .cw-page .cust-emp-span-fields{flex-wrap:wrap}
+    .cw-page .cust-emp-span-fields .cust-pin-sm{max-width:100%;flex:1 1 100%}
+}
+.cw-page .cust-layout .cust-ico-identity{
+    background:#EDE9FE;color:#5B21B6;border-color:#DDD6FE;
+}
+.cw-page .cust-identity-split{
+    display:grid;grid-template-columns:1fr 1fr;gap:0;min-width:0;
+    padding:0 .85rem 1rem;
+}
+.cw-page .cust-party-col{min-width:0;display:flex;flex-direction:column;padding:0 .4rem}
+.cw-page .cust-party-col + .cust-party-col{
+    border-left:1px solid #E8EEF5;padding-left:.85rem;
+}
+.cw-page .cust-party-col-head{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:.4rem .8rem;margin-bottom:.65rem;
+    font-size:.8rem;font-weight:700;border-radius:8px;width:100%;
+}
+.cw-page .cust-party-col-head.is-applicant{
+    background:#E8F0FE;color:#1D4ED8;
+}
+.cw-page .cust-party-col-head.is-co{
+    background:#F3E8FF;color:#6D28D9;
+}
+.cw-page .cust-party-col-head i{font-size:.9rem}
+.cw-page .cust-party-col-body{padding:0 .1rem .2rem}
+/* Horizontal label | input — Bootstrap form-sm sizes */
+.cw-page .cust-party-col-body .cust-field{
+    display:grid;grid-template-columns:120px minmax(0,1fr);
+    align-items:center;gap:10px;margin-bottom:.5rem;
+}
+.cw-page .cust-party-col-body .cust-field:last-child{margin-bottom:0}
+.cw-page .cust-party-col-body .cust-field .form-label{
+    margin:0;font-size:.875rem;font-weight:600;color:#334155;line-height:1.25;
+}
+.cw-page .cust-party-col-body .cust-field .form-control{font-size:.875rem}
+.cw-page .cust-party-col-body .cust-field .select2-container{width:100%!important}
+@media (max-width:991.98px){
+    .cw-page .cust-party-col-body .cust-field{
+        grid-template-columns:1fr;gap:3px;align-items:stretch;
+    }
+}
+@media (max-width:767.98px){
+    .cw-page .cust-identity-split{grid-template-columns:1fr;padding:0 .65rem .85rem}
+    .cw-page .cust-party-col + .cust-party-col{
+        border-left:0;border-top:1px solid #E8EEF5;margin-top:.65rem;padding:.65rem 0 0;
+    }
+}
+.cw-page .cust-ref-block{
+    background:#F8FAFC;border:1px solid #E8EEF5;border-radius:12px;padding:12px;
+}
+.cw-page .cust-ref-title{
+    font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#64748B;margin-bottom:10px;
+}
+.cw-page .cust-product-input{background:#EFF6FF !important;border-color:#BFDBFE !important;font-weight:600;color:#1E3A8A}
+.cw-page .cust-consent{
+    min-height:34px;border-radius:999px;display:inline-flex;align-items:center;gap:8px;
+    padding:0 12px;font-size:.78rem;font-weight:600;width:100%;
+}
+.cw-page .cust-consent.ok{background:#ECFDF5;color:#047857;border:1px solid #A7F3D0}
+.cw-page .cust-consent.warn{background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA}
+.cw-page #cwCustomerExtras .accordion-item{
+    background:#fff;border:1px solid rgba(226,232,240,.85) !important;border-radius:16px !important;overflow:hidden;
+    box-shadow:
+        0 1px 2px rgba(15,23,42,.04),
+        0 10px 28px rgba(148,163,184,.16),
+        0 22px 48px rgba(148,163,184,.10) !important;
+}
+.cw-page #cwCustomerExtras .accordion-button{
+    font-size:.92rem;color:#0f172a;background:#fff;box-shadow:none;padding:1rem 1.1rem;
+}
+.cw-page #cwCustomerExtras .accordion-button:not(.collapsed){background:#F8FAFC;color:#0f172a}
 .cw-page .hint{font-size:.78rem;color:var(--cw-muted);margin-top:6px}
 .cw-page .hint.err{color:#b91c1c}
 .cw-page .cw-extra-section{margin-top:1rem}
@@ -467,10 +736,10 @@
 @endpush
 
 @section('content')
-<div class="container-fluid p-4 cw-page" id="cwPage" data-active-tab="{{ $activeTab }}">
+<div class="cw-page w-full max-w-full px-4 py-4" id="cwPage" data-active-tab="{{ $activeTab }}">
     {{-- Header --}}
     <div class="cw-hero">
-        <div class="d-flex align-items-start gap-3">
+        <div class="flex items-start gap-3">
             <a href="{{ route('goal.cases.index') }}" class="cw-back" title="Back"><i class="bi bi-arrow-left"></i></a>
             <div>
                 <h1 class="cw-title">Loan Case Workspace</h1>
@@ -567,26 +836,6 @@
                 <div class="rb-text">
                     <div class="rb-label">Branch</div>
                     <div class="rb-value"><span>{{ $case->orgUnit?->name ?? '—' }}</span></div>
-                </div>
-            </div>
-            <div class="rb-item">
-                <i class="bi bi-person rb-ico" aria-hidden="true"></i>
-                <div class="rb-text">
-                    <div class="rb-label">Owner</div>
-                    <div class="rb-value"><span>{{ $roleLabel($case->owner) }} - {{ $case->owner?->name ?? '—' }}</span></div>
-                </div>
-            </div>
-            <div class="rb-item">
-                <i class="bi bi-file-earmark-text rb-ico" aria-hidden="true"></i>
-                <div class="rb-text">
-                    <div class="rb-label">Lead Reference</div>
-                    <div class="rb-value">
-                        @if($case->lead)
-                            <a href="{{ route('goal.leads.show', $case->lead) }}">{{ $case->lead->ref_no }}</a>
-                        @else
-                            <span>—</span>
-                        @endif
-                    </div>
                 </div>
             </div>
             <div class="rb-item rb-status">
@@ -760,150 +1009,150 @@
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-sm rounded-4 cw-card cw-table-card">
-                    <div class="card-header bg-white border-0 border-bottom">
-                        <div class="d-flex align-items-center justify-content-between gap-2">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="sec-ico"><i class="bi bi-layers"></i></span>
-                                <h6 class="mb-0 fw-semibold">Lender Applications</h6>
-                            </div>
-                            @if($canEdit)
-                                <button type="button" class="btn btn-link btn-sm text-decoration-none fw-semibold px-0" data-bs-toggle="modal" data-bs-target="#cwAddLenderModal"><i class="bi bi-plus-lg"></i> Add Application</button>
-                            @endif
+                <div class="sec-card cw-table-card">
+                    <div class="sec-head has-line">
+                        <div class="sec-head-left">
+                            <span class="sec-ico"><i class="bi bi-layers"></i></span>
+                            <div><h6>Lender Applications</h6></div>
                         </div>
+                        @if($canEdit)
+                            <button type="button" class="btn-link-cw" data-bs-toggle="modal" data-bs-target="#cwAddLenderModal"><i class="bi bi-plus-lg"></i> Add Application</button>
+                        @endif
                     </div>
-                    <div class="table-responsive">
-                        <table class="table table-sm mb-0 align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Lender</th>
-                                    <th>Application Reference</th>
-                                    <th>Login Date</th>
-                                    <th>Status</th>
-                                    <th>Assigned Follow-up</th>
-                                    <th class="text-end">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($case->bankApplications->take(5) as $ba)
-                                    @php
-                                        $baStatusClass = match($ba->status){
-                                            'Processing' => 'process',
-                                            'Bank Query' => 'query',
-                                            'Sanctioned' => 'ok',
-                                            'Disbursed' => 'done',
-                                            'Rejected' => 'bad',
-                                            default => 'login',
-                                        };
-                                        $lenderName = (string) ($ba->lender_name ?? '');
-                                        $lenderKey = strtolower($lenderName);
-                                        $chipClass = match(true){
-                                            str_contains($lenderKey, 'hdfc') => 'hdfc',
-                                            str_contains($lenderKey, 'icici') => 'icici',
-                                            str_contains($lenderKey, 'sbi') || str_contains($lenderKey, 'state bank') => 'sbi',
-                                            str_contains($lenderKey, 'axis') => 'axis',
-                                            default => '',
-                                        };
-                                        $chipLabel = collect(preg_split('/\s+/', trim($lenderName)))
-                                            ->filter()
-                                            ->take(2)
-                                            ->map(fn ($w) => \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($w, 0, 1)))
-                                            ->implode('') ?: 'BK';
-                                    @endphp
+                    <div class="cw-table-wrap">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0 align-middle">
+                                <thead>
                                     <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <span class="lender-chip {{ $chipClass }}">{{ $chipLabel }}</span>
-                                                <span class="fw-semibold">{{ $ba->lender_name }}</span>
-                                            </div>
-                                        </td>
-                                        <td>{{ $ba->application_ref ?: '—' }}</td>
-                                        <td>{{ optional($ba->login_date)->format('d M Y') ?: '—' }}</td>
-                                        <td><span class="status-pill {{ $baStatusClass }}">{{ $ba->status }}</span></td>
-                                        <td>{{ optional($ba->follow_up_at)->format('d M Y') ?: '—' }}</td>
-                                        <td class="text-end">
-                                            <button type="button" class="btn-action" data-cw-tab-jump="lenders" title="Open"><i class="bi bi-three-dots-vertical"></i></button>
-                                        </td>
+                                        <th>Lender</th>
+                                        <th>Application Reference</th>
+                                        <th>Login Date</th>
+                                        <th>Status</th>
+                                        <th>Assigned Follow-up</th>
+                                        <th class="text-end">Actions</th>
                                     </tr>
-                                @empty
-                                    <tr><td colspan="6" class="text-center text-muted py-2">No lender applications yet.</td></tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    @forelse($case->bankApplications->take(5) as $ba)
+                                        @php
+                                            $baStatusClass = match($ba->status){
+                                                'Processing' => 'process',
+                                                'Bank Query' => 'query',
+                                                'Sanctioned' => 'ok',
+                                                'Disbursed' => 'done',
+                                                'Rejected' => 'bad',
+                                                default => 'login',
+                                            };
+                                            $lenderName = (string) ($ba->lender_name ?? '');
+                                            $lenderKey = strtolower($lenderName);
+                                            $chipClass = match(true){
+                                                str_contains($lenderKey, 'hdfc') => 'hdfc',
+                                                str_contains($lenderKey, 'icici') => 'icici',
+                                                str_contains($lenderKey, 'sbi') || str_contains($lenderKey, 'state bank') => 'sbi',
+                                                str_contains($lenderKey, 'axis') => 'axis',
+                                                default => '',
+                                            };
+                                            $chipLabel = collect(preg_split('/\s+/', trim($lenderName)))
+                                                ->filter()
+                                                ->take(2)
+                                                ->map(fn ($w) => \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($w, 0, 1)))
+                                                ->implode('') ?: 'BK';
+                                        @endphp
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="lender-chip {{ $chipClass }}">{{ $chipLabel }}</span>
+                                                    <span class="fw-semibold">{{ $ba->lender_name }}</span>
+                                                </div>
+                                            </td>
+                                            <td>{{ $ba->application_ref ?: '—' }}</td>
+                                            <td>{{ optional($ba->login_date)->format('d M Y') ?: '—' }}</td>
+                                            <td><span class="status-pill {{ $baStatusClass }}">{{ $ba->status }}</span></td>
+                                            <td>{{ optional($ba->follow_up_at)->format('d M Y') ?: '—' }}</td>
+                                            <td class="text-end">
+                                                <button type="button" class="btn-action" data-cw-tab-jump="lenders" title="Open"><i class="bi bi-three-dots-vertical"></i></button>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="6" class="text-center text-muted py-3">No lender applications yet.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="cw-table-note"><i class="bi bi-info-circle"></i>A case can have multiple lender applications.</div>
                     </div>
-                    <div class="cw-table-note"><i class="bi bi-info-circle"></i>A case can have multiple lender applications.</div>
                 </div>
 
-                <div class="card border-0 shadow-sm rounded-4 cw-card cw-table-card">
-                    <div class="card-header bg-white border-0 border-bottom">
-                        <div class="d-flex align-items-center justify-content-between gap-2">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="sec-ico"><i class="bi bi-file-earmark-text"></i></span>
-                                <h6 class="mb-0 fw-semibold">Documents</h6>
-                            </div>
-                            <button type="button" class="btn btn-link btn-sm text-decoration-none fw-semibold px-0" data-cw-tab-jump="documents">View All →</button>
+                <div class="sec-card cw-table-card">
+                    <div class="sec-head has-line">
+                        <div class="sec-head-left">
+                            <span class="sec-ico"><i class="bi bi-file-earmark-text"></i></span>
+                            <div><h6>Documents</h6></div>
                         </div>
+                        <button type="button" class="btn-link-cw" data-cw-tab-jump="documents">View All →</button>
                     </div>
-                    <div class="table-responsive">
-                        <table class="table table-sm mb-0 align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Document Type</th>
-                                    <th>Uploaded</th>
-                                    <th>Verification</th>
-                                    <th>Reviewer</th>
-                                    <th class="text-end">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse(collect($docs)->take(5) as $doc)
-                                    @php
-                                        $st = $doc['status'] ?? 'Pending';
-                                        $badge = match($st){ 'Verified'=>'ok', 'Rejected'=>'bad', default=>'warn' };
-                                        $path = $doc['path'] ?? ($doc['storage_path'] ?? null);
-                                        $label = $doc['label'] ?? $doc['key'] ?? 'Document';
-                                        $docIcon = match(true){
-                                            str_contains(strtolower((string)$label), 'income') => 'bi-cash-stack',
-                                            str_contains(strtolower((string)$label), 'address') => 'bi-geo-alt',
-                                            str_contains(strtolower((string)$label), 'identity') || str_contains(strtolower((string)$label), 'id proof') => 'bi-person-vcard',
-                                            default => 'bi-file-earmark-text',
-                                        };
-                                    @endphp
+                    <div class="cw-table-wrap">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0 align-middle">
+                                <thead>
                                     <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <i class="bi {{ $docIcon }} doc-type-ico"></i>
-                                                <span class="fw-semibold">{{ $label }}</span>
-                                            </div>
-                                        </td>
-                                        <td>{{ $doc['uploaded_at'] ?? '—' }}</td>
-                                        <td>
-                                            <div class="d-flex align-items-center gap-2 flex-wrap">
-                                                <span class="doc-badge {{ $badge }}">
-                                                    @if($st === 'Verified')<i class="bi bi-check-lg"></i>
-                                                    @elseif($st === 'Rejected')<i class="bi bi-x-lg"></i>
-                                                    @else<i class="bi bi-clock"></i>@endif
-                                                    {{ $st }}
-                                                </span>
-                                                @if($st === 'Rejected' && !empty($doc['rejection_reason']))
-                                                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" title="{{ $doc['rejection_reason'] }}">Reason available</button>
-                                                @endif
-                                            </div>
-                                        </td>
-                                        <td>{{ $doc['reviewer'] ?? '—' }}</td>
-                                        <td class="text-end">
-                                            @if($path)
-                                                <a class="btn-download" href="{{ asset('storage/'.$path) }}" target="_blank" title="Download"><i class="bi bi-download"></i></a>
-                                            @else
-                                                <span class="text-muted">—</span>
-                                            @endif
-                                        </td>
+                                        <th>Document Type</th>
+                                        <th>Uploaded</th>
+                                        <th>Verification</th>
+                                        <th>Reviewer</th>
+                                        <th class="text-end">Actions</th>
                                     </tr>
-                                @empty
-                                    <tr><td colspan="5" class="text-center text-muted py-2">No documents uploaded.</td></tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    @forelse(collect($docs)->take(5) as $doc)
+                                        @php
+                                            $st = $doc['status'] ?? 'Pending';
+                                            $badge = match($st){ 'Verified'=>'ok', 'Rejected'=>'bad', default=>'warn' };
+                                            $path = $doc['path'] ?? ($doc['storage_path'] ?? null);
+                                            $label = $doc['label'] ?? $doc['key'] ?? 'Document';
+                                            $docIcon = match(true){
+                                                str_contains(strtolower((string)$label), 'income') => 'bi-cash-stack',
+                                                str_contains(strtolower((string)$label), 'address') => 'bi-geo-alt',
+                                                str_contains(strtolower((string)$label), 'identity') || str_contains(strtolower((string)$label), 'id proof') => 'bi-person-vcard',
+                                                default => 'bi-file-earmark-text',
+                                            };
+                                        @endphp
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="bi {{ $docIcon }} doc-type-ico"></i>
+                                                    <span class="fw-semibold">{{ $label }}</span>
+                                                </div>
+                                            </td>
+                                            <td>{{ $doc['uploaded_at'] ?? '—' }}</td>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                    <span class="doc-badge {{ $badge }}">
+                                                        @if($st === 'Verified')<i class="bi bi-check-lg"></i>
+                                                        @elseif($st === 'Rejected')<i class="bi bi-x-lg"></i>
+                                                        @else<i class="bi bi-clock"></i>@endif
+                                                        {{ $st }}
+                                                    </span>
+                                                    @if($st === 'Rejected' && !empty($doc['rejection_reason']))
+                                                        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" title="{{ $doc['rejection_reason'] }}">Reason available</button>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td>{{ $doc['reviewer'] ?? '—' }}</td>
+                                            <td class="text-end">
+                                                @if($path)
+                                                    <a class="btn-download" href="{{ asset('storage/'.$path) }}" target="_blank" title="Download"><i class="bi bi-download"></i></a>
+                                                @else
+                                                    <span class="text-muted">—</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="5" class="text-center text-muted py-3">No documents uploaded.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -928,61 +1177,63 @@
                         ? ($roleLabel($openQuery->responsible).' - '.$openQuery->responsible->name)
                         : ($openQuery?->responsible?->name ?? '—');
                 @endphp
-                <div class="card border-0 shadow-sm rounded-4 cw-card">
-                    <div class="card-header bg-white border-0 border-bottom">
-                        <div class="d-flex align-items-center gap-2">
+                <div class="sec-card">
+                    <div class="sec-head has-line">
+                        <div class="sec-head-left">
                             <span class="sec-ico"><i class="bi bi-people"></i></span>
-                            <h6 class="mb-0 fw-semibold">Case Ownership</h6>
+                            <div><h6>Case Ownership</h6></div>
                         </div>
                     </div>
-                    <div class="card-body">
-                        @foreach([
-                            ['ico' => 'bi-building', 'label' => 'Branch', 'value' => $case->orgUnit?->name ?? '—', 'valIco' => null],
-                            ['ico' => 'bi-clock', 'label' => 'SM/JSM Owner', 'value' => $ownerDisplay, 'valIco' => $case->owner ? 'bi-person-circle' : null],
-                            ['ico' => 'bi-person-vcard', 'label' => 'Branch Manager', 'value' => $bmDisplay, 'valIco' => $branchManager ? 'bi-person-circle' : null],
-                            ['ico' => 'bi-envelope', 'label' => 'Lead Source', 'value' => $leadSourceLabel, 'valIco' => $leadSourceRaw ? 'bi-telephone' : null],
-                        ] as $row)
-                            <div class="row g-1 align-items-center py-1">
-                                <div class="col-auto text-secondary"><i class="bi {{ $row['ico'] }}"></i></div>
-                                <div class="col-5 col-sm-4 text-secondary small">{{ $row['label'] }}</div>
-                                <div class="col-auto text-secondary small px-0">:</div>
-                                <div class="col fw-semibold text-dark d-flex align-items-center gap-2">
-                                    @if($row['valIco'])<i class="bi {{ $row['valIco'] }} text-purple"></i>@endif
-                                    <span>{{ $row['value'] }}</span>
+                    <div class="sec-body">
+                        <div class="own-list">
+                            @foreach([
+                                ['ico' => 'bi-building', 'label' => 'Branch', 'value' => $case->orgUnit?->name ?? '—', 'valIco' => null],
+                                ['ico' => 'bi-person', 'label' => 'SM/JSM Owner', 'value' => $ownerDisplay, 'valIco' => $case->owner ? 'bi-person-circle' : null],
+                                ['ico' => 'bi-person-vcard', 'label' => 'Branch Manager', 'value' => $bmDisplay, 'valIco' => $branchManager ? 'bi-person-circle' : null],
+                                ['ico' => 'bi-diagram-3', 'label' => 'Lead Source', 'value' => $leadSourceLabel, 'valIco' => $leadSourceRaw ? 'bi-telephone' : null],
+                            ] as $row)
+                                <div class="own-row">
+                                    <span class="own-ico"><i class="bi {{ $row['ico'] }}"></i></span>
+                                    <span class="d-label">{{ $row['label'] }}</span>
+                                    <span class="d-sep">:</span>
+                                    <span class="d-value">
+                                        @if($row['valIco'])<i class="bi {{ $row['valIco'] }} val-ico"></i>@endif
+                                        <span>{{ $row['value'] }}</span>
+                                    </span>
                                 </div>
-                            </div>
-                        @endforeach
+                            @endforeach
+                        </div>
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-sm rounded-4 cw-card {{ $openQuery ? 'query-alert' : '' }}">
-                    <div class="card-header bg-white border-0 border-bottom">
-                        <div class="d-flex align-items-center justify-content-between gap-2">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="sec-ico {{ $openQuery ? 'ico-amber' : '' }}"><i class="bi {{ $openQuery ? 'bi-award' : 'bi-patch-check' }}"></i></span>
-                                <h6 class="mb-0 fw-semibold">Pending Bank Query</h6>
-                            </div>
-                            @if($openQuery)
-                                <span class="badge rounded-pill text-bg-warning-subtle text-warning-emphasis border border-warning-subtle">Pending</span>
-                            @endif
+                <div class="sec-card {{ $openQuery ? 'query-alert' : '' }}">
+                    <div class="sec-head has-line">
+                        <div class="sec-head-left">
+                            <span class="sec-ico {{ $openQuery ? 'ico-amber' : '' }}"><i class="bi {{ $openQuery ? 'bi-exclamation-triangle' : 'bi-patch-check' }}"></i></span>
+                            <div><h6>Pending Bank Query</h6></div>
                         </div>
-                    </div>
-                    <div class="card-body">
                         @if($openQuery)
-                            <div class="mb-2">
-                                <div class="text-secondary small mb-1">Query Summary</div>
-                                <div class="fw-semibold">{{ \Illuminate\Support\Str::limit($openQuery->details, 140) }}</div>
+                            <span class="pill-pending">Pending</span>
+                        @endif
+                    </div>
+                    <div class="sec-body">
+                        @if($openQuery)
+                            <div class="query-block">
+                                <div>
+                                    <div class="q-label">Query Summary</div>
+                                    <div class="q-summary">{{ \Illuminate\Support\Str::limit($openQuery->details, 140) }}</div>
+                                </div>
+                                <div>
+                                    <div class="q-label">Responsible Employee</div>
+                                    <div class="q-value"><i class="bi bi-person-circle"></i>{{ $queryOwner }}</div>
+                                </div>
+                                <div>
+                                    <div class="q-label">Due Date</div>
+                                    <div class="q-value"><i class="bi bi-calendar3"></i>{{ optional($openQuery->due_at)->format('d M Y') ?: '—' }}</div>
+                                </div>
                             </div>
-                            <div class="mb-2">
-                                <div class="text-secondary small mb-1">Responsible Employee</div>
-                                <div class="fw-semibold d-flex align-items-center gap-2"><i class="bi bi-person-circle text-secondary"></i>{{ $queryOwner }}</div>
-                            </div>
-                            <div class="mb-2">
-                                <div class="text-secondary small mb-1">Due Date</div>
-                                <div class="fw-semibold d-flex align-items-center gap-2"><i class="bi bi-calendar3 text-secondary"></i>{{ optional($openQuery->due_at)->format('d M Y') ?: '—' }}</div>
-                            </div>
-                            <div class="d-flex justify-content-end">
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-cw-tab-jump="queries">View Query</button>
+                            <div class="query-actions">
+                                <button type="button" class="btn-ghost query-view" data-cw-tab-jump="queries">View Query</button>
                             </div>
                         @else
                             <div class="text-center text-muted py-2">
@@ -993,14 +1244,14 @@
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-sm rounded-4 cw-card">
-                    <div class="card-header bg-white border-0 border-bottom">
-                        <div class="d-flex align-items-center gap-2">
+                <div class="sec-card">
+                    <div class="sec-head has-line">
+                        <div class="sec-head-left">
                             <span class="sec-ico"><i class="bi bi-layers"></i></span>
-                            <h6 class="mb-0 fw-semibold">Sanction &amp; Disbursement</h6>
+                            <div><h6>Sanction &amp; Disbursement</h6></div>
                         </div>
                     </div>
-                    <div class="card-body">
+                    <div class="sec-body">
                         @php
                             $sanctionAmt = $activeSanction?->sanction_amount ?? $case->sanction_amount;
                             $remainingAmt = $sanctionCap > 0
@@ -1009,40 +1260,30 @@
                             $sanctionDateLabel = optional($activeSanction?->sanction_date ?? $case->sanction_date)->format('d M Y') ?: '—';
                         @endphp
                         @if($activeSanction || $verifiedDisbTotal > 0 || $case->sanction_amount)
-                            <div class="row g-2 mb-2">
-                                <div class="col-6">
-                                    <div class="rounded-3 p-2 h-100 cw-sanc-violet d-flex gap-2">
-                                        <span class="sec-ico ico-violet-solid flex-shrink-0"><i class="bi bi-currency-rupee"></i></span>
-                                        <div>
-                                            <div class="text-secondary small">Sanctioned Amount</div>
-                                            <div class="fw-bold">{{ $fmtInr($sanctionAmt) }}</div>
-                                        </div>
+                            <div class="sanc-mini-grid">
+                                <div class="sanc-mini violet">
+                                    <span class="sm-ico"><i class="bi bi-currency-rupee"></i></span>
+                                    <div>
+                                        <div class="sm-label">Sanctioned Amount</div>
+                                        <div class="sm-value">{{ $fmtInr($sanctionAmt) }}</div>
                                     </div>
                                 </div>
-                                <div class="col-6">
-                                    <div class="rounded-3 p-2 h-100 cw-sanc-green d-flex gap-2">
-                                        <span class="sec-ico ico-green flex-shrink-0"><i class="bi bi-file-earmark-check"></i></span>
-                                        <div>
-                                            <div class="text-secondary small">Total Disbursed <span class="text-muted">(Verified)</span></div>
-                                            <div class="fw-bold">{{ $fmtInr($verifiedDisbTotal) }}</div>
-                                        </div>
+                                <div class="sanc-mini green">
+                                    <span class="sm-ico"><i class="bi bi-file-earmark-check"></i></span>
+                                    <div>
+                                        <div class="sm-label">Total Disbursed <span class="sm-note">(Verified)</span></div>
+                                        <div class="sm-value">{{ $fmtInr($verifiedDisbTotal) }}</div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="row g-2">
-                                <div class="col-md-6">
-                                    <div class="d-flex align-items-center justify-content-between gap-2">
-                                        <span class="text-secondary small">Remaining Amount</span>
-                                        <span class="text-secondary small">:</span>
-                                        <span class="fw-bold ms-auto">{{ $remainingAmt !== null ? $fmtInr($remainingAmt) : '—' }}</span>
-                                    </div>
+                            <div class="sanc-meta">
+                                <div class="sanc-meta-row">
+                                    <span class="d-label">Remaining Amount</span><span class="d-sep">:</span>
+                                    <span class="d-value">{{ $remainingAmt !== null ? $fmtInr($remainingAmt) : '—' }}</span>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="d-flex align-items-center justify-content-between gap-2">
-                                        <span class="text-secondary small">Sanction Date</span>
-                                        <span class="text-secondary small">:</span>
-                                        <span class="fw-bold ms-auto">{{ $sanctionDateLabel }}</span>
-                                    </div>
+                                <div class="sanc-meta-row">
+                                    <span class="d-label">Sanction Date</span><span class="d-sep">:</span>
+                                    <span class="d-value">{{ $sanctionDateLabel }}</span>
                                 </div>
                             </div>
                         @else
@@ -1055,26 +1296,24 @@
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-sm rounded-4 cw-card">
-                    <div class="card-header bg-white border-0 border-bottom">
-                        <div class="d-flex align-items-center justify-content-between gap-2">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="sec-ico"><i class="bi bi-clock-history"></i></span>
-                                <h6 class="mb-0 fw-semibold">Recent Activity</h6>
-                            </div>
-                            <button type="button" class="btn btn-link btn-sm text-decoration-none px-0" data-cw-tab-jump="activity">View Activity History →</button>
+                <div class="sec-card">
+                    <div class="sec-head has-line">
+                        <div class="sec-head-left">
+                            <span class="sec-ico ico-blue"><i class="bi bi-clock-history"></i></span>
+                            <div><h6>Recent Activity</h6></div>
                         </div>
+                        <button type="button" class="btn-link-cw" data-cw-tab-jump="activity">View Activity History →</button>
                     </div>
-                    <div class="card-body p-0">
-                        <ul class="list-group list-group-flush">
+                    <div class="sec-body" style="padding-top:6px">
+                        <ul class="timeline">
                             @forelse($case->events->take(5) as $ev)
                                 @php
                                     $dot = match($ev->event_type){
-                                        'created','status' => 'ico-green',
-                                        'document' => '',
-                                        'application','disbursement' => 'ico-blue',
-                                        'query','assignment' => 'ico-amber',
-                                        default => 'ico-blue',
+                                        'created','status' => 'green',
+                                        'document' => 'teal',
+                                        'application','disbursement' => 'blue',
+                                        'query','assignment' => 'amber',
+                                        default => 'blue',
                                     };
                                     $ico = match($ev->event_type){
                                         'created' => 'bi-plus-lg',
@@ -1087,17 +1326,19 @@
                                         default => 'bi-dot',
                                     };
                                 @endphp
-                                <li class="list-group-item d-flex align-items-center gap-2 border-0 {{ !$loop->last ? 'border-bottom' : '' }}">
-                                    <span class="sec-ico {{ $dot }} flex-shrink-0" style="width:30px;height:30px;font-size:.85rem"><i class="bi {{ $ico }}"></i></span>
-                                    <div class="d-flex align-items-center justify-content-between flex-grow-1 gap-2 min-w-0">
-                                        <span class="fw-semibold text-truncate">{{ $ev->title }}</span>
-                                        <span class="text-muted small text-nowrap">{{ $ev->created_at?->format('d M Y, h:i a') }}</span>
+                                <li>
+                                    <span class="tl-dot {{ $dot }}"><i class="bi {{ $ico }}"></i></span>
+                                    <div class="tl-body">
+                                        <span class="tl-title">{{ $ev->title }}</span>
+                                        <span class="tl-time">{{ $ev->created_at?->format('d M Y, h:i a') }}</span>
                                     </div>
                                 </li>
                             @empty
-                                <li class="list-group-item border-0 text-center text-muted py-3">
-                                    <i class="bi bi-clock-history d-block fs-4 mb-1 opacity-50"></i>
-                                    No activity yet.
+                                <li>
+                                    <div class="text-center text-muted py-3 w-100">
+                                        <i class="bi bi-clock-history d-block fs-4 mb-1 opacity-50"></i>
+                                        No activity yet.
+                                    </div>
                                 </li>
                             @endforelse
                         </ul>
@@ -1114,14 +1355,14 @@
             <input type="hidden" name="cw_tab" id="cw_tab" value="{{ $activeTab }}">
             @include('goal.cases.partials.customer_fields')
             <div class="accordion mb-3" id="cwCustomerExtras">
-                <div class="accordion-item border-0">
+                <div class="accordion-item">
                     <h2 class="accordion-header">
-                        <button class="accordion-button collapsed rounded-3 fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#cwExtraPanels">
+                        <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#cwExtraPanels">
                             BM Recommendation · Existing Loans · Collateral
                         </button>
                     </h2>
                     <div id="cwExtraPanels" class="accordion-collapse collapse" data-bs-parent="#cwCustomerExtras">
-                        <div class="accordion-body px-0">
+                        <div class="accordion-body px-3 pb-3 pt-0">
                             @include('goal.cases.partials.customer_extras')
                         </div>
                     </div>
@@ -1130,7 +1371,10 @@
             @if($canEdit)
             <div class="cw-footer">
                 <div class="hint mb-0">Saves customer, BM reco, loans and collateral for this case.</div>
-                <button type="submit" class="btn-save"><i class="bi bi-check2"></i> Save Case</button>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{{ route('goal.cases.show', ['case' => $case, 'tab' => 'overview']) }}" class="btn btn-outline-secondary" style="height:42px;border-radius:10px;display:inline-flex;align-items:center;">Cancel</a>
+                    <button type="submit" class="btn-save"><i class="bi bi-check2"></i> Save Case</button>
+                </div>
             </div>
             @endif
         </form>
@@ -1254,6 +1498,35 @@
             if (nameEl && hiddenName && nameEl.value) hiddenName.value = nameEl.value;
             if (mobEl && hiddenMob && mobEl.value) hiddenMob.value = mobEl.value;
         });
+    }
+
+    var custLayout = document.getElementById('cwCustomerLayout');
+    if (custLayout) {
+        function setCustomerParty(party) {
+            custLayout.setAttribute('data-party', party);
+            custLayout.querySelectorAll('.cust-party-btn').forEach(function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-party') === party);
+            });
+            custLayout.querySelectorAll('.cust-party-panel').forEach(function (panel) {
+                panel.classList.toggle('is-active', panel.getAttribute('data-party-panel') === party);
+            });
+            custLayout.querySelectorAll('.cust-party-field').forEach(function (field) {
+                var match = field.getAttribute('data-party-field') === party;
+                field.classList.toggle('d-none', !match);
+            });
+            if (window.IsarvaSelect2 && typeof window.IsarvaSelect2.init === 'function') {
+                window.IsarvaSelect2.init(custLayout);
+            }
+        }
+        custLayout.querySelectorAll('.cust-party-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                setCustomerParty(btn.getAttribute('data-party'));
+            });
+        });
+        setCustomerParty(custLayout.getAttribute('data-party') || 'applicant');
+        if (window.IsarvaSelect2 && typeof window.IsarvaSelect2.init === 'function') {
+            window.IsarvaSelect2.init(custLayout);
+        }
     }
 
     page.querySelectorAll('.js-mobile').forEach(function (el) {

@@ -382,8 +382,7 @@
  @include('partials.industry_new_modal')
 
  <!-- Bootstrap JS Bundle (for modal functionality) -->
-    <script src="{{asset('js/bootstrap.bundle.min.js')}}"></script>
-    <!-- <script src="{{ asset('js/deals/edit-deals.js') }}"></script> -->
+<!-- <script src="{{ asset('js/deals/edit-deals.js') }}"></script> -->
      <script>
         document.addEventListener('DOMContentLoaded', function () {
             // CSRF token for AJAX requests

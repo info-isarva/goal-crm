@@ -333,8 +333,7 @@
     </div>
 
     <!-- Bootstrap JS Bundle (for modal functionality) -->
-    <script src="{{asset('js/bootstrap.bundle.min.js')}}"></script>
-    <!-- <script src="{{asset('js/leads/edit-leads.js')}}"></script> -->
+<!-- <script src="{{asset('js/leads/edit-leads.js')}}"></script> -->
      <script>
         function toggleReasonForLossLead() {
     var status = document.getElementById('status').value;

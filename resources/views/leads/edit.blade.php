@@ -341,7 +341,6 @@
 @include('partials.industry_new_modal')
 
 <!-- Bootstrap JS Bundle -->
-<script src="{{asset('js/bootstrap.bundle.min.js')}}"></script>
 <script>
 function toggleReasonForLossLead() {
     var status = document.getElementById('status').value;
@@ -357,13 +356,13 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('status').addEventListener('change', toggleReasonForLossLead);
     toggleReasonForLossLead();
 
-    // ─── Shared state: tracks the last created/selected organization ───────────
+    // --- Shared state: tracks the last created/selected organization -----------
     // This is the single source of truth used by both person and customer modals.
-    let lastCreatedOrg = null; // { id, name } — set after a new org is created via modal
+    let lastCreatedOrg = null; // { id, name } � set after a new org is created via modal
 
     const CSRF_TOKEN = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
 
-    // ─── Helpers ──────────────────────────────────────────────────────────────
+    // --- Helpers --------------------------------------------------------------
 
     /**
      * Fetch the latest organizations from the server and populate a <select> by id.
@@ -398,11 +397,11 @@ document.addEventListener('DOMContentLoaded', function () {
      * given select, hide the select, show a readonly text input, and inject a
      * hidden input so FormData still carries the correct org id.
      *
-     * @param {string} selectId       — id of the <select> inside the modal
-     * @param {string} readonlyId     — id to use for the injected readonly <input>
-     * @param {string} hiddenId       — id to use for the injected <input type="hidden">
-     * @param {string} orgName        — org name to match / display (from orgInput or lastCreatedOrg)
-     * @param {string|number} orgId   — org id to pre-select (optional; derived from select if omitted)
+     * @param {string} selectId       � id of the <select> inside the modal
+     * @param {string} readonlyId     � id to use for the injected readonly <input>
+     * @param {string} hiddenId       � id to use for the injected <input type="hidden">
+     * @param {string} orgName        � org name to match / display (from orgInput or lastCreatedOrg)
+     * @param {string|number} orgId   � org id to pre-select (optional; derived from select if omitted)
      */
     function applyReadonlyOrgField(selectId, readonlyId, hiddenId, orgName, orgId) {
         const orgSelect = document.getElementById(selectId);
@@ -449,7 +448,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hidInput.value = foundId;
 
         } else {
-            // No match — show the normal select, remove any readonly remnants
+            // No match � show the normal select, remove any readonly remnants
             orgSelect.style.display = '';
             const readonlyInput = document.getElementById(readonlyId);
             if (readonlyInput) readonlyInput.remove();
@@ -458,7 +457,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // ─── Organization autocomplete ────────────────────────────────────────────
+    // --- Organization autocomplete --------------------------------------------
 
     const orgInput    = document.getElementById('organization_id');
     const orgDropdown = document.getElementById('org-autocomplete-list');
@@ -528,7 +527,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 scrollDiv.appendChild(item);
             });
 
-        // "New Company" link — always at the bottom
+        // "New Company" link � always at the bottom
         newDiv.innerHTML = '';
         const newBtn = document.createElement('a');
         newBtn.href      = '#';
@@ -569,7 +568,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // ─── New Organization modal submit ────────────────────────────────────────
+    // --- New Organization modal submit ----------------------------------------
 
     document.getElementById('orgNewForm').addEventListener('submit', function (e) {
         e.preventDefault();
@@ -605,7 +604,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return res.json();
         })
         .then(org => {
-            // ── KEY CHANGE: store the newly created org so modals can auto-select it ──
+            // -- KEY CHANGE: store the newly created org so modals can auto-select it --
             lastCreatedOrg = { id: org.id, name: org.name };
 
             // Set the main org input
@@ -634,7 +633,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(() => {});
     });
 
-    // ─── Customer autocomplete ────────────────────────────────────────────────
+    // --- Customer autocomplete ------------------------------------------------
 
     const custInput    = document.getElementById('customer_id');
     const custDropdown = document.getElementById('customer-autocomplete-list');
@@ -697,7 +696,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // ─── Contact Person autocomplete ──────────────────────────────────────────
+    // --- Contact Person autocomplete ------------------------------------------
 
     const personInput    = document.getElementById('people_id');
     const personDropdown = document.getElementById('person-autocomplete-list');
@@ -818,10 +817,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // ─── Customer modal: show.bs.modal ────────────────────────────────────────
+    // --- Customer modal: show.bs.modal ----------------------------------------
     // Determine which org to pre-select:
-    //   1. If a new org was just created via the org modal → use lastCreatedOrg
-    //   2. Otherwise → use whatever is typed in orgInput (existing org)
+    //   1. If a new org was just created via the org modal ? use lastCreatedOrg
+    //   2. Otherwise ? use whatever is typed in orgInput (existing org)
     // In both cases: reload the org list first so the newly created org appears,
     // then apply the readonly pattern.
 
@@ -851,7 +850,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     });
 
-    // ─── Person modal: show.bs.modal ──────────────────────────────────────────
+    // --- Person modal: show.bs.modal ------------------------------------------
 
     document.getElementById('personNewModal').addEventListener('show.bs.modal', function () {
         // Reset form & errors
@@ -878,7 +877,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     });
 
-    // ─── New Customer modal submit ────────────────────────────────────────────
+    // --- New Customer modal submit --------------------------------------------
 
     document.getElementById('customerNewForm').addEventListener('submit', function (e) {
         e.preventDefault();
@@ -952,7 +951,7 @@ document.addEventListener('DOMContentLoaded', function () {
         doCreateCustomer();
     });
 
-    // ─── New Contact Person modal submit ──────────────────────────────────────
+    // --- New Contact Person modal submit --------------------------------------
 
     document.getElementById('personNewForm').addEventListener('submit', function (e) {
         e.preventDefault();
@@ -1041,7 +1040,7 @@ document.addEventListener('DOMContentLoaded', function () {
         doCreatePerson();
     });
 
-    // ─── Select2 initialisation ───────────────────────────────────────────────
+    // --- Select2 initialisation -----------------------------------------------
 
     $('#user_owner_id').select2({ placeholder: 'Select owner',             allowClear: true, width: '100%' });
     $('#lead_source').select2(  { placeholder: 'Select lead source',        allowClear: true, width: '100%' });

@@ -73,7 +73,10 @@
     position:relative;overflow:hidden;isolation:isolate;
     border-radius:16px;padding:1rem 1.1rem;
     background:#fff;border:1px solid rgba(226,232,240,.9);
-    box-shadow:0 8px 22px rgba(148,163,184,.12);
+    box-shadow:
+        0 1px 2px rgba(15,23,42,.04),
+        0 10px 28px rgba(148,163,184,.16),
+        0 22px 48px rgba(148,163,184,.10);
     min-height:96px;
     display:flex !important;flex-direction:row !important;align-items:center;gap:12px;
 }
@@ -135,8 +138,12 @@
 .ba-page .ba-tab.active .count{background:#1e3a8a;color:#fff}
 
 .ba-page .ba-card{
-    background:#fff;border:1px solid #cfe0f5;border-radius:15px;
-    box-shadow:0 10px 28px rgba(59,130,246,.08);overflow:hidden;margin-bottom:1rem;
+    background:#fff;border:1px solid rgba(226,232,240,.9);border-radius:16px;
+    box-shadow:
+        0 1px 2px rgba(15,23,42,.04),
+        0 10px 28px rgba(148,163,184,.16),
+        0 22px 48px rgba(148,163,184,.10);
+    overflow:hidden;margin-bottom:1rem;
 }
 .ba-page .ba-card-head{
     display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.75rem;
@@ -210,106 +217,57 @@
 }
 .ba-page .ba-btn-bulk:disabled{opacity:.5;cursor:not-allowed}
 
-.ba-page .ba-table-wrap{overflow-x:auto;max-height:560px;background:#fff}
-.ba-page .ba-table-wrap > table{
+.ba-page .ba-table-shell{
+    padding:1rem 1.15rem 0;
+}
+.ba-page .ba-table-shell > .ba-dt-foot{
+    margin:0 -1.15rem 0;border-radius:0 0 16px 16px;
+}
+.ba-page .ba-table-wrap{
+    overflow-x:auto;max-height:560px;background:#fff;
+    border:1px solid #e8edf5;border-radius:14px;
+}
+.ba-page .ba-table-wrap > table,
+.ba-page .ba-table-wrap .dataTables_wrapper,
+.ba-page .dataTables_wrapper{
+    width:100% !important;
+}
+.ba-page .ba-table-wrap > table,
+.ba-page table.dataTable{
     display:table !important;width:100% !important;margin:0 !important;
     border-collapse:separate !important;border-spacing:0 !important;
 }
-.ba-page .ba-table-wrap > table thead{display:table-header-group !important;visibility:visible !important}
-.ba-page .ba-table-wrap > table thead th{
+.ba-page .ba-table-wrap > table thead,
+.ba-page table.dataTable thead{display:table-header-group !important;visibility:visible !important}
+.ba-page .ba-table-wrap > table thead th,
+.ba-page table.dataTable thead th{
     position:sticky;top:0;z-index:2;
     display:table-cell !important;width:auto !important;
-    background:linear-gradient(180deg,#eef5ff 0%,#e6f0fc 100%) !important;
-    color:#0f2744 !important;font-size:.78rem;font-weight:800;
-    text-transform:none;letter-spacing:0;border-bottom:1px solid #d5e4f6 !important;
-    white-space:nowrap;padding:.7rem .9rem !important;
+    background:#f1f5f9 !important;color:#64748b !important;
+    font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
+    border-bottom:1px solid #e2e8f0 !important;
+    white-space:nowrap;padding:.8rem .95rem !important;
 }
-.ba-page .ba-table-wrap > table tbody{display:table-row-group !important}
-.ba-page .ba-table-wrap > table tr{
+.ba-page .ba-table-wrap > table tbody,
+.ba-page table.dataTable tbody{display:table-row-group !important}
+.ba-page .ba-table-wrap > table tr,
+.ba-page table.dataTable tr{
     display:table-row !important;width:auto !important;margin:0 !important;border:0 !important;
     background:transparent !important;box-shadow:none !important;padding:0 !important;
 }
-.ba-page .ba-table-wrap > table tbody td{
+.ba-page .ba-table-wrap > table tbody td,
+.ba-page table.dataTable tbody td{
     display:table-cell !important;width:auto !important;vertical-align:middle !important;
-    padding:.62rem .9rem !important;border-color:#edf3fb !important;font-size:.84rem;white-space:nowrap;
-    background:#fff;
+    padding:.85rem .95rem !important;border-bottom:1px solid #eef2f7 !important;
+    font-size:.875rem;white-space:nowrap;background:#fff;color:#334155;
 }
 .ba-page .ba-table-wrap > table tbody td::before{content:none !important;display:none !important}
-.ba-page .ba-table-wrap > table tbody tr:hover td{background:#f7fbff !important}
-.ba-page .ba-table-wrap .dataTables_wrapper{width:100%}
-.ba-page table.dataTable{margin:0 !important}
-/* Match Loan Leads / Users footer: Showing + Rows + chevron pager */
-.ba-page .ba-dt-foot{
-    display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
-    gap:12px 16px;padding:.95rem 1.15rem;border-top:1px solid #eef2f7;
-    background:#fff;color:#64748b;font-size:.84rem;
+.ba-page .ba-table-wrap > table tbody tr:hover td,
+.ba-page table.dataTable tbody tr:hover td{background:#f8fbff !important}
+.ba-page .ba-table-wrap > table tbody tr:last-child td{border-bottom:0 !important}
+.ba-page .ba-actions{
+    display:inline-flex;align-items:center;gap:8px;flex-wrap:nowrap;
 }
-.ba-page .ba-dt-right{
-    display:inline-flex;flex-wrap:wrap;align-items:center;gap:12px 16px;margin-left:auto;
-}
-.ba-page .dataTables_wrapper .dataTables_info{
-    float:none !important;padding:0 !important;margin:0 !important;
-    font-size:.84rem;font-weight:600;color:#64748b;
-}
-.ba-page .dataTables_wrapper .dataTables_length{
-    float:none !important;padding:0 !important;margin:0 !important;
-    display:inline-flex;align-items:center;gap:10px;font-weight:500;color:#64748b;
-}
-.ba-page .dataTables_wrapper .dataTables_length label{
-    display:inline-flex;align-items:center;gap:10px;margin:0;font-weight:500;color:#64748b;
-}
-.ba-page .dataTables_wrapper .dataTables_length select{
-    height:34px;min-width:56px;width:auto;border:1px solid #dbe2ea;border-radius:8px;
-    padding:0 28px 0 12px;background:#fff;font-size:.84rem;font-weight:600;color:#1a1c32;
-    appearance:none;-webkit-appearance:none;outline:none;cursor:pointer;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='%2364748b' d='M4.5 6l3.5 3.5L11.5 6'/%3E%3C/svg%3E");
-    background-repeat:no-repeat;background-position:right 10px center;
-}
-.ba-page .dataTables_wrapper .dataTables_paginate{
-    float:none !important;padding:0 !important;margin:0 !important;text-align:right !important;
-    display:inline-flex !important;align-items:center;
-}
-.ba-page .dataTables_wrapper .dataTables_paginate .pagination{
-    list-style:none;margin:0;padding:0;gap:6px;
-    display:inline-flex;align-items:center;
-    border:0;background:transparent;
-}
-.ba-page .dataTables_wrapper .dataTables_paginate .page-item{margin:0;display:flex}
-.ba-page .dataTables_wrapper .dataTables_paginate .page-link{
-    border:0 !important;border-radius:8px !important;
-    color:#475569 !important;background:transparent !important;
-    min-width:34px;height:34px;margin:0 !important;padding:0 10px !important;
-    display:inline-flex !important;align-items:center;justify-content:center;
-    font-size:.84rem !important;font-weight:600 !important;line-height:1 !important;
-    text-decoration:none !important;box-shadow:none !important;
-}
-.ba-page .dataTables_wrapper .dataTables_paginate .page-link:hover{
-    background:#f1f5f9 !important;color:#1a1c32 !important;border:0 !important;
-}
-.ba-page .dataTables_wrapper .dataTables_paginate .page-item.active .page-link,
-.ba-page .dataTables_wrapper .dataTables_paginate .page-item.active .page-link:hover{
-    background:#2563eb !important;color:#fff !important;border:0 !important;
-    box-shadow:0 4px 10px rgba(37,99,235,.28) !important;
-}
-.ba-page .dataTables_wrapper .dataTables_paginate .page-item.previous .page-link,
-.ba-page .dataTables_wrapper .dataTables_paginate .page-item.next .page-link{
-    background:#eff6ff !important;color:#2563eb !important;padding:0 !important;
-}
-.ba-page .dataTables_wrapper .dataTables_paginate .page-item.previous .page-link:hover,
-.ba-page .dataTables_wrapper .dataTables_paginate .page-item.next .page-link:hover{
-    background:#dbeafe !important;color:#1d4ed8 !important;
-}
-.ba-page .dataTables_wrapper .dataTables_paginate .page-item.disabled .page-link,
-.ba-page .dataTables_wrapper .dataTables_paginate .page-item.disabled .page-link:hover{
-    background:transparent !important;color:#cbd5e1 !important;pointer-events:none;box-shadow:none !important;
-}
-.ba-page .dataTables_wrapper .dataTables_paginate .page-item.previous.disabled .page-link,
-.ba-page .dataTables_wrapper .dataTables_paginate .page-item.next.disabled .page-link,
-.ba-page .dataTables_wrapper .dataTables_paginate .page-item.previous.disabled .page-link:hover,
-.ba-page .dataTables_wrapper .dataTables_paginate .page-item.next.disabled .page-link:hover{
-    background:#f1f5f9 !important;color:#cbd5e1 !important;
-}
-.ba-page .dataTables_wrapper .dataTables_paginate .page-link i{font-size:.75rem;line-height:1}
 
 .ba-page .ref-link{font-weight:600;color:#2563eb;text-decoration:underline;text-underline-offset:2px}
 .ba-page .ref-link:hover{color:#1d4ed8}
@@ -348,14 +306,15 @@
 }
 .ba-page .btn-row-assign:disabled{opacity:.45;box-shadow:none}
 .ba-page .icon-btn{
-    width:32px;height:32px;border-radius:999px;border:1px solid #e2e8f0;background:#fff;color:#475569;
-    display:inline-flex;align-items:center;justify-content:center;
+    width:34px;height:34px;border-radius:10px;border:1.5px solid #bfdbfe;background:#eff6ff;color:#2563eb;
+    display:inline-flex;align-items:center;justify-content:center;transition:.15s ease;
 }
-.ba-page .icon-btn:hover{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+.ba-page .icon-btn:hover{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
 .ba-page .btn-reassign{
-    height:32px;border-radius:8px;border:1px solid #c7d2fe;background:#eef2ff;color:#3730a3;
-    font-size:.75rem;font-weight:700;padding:0 10px;display:inline-flex;align-items:center;gap:5px;
+    height:34px;border-radius:10px;border:1px solid #c7d2fe;background:#eef2ff;color:#3730a3;
+    font-size:.78rem;font-weight:700;padding:0 12px;display:inline-flex;align-items:center;gap:6px;
 }
+.ba-page .btn-reassign:hover{background:#e0e7ff;color:#312e81}
 .ba-page .empty{padding:2rem;text-align:center;color:#64748b}
 .ba-page .panel-hidden{display:none!important}
 .ba-page .row-hidden{display:none!important}
@@ -531,7 +490,8 @@ body > .select2-container .select2-dropdown{
             </button>
         </div>
 
-        <div class="ba-table-wrap">
+        <div class="ba-table-shell">
+            <div class="ba-table-wrap">
             <table class="table align-middle ba-datatable" id="pendingTable" style="width:100%">
                 <thead>
                     <tr>
@@ -609,6 +569,7 @@ body > .select2-container .select2-dropdown{
                 @endforelse
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 
@@ -626,7 +587,8 @@ body > .select2-container .select2-dropdown{
                 </div>
             </div>
         </div>
-        <div class="ba-table-wrap">
+        <div class="ba-table-shell">
+            <div class="ba-table-wrap">
             <table class="table align-middle ba-datatable" id="assignedTable" style="width:100%">
                 <thead>
                     <tr>
@@ -667,7 +629,7 @@ body > .select2-container .select2-dropdown{
                         <td>{{ $last?->reason ?: ($last?->action === 'assign' ? 'Initial assignment' : '—') }}</td>
                         <td>{{ optional($last?->created_at ?? $lead->assigned_at)->format('d M Y, h:i a') }}</td>
                         <td class="text-end">
-                            <div class="d-inline-flex align-items-center gap-1">
+                            <div class="ba-actions">
                                 <a class="icon-btn" href="{{ route('goal.leads.show', $lead) }}" title="View details"><i class="bi bi-eye"></i></a>
                                 <button type="button" class="icon-btn btn-history" title="Assignment history"
                                     data-history-url="{{ route('goal.allocation.history', $lead) }}">
@@ -690,6 +652,7 @@ body > .select2-container .select2-dropdown{
                 @endforelse
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </div>
@@ -1118,6 +1081,7 @@ window.BA_SALES = @json($salesPayload);
                 ordering: true,
                 autoWidth: false,
                 pagingType: 'simple_numbers',
+                /* table inside inset wrap; footer outside scroll area */
                 dom: 't<"ba-dt-foot"i<"ba-dt-right"lp>>',
                 language: {
                     emptyTable: 'No records found.',
@@ -1128,6 +1092,14 @@ window.BA_SALES = @json($salesPayload);
                     paginate: {
                         previous: '<i class="bi bi-chevron-left" aria-hidden="true"></i>',
                         next: '<i class="bi bi-chevron-right" aria-hidden="true"></i>'
+                    }
+                },
+                initComplete: function () {
+                    var $wrap = $(this.api().table().container());
+                    var $shell = $wrap.closest('.ba-table-shell');
+                    var $foot = $wrap.find('.ba-dt-foot');
+                    if ($shell.length && $foot.length) {
+                        $shell.append($foot);
                     }
                 }
             };

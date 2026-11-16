@@ -11,8 +11,8 @@
     }
     $avatar = Auth::user()->avatar;
 @endphp
-<nav class="sidebar min-vh-100 p-0 col-12 col-md-2 custom-block offcanvas-md offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarLabel" style="z-index:1045;">
-    <div class="d-flex flex-column h-100 justify-content-between sidebar-shell">
+<nav class="sidebar custom-block offcanvas-md offcanvas-start min-h-screen w-full p-0 lg:w-[272px] lg:shrink-0" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarLabel" style="z-index:1045;">
+    <div class="sidebar-shell flex h-full flex-col justify-between">
         <div class="sidebar-brand">
             <div class="sidebar-brand-mark">
                 @php $company = \App\Models\Company::current(); @endphp
@@ -22,18 +22,15 @@
                     class="company-logo sidebar-brand-logo"
                 >
             </div>
-            <button class="btn btn-sm sidebar-close-mobile d-md-none" type="button" data-bs-dismiss="offcanvas" aria-label="Close">
-                <i class="bi bi-x-lg"></i>
-            </button>
         </div>
 
-        <div class="sidebar-scroll flex-grow-1">
-            <ul class="nav flex-column sidebar-menu sidebar-menu-gap">
+        <div class="sidebar-scroll grow">
+            <ul class="nav sidebar-menu sidebar-menu-gap flex-col">
                 @include('layouts.sidebar_menu')
             </ul>
         </div>
 
-        <div class="user-card d-flex align-items-center">
+        <div class="user-card flex items-center">
             @if($avatar)
                 <img src="{{ asset('assets/employee_profile_image/' . $avatar) }}" alt="{{ Auth::user()->name }}">
             @else
