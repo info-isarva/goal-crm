@@ -14,9 +14,30 @@
     $prop = $cd['property'] ?? [];
     $refs = $cd['references'] ?? [];
     $bt = $loans['bt_source'] ?? [];
-    $loanRows = $loans['rows'] ?? [['type' => '', 'bank' => '', 'sanction' => '', 'outstanding' => '', 'emi' => '', 'paid' => '', 'pending' => '', 'bounces' => '']];
-    if ($loanRows === []) {
-        $loanRows = [['type' => '', 'bank' => '', 'sanction' => '', 'outstanding' => '', 'emi' => '', 'paid' => '', 'pending' => '', 'bounces' => '']];
+    if ($bt === []) {
+        $btRows = [['loan_type' => '', 'loan_amt' => '', 'roi' => '', 'tenor' => '', 'emi' => '']];
+    } elseif (isset($bt[0]) && is_array($bt[0])) {
+        $btRows = array_values($bt);
+    } else {
+        $btRows = [is_array($bt) ? $bt : []];
+    }
+    $loanTypeOpts = [
+        '' => 'Select loan type',
+        'Home Loan' => 'Home Loan',
+        'LAP' => 'LAP',
+        'Personal Loan' => 'Personal Loan',
+        'Business Loan' => 'Business Loan',
+        'Auto Loan' => 'Auto Loan',
+        'Education Loan' => 'Education Loan',
+        'Other' => 'Other',
+    ];
+    $loanRowBlank = ['party' => 'applicant', 'type' => '', 'bank' => '', 'sanction' => '', 'outstanding' => '', 'emi' => '', 'paid' => '', 'pending' => '', 'bounces' => ''];
+    $loanRows = $loans['rows'] ?? null;
+    if (!is_array($loanRows) || $loanRows === []) {
+        $loanRows = [
+            array_merge($loanRowBlank, ['party' => 'applicant']),
+            array_merge($loanRowBlank, ['party' => 'co_applicant']),
+        ];
     }
     $consent = $cd['consent'] ?? null;
     $canEdit = $canEdit ?? false;
@@ -186,7 +207,7 @@
 .cw-page .cw-table-card > .sec-head{padding:.85rem 1.15rem .75rem !important}
 .cw-page .cw-table-card .cw-table-wrap{padding:.2rem 1.15rem .85rem}
 .cw-page .cw-table-card .table-responsive{
-    border:1px solid #E6EDF5;border-radius:12px;overflow:hidden;background:#fff;
+    border:1px solid #E2E8F0;border-radius:12px;overflow:auto;background:#fff;
 }
 .cw-page .cw-table-card .table{
     margin:0;background:#fff;border-collapse:separate;border-spacing:0;width:100%;
@@ -194,7 +215,7 @@
 .cw-page .cw-table-card .table > :not(caption) > * > *{padding:.6rem .7rem;border:0}
 .cw-page .cw-table-card .table thead th{
     font-size:.74rem;text-transform:none;letter-spacing:0;color:#475569;font-weight:600;
-    background:#EEF2FF;border-bottom:1px solid #E0E7FF;white-space:nowrap;
+    background:#fff;border-bottom:1px solid #E2E8F0;white-space:nowrap;
 }
 .cw-page .cw-table-card .table thead th:first-child{padding-left:1rem}
 .cw-page .cw-table-card .table thead th:last-child{padding-right:1rem}
@@ -206,6 +227,21 @@
 .cw-page .cw-table-card .table tbody td:last-child{padding-right:1rem}
 .cw-page .cw-table-card .table tbody tr:last-child td{border-bottom:0}
 .cw-page .cw-table-card .table tbody tr:hover td{background:#F8FAFC}
+.cw-page .cw-lender-table{
+    table-layout:fixed;width:100%;border-collapse:separate;border-spacing:0;
+}
+.cw-page .cw-lender-table thead th,
+.cw-page .cw-lender-table tbody td{
+    padding:.7rem .85rem !important;vertical-align:middle !important;
+    text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.cw-page .cw-lender-table thead th.text-end,
+.cw-page .cw-lender-table tbody td.text-end{text-align:right !important}
+.cw-page .cw-lender-table .cw-lender-name{font-weight:600;color:#0f172a}
+.cw-page .cw-lender-table .cw-lender-amt{font-variant-numeric:tabular-nums;font-weight:600}
+.cw-page .cw-lender-table .status-pill{display:inline-flex;max-width:100%}
+.cw-page .cw-lender-table tbody tr{background:#fff}
+.cw-page .cw-lender-table tbody tr:nth-child(even) td{background:#fff}
 .cw-page .cw-table-card .cw-table-note{
     padding:.55rem .15rem 0;margin-top:.35rem;font-size:.75rem;color:#94A3B8;font-style:italic;border-top:0;
 }
@@ -705,17 +741,6 @@
 }
 .cw-page .cust-consent.ok{background:#ECFDF5;color:#047857;border:1px solid #A7F3D0}
 .cw-page .cust-consent.warn{background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA}
-.cw-page #cwCustomerExtras .accordion-item{
-    background:#fff;border:1px solid rgba(226,232,240,.85) !important;border-radius:16px !important;overflow:hidden;
-    box-shadow:
-        0 1px 2px rgba(15,23,42,.04),
-        0 10px 28px rgba(148,163,184,.16),
-        0 22px 48px rgba(148,163,184,.10) !important;
-}
-.cw-page #cwCustomerExtras .accordion-button{
-    font-size:.92rem;color:#0f172a;background:#fff;box-shadow:none;padding:1rem 1.1rem;
-}
-.cw-page #cwCustomerExtras .accordion-button:not(.collapsed){background:#F8FAFC;color:#0f172a}
 .cw-page .hint{font-size:.78rem;color:var(--cw-muted);margin-top:6px}
 .cw-page .hint.err{color:#b91c1c}
 .cw-page .cw-extra-section{margin-top:1rem}
@@ -884,6 +909,7 @@
         @foreach([
             'overview' => ['Overview', 'bi-grid'],
             'customer' => ['Customer', 'bi-person'],
+            'recommendation' => ['BM Recommendation', 'bi-lightbulb'],
             'documents' => ['Documents', 'bi-file-earmark'],
             'lenders' => ['Lender Applications', 'bi-layers'],
             'queries' => ['Bank Queries', 'bi-chat-dots'],
@@ -1352,28 +1378,34 @@
     <div class="cw-pane {{ $activeTab === 'customer' ? 'active' : '' }}" data-pane="customer">
         <form method="POST" action="{{ route('goal.cases.workspace', $case) }}" id="cwWorkspaceForm" novalidate>
             @csrf
-            <input type="hidden" name="cw_tab" id="cw_tab" value="{{ $activeTab }}">
+            <input type="hidden" name="cw_tab" value="{{ $activeTab }}">
             @include('goal.cases.partials.customer_fields')
-            <div class="accordion mb-3" id="cwCustomerExtras">
-                <div class="accordion-item">
-                    <h2 class="accordion-header">
-                        <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#cwExtraPanels">
-                            BM Recommendation · Existing Loans · Collateral
-                        </button>
-                    </h2>
-                    <div id="cwExtraPanels" class="accordion-collapse collapse" data-bs-parent="#cwCustomerExtras">
-                        <div class="accordion-body px-3 pb-3 pt-0">
-                            @include('goal.cases.partials.customer_extras')
-                        </div>
-                    </div>
-                </div>
-            </div>
             @if($canEdit)
             <div class="cw-footer">
-                <div class="hint mb-0">Saves customer, BM reco, loans and collateral for this case.</div>
+                <div class="hint mb-0">Saves customer details for this case.</div>
                 <div class="d-flex align-items-center gap-2">
                     <a href="{{ route('goal.cases.show', ['case' => $case, 'tab' => 'overview']) }}" class="btn btn-outline-secondary" style="height:42px;border-radius:10px;display:inline-flex;align-items:center;">Cancel</a>
                     <button type="submit" class="btn-save"><i class="bi bi-check2"></i> Save Case</button>
+                </div>
+            </div>
+            @endif
+        </form>
+    </div>
+
+    {{-- ===================== BM RECOMMENDATION ===================== --}}
+    <div class="cw-pane {{ $activeTab === 'recommendation' ? 'active' : '' }}" data-pane="recommendation">
+        <form method="POST" action="{{ route('goal.cases.workspace', $case) }}" id="cwRecommendationForm" novalidate>
+            @csrf
+            <input type="hidden" name="cw_tab" value="recommendation">
+            <input type="hidden" name="customer_name" value="{{ old('customer_name', $case->customer_name) }}">
+            <input type="hidden" name="mobile" value="{{ old('mobile', $case->mobile) }}">
+            @include('goal.cases.partials.customer_extras')
+            @if($canEdit)
+            <div class="cw-footer">
+                <div class="hint mb-0">Saves BM recommendation, existing loans and collateral.</div>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{{ route('goal.cases.show', ['case' => $case, 'tab' => 'overview']) }}" class="btn btn-outline-secondary" style="height:42px;border-radius:10px;display:inline-flex;align-items:center;">Cancel</a>
+                    <button type="submit" class="btn-save"><i class="bi bi-check2"></i> Save Recommendation</button>
                 </div>
             </div>
             @endif
@@ -1461,8 +1493,6 @@
 (function () {
     var page = document.getElementById('cwPage');
     if (!page) return;
-    var tabInput = document.getElementById('cw_tab');
-
     function activateTab(key) {
         page.querySelectorAll('.cw-tab').forEach(function (btn) {
             btn.classList.toggle('active', btn.getAttribute('data-cw-tab') === key);
@@ -1470,7 +1500,9 @@
         page.querySelectorAll('.cw-pane').forEach(function (pane) {
             pane.classList.toggle('active', pane.getAttribute('data-pane') === key);
         });
-        if (tabInput) tabInput.value = key;
+        page.querySelectorAll('input[name="cw_tab"]').forEach(function (inp) {
+            inp.value = key;
+        });
         page.setAttribute('data-active-tab', key);
         try { history.replaceState(null, '', '?tab=' + encodeURIComponent(key)); } catch (e) {}
     }
@@ -1535,6 +1567,108 @@
         });
     });
 
+    (function initBtSourceRows() {
+        var list = document.getElementById('cwBtSourceList');
+        var tpl = document.getElementById('cwBtRowTpl');
+        var addBtn = document.getElementById('cwAddBtRow');
+        if (!list || !tpl) return;
+
+        function reindexBt() {
+            list.querySelectorAll('[data-bt-row]').forEach(function (row, i) {
+                row.querySelectorAll('[name]').forEach(function (el) {
+                    el.name = String(el.name || '').replace(/existing_loans\[bt_source\]\[\d+\]/, 'existing_loans[bt_source][' + i + ']');
+                });
+            });
+        }
+
+        if (addBtn) {
+            addBtn.addEventListener('click', function () {
+                var idx = list.querySelectorAll('[data-bt-row]').length;
+                var html = tpl.innerHTML.replace(/__i__/g, String(idx));
+                var wrap = document.createElement('div');
+                wrap.innerHTML = html.trim();
+                var row = wrap.firstElementChild;
+                if (!row) return;
+                list.appendChild(row);
+            });
+        }
+
+        list.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-remove-bt]');
+            if (!btn) return;
+            var rows = list.querySelectorAll('[data-bt-row]');
+            if (rows.length <= 1) {
+                var only = rows[0];
+                if (!only) return;
+                only.querySelectorAll('input, select').forEach(function (el) {
+                    if (el.tagName === 'SELECT') el.selectedIndex = 0;
+                    else el.value = '';
+                });
+                return;
+            }
+            var row = btn.closest('[data-bt-row]');
+            if (row) row.remove();
+            reindexBt();
+        });
+    })();
+
+    (function initLoanDetailRows() {
+        var body = document.getElementById('cwLoanRowsBody');
+        var tpl = document.getElementById('cwLoanRowTpl');
+        var addBtn = document.getElementById('cwAddLoanRow');
+        if (!body || !tpl) return;
+
+        function reindexLoan() {
+            body.querySelectorAll('[data-loan-row]').forEach(function (tr, i) {
+                var idx = tr.querySelector('.cw-loan-idx');
+                if (idx) idx.textContent = String(i + 1);
+                tr.querySelectorAll('[name]').forEach(function (el) {
+                    el.name = String(el.name || '').replace(/existing_loans\[rows\]\[\d+\]/, 'existing_loans[rows][' + i + ']');
+                });
+            });
+        }
+
+        if (addBtn) {
+            addBtn.addEventListener('click', function () {
+                var idx = body.querySelectorAll('[data-loan-row]').length;
+                var html = tpl.innerHTML
+                    .replace(/__i__/g, String(idx))
+                    .replace(/__n__/g, String(idx + 1));
+                var wrap = document.createElement('tbody');
+                wrap.innerHTML = html.trim();
+                var row = wrap.firstElementChild;
+                if (!row) return;
+                body.appendChild(row);
+                reindexLoan();
+            });
+        }
+
+        body.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-remove-loan]');
+            if (!btn) return;
+            var rows = body.querySelectorAll('[data-loan-row]');
+            if (rows.length <= 1) {
+                var only = rows[0];
+                if (!only) return;
+                only.querySelectorAll('input, select').forEach(function (el) {
+                    if (el.tagName === 'SELECT') {
+                        el.selectedIndex = 0;
+                        if (el.classList.contains('cw-party-chip')) {
+                            el.classList.add('is-app');
+                            el.classList.remove('is-co');
+                        }
+                    } else {
+                        el.value = '';
+                    }
+                });
+                return;
+            }
+            var row = btn.closest('[data-loan-row]');
+            if (row) row.remove();
+            reindexLoan();
+        });
+    })();
+
     var toSel = document.getElementById('cwToStatus');
     function syncTransitionFields() {
         var to = toSel ? toSel.value : '';
@@ -1561,6 +1695,27 @@
     }
 
     if (window.IsarvaDatepicker) { window.IsarvaDatepicker.init(page); }
+
+    function syncCwPreferredContactTime() {
+        var fromEl = document.getElementById('cw_preferred_contact_from');
+        var toEl = document.getElementById('cw_preferred_contact_to');
+        var hidden = document.getElementById('cw_preferred_contact_time');
+        if (!hidden) return;
+        var from = (fromEl && fromEl.value ? fromEl.value : '').trim();
+        var to = (toEl && toEl.value ? toEl.value : '').trim();
+        if (from && to) hidden.value = from + ' - ' + to;
+        else if (from) hidden.value = from;
+        else if (to) hidden.value = to;
+        else hidden.value = '';
+    }
+    ['cw_preferred_contact_from', 'cw_preferred_contact_to'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('change', syncCwPreferredContactTime);
+        el.addEventListener('input', syncCwPreferredContactTime);
+    });
+    syncCwPreferredContactTime();
+
     activateTab(page.getAttribute('data-active-tab') || 'overview');
 
     page.querySelectorAll('[data-copy]').forEach(function (btn) {

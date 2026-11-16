@@ -28,22 +28,39 @@ input.js-datetimepicker::-webkit-calendar-picker-indicator {
     -webkit-appearance: none;
 }
 
+/*
+ * Tailwind preflight uses border-box globally and can break Flatpickr's
+ * fixed-width day grid (Sat column + next-month arrow spill outside).
+ */
 .flatpickr-calendar {
+    width: 307.875px !important;
+    max-width: 307.875px !important;
+    box-sizing: border-box !important;
     border: 1px solid var(--fp-border) !important;
     border-radius: 12px !important;
     box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14) !important;
     font-family: inherit;
-    padding: 6px;
+    padding: 0 !important;
+    overflow: hidden;
     z-index: 1200 !important;
 }
 
+.flatpickr-calendar *,
+.flatpickr-calendar *::before,
+.flatpickr-calendar *::after {
+    box-sizing: border-box !important;
+}
+
 .flatpickr-months {
+    display: flex;
     align-items: center;
-    padding: 4px 2px 2px;
+    width: 100%;
+    padding: 8px 6px 2px;
 }
 
 .flatpickr-months .flatpickr-month {
     height: 36px;
+    overflow: hidden;
 }
 
 .flatpickr-current-month {
@@ -51,13 +68,38 @@ input.js-datetimepicker::-webkit-calendar-picker-indicator {
     font-weight: 700;
     color: var(--fp-text);
     padding-top: 0 !important;
+    left: 12.5% !important;
+    width: 75% !important;
 }
 
 .flatpickr-months .flatpickr-prev-month,
 .flatpickr-months .flatpickr-next-month {
+    position: absolute !important;
+    top: 8px !important;
     fill: var(--fp-muted);
     padding: 6px;
     border-radius: 8px;
+    height: 34px;
+    width: 34px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.flatpickr-months .flatpickr-prev-month {
+    left: 6px !important;
+}
+
+.flatpickr-months .flatpickr-next-month {
+    right: 6px !important;
+}
+
+.flatpickr-months .flatpickr-prev-month svg,
+.flatpickr-months .flatpickr-next-month svg {
+    display: inline-block !important;
+    width: 14px;
+    height: 14px;
+    vertical-align: middle;
 }
 
 .flatpickr-months .flatpickr-prev-month:hover,
@@ -70,19 +112,55 @@ input.js-datetimepicker::-webkit-calendar-picker-indicator {
     fill: var(--fp-primary);
 }
 
+.flatpickr-innerContainer {
+    display: block !important;
+    overflow: hidden;
+}
+
+.flatpickr-rContainer {
+    display: block !important;
+    width: 100%;
+    padding: 0 6px 6px;
+}
+
+.flatpickr-weekdays {
+    width: 100% !important;
+}
+
 span.flatpickr-weekday {
     color: var(--fp-muted);
     font-weight: 700;
     font-size: 0.72rem;
+    flex: 1 0 auto;
+    max-width: none;
+}
+
+.flatpickr-days {
+    width: 100% !important;
+}
+
+.dayContainer {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    box-sizing: border-box !important;
+    padding: 0;
+    outline: 0;
 }
 
 .flatpickr-day {
     border-radius: 8px;
     color: var(--fp-text);
     font-weight: 500;
-    max-width: 36px;
-    height: 36px;
-    line-height: 36px;
+    flex-basis: 14.2857143% !important;
+    width: 14.2857143% !important;
+    max-width: 14.2857143% !important;
+    height: 39px !important;
+    line-height: 39px !important;
+    margin: 0 !important;
 }
 
 .flatpickr-day:hover,

@@ -347,36 +347,40 @@
     </div>
 
     {{-- Property | References --}}
-    <div class="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+    <div class="mb-3 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)]">
         <div class="cw-card-tw mb-0 h-full">
             <div class="cw-card-head border-b border-slate-100">
                 <span class="cw-ico cw-ico-blue"><i class="bi bi-building"></i></span>
                 <h6 class="cw-card-title">Property</h6>
             </div>
-            <div class="space-y-3 px-4 py-3">
-                <div class="grid grid-cols-12 gap-3">
-                    <div class="col-span-8">
-                        <label class="cw-label">Property Address</label>
-                        <input class="cw-input" name="customer_details[property][address]" value="{{ $prop['address'] ?? '' }}" placeholder="Enter property address" {{ $ro }}>
-                    </div>
-                    <div class="col-span-4">
-                        <label class="cw-label">Pincode</label>
-                        <input class="cw-input" name="customer_details[property][pincode]" value="{{ $prop['pincode'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }}>
+            <div class="space-y-3 px-4 py-3.5">
+                <div>
+                    <label class="cw-label">Property Address and Pin Code</label>
+                    <div class="grid grid-cols-12 gap-2.5">
+                        <div class="col-span-12 sm:col-span-8">
+                            <div class="cw-input-group">
+                                <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
+                                <input class="cw-input" name="customer_details[property][address]" value="{{ $prop['address'] ?? '' }}" placeholder="Enter property address" {{ $ro }}>
+                            </div>
+                        </div>
+                        <div class="col-span-12 sm:col-span-4">
+                            <input class="cw-input" name="customer_details[property][pincode]" value="{{ $prop['pincode'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }}>
+                        </div>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                         <label class="cw-label">Property Market Value</label>
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
-                            <input class="cw-input js-decimal" data-decimals="2" name="customer_details[property][market_value]" value="{{ $prop['market_value'] ?? '' }}" placeholder="0.00" {{ $ro }}>
+                            <input class="cw-input js-decimal" data-decimals="2" name="customer_details[property][market_value]" value="{{ $prop['market_value'] ?? '' }}" placeholder="Enter amount" {{ $ro }}>
                         </div>
                     </div>
                     <div>
                         <label class="cw-label">Property SR Value</label>
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
-                            <input class="cw-input js-decimal" data-decimals="2" name="customer_details[property][sr_value]" value="{{ $prop['sr_value'] ?? '' }}" placeholder="0.00" {{ $ro }}>
+                            <input class="cw-input js-decimal" data-decimals="2" name="customer_details[property][sr_value]" value="{{ $prop['sr_value'] ?? '' }}" placeholder="Enter amount" {{ $ro }}>
                         </div>
                     </div>
                 </div>
@@ -388,50 +392,64 @@
                 <span class="cw-ico cw-ico-blue"><i class="bi bi-people"></i></span>
                 <h6 class="cw-card-title">References</h6>
             </div>
-            <div class="grid grid-cols-1 gap-3 px-4 py-3 md:grid-cols-2">
-                <div class="cw-ref-box">
-                    <div class="cw-ref-title">Reference 1</div>
-                    <div class="mb-2">
-                        <label class="cw-label">Name</label>
-                        <input class="cw-input" name="customer_details[references][ref1_name]" value="{{ $refs['ref1_name'] ?? '' }}" placeholder="Enter name" {{ $ro }}>
-                    </div>
-                    <div class="mb-2">
-                        <label class="cw-label">Mobile</label>
-                        <div class="cw-input-group">
-                            <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
-                            <input class="cw-input js-mobile" name="customer_details[references][ref1_mobile]" value="{{ $refs['ref1_mobile'] ?? '' }}" maxlength="10" placeholder="Mobile" {{ $ro }}>
+            <div class="cw-ref-split">
+                <div class="cw-ref-col">
+                    <div class="cw-ref-head cw-ref-head-1"><i class="bi bi-person"></i> Reference 1</div>
+                    <div class="cw-ref-fields">
+                        <div class="cw-field-row">
+                            <label class="cw-label-inline">Name</label>
+                            <input class="cw-input" name="customer_details[references][ref1_name]" value="{{ $refs['ref1_name'] ?? '' }}" placeholder="Enter name" {{ $ro }}>
                         </div>
-                    </div>
-                    <div>
-                        <label class="cw-label">Address</label>
-                        <input class="cw-input" name="customer_details[references][ref1_address]" value="{{ $refs['ref1_address'] ?? '' }}" placeholder="Enter address" {{ $ro }}>
+                        <div class="cw-field-row">
+                            <label class="cw-label-inline">Mobile Number</label>
+                            <div class="cw-input-group">
+                                <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
+                                <input class="cw-input js-mobile" name="customer_details[references][ref1_mobile]" value="{{ $refs['ref1_mobile'] ?? '' }}" maxlength="10" placeholder="Enter mobile number" {{ $ro }}>
+                            </div>
+                        </div>
+                        <div class="cw-field-row">
+                            <label class="cw-label-inline">Address</label>
+                            <div class="cw-input-group">
+                                <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
+                                <input class="cw-input" name="customer_details[references][ref1_address]" value="{{ $refs['ref1_address'] ?? '' }}" placeholder="Enter address" {{ $ro }}>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="cw-ref-box">
-                    <div class="cw-ref-title">Reference 2</div>
-                    <div class="mb-2">
-                        <label class="cw-label">Name</label>
-                        <input class="cw-input" name="customer_details[references][ref2_name]" value="{{ $refs['ref2_name'] ?? '' }}" placeholder="Enter name" {{ $ro }}>
-                    </div>
-                    <div class="mb-2">
-                        <label class="cw-label">Mobile</label>
-                        <div class="cw-input-group">
-                            <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
-                            <input class="cw-input js-mobile" name="customer_details[references][ref2_mobile]" value="{{ $refs['ref2_mobile'] ?? '' }}" maxlength="10" placeholder="Mobile" {{ $ro }}>
+                <div class="cw-ref-col">
+                    <div class="cw-ref-head cw-ref-head-2"><i class="bi bi-person"></i> Reference 2</div>
+                    <div class="cw-ref-fields">
+                        <div class="cw-field-row">
+                            <label class="cw-label-inline">Name</label>
+                            <input class="cw-input" name="customer_details[references][ref2_name]" value="{{ $refs['ref2_name'] ?? '' }}" placeholder="Enter name" {{ $ro }}>
                         </div>
-                    </div>
-                    <div>
-                        <label class="cw-label">Address</label>
-                        <input class="cw-input" name="customer_details[references][ref2_address]" value="{{ $refs['ref2_address'] ?? '' }}" placeholder="Enter address" {{ $ro }}>
+                        <div class="cw-field-row">
+                            <label class="cw-label-inline">Mobile Number</label>
+                            <div class="cw-input-group">
+                                <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
+                                <input class="cw-input js-mobile" name="customer_details[references][ref2_mobile]" value="{{ $refs['ref2_mobile'] ?? '' }}" maxlength="10" placeholder="Enter mobile number" {{ $ro }}>
+                            </div>
+                        </div>
+                        <div class="cw-field-row">
+                            <label class="cw-label-inline">Address</label>
+                            <div class="cw-input-group">
+                                <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
+                                <input class="cw-input" name="customer_details[references][ref2_address]" value="{{ $refs['ref2_address'] ?? '' }}" placeholder="Enter address" {{ $ro }}>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Product & Consent --}}
+    {{-- Case Information (Product · Amount · Contact · Consent) --}}
     <div class="cw-card-tw">
-        <div class="grid grid-cols-1 items-end gap-3 px-4 py-3 md:grid-cols-4">
+        <div class="cw-card-head border-b border-slate-100">
+            <span class="cw-ico"><i class="bi bi-layers"></i></span>
+            <h6 class="cw-card-title">Case Information</h6>
+        </div>
+        <div class="cw-case-info-grid">
             <div>
                 <label class="cw-label">Product</label>
                 <input class="cw-input cw-product-input" name="product" value="{{ old('product', $case->product) }}" placeholder="e.g. Home Loan" {{ $ro }}>
@@ -445,15 +463,37 @@
             </div>
             <div>
                 <label class="cw-label">Preferred Contact Time</label>
-                <div class="cw-input-group">
-                    <span class="cw-input-group-ico"><i class="bi bi-clock"></i></span>
-                    <input class="cw-input" name="customer_details[preferred_contact_time]" value="{{ $cd['preferred_contact_time'] ?? '' }}" placeholder="e.g. 10am - 1pm" {{ $ro }}>
+                @php
+                    $pctVal = old('customer_details.preferred_contact_time', $cd['preferred_contact_time'] ?? '');
+                    $pctFrom = old('customer_details.preferred_contact_from', '');
+                    $pctTo = old('customer_details.preferred_contact_to', '');
+                    if ($pctVal && str_contains((string) $pctVal, ' - ') && ($pctFrom === '' || $pctTo === '')) {
+                        [$pctFrom, $pctTo] = array_map('trim', explode(' - ', (string) $pctVal, 2));
+                    } elseif ($pctVal && $pctFrom === '' && $pctTo === '') {
+                        $pctFrom = (string) $pctVal;
+                    }
+                @endphp
+                <input type="hidden" name="customer_details[preferred_contact_time]" id="cw_preferred_contact_time" value="{{ $pctVal }}">
+                <div class="cw-pct-row">
+                    <div class="cw-input-group">
+                        <span class="cw-input-group-ico"><i class="bi bi-clock"></i></span>
+                        <input type="text" class="cw-input js-timepicker" id="cw_preferred_contact_from"
+                               value="{{ $pctFrom }}" placeholder="From" autocomplete="off"
+                               data-minute-increment="15" {{ $ro }}>
+                    </div>
+                    <span class="cw-pct-sep">–</span>
+                    <div class="cw-input-group">
+                        <span class="cw-input-group-ico"><i class="bi bi-clock"></i></span>
+                        <input type="text" class="cw-input js-timepicker" id="cw_preferred_contact_to"
+                               value="{{ $pctTo }}" placeholder="To" autocomplete="off"
+                               data-minute-increment="15" {{ $ro }}>
+                    </div>
                 </div>
             </div>
             <div>
                 <label class="cw-label">Consent</label>
                 <div class="cw-consent {{ $consentOk ? 'cw-consent-ok' : 'cw-consent-warn' }}">
-                    @if($consentOk)<i class="bi bi-check-lg"></i>@else<i class="bi bi-exclamation-circle"></i>@endif
+                    @if($consentOk)<i class="bi bi-check-circle-fill"></i>@else<i class="bi bi-exclamation-circle"></i>@endif
                     <span>{{ $consentText }}</span>
                 </div>
             </div>

@@ -737,7 +737,7 @@ class GoalLoanCaseController extends Controller
         $progress = $this->caseProgressSteps($case);
 
         $activeTab = session('cw_tab', request('tab', 'overview'));
-        $allowedTabs = ['overview', 'customer', 'documents', 'lenders', 'queries', 'sanction', 'disbursement', 'activity'];
+        $allowedTabs = ['overview', 'customer', 'recommendation', 'documents', 'lenders', 'queries', 'sanction', 'disbursement', 'activity'];
         if (!in_array($activeTab, $allowedTabs, true)) {
             $activeTab = 'overview';
         }
@@ -866,12 +866,14 @@ class GoalLoanCaseController extends Controller
             data_set($mergedCd, 'applicant.mobile', $applicantMobile);
         }
 
-        $loanAmount = $this->parseAmount($data['loan_amount'] ?? null);
-
         $case->customer_name = $data['customer_name'];
         $case->mobile = $data['mobile'] ?? $case->mobile;
-        $case->product = $data['product'] ?? $case->product;
-        $case->loan_amount = $loanAmount;
+        if (array_key_exists('product', $data)) {
+            $case->product = $data['product'] ?? $case->product;
+        }
+        if (array_key_exists('loan_amount', $data)) {
+            $case->loan_amount = $this->parseAmount($data['loan_amount']);
+        }
         $case->lender_name = $data['lender_name'] ?? $case->lender_name;
         $case->application_ref = $data['application_ref'] ?? $case->application_ref;
         $before = [
@@ -884,7 +886,35 @@ class GoalLoanCaseController extends Controller
         $case->customer_details = $mergedCd;
         $case->bm_reco = $this->mergeWorkspaceJson($case->bm_reco, $data['bm_reco'] ?? null);
         $case->collateral = $this->mergeWorkspaceJson($case->collateral, $data['collateral'] ?? null);
-        $case->existing_loans = $this->mergeWorkspaceJson($case->existing_loans, $data['existing_loans'] ?? null);
+        $incomingLoans = $data['existing_loans'] ?? null;
+        if (is_array($incomingLoans)) {
+            if (array_key_exists('bt_source', $incomingLoans)) {
+                $bt = $incomingLoans['bt_source'];
+                if (is_array($bt) && (isset($bt[0]) || $bt === [])) {
+                    $incomingLoans['bt_source'] = array_values(array_filter(
+                        $bt,
+                        static fn ($row) => is_array($row)
+                    ));
+                }
+            }
+            if (array_key_exists('rows', $incomingLoans) && is_array($incomingLoans['rows'])) {
+                $incomingLoans['rows'] = array_values(array_filter(
+                    $incomingLoans['rows'],
+                    static fn ($row) => is_array($row)
+                ));
+            }
+        }
+        $case->existing_loans = $this->mergeWorkspaceJson($case->existing_loans, $incomingLoans);
+        if (is_array($incomingLoans)) {
+            $mergedLoans = is_array($case->existing_loans) ? $case->existing_loans : [];
+            if (array_key_exists('bt_source', $incomingLoans)) {
+                $mergedLoans['bt_source'] = $incomingLoans['bt_source'];
+            }
+            if (array_key_exists('rows', $incomingLoans)) {
+                $mergedLoans['rows'] = $incomingLoans['rows'];
+            }
+            $case->existing_loans = $mergedLoans;
+        }
         $case->branch_mis = $this->mergeWorkspaceJson($case->branch_mis, $data['branch_mis'] ?? null);
         $case->save();
 
