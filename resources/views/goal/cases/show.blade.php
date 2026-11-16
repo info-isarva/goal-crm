@@ -142,8 +142,8 @@
 }
 .cw-page .case-ribbon .rb-copy:hover{color:var(--cw-primary)}
 .cw-page .status-pill{
-    display:inline-flex;align-items:center;gap:4px;padding:.2rem .6rem;border-radius:999px;
-    font-size:.72rem;font-weight:600;line-height:1.2;border:0;box-shadow:none;
+    display:inline-flex;align-items:center;gap:4px;padding:.18rem .55rem;border-radius:999px;
+    font-size:.7rem;font-weight:600;line-height:1.2;border:0;box-shadow:none;
     background:#EFF6FF;color:#1D4ED8;
 }
 .cw-page .status-pill.draft{background:#F1F5F9;color:#475569}
@@ -153,20 +153,47 @@
 .cw-page .status-pill.ok{background:#ECFDF5;color:#059669}
 .cw-page .status-pill.done{background:#DBEAFE;color:#1E40AF}
 .cw-page .status-pill.bad{background:#FEF2F2;color:#DC2626}
+.cw-page .doc-badge{
+    display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:600;
+    padding:3px 8px;border-radius:6px;background:#eff6ff;color:var(--cw-primary);line-height:1.2;
+}
+.cw-page .doc-badge.ok{background:#ecfdf5;color:#059669}
+.cw-page .doc-badge.warn{background:#fff7ed;color:#c2410c}
+.cw-page .doc-badge.bad{background:#fef2f2;color:#dc2626}
+.cw-page .lender-chip{
+    width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;
+    font-size:.58rem;font-weight:700;flex-shrink:0;background:#EEF2FF;color:#4338CA;
+}
+.cw-page .lender-chip.hdfc{background:#FEF2F2;color:#B91C1C}
+.cw-page .lender-chip.icici{background:#FFF7ED;color:#C2410C}
+.cw-page .lender-chip.sbi{background:#EFF6FF;color:#1D4ED8}
+.cw-page .lender-chip.axis{background:#F5F3FF;color:#7C3AED}
+.cw-page .doc-type-ico{color:#7C3AED;font-size:.95rem}
+.cw-page .cw-table-card .card-header{padding:.65rem .9rem !important}
 .cw-page .cw-table-card .table{margin:0}
-.cw-page .cw-table-card .table > :not(caption) > * > *{padding:.55rem .9rem}
+.cw-page .cw-table-card .table > :not(caption) > * > *{padding:.42rem .85rem}
 .cw-page .cw-table-card .table thead th{
     font-size:.72rem;text-transform:none;letter-spacing:0;color:#64748b;font-weight:600;
-    background:#F8FAFC;border-bottom:1px solid #E2E8F0;white-space:nowrap;
+    background:#F8FAFC;border-bottom:1px solid #E2E8F0;white-space:nowrap;padding-top:.5rem;padding-bottom:.5rem;
 }
 .cw-page .cw-table-card .table tbody td{
     font-size:.84rem;color:#0f172a;border-bottom:1px solid #F1F5F9;vertical-align:middle;
 }
 .cw-page .cw-table-card .table tbody tr:last-child td{border-bottom:0}
 .cw-page .cw-table-card .cw-table-note{
-    padding:.5rem 1rem .7rem;font-size:.78rem;color:#94A3B8;font-style:italic;
+    padding:.4rem .85rem .55rem;font-size:.75rem;color:#94A3B8;font-style:italic;border-top:1px solid #F1F5F9;
 }
-.cw-page .cw-table-card .cw-table-note i{font-style:normal;margin-right:4px}
+.cw-page .cw-table-card .cw-table-note i{font-style:normal;margin-right:4px;color:#94A3B8}
+.cw-page .cw-table-card .btn-action{
+    width:28px;height:28px;padding:0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;
+    border:1px solid #E2E8F0;background:#fff;color:#64748b;
+}
+.cw-page .cw-table-card .btn-action:hover{border-color:#BFDBFE;color:#2563EB;background:#EFF6FF}
+.cw-page .cw-table-card .btn-download{
+    width:30px;height:30px;padding:0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;
+    border:1px solid #BFDBFE;background:#EFF6FF;color:#2563EB;
+}
+.cw-page .cw-table-card .btn-download:hover{background:#DBEAFE;color:#1D4ED8}
 .cw-page .cw-progress{
     display:flex;align-items:flex-start;gap:0;padding:8px 10px 18px;
     border-top:1px solid #EEF2F7;
@@ -379,12 +406,8 @@
 }
 .cw-page .form-control:focus,.cw-page .form-select:focus{border-color:#93c5fd;background:#fff;box-shadow:0 0 0 3px rgba(36,91,235,.12)}
 .cw-page .form-control:disabled,.cw-page .form-control[readonly]{background:#eef4ff;color:#64748b}
-.cw-page .doc-badge{display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:600;padding:3px 8px;border-radius:999px;background:#eff6ff;color:var(--cw-primary)}
-.cw-page .doc-badge.ok{background:#ecfdf5;color:#059669}
-.cw-page .doc-badge.warn{background:#fff7ed;color:#c2410c}
-.cw-page .doc-badge.bad{background:#fef2f2;color:#dc2626}
 .cw-page .table thead th{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:700;border-bottom-color:#E2E8F0}
-.cw-page .table td{padding:.55rem .85rem;border-color:#F1F5F9}
+.cw-page .table td{padding:.45rem .85rem;border-color:#F1F5F9}
 .cw-page .cw-table-card .table thead th{text-transform:none;letter-spacing:0;font-weight:600}
 .cw-page .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:1rem}
 .cw-page .kpi{background:#fff;border:1px solid var(--cw-border);border-radius:12px;padding:12px 14px}
@@ -741,11 +764,11 @@
                     <div class="card-header bg-white border-0 border-bottom">
                         <div class="d-flex align-items-center justify-content-between gap-2">
                             <div class="d-flex align-items-center gap-2">
-                                <span class="sec-ico ico-blue"><i class="bi bi-bank"></i></span>
+                                <span class="sec-ico"><i class="bi bi-layers"></i></span>
                                 <h6 class="mb-0 fw-semibold">Lender Applications</h6>
                             </div>
                             @if($canEdit)
-                                <button type="button" class="btn btn-link btn-sm text-decoration-none px-0" data-bs-toggle="modal" data-bs-target="#cwAddLenderModal"><i class="bi bi-plus-lg"></i> Add Application</button>
+                                <button type="button" class="btn btn-link btn-sm text-decoration-none fw-semibold px-0" data-bs-toggle="modal" data-bs-target="#cwAddLenderModal"><i class="bi bi-plus-lg"></i> Add Application</button>
                             @endif
                         </div>
                     </div>
@@ -772,19 +795,38 @@
                                             'Rejected' => 'bad',
                                             default => 'login',
                                         };
+                                        $lenderName = (string) ($ba->lender_name ?? '');
+                                        $lenderKey = strtolower($lenderName);
+                                        $chipClass = match(true){
+                                            str_contains($lenderKey, 'hdfc') => 'hdfc',
+                                            str_contains($lenderKey, 'icici') => 'icici',
+                                            str_contains($lenderKey, 'sbi') || str_contains($lenderKey, 'state bank') => 'sbi',
+                                            str_contains($lenderKey, 'axis') => 'axis',
+                                            default => '',
+                                        };
+                                        $chipLabel = collect(preg_split('/\s+/', trim($lenderName)))
+                                            ->filter()
+                                            ->take(2)
+                                            ->map(fn ($w) => \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($w, 0, 1)))
+                                            ->implode('') ?: 'BK';
                                     @endphp
                                     <tr>
-                                        <td class="fw-semibold"><i class="bi bi-bank2 text-primary me-1"></i>{{ $ba->lender_name }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="lender-chip {{ $chipClass }}">{{ $chipLabel }}</span>
+                                                <span class="fw-semibold">{{ $ba->lender_name }}</span>
+                                            </div>
+                                        </td>
                                         <td>{{ $ba->application_ref ?: '—' }}</td>
                                         <td>{{ optional($ba->login_date)->format('d M Y') ?: '—' }}</td>
                                         <td><span class="status-pill {{ $baStatusClass }}">{{ $ba->status }}</span></td>
                                         <td>{{ optional($ba->follow_up_at)->format('d M Y') ?: '—' }}</td>
                                         <td class="text-end">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle p-0 d-inline-flex align-items-center justify-content-center" style="width:30px;height:30px" data-cw-tab-jump="lenders" title="Open"><i class="bi bi-three-dots-vertical"></i></button>
+                                            <button type="button" class="btn-action" data-cw-tab-jump="lenders" title="Open"><i class="bi bi-three-dots-vertical"></i></button>
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="6" class="text-center text-muted py-3">No lender applications yet.</td></tr>
+                                    <tr><td colspan="6" class="text-center text-muted py-2">No lender applications yet.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -796,10 +838,10 @@
                     <div class="card-header bg-white border-0 border-bottom">
                         <div class="d-flex align-items-center justify-content-between gap-2">
                             <div class="d-flex align-items-center gap-2">
-                                <span class="sec-ico"><i class="bi bi-file-earmark-check"></i></span>
+                                <span class="sec-ico"><i class="bi bi-file-earmark-text"></i></span>
                                 <h6 class="mb-0 fw-semibold">Documents</h6>
                             </div>
-                            <button type="button" class="btn btn-link btn-sm text-decoration-none px-0" data-cw-tab-jump="documents">View All →</button>
+                            <button type="button" class="btn btn-link btn-sm text-decoration-none fw-semibold px-0" data-cw-tab-jump="documents">View All →</button>
                         </div>
                     </div>
                     <div class="table-responsive">
@@ -823,12 +865,17 @@
                                         $docIcon = match(true){
                                             str_contains(strtolower((string)$label), 'income') => 'bi-cash-stack',
                                             str_contains(strtolower((string)$label), 'address') => 'bi-geo-alt',
-                                            str_contains(strtolower((string)$label), 'identity') || str_contains(strtolower((string)$label), 'id') => 'bi-person-vcard',
+                                            str_contains(strtolower((string)$label), 'identity') || str_contains(strtolower((string)$label), 'id proof') => 'bi-person-vcard',
                                             default => 'bi-file-earmark-text',
                                         };
                                     @endphp
                                     <tr>
-                                        <td class="fw-semibold"><i class="bi {{ $docIcon }} text-primary me-1"></i>{{ $label }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="bi {{ $docIcon }} doc-type-ico"></i>
+                                                <span class="fw-semibold">{{ $label }}</span>
+                                            </div>
+                                        </td>
                                         <td>{{ $doc['uploaded_at'] ?? '—' }}</td>
                                         <td>
                                             <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -846,14 +893,14 @@
                                         <td>{{ $doc['reviewer'] ?? '—' }}</td>
                                         <td class="text-end">
                                             @if($path)
-                                                <a class="btn btn-sm btn-outline-primary" href="{{ asset('storage/'.$path) }}" target="_blank" title="Download"><i class="bi bi-download"></i></a>
+                                                <a class="btn-download" href="{{ asset('storage/'.$path) }}" target="_blank" title="Download"><i class="bi bi-download"></i></a>
                                             @else
                                                 <span class="text-muted">—</span>
                                             @endif
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="5" class="text-center text-muted py-3">No documents uploaded.</td></tr>
+                                    <tr><td colspan="5" class="text-center text-muted py-2">No documents uploaded.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
