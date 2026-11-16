@@ -734,7 +734,7 @@ class GoalLoanCaseController extends Controller
             ? User::query()->find($bmId, ['id', 'name', 'job_role', 'crm_role_type', 'mobile'])
             : null;
 
-        $progress = $this->caseProgressSteps($case->status);
+        $progress = $this->caseProgressSteps($case);
 
         $activeTab = session('cw_tab', request('tab', 'overview'));
         $allowedTabs = ['overview', 'customer', 'documents', 'lenders', 'queries', 'sanction', 'disbursement', 'activity'];
@@ -922,12 +922,84 @@ class GoalLoanCaseController extends Controller
         return array_replace_recursive($base, $in);
     }
 
-    protected function caseProgressSteps(string $status): array
+    protected function caseProgressSteps(GoalLoanCase $case): array
     {
+        $status = $case->status;
         $stages = GoalWorkflow::CASE_PROGRESS_STAGES;
+        $icons = [
+            'Draft' => 'bi-file-earmark',
+            'Ready for Login' => 'bi-clipboard-check',
+            'Bank Login' => 'bi-bank',
+            'Bank Query' => 'bi-search',
+            'Processing' => 'bi-gear',
+            'Sanctioned' => 'bi-file-earmark-check',
+            'Disbursed' => 'bi-wallet',
+            'PMS' => 'bi-flag',
+        ];
         $order = array_flip($stages);
-        // Closed / Rejected map onto exception styling at current index
         $idx = $order[$status] ?? ($status === 'Rejected' || $status === 'Closed' ? 3 : 0);
+
+        // Map stage label -> first time case entered that status (from audit events / created_at).
+        $reachedAt = [];
+        $reachedAt['Draft'] = $case->created_at;
+        $eventsAsc = collect($case->events ?? [])->sortBy('created_at')->values();
+        foreach ($eventsAsc as $ev) {
+            if (!in_array($ev->event_type, ['status', 'created', 'application', 'sanction', 'disbursement', 'query'], true)) {
+                continue;
+            }
+            $to = trim((string) ($ev->to_value ?? ''));
+            if ($to !== '' && isset($order[$to]) && empty($reachedAt[$to])) {
+                $reachedAt[$to] = $ev->created_at;
+            }
+            // Heuristics from event titles when to_value is amount/ref rather than status
+            $title = strtolower((string) $ev->title);
+            if (str_contains($title, 'lender application') && empty($reachedAt['Bank Login'])) {
+                $reachedAt['Bank Login'] = $ev->created_at;
+            }
+            if (str_contains($title, 'query raised') && empty($reachedAt['Bank Query'])) {
+                $reachedAt['Bank Query'] = $ev->created_at;
+            }
+            if ((str_contains($title, 'sanction recorded') || str_contains($title, 'sanction')) && empty($reachedAt['Sanctioned'])) {
+                $reachedAt['Sanctioned'] = $ev->created_at;
+            }
+            if (str_contains($title, 'disbursement verified') && empty($reachedAt['Disbursed'])) {
+                $reachedAt['Disbursed'] = $ev->created_at;
+            }
+            if (str_contains($title, 'transferred to pms') && empty($reachedAt['PMS'])) {
+                $reachedAt['PMS'] = $ev->created_at;
+            }
+        }
+        // Current status fallback timestamp
+        if (empty($reachedAt[$status])) {
+            $reachedAt[$status] = $case->updated_at ?? $case->created_at;
+        }
+
+        // Backfill skipped stages so the tracker shows timestamps like the design mock.
+        for ($i = 0; $i <= $idx; $i++) {
+            $label = $stages[$i];
+            if (!empty($reachedAt[$label])) {
+                continue;
+            }
+            $fill = null;
+            for ($j = $i + 1; $j <= $idx; $j++) {
+                if (!empty($reachedAt[$stages[$j]])) {
+                    $fill = $reachedAt[$stages[$j]];
+                    break;
+                }
+            }
+            if (!$fill) {
+                for ($j = $i - 1; $j >= 0; $j--) {
+                    if (!empty($reachedAt[$stages[$j]])) {
+                        $fill = $reachedAt[$stages[$j]];
+                        break;
+                    }
+                }
+            }
+            if ($fill) {
+                $reachedAt[$label] = $fill;
+            }
+        }
+
         $labels = [];
         foreach ($stages as $i => $label) {
             $state = 'todo';
@@ -940,10 +1012,15 @@ class GoalLoanCaseController extends Controller
             } elseif ($i === $idx) {
                 $state = 'active';
             }
+
+            $at = $reachedAt[$label] ?? null;
             $labels[] = [
                 'key' => Str::slug($label),
                 'label' => ($status === 'Rejected' && $i === $idx) ? 'Rejected' : $label,
                 'state' => $state,
+                'icon' => $icons[$label] ?? 'bi-circle',
+                'at' => $at,
+                'at_label' => $at ? $at->timezone(config('app.timezone'))->format('d M, h:i a') : null,
             ];
         }
 

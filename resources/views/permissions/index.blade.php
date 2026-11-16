@@ -1,11 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-body, .card, .table, .btn, .form-control, .form-select {
-    font-family: 'Inter', Arial, sans-serif !important;
-}
 .card {
     border-radius: 1.5rem !important;
     box-shadow: 0 2px 16px 0 rgba(60,72,88,0.07);

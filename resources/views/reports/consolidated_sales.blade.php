@@ -150,7 +150,7 @@
 </x-report-shell>
 
 <style>
-.csr-report { font-size: 13px; color: #111827; font-family: system-ui, -apple-system, sans-serif; }
+.csr-report { font-size: var(--font-size-table, 13px); color: #111827; font-family: var(--font-primary, Inter, sans-serif); }
 .csr-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .csr-table { width: 100%; border-collapse: collapse; min-width: 720px; font-size: 13px; }
 .csr-table th, .csr-table td { border: 1px solid #1e293b; padding: 7px 10px; vertical-align: middle; }

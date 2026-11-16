@@ -14,9 +14,10 @@
 
     <link rel="icon" href="{{ $company->favicon_url }}">
     <link rel="shortcut icon" href="{{ $company->favicon_url }}">
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    <!-- Fonts: Inter (ISARVA enterprise typography) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     {{-- Bootstrap 5 & DataTables CSS --}}
     <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"> -->
@@ -31,6 +32,7 @@
 
     <!---Custom CSS --->
     <link href="{{ asset('css/custom-style.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/isarva-typography.css') }}?v={{ @filemtime(public_path('css/isarva-typography.css')) }}" rel="stylesheet">
     <link href="{{ asset('css/hub-page-skeleton.css') }}?v={{ @filemtime(public_path('css/hub-page-skeleton.css')) }}" rel="stylesheet">
     <!-- Select2 CSS -->
     <link href="{{ asset('css/select2.min.css') }}" rel="stylesheet" />

@@ -1,0 +1,300 @@
+/**
+ * ISARVA CRM — Premium Enterprise Typography
+ * Global Inter font system. Do not redesign layouts here.
+ */
+
+:root {
+    --font-primary: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+    --font-size-page-title: 26px;
+    --font-size-subtitle: 13px;
+    --font-size-card-title: 16px;
+    --font-size-section: 14px;
+    --font-size-body: 14px;
+    --font-size-label: 13px;
+    --font-size-input: 14px;
+    --font-size-table-header: 12px;
+    --font-size-table: 13px;
+    --font-size-nav: 13px;
+    --font-size-button: 13px;
+    --font-size-badge: 11px;
+    --font-size-caption: 12px;
+
+    --font-regular: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+    --font-extrabold: 800;
+
+    --letter-spacing-tight: -0.01em;
+    --letter-spacing-normal: 0;
+    --letter-spacing-wide: 0.02em;
+    --letter-spacing-caps: 0.04em;
+
+    --line-height-tight: 1.25;
+    --line-height-body: 1.5;
+    --line-height-relaxed: 1.6;
+}
+
+html {
+    font-family: var(--font-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+body,
+.font-sans,
+.antialiased {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-regular);
+    line-height: var(--line-height-body);
+    letter-spacing: var(--letter-spacing-normal);
+}
+
+/* Bootstrap / form controls inherit Inter */
+button,
+input,
+select,
+textarea,
+.btn,
+.form-control,
+.form-select,
+.dropdown-menu,
+.modal,
+.nav,
+.navbar,
+.table,
+.badge,
+.alert,
+.card,
+.pagination,
+.list-group,
+.tooltip,
+.popover {
+    font-family: var(--font-primary);
+}
+
+/* Page hierarchy */
+h1,
+.page-title,
+.cw-title,
+.ll-title,
+.vrm-title {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-page-title);
+    font-weight: var(--font-bold);
+    letter-spacing: var(--letter-spacing-tight);
+    line-height: var(--line-height-tight);
+}
+
+.page-subtitle,
+.cw-subtitle,
+.sec-sub,
+.text-muted.small {
+    font-size: var(--font-size-subtitle);
+    font-weight: var(--font-regular);
+    line-height: var(--line-height-body);
+}
+
+h2,
+h3,
+h4,
+h5,
+h6,
+.card-title,
+.sec-head h6,
+.modal-title {
+    font-family: var(--font-primary);
+    font-weight: var(--font-semibold);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+.card-title,
+.sec-head h6 {
+    font-size: var(--font-size-card-title);
+}
+
+h5,
+.section-title,
+.ws-section-title,
+.col-title {
+    font-size: var(--font-size-section);
+    font-weight: var(--font-semibold);
+}
+
+/* Forms */
+label,
+.form-label,
+.kv-label,
+.rb-label,
+.d-label {
+    font-size: var(--font-size-label);
+    font-weight: var(--font-medium);
+}
+
+.form-control,
+.form-select,
+.form-control-sm,
+.form-select-sm,
+.select2-container--default .select2-selection--single,
+.select2-container--default .select2-selection--multiple,
+.select2-container--default .select2-search--dropdown .select2-search__field,
+.flatpickr-input,
+.flatpickr-calendar {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-input);
+    font-weight: var(--font-regular);
+}
+
+/* Tables / DataTables */
+.table thead th,
+table.dataTable thead th,
+.table th {
+    font-size: var(--font-size-table-header);
+    font-weight: var(--font-semibold);
+    letter-spacing: var(--letter-spacing-caps);
+}
+
+.table td,
+table.dataTable tbody td,
+.table td .fw-semibold {
+    font-size: var(--font-size-table);
+    font-weight: var(--font-regular);
+}
+
+table.dataTable,
+.dataTables_wrapper,
+.dataTables_filter input,
+.dataTables_length select,
+.dataTables_info,
+.dataTables_paginate {
+    font-family: var(--font-primary);
+}
+
+.dataTables_info,
+.dataTables_paginate {
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-regular);
+}
+
+/* Sidebar + navbar */
+.sidebar,
+.sidebar a,
+.sidebar .nav-link,
+.sidebar .sidebar-link,
+.sidebar .menu-label,
+.top-header,
+.top-header .nav-link,
+.navbar,
+.navbar .nav-link {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-nav);
+    font-weight: var(--font-medium);
+}
+
+.sidebar .menu-section-title,
+.sidebar .sidebar-section-label {
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-semibold);
+    letter-spacing: var(--letter-spacing-caps);
+}
+
+/* Buttons */
+.btn,
+button.btn,
+.btn-ghost,
+.btn-primary-cw,
+.btn-link-cw,
+.btn-save {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-semibold);
+    letter-spacing: var(--letter-spacing-normal);
+}
+
+/* Status badges / pills */
+.badge,
+.status-pill,
+.doc-badge,
+.pill-soft,
+.cw-tab {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-badge);
+    font-weight: var(--font-semibold);
+    letter-spacing: var(--letter-spacing-wide);
+}
+
+.cw-tab {
+    font-size: var(--font-size-label);
+}
+
+/* Supporting / captions */
+.hint,
+.form-text,
+.small,
+small,
+.caption,
+.breadcrumb,
+.cw-crumb,
+.step-at {
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-regular);
+}
+
+/* Select2 dropdown results */
+.select2-container--default .select2-results__option,
+.select2-container .select2-selection__rendered {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-label);
+}
+
+/* Flatpickr calendar text */
+.flatpickr-calendar,
+.flatpickr-months,
+.flatpickr-weekdays,
+.flatpickr-days,
+.flatpickr-time {
+    font-family: var(--font-primary);
+}
+
+/* Toastr / notifications */
+#toast-container > div,
+.app-toastr,
+.toastr {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-label);
+}
+
+/* Modals */
+.modal-content,
+.modal-header,
+.modal-body,
+.modal-footer,
+.dropdown-item {
+    font-family: var(--font-primary);
+}
+
+.dropdown-item {
+    font-size: var(--font-size-label);
+    font-weight: var(--font-medium);
+}
+
+/* SweetAlert */
+.swal2-popup,
+.swal2-title,
+.swal2-html-container,
+.swal2-confirm,
+.swal2-cancel {
+    font-family: var(--font-primary) !important;
+}
+
+/* Keep code / refs monospace where intentionally set */
+code,
+pre,
+.font-monospace,
+.ref-cell,
+.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+}

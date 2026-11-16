@@ -1,8 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('css/leads.css') }}">
+<link rel="stylesheet" href="{{ asset('css/leads.css') }}">
     <style>
         /* Custom green checkbox with checkmark */
         .custom-checkbox {
