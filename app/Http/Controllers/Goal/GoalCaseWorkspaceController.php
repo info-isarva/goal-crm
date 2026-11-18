@@ -10,7 +10,7 @@ use App\Models\GoalDisbursement;
 use App\Models\GoalLoanCase;
 use App\Models\GoalSanction;
 use App\Models\User;
-use App\Notifications\GoalCaseAlert;
+use App\Services\Goal\GoalNotify;
 use App\Library\MpdfDocument;
 use App\Services\Goal\GoalCaseAudit;
 use App\Services\Goal\Pd01Service;
@@ -56,7 +56,7 @@ class GoalCaseWorkspaceController extends Controller
             'meta' => ['reason' => $data['reason'], 'new_owner' => $owner->name],
         ]);
 
-        $this->notifyUser($owner, 'Case reassigned to you', $case->case_no.' — '.$case->customer_name, route('goal.cases.show', $case), 'reassignment');
+        $this->notifyUser($owner, 'Case reassigned to you', $case->case_no.' — '.$case->customer_name, route('goal.cases.show', $case), 'reassignment-'.$case->id.'-'.$owner->id, 'assign', $case->case_no);
 
         return back()->with('success', 'Case reassigned to '.$owner->name.'.')->with('cw_tab', 'overview');
     }
@@ -229,7 +229,9 @@ class GoalCaseWorkspaceController extends Controller
                 'Bank query assigned',
                 $query->query_ref.' due '.optional($query->due_at)->format('d M Y'),
                 route('goal.cases.show', ['case' => $case, 'tab' => 'queries']),
-                'bank_query'
+                'bank_query-'.$query->id,
+                'task',
+                $case->case_no
             );
         }
 
@@ -413,7 +415,9 @@ class GoalCaseWorkspaceController extends Controller
                 'Disbursement awaiting verification',
                 $case->case_no.' — ₹ '.number_format((float) $data['amount'], 0),
                 route('goal.cases.show', ['case' => $case, 'tab' => 'disbursement']),
-                'disbursement_pending'
+                'disbursement_pending-'.$row->id,
+                'pd01',
+                $case->case_no
             );
         }
 
@@ -722,22 +726,8 @@ class GoalCaseWorkspaceController extends Controller
         }
     }
 
-    protected function notifyUser(?User $user, string $title, string $message, string $url, string $eventKey): void
+    protected function notifyUser(?User $user, string $title, string $message, string $url, string $eventKey, string $type = 'task', ?string $ref = null): void
     {
-        if (!$user) {
-            return;
-        }
-        // Avoid duplicate unread alerts with the same event + URL for this user.
-        $exists = $user->notifications()
-            ->whereNull('read_at')
-            ->where('type', GoalCaseAlert::class)
-            ->where('data->event', $eventKey)
-            ->where('data->url', $url)
-            ->where('created_at', '>=', now()->subHours(6))
-            ->exists();
-        if ($exists) {
-            return;
-        }
-        $user->notify(new GoalCaseAlert($title, $message, $url, $eventKey));
+        GoalNotify::send($user, $title, $message, $url, $eventKey, $type, $ref, true);
     }
 }

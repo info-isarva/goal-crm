@@ -9,7 +9,7 @@ use App\Models\GoalLoanLeadAssignment;
 use App\Models\GoalLoanLeadEvent;
 use App\Models\GoalOrgUnit;
 use App\Models\User;
-use App\Notifications\GoalCaseAlert;
+use App\Services\Goal\GoalNotify;
 use App\Services\Goal\GoalDashboardService;
 use App\Services\Goal\GoalWorkflow;
 use Carbon\Carbon;
@@ -383,12 +383,15 @@ class GoalAllocationController extends Controller
         }
 
         $assignee = User::query()->find($toUserId);
-        $this->notifyAssignee(
+        GoalNotify::send(
             $assignee,
             $action === 'reassign' ? 'Lead reassigned to you' : 'New lead assigned',
             ($lead->ref_no ?: 'Lead').' · '.($lead->customer_name ?: 'Customer'),
             route('goal.leads.show', $lead),
-            'lead-assign-'.$lead->id.'-'.$toUserId
+            'lead-assign-'.$lead->id.'-'.$toUserId,
+            'assign',
+            $lead->ref_no,
+            true
         );
     }
 
@@ -439,24 +442,6 @@ class GoalAllocationController extends Controller
                 'assigned_to' => 'Assignee must belong to the same branch as the lead.',
             ]);
         }
-    }
-
-    protected function notifyAssignee(?User $user, string $title, string $message, string $url, string $eventKey): void
-    {
-        if (! $user) {
-            return;
-        }
-        $exists = $user->notifications()
-            ->whereNull('read_at')
-            ->where('type', GoalCaseAlert::class)
-            ->where('data->event', $eventKey)
-            ->where('data->url', $url)
-            ->where('created_at', '>=', now()->subHours(6))
-            ->exists();
-        if ($exists) {
-            return;
-        }
-        $user->notify(new GoalCaseAlert($title, $message, $url, $eventKey));
     }
 
     protected function assertLeadInScope(GoalLoanLead $lead): void

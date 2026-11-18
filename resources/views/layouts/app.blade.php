@@ -319,17 +319,24 @@
                                             <div id="notifItems">
                                                 @forelse($notes as $notification)
                                                     @php
-                                                        $notifLink =
-                                                            $notification->data['meeting_link'] ??
-                                                            ($notification->data['task_link'] ??
-                                                                ($notification->data['related_link'] ?? ''));
+                                                        $notifData = $notification->data ?? [];
+                                                        $notifLink = $notifData['url']
+                                                            ?? $notifData['meeting_link']
+                                                            ?? $notifData['task_link']
+                                                            ?? $notifData['related_link']
+                                                            ?? '';
+                                                        $notifTitle = $notifData['title'] ?? null;
+                                                        $notifMessage = $notifData['message'] ?? ($notifData['title'] ?? 'Notification');
                                                     @endphp
                                                     <li class="px-3 py-2 notif-item {{ $notification->read_at ? '' : 'unread' }}"
                                                         data-id="{{ $notification->id }}"
                                                         data-link="{{ $notifLink }}" style="cursor:pointer;">
                                                         <div class="small text-muted">
                                                             {{ $notification->created_at->diffForHumans() }}</div>
-                                                        <div class="notif-body">{!! $notification->data['message'] ?? ($notification->data['title'] ?? 'Notification') !!}</div>
+                                                        @if($notifTitle)
+                                                            <div class="fw-semibold small">{{ $notifTitle }}</div>
+                                                        @endif
+                                                        <div class="notif-body">{!! $notifMessage !!}</div>
                                                     </li>
                                                 @empty
                                                     <li class="px-3 py-3 text-muted small">No notifications</li>
@@ -730,10 +737,13 @@
                     var html = '';
                     items.forEach(function(i) {
                         var cls = i.read_at ? '' : 'unread';
-                        var link = i.task_link || '';
+                        var link = i.url || i.task_link || '';
                         html += '<li class="px-3 py-2 notif-item ' + cls + '" data-id="' + i.id +
                             '" data-link="' + link + '" style="cursor:pointer;">';
                         html += '<div class="small text-muted">' + (i.created_at || '') + '</div>';
+                        if (i.title) {
+                            html += '<div class="fw-semibold small">' + i.title + '</div>';
+                        }
                         html += '<div class="notif-body">' + (i.message || '') + '</div>';
                         html += '</li>';
                     });

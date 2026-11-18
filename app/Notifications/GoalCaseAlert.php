@@ -13,7 +13,10 @@ class GoalCaseAlert extends Notification
         public string $title,
         public string $message,
         public string $url,
-        public string $eventKey = 'goal_case'
+        public string $eventKey = 'goal_case',
+        public string $type = 'task',
+        public ?string $ref = null,
+        public bool $action = true
     ) {
     }
 
@@ -28,7 +31,11 @@ class GoalCaseAlert extends Notification
             'title' => $this->title,
             'message' => $this->message,
             'url' => $this->url,
+            'related_link' => $this->url,
             'event' => $this->eventKey,
+            'type' => $this->type,
+            'ref' => $this->ref,
+            'action' => $this->action,
         ];
     }
 }

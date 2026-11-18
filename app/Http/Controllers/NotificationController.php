@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Goal\GoalNotify;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -39,19 +40,94 @@ class NotificationController extends Controller
     }
 
     /**
-     * Show paginated list of notifications for the current user.
+     * Show paginated Goal-style notifications inbox for the current user.
      */
     public function index(Request $request)
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login');
         }
 
-        $notifications = $user->notifications()->orderBy('created_at', 'desc')->paginate(20);
+        $filters = $request->validate([
+            'status' => 'nullable|in:all,unread,read',
+            'type' => 'nullable|string|max:40',
+            'q' => 'nullable|string|max:150',
+        ]);
+
+        $status = (string) ($filters['status'] ?? 'unread');
+        $type = (string) ($filters['type'] ?? 'all');
+        $q = trim((string) ($filters['q'] ?? ''));
+
+        if ($type !== 'all' && ! in_array($type, GoalNotify::TYPES, true)) {
+            $type = 'all';
+        }
+
+        $base = $user->notifications()->orderBy('created_at', 'desc');
+
+        // KPIs from recent window (last 500) to avoid heavy full-table scans.
+        $recentForKpi = (clone $base)->limit(500)->get();
+        $kpis = [
+            'unread' => $user->unreadNotifications()->count(),
+            'today' => $recentForKpi->filter(fn ($n) => $n->created_at && $n->created_at->isToday())->count(),
+            'action' => $recentForKpi->filter(function ($n) {
+                if ($n->read_at) {
+                    return false;
+                }
+                $data = $n->data ?? [];
+                if (array_key_exists('action', $data)) {
+                    return (bool) $data['action'];
+                }
+
+                // Legacy Goal alerts without action flag count as actionable.
+                return ($data['url'] ?? $data['related_link'] ?? null) !== null;
+            })->count(),
+            'ageing' => $recentForKpi->filter(fn ($n) => GoalNotify::inferType($n->data ?? []) === 'payout')->count(),
+        ];
+
+        $query = $user->notifications()->orderBy('created_at', 'desc');
+        if ($status === 'unread') {
+            $query->whereNull('read_at');
+        } elseif ($status === 'read') {
+            $query->whereNotNull('read_at');
+        }
+        if ($type !== 'all') {
+            $query->where(function ($inner) use ($type) {
+                $inner->where('data->type', $type);
+                // Legacy rows without type: best-effort event key match
+                if ($type === 'assign') {
+                    $inner->orWhere('data->event', 'like', '%assign%');
+                } elseif ($type === 'task') {
+                    $inner->orWhere('data->event', 'like', 'bq-%');
+                } elseif ($type === 'visit') {
+                    $inner->orWhere('data->event', 'like', '%visit%')
+                        ->orWhere('data->event', 'like', '%escalat%');
+                } elseif ($type === 'payout') {
+                    $inner->orWhere('data->event', 'like', '%payout%');
+                }
+            });
+        }
+        if ($q !== '') {
+            $like = '%'.$q.'%';
+            $query->where(function ($inner) use ($like) {
+                $inner->where('data->title', 'like', $like)
+                    ->orWhere('data->message', 'like', $like)
+                    ->orWhere('data->ref', 'like', $like)
+                    ->orWhere('data->event', 'like', $like);
+            });
+        }
+
+        $notifications = $query->paginate(20)->withQueryString();
 
         return view('notifications.index', [
             'notifications' => $notifications,
+            'filters' => [
+                'status' => $status,
+                'type' => $type,
+                'q' => $q,
+            ],
+            'kpis' => $kpis,
+            'typeOptions' => GoalNotify::TYPES,
         ]);
     }
 
@@ -61,19 +137,27 @@ class NotificationController extends Controller
     public function recent(Request $request)
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['success' => false], 401);
         }
 
         $notes = $user->notifications()->orderBy('created_at', 'desc')->limit(10)->get();
-        $items = $notes->map(function($n){
+        $items = $notes->map(function ($n) {
             $data = $n->data ?? [];
+            $type = GoalNotify::inferType($data);
+            $link = GoalNotify::linkFromData($data);
+
             return [
                 'id' => $n->id,
+                'title' => $data['title'] ?? null,
                 'message' => $data['message'] ?? ($data['title'] ?? 'Notification'),
+                'type' => $type,
+                'event' => $data['event'] ?? null,
+                'ref' => $data['ref'] ?? null,
                 'created_at' => $n->created_at->diffForHumans(),
-                'read_at' => $n->read_at ? true : false,
-                'task_link' => $data['task_link'] ?? ($data['related_link'] ?? $data['meeting_link'] ?? ''),
+                'read_at' => (bool) $n->read_at,
+                'url' => $link,
+                'task_link' => $link,
             ];
         });
 

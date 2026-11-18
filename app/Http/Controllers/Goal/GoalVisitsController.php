@@ -11,6 +11,7 @@ use App\Models\GoalLoanCase;
 use App\Models\GoalOrgUnit;
 use App\Models\User;
 use App\Services\Goal\GoalCaseAudit;
+use App\Services\Goal\GoalNotify;
 use App\Services\Goal\GoalWorkflow;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -144,6 +145,9 @@ class GoalVisitsController extends Controller
             'meta' => ['task_type' => $data['task_type'], 'assigned_to' => (int) $data['assigned_to']],
         ]);
 
+        $task->setRelation('loanCase', $case);
+        GoalNotify::visitAssigned($task, User::query()->find((int) $data['assigned_to']));
+
         return redirect()
             ->route('goal.visits.index', [
                 'cal' => $dueAt->format('Y-m'),
@@ -195,6 +199,11 @@ class GoalVisitsController extends Controller
             'related_type' => GoalCaseTask::class,
             'related_id' => $task->id,
         ]);
+
+        if ((int) $fromAssignee !== (int) $data['assigned_to']) {
+            $task->setRelation('loanCase', $case);
+            GoalNotify::visitAssigned($task, User::query()->find((int) $data['assigned_to']));
+        }
 
         return redirect()
             ->route('goal.visits.index', [
@@ -385,7 +394,16 @@ class GoalVisitsController extends Controller
 
     protected function refreshEscalations(Builder $base): void
     {
-        (clone $base)->overdue()->limit(500)->get()->each->syncEscalation();
+        (clone $base)
+            ->with(['loanCase:id,case_no,customer_name,goal_org_unit_id'])
+            ->overdue()
+            ->limit(500)
+            ->get()
+            ->each(function (GoalCaseTask $task) {
+                if ($task->syncEscalation()) {
+                    GoalNotify::visitEscalation($task);
+                }
+            });
     }
 
     /** @return array<string,int> Y-m-d => count */

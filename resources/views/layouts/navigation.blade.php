@@ -103,13 +103,21 @@
                     @php $mobileNotes = Auth::user() ? Auth::user()->notifications()->orderBy('created_at', 'desc')->limit(10)->get() : collect(); @endphp
                     <div id="mobileNotifItems">
                         @forelse($mobileNotes as $notification)
-                            @php $notifLink = $notification->data['task_link'] ?? $notification->data['related_link'] ?? ''; @endphp
+                            @php
+                                $notifData = $notification->data ?? [];
+                                $notifLink = $notifData['url'] ?? $notifData['task_link'] ?? $notifData['related_link'] ?? '';
+                                $notifTitle = $notifData['title'] ?? null;
+                                $notifMessage = $notifData['message'] ?? ($notifData['title'] ?? 'Notification');
+                            @endphp
                             <li class="px-3 py-2 notif-item {{ $notification->read_at ? '' : 'unread' }}"
                                 data-id="{{ $notification->id }}"
                                 data-link="{{ $notifLink }}"
                                 style="cursor:pointer;">
                                 <div class="small text-muted">{{ $notification->created_at->diffForHumans() }}</div>
-                                <div class="notif-body">{!! $notification->data['message'] ?? ($notification->data['title'] ?? 'Notification') !!}</div>
+                                @if($notifTitle)
+                                    <div class="fw-semibold small">{{ $notifTitle }}</div>
+                                @endif
+                                <div class="notif-body">{!! $notifMessage !!}</div>
                             </li>
                         @empty
                             <li class="px-3 py-3 text-muted small">No notifications</li>

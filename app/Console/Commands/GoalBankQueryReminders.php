@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\GoalBankQuery;
 use App\Models\User;
-use App\Notifications\GoalCaseAlert;
+use App\Services\Goal\GoalNotify;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -75,17 +75,18 @@ class GoalBankQueryReminders extends Command
                     $sent++;
                     continue;
                 }
-                $exists = $user->notifications()
-                    ->whereNull('read_at')
-                    ->where('type', GoalCaseAlert::class)
-                    ->where('data->event', $eventKey)
-                    ->where('created_at', '>=', now()->subHours(20))
-                    ->exists();
-                if ($exists) {
-                    continue;
+                if (GoalNotify::send(
+                    $user,
+                    $title,
+                    $message,
+                    $url,
+                    $eventKey,
+                    'task',
+                    $case->case_no,
+                    true
+                )) {
+                    $sent++;
                 }
-                $user->notify(new GoalCaseAlert($title, $message, $url, $eventKey));
-                $sent++;
             }
         }
 
