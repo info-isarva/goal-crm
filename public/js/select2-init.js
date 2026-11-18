@@ -122,9 +122,28 @@
         initAll(this);
     });
 
+    // Keep page scroll stable when Select2 focuses the results panel
+    // (otherwise the sticky top header / page hero scroll out of view).
+    var lockedScrollY = null;
+
+    function restoreScroll() {
+        if (lockedScrollY === null) return;
+        var y = lockedScrollY;
+        if ((window.scrollY || window.pageYOffset || 0) !== y) {
+            window.scrollTo(0, y);
+        }
+    }
+
     // Ensure open panels keep Select2's measured width + sit above page chrome
+    $(document).on('select2:opening', function () {
+        lockedScrollY = window.scrollY || window.pageYOffset || 0;
+    });
+
     $(document).on('select2:open', function () {
+        restoreScroll();
+        window.requestAnimationFrame(restoreScroll);
         window.setTimeout(function () {
+            restoreScroll();
             var $open = $('body > .select2-container--open').last();
             if (!$open.length) {
                 $open = $('.select2-container--open').last();
@@ -141,5 +160,10 @@
                 });
             }
         }, 0);
+    });
+
+    $(document).on('select2:closing select2:close', function () {
+        restoreScroll();
+        lockedScrollY = null;
     });
 })(window, window.jQuery);

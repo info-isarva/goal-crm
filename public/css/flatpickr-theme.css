@@ -42,7 +42,8 @@ input.js-datetimepicker::-webkit-calendar-picker-indicator {
     font-family: inherit;
     padding: 0 !important;
     overflow: hidden;
-    z-index: 1200 !important;
+    /* Above Bootstrap/tw modals (10650) so date/time pickers open on top */
+    z-index: 20000 !important;
 }
 
 .flatpickr-calendar *,

@@ -37,8 +37,8 @@
 @push('styles')
 <style>
 .ba-page{
-    --ba-blue:#3b82f6;--ba-indigo:#6366f1;--ba-navy:#0f2744;--ba-ink:#0f172a;--ba-muted:#64748b;--ba-line:#dbe7f5;
-    --ba-grad:linear-gradient(90deg,#3b82f6 0%,#6366f1 55%,#7c6cf0 100%);
+    --ba-blue:var(--theme-primary);--ba-indigo:#6366f1;--ba-navy:#0f2744;--ba-ink:#0f172a;--ba-muted:#64748b;--ba-line:#dbe7f5;
+    --ba-grad:linear-gradient(90deg,var(--theme-primary) 0%,#6366f1 55%,#7c6cf0 100%);
     color:#1e293b;
     background:linear-gradient(180deg,#eef5ff 0%,#f5f8ff 40%,#f8fafc 100%);
     min-height:100%;
@@ -48,21 +48,36 @@
     position:relative;overflow:hidden;border-radius:22px;padding:1.25rem 1.4rem;
     margin-bottom:1rem;
     background:linear-gradient(120deg,#eef4ff 0%,#f5f3ff 48%,#eef8ff 100%);
-    border:1px solid #dde7ff;box-shadow:0 12px 28px rgba(59,130,246,.08);
+    border:1px solid #dde7ff;box-shadow:0 12px 28px var(--theme-primary-ring);
 }
-.ba-page .ba-hero-row{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.ba-page .ba-hero-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
 .ba-page .ba-hero-left{display:flex;align-items:flex-start;gap:14px;min-width:0}
+.ba-page .ba-hero-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ba-page .ba-link-btn{
+    height:38px;border-radius:10px;border:1px solid #dbe3f0;background:#fff;color:#334155;
+    padding:0 12px;font-weight:650;font-size:.8rem;text-decoration:none;
+    display:inline-flex;align-items:center;gap:6px;
+}
+.ba-page .ba-link-btn:hover{background:#f8fafc;color:#0f172a}
+.ba-page .ba-link-btn.primary{
+    border:0;background:var(--theme-primary);color:#fff;
+    box-shadow:0 6px 14px var(--theme-primary-ring);
+}
+.ba-page .ba-link-btn.primary:hover{color:#fff;filter:brightness(1.05)}
+.ba-page a.ba-kpi{text-decoration:none;color:inherit;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.ba-page a.ba-kpi:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(148,163,184,.18)}
+.ba-page a.ba-kpi.is-active{outline:2px solid var(--theme-primary);outline-offset:1px}
 .ba-page .ba-hero-ico{
     width:52px;height:52px;border-radius:16px;flex-shrink:0;color:#fff;
-    background:linear-gradient(145deg,#3b82f6,#4f46e5);
+    background:linear-gradient(145deg,var(--theme-primary),#4f46e5);
     display:inline-flex;align-items:center;justify-content:center;font-size:1.35rem;
-    box-shadow:0 10px 22px rgba(59,130,246,.28);
+    box-shadow:0 10px 22px var(--theme-primary-ring);
 }
 .ba-page .ba-title{margin:0;font-size:1.55rem;font-weight:800;color:var(--ba-ink);letter-spacing:-.02em}
 .ba-page .ba-sub{margin:.35rem 0 0;color:var(--ba-muted);font-size:.9rem;max-width:46rem}
 .ba-page .ba-hero-art{
     width:72px;height:72px;border-radius:18px;flex-shrink:0;
-    background:rgba(255,255,255,.75);border:1px solid #dbeafe;color:#4f46e5;
+    background:rgba(255,255,255,.75);border:1px solid var(--theme-100);color:#4f46e5;
     display:none;align-items:center;justify-content:center;font-size:1.8rem;
 }
 @media(min-width:900px){.ba-page .ba-hero-art{display:inline-flex}}
@@ -82,7 +97,7 @@
 }
 .ba-page .ba-kpi.tone-purple{--kpi-ink:#7c3aed;--kpi-soft:#f3e8ff;--kpi-wave:#e9d5ff;--kpi-wave-2:#f5d0fe}
 .ba-page .ba-kpi.tone-green{--kpi-ink:#16a34a;--kpi-soft:#dcfce7;--kpi-wave:#bbf7d0;--kpi-wave-2:#a7f3d0}
-.ba-page .ba-kpi.tone-blue{--kpi-ink:#2563eb;--kpi-soft:#dbeafe;--kpi-wave:#bfdbfe;--kpi-wave-2:#a5b4fc}
+.ba-page .ba-kpi.tone-blue{--kpi-ink:var(--theme-primary);--kpi-soft:var(--theme-100);--kpi-wave:var(--theme-200);--kpi-wave-2:#a5b4fc}
 .ba-page .ba-kpi.tone-orange{--kpi-ink:#ea580c;--kpi-soft:#ffedd5;--kpi-wave:#fed7aa;--kpi-wave-2:#fde68a}
 /* Soft pastel icon — LEFT */
 .ba-page .ba-kpi-ico{
@@ -128,7 +143,7 @@
 .ba-page .ba-tab.active{
     border-color:transparent;color:#fff;
     background:var(--ba-grad);
-    box-shadow:0 10px 20px rgba(59,130,246,.32);
+    box-shadow:0 10px 20px var(--theme-primary-ring);
 }
 .ba-page .ba-tab .count{
     min-width:22px;height:22px;border-radius:999px;padding:0 7px;
@@ -158,8 +173,8 @@
 .ba-page .ba-head-ico{
     width:34px;height:34px;border-radius:999px;flex-shrink:0;
     display:inline-flex;align-items:center;justify-content:center;
-    background:linear-gradient(145deg,#3b82f6,#2563eb);color:#fff;font-size:.95rem;
-    box-shadow:0 6px 14px rgba(37,99,235,.28);
+    background:linear-gradient(145deg,var(--theme-primary),var(--theme-primary));color:#fff;font-size:.95rem;
+    box-shadow:0 6px 14px var(--theme-primary-ring);
 }
 .ba-page .ba-head-branch{
     position:relative;display:inline-flex;align-items:center;min-width:190px;
@@ -205,11 +220,11 @@
 }
 .ba-page .ba-filters .select2-container--default .select2-selection--single .select2-selection__arrow{height:34px}
 .ba-page .ba-btn-reset{
-    height:36px;border-radius:10px;border:1px solid #bfdbfe;background:#fff;color:#2563eb;
+    height:36px;border-radius:10px;border:1px solid var(--theme-200);background:#fff;color:var(--theme-primary);
     font-weight:700;font-size:.84rem;padding:0 12px;
     display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
 }
-.ba-page .ba-btn-reset:hover{background:#eff6ff}
+.ba-page .ba-btn-reset:hover{background:var(--theme-50)}
 .ba-page .ba-btn-bulk{
     height:36px;border:0;border-radius:10px;padding:0 14px;margin-left:auto;white-space:nowrap;
     background:var(--ba-grad);color:#fff;font-weight:700;font-size:.84rem;
@@ -218,14 +233,14 @@
 .ba-page .ba-btn-bulk:disabled{opacity:.5;cursor:not-allowed}
 
 .ba-page .ba-table-shell{
-    padding:1rem 1.15rem 0;
+    padding:0;
 }
 .ba-page .ba-table-shell > .ba-dt-foot{
     margin:0 -1.15rem 0;border-radius:0 0 16px 16px;
 }
 .ba-page .ba-table-wrap{
     overflow-x:auto;max-height:560px;background:#fff;
-    border:1px solid #e8edf5;border-radius:14px;
+    border:0;border-radius:0;
 }
 .ba-page .ba-table-wrap > table,
 .ba-page .ba-table-wrap .dataTables_wrapper,
@@ -269,18 +284,18 @@
     display:inline-flex;align-items:center;gap:8px;flex-wrap:nowrap;
 }
 
-.ba-page .ref-link{font-weight:600;color:#2563eb;text-decoration:underline;text-underline-offset:2px}
-.ba-page .ref-link:hover{color:#1d4ed8}
+.ba-page .ref-link{font-weight:600;color:var(--theme-primary);text-decoration:underline;text-underline-offset:2px}
+.ba-page .ref-link:hover{color:var(--theme-primary-hover)}
 .ba-page .cust{display:inline-flex;align-items:center;gap:8px}
 .ba-page .avatar{
     width:28px;height:28px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
-    background:#dbeafe;color:#1d4ed8;font-size:.72rem;font-weight:800;
+    background:var(--theme-100);color:var(--theme-primary-hover);font-size:.72rem;font-weight:800;
 }
 .ba-page .meta{display:inline-flex;align-items:center;gap:5px;color:#334155}
 .ba-page .meta i{color:#94a3b8}
 .ba-page .pill{display:inline-flex;align-items:center;padding:.2rem .55rem;border-radius:999px;font-size:.7rem;font-weight:700}
 .ba-page .pill-green{background:#dcfce7;color:#15803d}
-.ba-page .pill-blue{background:#dbeafe;color:#1d4ed8}
+.ba-page .pill-blue{background:var(--theme-100);color:var(--theme-primary-hover)}
 .ba-page .pill-red{background:#fee2e2;color:#dc2626}
 .ba-page .pill-amber{background:#ffedd5;color:#c2410c}
 .ba-page .pill-slate{background:#e0e7ff;color:#3730a3}
@@ -301,15 +316,15 @@
 .ba-page td .select2-container--default .select2-selection--single .select2-selection__placeholder{color:#94a3b8}
 .ba-page .btn-row-assign{
     height:34px;border:0;border-radius:9px;padding:0 12px;white-space:nowrap;
-    background:linear-gradient(90deg,#3b82f6 0%,#2563eb 100%);color:#fff;font-weight:700;font-size:.78rem;
-    display:inline-flex;align-items:center;gap:6px;box-shadow:0 6px 12px rgba(37,99,235,.22);
+    background:linear-gradient(90deg,var(--theme-primary) 0%,var(--theme-primary) 100%);color:#fff;font-weight:700;font-size:.78rem;
+    display:inline-flex;align-items:center;gap:6px;box-shadow:0 6px 12px var(--theme-primary-ring);
 }
 .ba-page .btn-row-assign:disabled{opacity:.45;box-shadow:none}
 .ba-page .icon-btn{
-    width:34px;height:34px;border-radius:10px;border:1.5px solid #bfdbfe;background:#eff6ff;color:#2563eb;
+    width:34px;height:34px;border-radius:10px;border:1.5px solid var(--theme-200);background:var(--theme-50);color:var(--theme-primary);
     display:inline-flex;align-items:center;justify-content:center;transition:.15s ease;
 }
-.ba-page .icon-btn:hover{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
+.ba-page .icon-btn:hover{background:var(--theme-100);color:var(--theme-primary-hover);border-color:var(--theme-300)}
 .ba-page .btn-reassign{
     height:34px;border-radius:10px;border:1px solid #c7d2fe;background:#eef2ff;color:#3730a3;
     font-size:.78rem;font-weight:700;padding:0 12px;display:inline-flex;align-items:center;gap:6px;
@@ -330,7 +345,13 @@ body > .select2-container .select2-dropdown{
     box-shadow:0 12px 28px rgba(15,23,42,.12);
 }
 
-.ba-modal .modal-content{border:0;border-radius:16px}
+.ba-modal .modal-content{border:0;overflow:hidden;box-shadow:0 20px 50px rgba(15,23,42,.16)}
+@media (max-width:767.98px){
+    .ba-modal .modal-footer button,
+    .ba-modal .modal-footer .btn{
+        width:100%;min-height:48px;justify-content:center;
+    }
+}
 .ba-modal .form-control,.ba-modal .form-select{min-height:40px;border-radius:10px}
 .ba-modal textarea.form-control{min-height:96px}
 
@@ -360,7 +381,12 @@ body > .select2-container .select2-dropdown{
                     <p class="ba-sub">Assign or reassign leads/cases to Sales team (JSM / SM / SSM) under the Branch Manager.</p>
                 </div>
             </div>
-            <div class="ba-hero-art" aria-hidden="true"><i class="bi bi-clipboard2-check"></i></div>
+            <div class="ba-hero-actions">
+                <a href="{{ route('goal.leads.index') }}" class="ba-link-btn"><i class="bi bi-people"></i> Leads</a>
+                <a href="{{ route('goal.cases.index') }}" class="ba-link-btn"><i class="bi bi-briefcase"></i> Cases</a>
+                <a href="{{ route('goal.documents.index') }}" class="ba-link-btn"><i class="bi bi-file-earmark-text"></i> Documents</a>
+                <a href="{{ route('goal.allocation.export', ['tab' => $activeTab]) }}" class="ba-link-btn primary"><i class="bi bi-download"></i> Export</a>
+            </div>
         </div>
     </div>
 
@@ -386,7 +412,7 @@ body > .select2-container .select2-dropdown{
         };
     @endphp
     <div class="ba-kpis">
-        <div class="ba-kpi tone-purple">
+        <a href="{{ route('goal.allocation.index', ['tab' => 'pending']) }}" class="ba-kpi tone-purple {{ $activeTab === 'pending' ? 'is-active' : '' }}" data-ba-kpi-tab="pending">
             <span class="ba-kpi-ico"><i class="bi bi-clipboard2-data-fill"></i></span>
             <div class="ba-kpi-body">
                 <p class="ba-kpi-label">Pending Allocation</p>
@@ -395,8 +421,8 @@ body > .select2-container .select2-dropdown{
                 </div>
             </div>
             <div class="ba-kpi-graph">{!! $kpiGraph('#c084fc', '#f0abfc', 'baWavePurple') !!}</div>
-        </div>
-        <div class="ba-kpi tone-green">
+        </a>
+        <a href="{{ route('goal.allocation.index', ['tab' => 'assigned']) }}" class="ba-kpi tone-green {{ $activeTab === 'assigned' ? 'is-active' : '' }}" data-ba-kpi-tab="assigned">
             <span class="ba-kpi-ico"><i class="bi bi-people-fill"></i></span>
             <div class="ba-kpi-body">
                 <p class="ba-kpi-label">Assigned Today</p>
@@ -406,8 +432,8 @@ body > .select2-container .select2-dropdown{
                 </div>
             </div>
             <div class="ba-kpi-graph">{!! $kpiGraph('#4ade80', '#6ee7b7', 'baWaveGreen') !!}</div>
-        </div>
-        <div class="ba-kpi tone-blue">
+        </a>
+        <a href="{{ route('goal.allocation.index', ['tab' => 'assigned']) }}" class="ba-kpi tone-blue {{ $activeTab === 'assigned' ? 'is-active' : '' }}" data-ba-kpi-tab="assigned">
             <span class="ba-kpi-ico"><i class="bi bi-arrow-repeat"></i></span>
             <div class="ba-kpi-body">
                 <p class="ba-kpi-label">Reassigned Today</p>
@@ -416,9 +442,9 @@ body > .select2-container .select2-dropdown{
                     {!! $trendBadge($kpis['reassigned_today_trend'] ?? null) !!}
                 </div>
             </div>
-            <div class="ba-kpi-graph">{!! $kpiGraph('#60a5fa', '#a5b4fc', 'baWaveBlue') !!}</div>
-        </div>
-        <div class="ba-kpi tone-orange">
+            <div class="ba-kpi-graph">{!! $kpiGraph('var(--theme-400)', '#a5b4fc', 'baWaveBlue') !!}</div>
+        </a>
+        <a href="{{ route('goal.allocation.index', ['tab' => 'assigned']) }}" class="ba-kpi tone-orange" data-ba-kpi-tab="assigned">
             <span class="ba-kpi-ico"><i class="bi bi-layers-fill"></i></span>
             <div class="ba-kpi-body">
                 <p class="ba-kpi-label">Total Allocations (This Month)</p>
@@ -428,7 +454,7 @@ body > .select2-container .select2-dropdown{
                 </div>
             </div>
             <div class="ba-kpi-graph">{!! $kpiGraph('#fb923c', '#fcd34d', 'baWaveOrange') !!}</div>
-        </div>
+        </a>
     </div>
 
     <div class="ba-tabs" role="tablist">
@@ -503,7 +529,7 @@ body > .select2-container .select2-dropdown{
                         <th>Priority</th>
                         <th>Received On</th>
                         <th>Assign to</th>
-                        <th>Action</th>
+                        <th class="col-actions">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -553,12 +579,12 @@ body > .select2-container .select2-dropdown{
                                 <option value="">Select Sales (JSM / SM / SSM)</option>
                             </select>
                         </td>
-                        <td>
+                        <td class="col-actions">
                             <form method="POST" action="{{ route('goal.allocation.assign', $lead) }}" class="row-assign-form d-inline">
                                 @csrf
                                 <input type="hidden" name="action" value="assign">
                                 <input type="hidden" name="assigned_to" class="row-assigned-to" value="">
-                                <button type="submit" class="btn-row-assign" disabled>
+                                <button type="submit" class="btn-row-assign" title="Assign lead" disabled>
                                     <i class="bi bi-send-fill"></i> Assign
                                 </button>
                             </form>
@@ -598,7 +624,7 @@ body > .select2-container .select2-dropdown{
                         <th>Reassigned To</th>
                         <th>Reassign Reason</th>
                         <th>Reassigned On</th>
-                        <th class="text-end">Action</th>
+                        <th class="col-actions text-end">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -628,14 +654,14 @@ body > .select2-container .select2-dropdown{
                         </td>
                         <td>{{ $last?->reason ?: ($last?->action === 'assign' ? 'Initial assignment' : '—') }}</td>
                         <td>{{ optional($last?->created_at ?? $lead->assigned_at)->format('d M Y, h:i a') }}</td>
-                        <td class="text-end">
+                        <td class="col-actions text-end">
                             <div class="ba-actions">
-                                <a class="icon-btn" href="{{ route('goal.leads.show', $lead) }}" title="View details"><i class="bi bi-eye"></i></a>
-                                <button type="button" class="icon-btn btn-history" title="Assignment history"
+                                <a class="icon-btn action-btn" href="{{ route('goal.leads.show', $lead) }}" title="View details"><i class="bi bi-eye"></i></a>
+                                <button type="button" class="icon-btn action-btn btn-history" title="Assignment history"
                                     data-history-url="{{ route('goal.allocation.history', $lead) }}">
                                     <i class="bi bi-clock-history"></i>
                                 </button>
-                                <button type="button" class="btn-reassign"
+                                <button type="button" class="btn-reassign action-btn" title="Reassign"
                                     data-bs-toggle="modal" data-bs-target="#reassignModal"
                                     data-assign-url="{{ route('goal.allocation.assign', $lead) }}"
                                     data-lead-ref="{{ $lead->ref_no }}"
@@ -659,7 +685,7 @@ body > .select2-container .select2-dropdown{
 
 {{-- Reassign modal --}}
 <div class="modal fade ba-modal" id="reassignModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" class="modal-content" id="reassignForm">
             @csrf
             <input type="hidden" name="action" value="reassign">
@@ -668,7 +694,7 @@ body > .select2-container .select2-dropdown{
                     <h5 class="modal-title fw-bold">Confirm Reassignment</h5>
                     <div class="text-muted small" id="reassignLeadMeta">—</div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
@@ -706,7 +732,7 @@ body > .select2-container .select2-dropdown{
                     <h5 class="modal-title fw-bold">Assignment History</h5>
                     <div class="text-muted small" id="historyLeadMeta">—</div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body p-0">
                 <div class="table-responsive">
@@ -822,6 +848,9 @@ window.BA_SALES = @json($salesPayload);
         $('[data-ba-panel]').each(function () {
             $(this).toggleClass('panel-hidden', $(this).data('ba-panel') !== tab);
         });
+        $('[data-ba-kpi-tab]').each(function () {
+            $(this).toggleClass('is-active', $(this).data('ba-kpi-tab') === tab);
+        });
         try {
             var url = new URL(window.location.href);
             url.searchParams.set('tab', tab);
@@ -836,6 +865,10 @@ window.BA_SALES = @json($salesPayload);
 
     $('[data-ba-tab]').on('click', function () {
         switchTab($(this).data('ba-tab'));
+    });
+    $('[data-ba-kpi-tab]').on('click', function (e) {
+        e.preventDefault();
+        switchTab($(this).data('ba-kpi-tab'));
     });
 
     function visiblePendingRows() {

@@ -201,6 +201,33 @@ class GoalRolesPermissionsSeeder extends Seeder
             ],
         ];
 
+        // Classic CRM controllers still authorize with manage_crm_* / view_crm_activity_log_guard.
+        // Attach those when a Goal role has the matching Goal organisation guard so sidebar
+        // modules and page checks stay aligned after role → crm_page_right sync.
+        $classicBridge = [
+            'manage_users_guard' => [
+                'manage_crm_user_guard', 'view_crm_user_guard', 'create_crm_user_guard', 'edit_crm_user_guard',
+                'view_crm_activity_log_guard',
+            ],
+            'manage_roles_guard' => [
+                'manage_crm_role_guard', 'create_crm_role_guard', 'edit_crm_role_guard',
+                'view_crm_activity_log_guard',
+            ],
+            'manage_permissions_guard' => [
+                'manage_crm_permission_guard', 'create_crm_permission_guard', 'edit_crm_permission_guard',
+            ],
+        ];
+
+        $classicGuardIds = Permission::query()
+            ->whereIn('guard_name', collect($classicBridge)->flatten()->unique()->values()->all())
+            ->when(
+                \Illuminate\Support\Facades\Schema::hasColumn('permissions', 'deleted_at'),
+                fn ($q) => $q->whereNull('deleted_at')
+            )
+            ->pluck('id', 'guard_name')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
         foreach ($matrix as $roleId => $guards) {
             if (!Role::query()->where('id', $roleId)->exists()) {
                 continue;
@@ -210,6 +237,15 @@ class GoalRolesPermissionsSeeder extends Seeder
                 $permissionIds = $allModulePermissionIds;
             } else {
                 $permissionIds = array_values(array_filter(array_map(fn ($g) => $guardIds[$g] ?? null, $guards)));
+
+                foreach ($guards as $goalGuard) {
+                    foreach ($classicBridge[$goalGuard] ?? [] as $classicGuard) {
+                        if (isset($classicGuardIds[$classicGuard])) {
+                            $permissionIds[] = $classicGuardIds[$classicGuard];
+                        }
+                    }
+                }
+                $permissionIds = array_values(array_unique($permissionIds));
             }
 
             $existing = DB::table('role_has_permission')

@@ -41,6 +41,8 @@
     }
     $consent = $cd['consent'] ?? null;
     $canEdit = $canEdit ?? false;
+    $canAdvanceStatus = $canAdvanceStatus ?? false;
+    $workspaceLocked = $workspaceLocked ?? false;
     $canDisburse = $canDisburse ?? false;
     $canReassign = $canReassign ?? false;
     $canVerifyDocs = $canVerifyDocs ?? false;
@@ -92,7 +94,7 @@
 @push('styles')
 <style>
 .cw-page{
-    --cw-primary:#2563EB;--cw-purple:#7C3AED;--cw-border:#E2E8F0;--cw-text:#0f172a;--cw-muted:#64748b;
+    --cw-primary:var(--theme-primary);--cw-purple:#7C3AED;--cw-border:#E2E8F0;--cw-text:#0f172a;--cw-muted:#64748b;
     color:var(--cw-text);padding-bottom:96px;background:transparent;
 }
 .cw-page .cw-actions .dropdown{position:relative;z-index:30}
@@ -132,6 +134,7 @@
     border:0;background:transparent;color:var(--cw-primary);font-weight:700;font-size:.82rem;
     display:inline-flex;align-items:center;gap:4px;padding:0;cursor:pointer;text-decoration:none;
 }
+.cw-page .btn-link-cw .btn-link-short{display:none}
 .cw-page .cw-summary-card{
     background:#fff;border:1px solid rgba(226,232,240,.9);border-radius:16px;
     box-shadow:
@@ -146,7 +149,7 @@
 }
 .cw-page .case-ribbon .rb-lead{
     width:46px;height:46px;border-radius:12px;flex-shrink:0;margin-right:10px;
-    background:linear-gradient(145deg,#3B82F6,#7C3AED);color:#fff;
+    background:linear-gradient(145deg,var(--theme-primary),#7C3AED);color:#fff;
     display:inline-flex;align-items:center;justify-content:center;font-size:1.15rem;
     box-shadow:0 8px 16px rgba(79,70,229,.28);
 }
@@ -178,18 +181,18 @@
 .cw-page .status-pill{
     display:inline-flex;align-items:center;gap:4px;padding:.18rem .55rem;border-radius:999px;
     font-size:.7rem;font-weight:600;line-height:1.2;border:0;box-shadow:none;
-    background:#EFF6FF;color:#1D4ED8;
+    background:var(--theme-50);color:var(--theme-primary-hover);
 }
 .cw-page .status-pill.draft{background:#F1F5F9;color:#475569}
-.cw-page .status-pill.login{background:#DBEAFE;color:#1D4ED8}
+.cw-page .status-pill.login{background:var(--theme-100);color:var(--theme-primary-hover)}
 .cw-page .status-pill.process{background:#F3E8FF;color:#7C3AED}
 .cw-page .status-pill.query{background:#FFF7ED;color:#C2410C}
 .cw-page .status-pill.ok{background:#ECFDF5;color:#059669}
-.cw-page .status-pill.done{background:#DBEAFE;color:#1E40AF}
+.cw-page .status-pill.done{background:var(--theme-100);color:var(--theme-primary-deep)}
 .cw-page .status-pill.bad{background:#FEF2F2;color:#DC2626}
 .cw-page .doc-badge{
     display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:600;
-    padding:3px 8px;border-radius:6px;background:#eff6ff;color:var(--cw-primary);line-height:1.2;
+    padding:3px 8px;border-radius:6px;background:var(--theme-50);color:var(--cw-primary);line-height:1.2;
 }
 .cw-page .doc-badge.ok{background:#ecfdf5;color:#059669}
 .cw-page .doc-badge.warn{background:#fff7ed;color:#c2410c}
@@ -200,7 +203,7 @@
 }
 .cw-page .lender-chip.hdfc{background:#FEF2F2;color:#B91C1C}
 .cw-page .lender-chip.icici{background:#FFF7ED;color:#C2410C}
-.cw-page .lender-chip.sbi{background:#EFF6FF;color:#1D4ED8}
+.cw-page .lender-chip.sbi{background:var(--theme-50);color:var(--theme-primary-hover)}
 .cw-page .lender-chip.axis{background:#F5F3FF;color:#7C3AED}
 .cw-page .doc-type-ico{color:#1E3A8A;font-size:.95rem}
 .cw-page .cw-table-card .card-header,
@@ -242,6 +245,16 @@
 .cw-page .cw-lender-table .status-pill{display:inline-flex;max-width:100%}
 .cw-page .cw-lender-table tbody tr{background:#fff}
 .cw-page .cw-lender-table tbody tr:nth-child(even) td{background:#fff}
+.cw-page .cw-lender-actions{display:inline-flex;justify-content:flex-end}
+.cw-page .cw-lender-menu{
+    min-width:220px;padding:.4rem;border:1px solid #e2e8f0;border-radius:12px;
+    box-shadow:0 12px 28px rgba(15,23,42,.14);background:#fff;
+}
+.cw-page .cw-lender-menu .dropdown-item{
+    display:flex;align-items:center;width:100%;border-radius:8px;font-size:.84rem;font-weight:500;
+}
+.cw-page .cw-lender-menu .dropdown-item i{opacity:.75}
+.cw-page .cw-lender-menu .dropdown-item.text-danger{color:#dc2626}
 .cw-page .cw-table-card .cw-table-note{
     padding:.55rem .15rem 0;margin-top:.35rem;font-size:.75rem;color:#94A3B8;font-style:italic;border-top:0;
 }
@@ -250,42 +263,51 @@
     width:28px;height:28px;padding:0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;
     border:1px solid #CBD5E1;background:#fff;color:#334155;
 }
-.cw-page .cw-table-card .btn-action:hover{border-color:#93C5FD;color:#1E3A8A;background:#DBEAFE}
+.cw-page .cw-table-card .btn-action:hover{border-color:var(--theme-300);color:#1E3A8A;background:var(--theme-100)}
 .cw-page .cw-table-card .btn-download{
     width:30px;height:30px;padding:0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;
-    border:1px solid #93C5FD;background:#DBEAFE;color:#1E3A8A;
+    border:1px solid var(--theme-300);background:var(--theme-100);color:#1E3A8A;
 }
-.cw-page .cw-table-card .btn-download:hover{background:#BFDBFE;color:#1E3A8A}
+.cw-page .cw-table-card .btn-download:hover{background:var(--theme-200);color:#1E3A8A}
 .cw-page .cw-progress{
-    display:flex;align-items:flex-start;gap:0;padding:8px 10px 18px;
-    border-top:1px solid #EEF2F7;
+    --cw-dot:34px;
+    display:flex;align-items:flex-start;gap:0;padding:10px 12px 16px;
+    border-top:1px solid #EEF2F7;width:100%;
 }
 .cw-page .cw-step{
-    flex:1 1 0;min-width:0;text-align:center;position:relative;padding:0 2px;
+    flex:1 1 0;min-width:0;text-align:center;position:relative;padding:0 4px;
     font-size:.7rem;font-weight:700;color:#94a3b8;
 }
 .cw-page .cw-step .dot{
-    width:34px;height:34px;border-radius:999px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;
-    background:#F8FAFC;border:2px solid #E2E8F0;color:#94a3b8;font-size:.9rem;position:relative;z-index:1;
+    width:var(--cw-dot);height:var(--cw-dot);border-radius:999px;margin:0 auto 8px;
+    display:flex;align-items:center;justify-content:center;box-sizing:border-box;
+    background:#F8FAFC;border:2px solid #E2E8F0;color:#94a3b8;font-size:.9rem;
+    position:relative;z-index:1;flex-shrink:0;line-height:1;
 }
-.cw-page .cw-step .step-label{color:#0f172a;line-height:1.25;white-space:nowrap}
+.cw-page .cw-step .dot i{line-height:1;display:block}
+.cw-page .cw-step .step-label{
+    color:#0f172a;line-height:1.25;overflow-wrap:anywhere;word-break:break-word;
+}
 .cw-page .cw-step .step-at{display:block;margin-top:4px;font-size:.6rem;font-weight:600;color:#94a3b8;line-height:1.2}
 .cw-page .cw-step.done .step-label{color:#059669}
 .cw-page .cw-step.done .dot{
     background:#10B981;border-color:#10B981;color:#fff;
     box-shadow:0 4px 10px rgba(16,185,129,.28);
 }
-.cw-page .cw-step.active .step-label{color:#1D4ED8}
+.cw-page .cw-step.active .step-label{color:var(--theme-primary-hover)}
 .cw-page .cw-step.active .dot{
-    background:#2563EB;border-color:#2563EB;color:#fff;
-    box-shadow:0 0 0 4px rgba(37,99,235,.16),0 6px 14px rgba(37,99,235,.28);
+    background:var(--theme-primary);border-color:var(--theme-primary);color:#fff;
+    box-shadow:0 0 0 4px var(--theme-primary-ring),0 6px 14px var(--theme-primary-ring);
 }
 .cw-page .cw-step.todo .step-label{color:#94a3b8}
 .cw-page .cw-step.rejected{color:#dc2626}
 .cw-page .cw-step.rejected .step-label{color:#dc2626}
 .cw-page .cw-step.rejected .dot{background:#EF4444;border-color:#EF4444;color:#fff}
 .cw-page .cw-step:not(:last-child)::after{
-    content:'';position:absolute;top:17px;left:calc(50% + 20px);right:calc(-50% + 20px);height:2px;background:#E2E8F0;z-index:0;
+    content:'';position:absolute;z-index:0;pointer-events:none;
+    top:calc(var(--cw-dot) / 2);left:calc(50% + (var(--cw-dot) / 2));
+    width:calc(100% - var(--cw-dot));height:2px;transform:translateY(-50%);
+    background:#E2E8F0;
 }
 .cw-page .cw-step.done:not(:last-child)::after{background:#10B981}
 .cw-page .cw-step.active:not(:last-child)::after{background:#E2E8F0}
@@ -314,8 +336,8 @@
 .cw-page .cw-tab:hover:not(.active){color:#3730A3;background:#F5F3FF}
 .cw-page .cw-tab:hover:not(.active) i{color:#3730A3}
 .cw-page .cw-tab.active{
-    background:#2563EB;color:#fff;
-    box-shadow:0 8px 16px rgba(37,99,235,.28);z-index:1;
+    background:var(--theme-primary);color:#fff;
+    box-shadow:0 8px 16px var(--theme-primary-ring);z-index:1;
 }
 .cw-page .cw-tab.active i{color:#fff}
 .cw-page .cw-tab.active + .cw-tab::before,
@@ -323,6 +345,8 @@
 @media (max-width:1200px){
     .cw-page .cw-hero{grid-template-columns:1fr}
     .cw-page .cw-actions{justify-content:flex-start;flex-wrap:wrap}
+}
+@media (min-width:768px) and (max-width:1200px){
     .cw-page .case-ribbon{overflow-x:auto;padding:14px 10px}
     .cw-page .case-ribbon .rb-item{min-width:118px;flex:0 0 auto}
     .cw-page .cw-progress{overflow-x:auto}
@@ -347,13 +371,13 @@
 .cw-page .sec-head-left{display:flex;align-items:center;gap:10px}
 .cw-page .sec-ico{
     width:34px;height:34px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
-    background:#BFDBFE;color:#1E3A8A;font-size:.95rem;flex-shrink:0;border:1px solid #93C5FD;
+    background:var(--theme-200);color:#1E3A8A;font-size:.95rem;flex-shrink:0;border:1px solid var(--theme-300);
 }
-.cw-page .sec-ico.ico-blue{background:#BFDBFE;color:#1E3A8A;border-color:#93C5FD}
+.cw-page .sec-ico.ico-blue{background:var(--theme-200);color:#1E3A8A;border-color:var(--theme-300)}
 .cw-page .sec-ico.ico-amber{background:#FDE68A;color:#92400E;border-color:#F59E0B}
 .cw-page .sec-ico.ico-green{background:#BBF7D0;color:#14532D;border-color:#86EFAC}
 .cw-page .sec-ico.ico-teal{background:#99F6E4;color:#115E59;border-color:#5EEAD4}
-.cw-page .sec-ico.ico-solid-blue{background:#1D4ED8;color:#fff;border-color:#1D4ED8}
+.cw-page .sec-ico.ico-solid-blue{background:var(--theme-primary-hover);color:#fff;border-color:var(--theme-primary-hover)}
 .cw-page .sec-ico.ico-solid-green{background:#15803D;color:#fff;border-color:#15803D}
 .cw-page .cw-card{overflow:hidden}
 .cw-page .cw-card .card-header{padding:.75rem 1rem !important}
@@ -362,7 +386,7 @@
 .cw-page .cw-card.query-alert,
 .cw-page .sec-card.query-alert{border-left:4px solid #f59e0b !important}
 .cw-page .text-theme{color:#1E3A8A !important}
-.cw-page .cw-sanc-blue{background:#EFF6FF;border:1px solid #DBEAFE}
+.cw-page .cw-sanc-blue{background:var(--theme-50);border:1px solid var(--theme-100)}
 .cw-page .cw-sanc-green{background:#ECFDF5;border:1px solid #D1FAE5}
 .cw-page .sec-head h6{margin:0;font-size:var(--font-size-card-title,16px);font-weight:var(--font-semibold,600);color:#0f172a;letter-spacing:var(--letter-spacing-tight,-.01em)}
 .cw-page .sec-sub{font-size:.78rem;color:#94a3b8;margin-top:2px;font-weight:500}
@@ -372,6 +396,7 @@
 .cw-page .kv-value{font-size:.9rem;font-weight:600;margin-top:3px;word-break:break-word;display:flex;align-items:center;gap:8px}
 .cw-page .kv-value i{color:#64748b;font-size:.9rem}
 .cw-page .detail-card .sec-body{padding:8px 16px 14px}
+.cw-page .detail-mobile-hero{display:none}
 .cw-page .detail-grid{
     display:grid;grid-template-columns:1fr 1fr;gap:0;column-gap:0;
     border:0;
@@ -396,7 +421,7 @@
     min-width:0;flex-wrap:wrap;line-height:1.35;
 }
 .cw-page .detail-row .d-value.is-strong{font-weight:700;color:#0f172a}
-.cw-page .detail-row .d-value a{color:#2563EB;text-decoration:none;font-weight:600}
+.cw-page .detail-row .d-value a{color:var(--theme-primary);text-decoration:none;font-weight:600}
 .cw-page .detail-row .d-value a:hover{text-decoration:underline}
 .cw-page .detail-row .d-value i{color:#1E3A8A;font-size:.9rem;flex-shrink:0}
 .cw-page .pill-soft{
@@ -435,9 +460,9 @@
 .cw-page .query-block .q-summary{font-size:.9rem;font-weight:600;color:#0f172a;line-height:1.45}
 .cw-page .pill-soft.pending{background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA}
 .cw-page .btn-ghost.query-view{
-    height:34px;padding:0 14px;border-radius:10px;border:1px solid #BFDBFE;color:#2563EB;font-weight:600;font-size:.82rem;
+    height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--theme-200);color:var(--theme-primary);font-weight:600;font-size:.82rem;
 }
-.cw-page .btn-ghost.query-view:hover{background:#EFF6FF;border-color:#93C5FD;color:#1D4ED8}
+.cw-page .btn-ghost.query-view:hover{background:var(--theme-50);border-color:var(--theme-300);color:var(--theme-primary-hover)}
 .cw-page .split-cols{display:grid;grid-template-columns:1fr 1fr;gap:28px}
 .cw-page .split-cols .col-title{font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px}
 .cw-page .split-cols .col-title.cust{color:var(--cw-purple)}
@@ -455,7 +480,8 @@
 .cw-page .sanc-mini.violet .sm-ico{background:#7C3AED;color:#fff}
 .cw-page .sanc-mini.green .sm-ico{background:#D1FAE5;color:#059669}
 .cw-page .sanc-mini .sm-label{font-size:.78rem;font-weight:500;color:#64748b;letter-spacing:0;text-transform:none;line-height:1.3}
-.cw-page .sanc-mini .sm-value{font-size:1.02rem;font-weight:700;color:#0f172a;margin-top:4px;letter-spacing:-.01em}
+.cw-page .sanc-mini .sm-label-short{display:none}
+.cw-page .sanc-mini .sm-value{font-size:1.02rem;font-weight:700;color:#0f172a;margin-top:4px;letter-spacing:-.01em;white-space:nowrap}
 .cw-page .sanc-mini .sm-note{font-weight:500;color:#64748b}
 .cw-page .sanc-meta{
     display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:4px;
@@ -478,7 +504,7 @@
 .cw-page .form-select:not(.form-select-sm){
     min-height:42px;border-radius:10px;border:1px solid var(--cw-border);background:#f8fafc;font-size:.88rem;
 }
-.cw-page .form-control:focus,.cw-page .form-select:focus{border-color:#93c5fd;background:#fff;box-shadow:0 0 0 3px rgba(36,91,235,.12)}
+.cw-page .form-control:focus,.cw-page .form-select:focus{border-color:var(--theme-300);background:#fff;box-shadow:0 0 0 3px rgba(36,91,235,.12)}
 .cw-page .form-control:disabled,.cw-page .form-control[readonly]{background:#eef4ff;color:#64748b}
 /* Bootstrap 5 form-sm — restore compact sizing */
 .cw-page .form-control-sm,
@@ -495,12 +521,20 @@
 .cw-page .table thead th{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:700;border-bottom-color:#E2E8F0}
 .cw-page .table td{padding:.45rem .85rem;border-color:#F1F5F9}
 .cw-page .cw-table-card .table thead th{text-transform:none;letter-spacing:0;font-weight:600}
-.cw-page .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:1rem}
-.cw-page .kpi{background:#fff;border:1px solid var(--cw-border);border-radius:12px;padding:12px 14px}
-.cw-page .kpi .n{font-size:1.25rem;font-weight:800}
-.cw-page .kpi .l{font-size:.72rem;color:var(--cw-muted);font-weight:600}
+.cw-page .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:.85rem}
+.cw-page .kpi{
+    background:#fff;border:1px solid var(--cw-border);border-radius:10px;
+    padding:.55rem .75rem;display:flex;align-items:center;justify-content:space-between;gap:8px;
+}
+.cw-page .kpi .n{font-size:1.15rem;font-weight:800;line-height:1;order:2}
+.cw-page .kpi .l{font-size:.68rem;color:var(--cw-muted);font-weight:700;text-transform:uppercase;letter-spacing:.02em;order:1}
 .cw-page .empty-state{text-align:center;padding:16px 12px;color:var(--cw-muted)}
 .cw-page .empty-state i{font-size:1.5rem;opacity:.45;display:block;margin-bottom:6px}
+.cw-page .cw-empty-inline{
+    display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+    padding:14px 12px;margin:0 12px 12px;border:1px dashed #cbd5e1;border-radius:12px;
+    background:#f8fafc;color:#64748b;font-size:.84rem;text-align:center;
+}
 .cw-page .timeline{list-style:none;margin:0;padding:0}
 .cw-page .timeline li{
     display:flex;align-items:center;gap:12px;padding:10px 0;position:relative;border-bottom:0;
@@ -512,10 +546,10 @@
 }
 .cw-page .tl-dot{
     width:32px;height:32px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
-    flex-shrink:0;background:#1D4ED8;color:#fff;font-size:.85rem;border:0;position:relative;z-index:1;
+    flex-shrink:0;background:var(--theme-primary-hover);color:#fff;font-size:.85rem;border:0;position:relative;z-index:1;
 }
 .cw-page .tl-dot.green{background:#15803D;color:#fff}
-.cw-page .tl-dot.blue{background:#1D4ED8;color:#fff}
+.cw-page .tl-dot.blue{background:var(--theme-primary-hover);color:#fff}
 .cw-page .tl-dot.teal{background:#0F766E;color:#fff}
 .cw-page .tl-dot.amber{background:#B45309;color:#fff}
 .cw-page .tl-body{
@@ -536,9 +570,9 @@
 .cw-page .cw-footer{display:none}
 .cw-page .btn-save{
     height:42px;padding:0 18px;border-radius:10px;font-weight:700;font-size:.86rem;border:0;color:#fff;
-    background:#1D4ED8;display:inline-flex;align-items:center;gap:6px;
+    background:var(--theme-primary-hover);display:inline-flex;align-items:center;gap:6px;
 }
-.cw-page .btn-save:hover{background:#1E40AF;color:#fff}
+.cw-page .btn-save:hover{background:var(--theme-primary-deep);color:#fff}
 .cw-page .cust-layout .cust-card{
     border-radius:16px !important;border:1px solid #E8EEF5 !important;
     box-shadow:
@@ -570,7 +604,7 @@
 }
 .cw-page .cust-layout .form-control::placeholder{color:#94a3b8}
 .cw-page .cust-layout .form-control:focus{
-    border-color:#93C5FD !important;background-color:#fff !important;box-shadow:0 0 0 3px rgba(37,99,235,.12);
+    border-color:var(--theme-300) !important;background-color:#fff !important;box-shadow:0 0 0 3px var(--theme-primary-ring);
 }
 .cw-page .cust-layout .input-group-sm > .form-control,
 .cw-page .cust-layout .input-group-sm > .input-group-text{
@@ -592,20 +626,20 @@
 }
 .cw-page .cust-layout .select2-container--default.select2-container--focus .select2-selection--single,
 .cw-page .cust-layout .select2-container--default.select2-container--open .select2-selection--single{
-    border-color:#93C5FD;box-shadow:0 0 0 3px rgba(37,99,235,.12);
+    border-color:var(--theme-300);box-shadow:0 0 0 3px var(--theme-primary-ring);
 }
 /* Relationship Self — blue face, dropdown options stay readable */
 .cw-page .cust-layout select.cust-rel-self + .select2-container .select2-selection--single{
-    background-color:#EFF6FF;border-color:#BFDBFE;
+    background-color:var(--theme-50);border-color:var(--theme-200);
 }
 .cw-page .cust-layout select.cust-rel-self + .select2-container .select2-selection__rendered{
-    color:#2563EB !important;font-weight:600;
+    color:var(--theme-primary) !important;font-weight:600;
 }
 .cw-page .cust-layout select.cust-rel-self + .select2-container .select2-selection__arrow b{
-    border-color:#2563EB transparent transparent transparent;
+    border-color:var(--theme-primary) transparent transparent transparent;
 }
 .cw-page .cust-layout select.cust-rel-self + .select2-container.select2-container--open .select2-selection__arrow b{
-    border-color:transparent transparent #2563EB transparent;
+    border-color:transparent transparent var(--theme-primary) transparent;
 }
 /* Seamless icon-inside-input */
 .cw-page .cust-layout .input-group{
@@ -613,7 +647,7 @@
     transition:border-color .15s,box-shadow .15s;
 }
 .cw-page .cust-layout .input-group:focus-within{
-    border-color:#93C5FD;box-shadow:0 0 0 3px rgba(37,99,235,.12);
+    border-color:var(--theme-300);box-shadow:0 0 0 3px var(--theme-primary-ring);
 }
 .cw-page .cust-layout .input-group .input-group-text{
     background:transparent;border:0;color:#64748b;min-width:2rem;padding-left:.5rem;
@@ -640,7 +674,7 @@
     border-radius:999px !important;padding:.28rem .85rem;min-width:100px;
 }
 .cw-page .cust-party-btn.active{
-    background:#2563EB !important;color:#fff !important;box-shadow:0 4px 12px rgba(37,99,235,.28);
+    background:var(--theme-primary) !important;color:#fff !important;box-shadow:0 4px 12px var(--theme-primary-ring);
 }
 .cw-page .cust-party-panel{display:none}
 .cw-page .cust-party-panel.is-active{display:block}
@@ -699,7 +733,7 @@
     font-size:.8rem;font-weight:700;border-radius:8px;width:100%;
 }
 .cw-page .cust-party-col-head.is-applicant{
-    background:#E8F0FE;color:#1D4ED8;
+    background:#E8F0FE;color:var(--theme-primary-hover);
 }
 .cw-page .cust-party-col-head.is-co{
     background:#F3E8FF;color:#6D28D9;
@@ -734,7 +768,7 @@
 .cw-page .cust-ref-title{
     font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#64748B;margin-bottom:10px;
 }
-.cw-page .cust-product-input{background:#EFF6FF !important;border-color:#BFDBFE !important;font-weight:600;color:#1E3A8A}
+.cw-page .cust-product-input{background:var(--theme-50) !important;border-color:var(--theme-200) !important;font-weight:600;color:#1E3A8A}
 .cw-page .cust-consent{
     min-height:34px;border-radius:999px;display:inline-flex;align-items:center;gap:8px;
     padding:0 12px;font-size:.78rem;font-weight:600;width:100%;
@@ -753,10 +787,350 @@
     .cw-page .detail-grid{grid-template-columns:1fr}
     .cw-page .detail-col:first-child{padding-right:0}
     .cw-page .detail-col + .detail-col{border-left:0;padding-left:0;border-top:1px solid #E5E7EB;padding-top:10px;margin-top:6px}
-    .cw-page .detail-row{grid-template-columns:140px 10px minmax(0,1fr)}
+    .cw-page .detail-row{grid-template-columns:minmax(120px,42%) 10px minmax(0,1fr)}
     .cw-page .sanc-mini-grid{grid-template-columns:1fr}
+    .cw-page .sanc-meta{grid-template-columns:1fr}
+    .cw-page .sec-head{flex-wrap:wrap;gap:8px}
+    .cw-page .own-row{
+        grid-template-columns:22px minmax(0,1.1fr) 8px minmax(0,1.4fr);
+        align-items:start;
+    }
+    .cw-page .own-row .d-value{flex-wrap:nowrap}
+    .cw-page .detail-row .d-value{flex-wrap:nowrap}
 }
-@media (max-width:767.98px){.cw-page .cw-step{min-width:72px}}
+@media (max-width:767.98px){
+    .cw-page{padding:.7rem .7rem 1.25rem !important}
+    .cw-page .cw-title{font-size:1.12rem}
+    .cw-page .cw-subtitle{display:none}
+    .cw-page .cw-crumb{font-size:.7rem;margin-top:4px}
+    .cw-page .cw-back{width:38px;height:38px}
+    .cw-page .cw-hero{gap:10px;margin-bottom:.7rem}
+    .cw-page .cw-hero > .flex{min-width:0}
+    .cw-page .cw-actions{
+        width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px;justify-content:stretch;
+    }
+    .cw-page .cw-actions > .btn-ghost{width:100%;justify-content:center;height:40px;font-size:.8rem;padding:0 8px}
+    .cw-page .cw-actions > .btn-primary-cw,
+    .cw-page .cw-actions > .dropdown{grid-column:1 / -1;width:100%}
+    .cw-page .cw-actions > .btn-primary-cw{justify-content:center;height:42px}
+    .cw-page .cw-actions > .dropdown > .btn-ghost,
+    .cw-page .cw-actions > .dropdown > .dropdown-toggle{width:100%;justify-content:center;height:40px}
+
+    /* Summary ribbon: compact info tiles */
+    .cw-page .cw-summary-card{margin-bottom:.7rem;border-radius:14px}
+    .cw-page .case-ribbon{
+        display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;
+        overflow:visible;align-items:stretch;
+    }
+    .cw-page .case-ribbon .rb-lead{display:none}
+    .cw-page .case-ribbon .rb-item{
+        flex:none;min-width:0;border-right:0;border:1px solid #E8EEF5;border-radius:12px;
+        padding:9px 10px;background:#fff;gap:0;align-items:flex-start;flex-direction:column;
+    }
+    .cw-page .case-ribbon .rb-item.rb-status{
+        grid-column:1 / -1;flex-direction:row;align-items:center;justify-content:space-between;
+    }
+    .cw-page .case-ribbon .rb-ico{display:none}
+    .cw-page .case-ribbon .rb-text{width:100%}
+    .cw-page .case-ribbon .rb-label{font-size:.6rem;margin:0}
+    .cw-page .case-ribbon .rb-value{font-size:.8rem;margin-top:3px;align-items:flex-start}
+    .cw-page .case-ribbon .rb-value > span,
+    .cw-page .case-ribbon .rb-value > a{
+        white-space:normal;overflow:visible;text-overflow:unset;
+        overflow-wrap:anywhere;word-break:break-word;line-height:1.3;
+    }
+
+    /* Progress: swipeable chips (many stages) */
+    .cw-page .cw-progress{
+        --cw-dot:26px;
+        overflow-x:auto;-webkit-overflow-scrolling:touch;
+        padding:10px 10px 12px;gap:0;scrollbar-width:none;
+    }
+    .cw-page .cw-progress::-webkit-scrollbar{display:none}
+    .cw-page .cw-step{
+        flex:0 0 auto;min-width:72px;padding:0 6px;
+    }
+    .cw-page .cw-step .step-label{font-size:.6rem;line-height:1.2;white-space:nowrap}
+    .cw-page .cw-step .step-at{display:none}
+    .cw-page .cw-step .dot{margin-bottom:5px;font-size:.72rem}
+
+    /* Tabs */
+    .cw-page .cw-tabs{
+        border-radius:14px;padding:4px;gap:2px;margin-bottom:.7rem;
+        overflow-x:auto;-webkit-overflow-scrolling:touch;
+        scrollbar-width:none;scroll-behavior:smooth;
+    }
+    .cw-page .cw-tabs::-webkit-scrollbar{display:none}
+    .cw-page .cw-tab{
+        flex:0 0 auto;padding:8px 12px;font-size:.74rem;scroll-snap-align:center;
+    }
+
+    /* Section cards */
+    .cw-page .overview-grid{gap:10px}
+    .cw-page .overview-main,
+    .cw-page .overview-side{gap:10px}
+    .cw-page .sec-card{border-radius:14px;height:auto}
+    .cw-page .sec-head{
+        padding:10px 12px 8px !important;
+        flex-wrap:nowrap !important;align-items:center !important;gap:8px !important;
+    }
+    .cw-page .sec-head:has(.btn-primary-cw){
+        flex-wrap:wrap !important;
+    }
+    .cw-page .sec-head.has-line{padding-bottom:8px !important}
+    .cw-page .sec-head-left{min-width:0;flex:1 1 auto;align-items:center;overflow:hidden}
+    .cw-page .sec-head-left > div{min-width:0;overflow:hidden}
+    .cw-page .sec-ico{width:30px;height:30px;font-size:.85rem}
+    .cw-page .sec-head h6{font-size:.9rem;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cw-page .sec-sub{display:none}
+    .cw-page .sec-head .btn-link-cw{
+        flex:0 0 auto;width:auto;height:auto;padding:0;justify-content:flex-end;font-size:.78rem;
+        white-space:nowrap;
+    }
+    .cw-page .sec-head .btn-primary-cw{
+        flex:1 1 100%;width:100%;height:38px;padding:0 12px;font-size:.8rem;
+        justify-content:center;order:2;margin-top:2px;
+    }
+    .cw-page .sec-head .pill-pending{flex:0 0 auto}
+    .cw-page .sec-body{padding:4px 12px 12px}
+
+    /* Detail card: hero + hide empty + denser rows */
+    .cw-page .detail-card .sec-body{padding:0 12px 10px}
+    .cw-page .detail-mobile-hero{
+        display:block;margin:0 0 8px;padding:10px 12px;border-radius:12px;
+        background:linear-gradient(180deg,#F8FAFF 0%,#FFFFFF 100%);
+        border:1px solid #E8EEF5;
+    }
+    .cw-page .detail-mobile-hero .dmh-top{
+        display:flex;align-items:center;justify-content:space-between;gap:8px;
+    }
+    .cw-page .detail-mobile-hero .dmh-name{
+        font-size:1.02rem;font-weight:700;color:#0f172a;line-height:1.25;min-width:0;
+        overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    }
+    .cw-page .detail-mobile-hero .dmh-meta{
+        display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;
+        font-size:.8rem;font-weight:600;
+    }
+    .cw-page .detail-mobile-hero .dmh-meta a{
+        color:var(--theme-primary);text-decoration:none;display:inline-flex;align-items:center;gap:5px;min-width:0;
+    }
+    .cw-page .detail-mobile-hero .dmh-amt{color:#0f172a;font-weight:700;white-space:nowrap}
+    .cw-page .detail-grid{display:block}
+    .cw-page .detail-col{padding:0 !important;border:0 !important;margin:0 !important}
+    .cw-page .detail-col[data-section]::before{
+        content:attr(data-section);display:block;
+        font-size:.62rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+        color:#94a3b8;padding:6px 0 2px;
+    }
+    .cw-page .detail-col + .detail-col{
+        border-top:1px dashed #E2E8F0;margin-top:4px;padding-top:2px !important;
+    }
+    .cw-page .detail-row{
+        display:flex;align-items:center;justify-content:space-between;gap:8px;
+        padding:5px 0;border-bottom:1px solid #F1F5F9;min-height:0;
+        grid-template-columns:none;
+    }
+    .cw-page .detail-row.is-empty{display:none !important}
+    .cw-page .detail-row.is-key{display:none !important}
+    .cw-page .detail-row:last-child{border-bottom:0}
+    .cw-page .detail-row .d-sep{display:none}
+    .cw-page .detail-row .d-label{
+        flex:0 0 40%;max-width:40%;font-size:.7rem;font-weight:600;color:#64748b;line-height:1.3;
+    }
+    .cw-page .detail-row .d-label[data-short]{font-size:0}
+    .cw-page .detail-row .d-label[data-short]::before{
+        content:attr(data-short);font-size:.7rem;font-weight:600;color:#64748b;
+    }
+    .cw-page .detail-row .d-value{
+        flex:1 1 auto;min-width:0;justify-content:flex-end;text-align:right;
+        font-size:.8rem;font-weight:600;flex-wrap:nowrap;gap:5px;line-height:1.3;
+    }
+    .cw-page .detail-row .d-value > a,
+    .cw-page .detail-row .d-value > span:not(.pill-soft){
+        min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;
+    }
+    .cw-page .detail-row .d-value > .pill-soft{flex-shrink:0}
+
+    /* Ownership: one-line icon + label | value */
+    .cw-page .own-list{gap:0}
+    .cw-page .own-row{
+        display:grid;
+        grid-template-columns:22px minmax(0,1fr) minmax(0,1.2fr);
+        column-gap:8px;align-items:center;
+        padding:9px 0;border-bottom:1px solid #F1F5F9;
+    }
+    .cw-page .own-row:last-child{border-bottom:0;padding-bottom:0}
+    .cw-page .own-row .own-ico{margin:0}
+    .cw-page .own-row .d-label{font-size:.72rem;font-weight:600;color:#64748b}
+    .cw-page .own-row .d-sep{display:none}
+    .cw-page .own-row .d-value{
+        justify-content:flex-end;text-align:right;gap:5px;font-size:.8rem;font-weight:600;
+        flex-wrap:nowrap;min-width:0;
+    }
+    .cw-page .own-row .d-value > span{
+        min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    }
+
+    /* Nested table cards */
+    .cw-page .cw-table-card > .sec-head{padding:10px 12px 6px !important}
+    .cw-page .cw-table-card .cw-table-wrap{padding:4px 10px 10px}
+    .cw-page .cw-table-card .table-responsive{
+        margin:0;padding:0;overflow:visible;
+        border:0 !important;border-radius:0;background:transparent;
+    }
+    .cw-page .cw-table-card .table,
+    .cw-page .cw-lender-table{
+        min-width:0 !important;width:100% !important;display:block !important;
+        border-spacing:0 !important;
+    }
+    .cw-page .cw-table-card .table thead{
+        display:none !important;height:0 !important;margin:0 !important;padding:0 !important;
+        border:0 !important;overflow:hidden !important;visibility:hidden !important;
+    }
+    .cw-page .cw-table-card .table tbody{display:block !important;width:100%;margin:0;padding:0}
+    .cw-page .cw-table-card .table tbody tr{
+        display:grid !important;
+        grid-template-columns:minmax(0,1fr) auto;
+        column-gap:8px;row-gap:0;
+        width:100%;
+        margin:0 0 .5rem;padding:.65rem .75rem .55rem;
+        border:1px solid #e8edf5;border-radius:12px;
+        background:#f8fafc;box-shadow:none;
+        align-items:center;
+    }
+    .cw-page .cw-table-card .table tbody tr:first-child{margin-top:0}
+    .cw-page .cw-table-card .table tbody tr:last-child{margin-bottom:0}
+    .cw-page .cw-table-card .table tbody td{
+        display:flex !important;justify-content:space-between;align-items:center;gap:.55rem;
+        grid-column:1 / -1;
+        width:auto !important;max-width:none !important;
+        padding:.28rem 0 !important;border:0 !important;
+        white-space:normal !important;font-size:.8rem !important;line-height:1.3;
+        background:transparent !important;text-align:left !important;
+        position:static !important;left:auto !important;right:auto !important;top:auto !important;
+    }
+    .cw-page .cw-table-card .table tbody td::before{
+        content:attr(data-label);
+        flex:0 0 36%;max-width:36%;
+        font-size:.62rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+        color:#64748b;
+    }
+    .cw-page .cw-table-card .table tbody td > *{
+        max-width:64%;text-align:right;margin-left:auto;
+    }
+    /* Title row: lender left, actions right */
+    .cw-page .cw-table-card .table tbody td[data-label="Lender"]{
+        grid-column:1;grid-row:1;
+        padding:0 0 .5rem !important;margin:0 0 .15rem;
+        border-bottom:1px solid #eef2f7 !important;align-items:center;
+    }
+    .cw-page .cw-table-card .table tbody td[data-label="Lender"]::before{display:none !important}
+    .cw-page .cw-table-card .table tbody td[data-label="Lender"] > *{
+        max-width:100% !important;width:100%;text-align:left !important;margin-left:0 !important;
+        font-weight:700;color:#0f172a;justify-content:flex-start !important;
+    }
+    .cw-page .cw-table-card .table tbody td[data-label="Lender"] .d-flex{
+        justify-content:flex-start !important;gap:8px !important;
+    }
+    .cw-page .cw-table-card .table tbody td.cw-col-actions,
+    .cw-page .cw-table-card .table tbody td[data-label="Actions"]{
+        grid-column:2;grid-row:1;
+        width:auto !important;min-width:32px;
+        padding:0 0 .5rem !important;margin:0 0 .15rem;
+        border-bottom:1px solid #eef2f7 !important;
+        justify-content:flex-end !important;align-items:center !important;
+        align-self:center;
+    }
+    .cw-page .cw-table-card .table tbody td.cw-col-actions::before,
+    .cw-page .cw-table-card .table tbody td[data-label="Actions"]::before{display:none !important}
+    .cw-page .cw-table-card .table tbody td.cw-col-actions > *,
+    .cw-page .cw-table-card .table tbody td[data-label="Actions"] > *{
+        max-width:none !important;margin:0 !important;
+    }
+    .cw-page .cw-table-card .btn-action{
+        width:32px;height:32px;flex-shrink:0;
+    }
+    .cw-page .cw-table-card .table tbody td.cw-col-empty,
+    .cw-page .cw-table-card .table tbody td[colspan]{
+        display:block !important;padding:0 !important;border:0 !important;
+    }
+    .cw-page .cw-table-card .table tbody td.cw-col-empty::before,
+    .cw-page .cw-table-card .table tbody td[colspan]::before{display:none}
+    .cw-page .cw-table-card .table tbody tr:has(td[colspan]),
+    .cw-page .cw-table-card .table tbody tr:has(td.cw-col-empty){
+        border:0;box-shadow:none;background:transparent;padding:0;margin:0;
+    }
+    .cw-page .cw-empty-inline{
+        margin:2px 0 0;padding:12px;font-size:.8rem;border-radius:10px;
+    }
+    .cw-page .cw-table-note{padding:6px 2px 0;font-size:.72rem}
+
+    /* Sanction cards: stack full-width so amounts never wrap */
+    .cw-page .sanc-mini-grid{grid-template-columns:1fr !important;gap:8px}
+    .cw-page .sanc-mini{
+        padding:10px 12px;border-radius:12px;align-items:center;gap:10px;
+    }
+    .cw-page .sanc-mini > div{min-width:0;flex:1 1 auto}
+    .cw-page .sanc-mini .sm-ico{width:30px;height:30px;font-size:.9rem}
+    .cw-page .sanc-mini .sm-label{font-size:.68rem;line-height:1.25}
+    .cw-page .sanc-mini .sm-label-full{display:none}
+    .cw-page .sanc-mini .sm-label-short{display:inline}
+    .cw-page .sanc-mini .sm-value{
+        font-size:.95rem;margin-top:2px;white-space:nowrap;
+        overflow:hidden;text-overflow:ellipsis;word-break:normal;
+    }
+    .cw-page .sanc-meta{
+        display:flex;flex-direction:column;gap:0;margin-top:8px;
+        border:1px solid #E8EEF5;border-radius:12px;padding:2px 12px;background:#fff;
+    }
+    .cw-page .sanc-meta-row{
+        display:flex;justify-content:space-between;align-items:center;gap:8px;
+        grid-template-columns:none;padding:9px 0;border-bottom:1px solid #F1F5F9;
+    }
+    .cw-page .sanc-meta-row:last-child{border-bottom:0}
+    .cw-page .sanc-meta-row .d-sep{display:none}
+    .cw-page .sanc-meta-row .d-label{font-size:.72rem;font-weight:600;color:#64748b}
+    .cw-page .sanc-meta-row .d-value{font-size:.84rem;font-weight:700;text-align:right;white-space:nowrap}
+
+    /* KPIs */
+    .cw-page .kpi-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:.65rem}
+    .cw-page .kpi{
+        flex-direction:column;align-items:flex-start;justify-content:flex-start;
+        gap:3px;padding:.55rem .65rem;min-height:54px;border-radius:12px;
+    }
+    .cw-page .kpi .l{order:0;font-size:.6rem}
+    .cw-page .kpi .n{order:0;font-size:1.05rem}
+
+    /* Query / activity polish */
+    .cw-page .query-block{gap:10px}
+    .cw-page .query-block .q-label{font-size:.7rem;margin-bottom:2px}
+    .cw-page .query-actions{margin-top:10px}
+    .cw-page .query-actions .btn-ghost{width:100%;justify-content:center;height:40px}
+
+    .cw-page .btn-link-cw .btn-link-full{display:none}
+    .cw-page .btn-link-cw .btn-link-short{display:inline}
+    .cw-page .timeline li{
+        align-items:flex-start;gap:10px;padding:10px 0;
+    }
+    .cw-page .timeline li:not(:last-child)::before{
+        left:14px;top:34px;bottom:-2px;
+    }
+    .cw-page .tl-dot{width:28px;height:28px;font-size:.78rem;margin-top:1px}
+    .cw-page .tl-body{
+        flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:3px;
+    }
+    .cw-page .tl-title{
+        font-size:.82rem;line-height:1.35;white-space:normal;overflow-wrap:anywhere;
+    }
+    .cw-page .tl-time{font-size:.7rem;white-space:nowrap}
+
+    .cw-page .detail-row .d-value,
+    .cw-page .own-row .d-value,
+    .cw-page .query-block .q-value{flex-wrap:nowrap !important}
+    .cw-page .detail-row .d-value > i,
+    .cw-page .own-row .d-value > i{flex-shrink:0}
+}
 </style>
 @endpush
 
@@ -794,7 +1168,7 @@
                     @endif
                     <li><a class="dropdown-item" href="#" data-cw-tab-jump="activity" data-cw-filter="assignment"><i class="bi bi-clock-history me-1"></i> Assignment History</a></li>
                     <li><a class="dropdown-item" href="#" data-cw-tab-jump="activity"><i class="bi bi-journal-text me-1"></i> Audit History</a></li>
-                    @if($canEdit && $next !== [])
+                    @if(!empty($canAdvanceStatus) && $next !== [])
                         <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#cwAdvanceStatusModal"><i class="bi bi-arrow-right-circle me-1"></i> Advance Status</button></li>
                     @endif
                     @if($canPms && $case->status === 'Disbursed')
@@ -806,7 +1180,7 @@
                             </form>
                         </li>
                     @endif
-                    @if($canEdit && !in_array($case->status, ['Closed', 'Rejected'], true))
+                    @if(!empty($canAdvanceStatus) && in_array('Closed', $next, true))
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <form method="POST" action="{{ route('goal.cases.transition', $case) }}" onsubmit="return confirm('Close this case?')">
@@ -900,8 +1274,18 @@
             <ul class="mb-0 mt-1">@foreach($errors->all() as $err)<li>{{ $err }}</li>@endforeach</ul>
         </div>
     @endif
-    @if(session('success'))
-        <div class="alert alert-success py-2 small">{{ session('success') }}</div>
+    @if(!empty($workspaceLocked))
+        <div class="alert alert-warning border-0 py-2 px-3 small d-flex align-items-start gap-2 mb-3" style="border-radius:12px;background:#fff7ed;color:#9a3412">
+            <i class="bi bi-lock-fill mt-1"></i>
+            <div>
+                <strong>Case locked ({{ $case->status }}).</strong>
+                Sales workspace edits are disabled. Post-disbursement work continues in Accounts / PMS
+                @if($case->status === 'Disbursed')
+                    · transfer to PMS remains available
+                @endif
+                .
+            </div>
+        </div>
     @endif
 
     {{-- Tabs --}}
@@ -915,6 +1299,8 @@
             'queries' => ['Bank Queries', 'bi-chat-dots'],
             'sanction' => ['Sanction', 'bi-award'],
             'disbursement' => ['Disbursement', 'bi-credit-card'],
+            'mis' => ['Branch MIS', 'bi-clipboard-data'],
+            'visits' => ['Visits & Follow-ups', 'bi-geo-alt'],
             'activity' => ['Activity History', 'bi-clock-history'],
         ] as $key => $meta)
             <button type="button" class="cw-tab {{ $activeTab === $key ? 'active' : '' }}" data-cw-tab="{{ $key }}" role="tab" aria-selected="{{ $activeTab === $key ? 'true' : 'false' }}">
@@ -932,6 +1318,17 @@
         $mobileDisplay = strlen($mobileDigits) === 10
             ? ('+91 '.substr($mobileDigits, 0, 5).' '.substr($mobileDigits, 5))
             : ($case->mobile ? ('+91 '.$case->mobile) : null);
+        $cwBlank = static function ($v): bool {
+            $s = trim((string) ($v ?? ''));
+            return $s === '' || $s === '—' || $s === '-' || $s === '–';
+        };
+        $customerRef = data_get($cd, 'customer_ref', 'CUS-'.str_pad((string) $case->id, 6, '0', STR_PAD_LEFT));
+        $purposeVal = $cd['purpose'] ?? data_get($cd, 'loan.purpose', '—');
+        $tenureVal = $ten ? ($ten.' months') : '—';
+        $empTypeVal = $emp['type_applicant'] ?? ($cd['employment_type'] ?? '—');
+        $incomeVal = $fmtInr($emp['income_applicant'] ?? ($cd['monthly_income'] ?? null));
+        $obligVal = $fmtInr($cd['obligations'] ?? null);
+        $amountVal = $fmtInr($case->loan_amount);
     @endphp
     <div class="cw-pane {{ $activeTab === 'overview' ? 'active' : '' }}" data-pane="overview">
         <div class="overview-grid">
@@ -949,18 +1346,34 @@
                         @endif
                     </div>
                     <div class="sec-body">
+                        <div class="detail-mobile-hero">
+                            <div class="dmh-top">
+                                <div class="dmh-name">{{ $case->customer_name ?: '—' }}</div>
+                                @if($case->product)
+                                    <span class="pill-soft product">{{ $case->product }}</span>
+                                @endif
+                            </div>
+                            <div class="dmh-meta">
+                                @if($mobileDisplay)
+                                    <a href="tel:+91{{ $mobileDigits }}"><i class="bi bi-telephone"></i>{{ $mobileDisplay }}</a>
+                                @endif
+                                @unless($cwBlank($amountVal))
+                                    <span class="dmh-amt">{{ $amountVal }}</span>
+                                @endunless
+                            </div>
+                        </div>
                         <div class="detail-grid">
-                            <div class="detail-col">
-                                <div class="detail-row">
-                                    <div class="d-label">Customer Reference</div><div class="d-sep">:</div>
-                                    <div class="d-value">{{ data_get($cd, 'customer_ref', 'CUS-'.str_pad((string)$case->id, 6, '0', STR_PAD_LEFT)) }}</div>
+                            <div class="detail-col" data-section="Customer">
+                                <div class="detail-row {{ $cwBlank($customerRef) ? 'is-empty' : '' }}">
+                                    <div class="d-label" data-short="Ref">Customer Reference</div><div class="d-sep">:</div>
+                                    <div class="d-value">{{ $customerRef }}</div>
                                 </div>
-                                <div class="detail-row">
-                                    <div class="d-label">Customer Name</div><div class="d-sep">:</div>
+                                <div class="detail-row is-key {{ $cwBlank($case->customer_name) ? 'is-empty' : '' }}">
+                                    <div class="d-label" data-short="Name">Customer Name</div><div class="d-sep">:</div>
                                     <div class="d-value is-strong">{{ $case->customer_name }}</div>
                                 </div>
-                                <div class="detail-row">
-                                    <div class="d-label">Mobile Number</div><div class="d-sep">:</div>
+                                <div class="detail-row is-key {{ $mobileDisplay ? '' : 'is-empty' }}">
+                                    <div class="d-label" data-short="Mobile">Mobile Number</div><div class="d-sep">:</div>
                                     <div class="d-value">
                                         @if($mobileDisplay)
                                             <i class="bi bi-telephone"></i><a href="tel:+91{{ $mobileDigits }}">{{ $mobileDisplay }}</a>
@@ -969,7 +1382,7 @@
                                         @endif
                                     </div>
                                 </div>
-                                <div class="detail-row">
+                                <div class="detail-row {{ $em ? '' : 'is-empty' }}">
                                     <div class="d-label">Email</div><div class="d-sep">:</div>
                                     <div class="d-value">
                                         @if($em)
@@ -979,8 +1392,8 @@
                                         @endif
                                     </div>
                                 </div>
-                                <div class="detail-row">
-                                    <div class="d-label">Preferred Contact Time</div><div class="d-sep">:</div>
+                                <div class="detail-row {{ $prefContact ? '' : 'is-empty' }}">
+                                    <div class="d-label" data-short="Contact time">Preferred Contact Time</div><div class="d-sep">:</div>
                                     <div class="d-value">
                                         @if($prefContact)<i class="bi bi-clock"></i><span>{{ $prefContact }}</span>@else — @endif
                                     </div>
@@ -995,8 +1408,8 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="detail-col">
-                                <div class="detail-row">
+                            <div class="detail-col" data-section="Loan">
+                                <div class="detail-row is-key {{ $case->product ? '' : 'is-empty' }}">
                                     <div class="d-label">Product</div><div class="d-sep">:</div>
                                     <div class="d-value">
                                         @if($case->product)
@@ -1006,29 +1419,29 @@
                                         @endif
                                     </div>
                                 </div>
-                                <div class="detail-row">
-                                    <div class="d-label">Requested Amount</div><div class="d-sep">:</div>
-                                    <div class="d-value is-strong">{{ $fmtInr($case->loan_amount) }}</div>
+                                <div class="detail-row is-key {{ $cwBlank($amountVal) ? 'is-empty' : '' }}">
+                                    <div class="d-label" data-short="Amount">Requested Amount</div><div class="d-sep">:</div>
+                                    <div class="d-value is-strong">{{ $amountVal }}</div>
                                 </div>
-                                <div class="detail-row">
+                                <div class="detail-row {{ $cwBlank($purposeVal) ? 'is-empty' : '' }}">
                                     <div class="d-label">Purpose</div><div class="d-sep">:</div>
-                                    <div class="d-value">{{ $cd['purpose'] ?? data_get($cd, 'loan.purpose', '—') }}</div>
+                                    <div class="d-value">{{ $purposeVal }}</div>
                                 </div>
-                                <div class="detail-row">
+                                <div class="detail-row {{ $cwBlank($tenureVal) ? 'is-empty' : '' }}">
                                     <div class="d-label">Tenure</div><div class="d-sep">:</div>
-                                    <div class="d-value">{{ $ten ? $ten.' months' : '—' }}</div>
+                                    <div class="d-value">{{ $tenureVal }}</div>
                                 </div>
-                                <div class="detail-row">
-                                    <div class="d-label">Employment Type</div><div class="d-sep">:</div>
-                                    <div class="d-value">{{ $emp['type_applicant'] ?? ($cd['employment_type'] ?? '—') }}</div>
+                                <div class="detail-row {{ $cwBlank($empTypeVal) ? 'is-empty' : '' }}">
+                                    <div class="d-label" data-short="Employment">Employment Type</div><div class="d-sep">:</div>
+                                    <div class="d-value">{{ $empTypeVal }}</div>
                                 </div>
-                                <div class="detail-row">
-                                    <div class="d-label">Monthly Income</div><div class="d-sep">:</div>
-                                    <div class="d-value is-strong">{{ $fmtInr($emp['income_applicant'] ?? ($cd['monthly_income'] ?? null)) }}</div>
+                                <div class="detail-row {{ $cwBlank($incomeVal) ? 'is-empty' : '' }}">
+                                    <div class="d-label" data-short="Income">Monthly Income</div><div class="d-sep">:</div>
+                                    <div class="d-value is-strong">{{ $incomeVal }}</div>
                                 </div>
-                                <div class="detail-row">
-                                    <div class="d-label">Existing Obligations</div><div class="d-sep">:</div>
-                                    <div class="d-value is-strong">{{ $fmtInr($cd['obligations'] ?? null) }}</div>
+                                <div class="detail-row {{ $cwBlank($obligVal) ? 'is-empty' : '' }}">
+                                    <div class="d-label" data-short="Obligations">Existing Obligations</div><div class="d-sep">:</div>
+                                    <div class="d-value is-strong">{{ $obligVal }}</div>
                                 </div>
                             </div>
                         </div>
@@ -1046,65 +1459,67 @@
                         @endif
                     </div>
                     <div class="cw-table-wrap">
-                        <div class="table-responsive">
-                            <table class="table table-sm mb-0 align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Lender</th>
-                                        <th>Application Reference</th>
-                                        <th>Login Date</th>
-                                        <th>Status</th>
-                                        <th>Assigned Follow-up</th>
-                                        <th class="text-end">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($case->bankApplications->take(5) as $ba)
-                                        @php
-                                            $baStatusClass = match($ba->status){
-                                                'Processing' => 'process',
-                                                'Bank Query' => 'query',
-                                                'Sanctioned' => 'ok',
-                                                'Disbursed' => 'done',
-                                                'Rejected' => 'bad',
-                                                default => 'login',
-                                            };
-                                            $lenderName = (string) ($ba->lender_name ?? '');
-                                            $lenderKey = strtolower($lenderName);
-                                            $chipClass = match(true){
-                                                str_contains($lenderKey, 'hdfc') => 'hdfc',
-                                                str_contains($lenderKey, 'icici') => 'icici',
-                                                str_contains($lenderKey, 'sbi') || str_contains($lenderKey, 'state bank') => 'sbi',
-                                                str_contains($lenderKey, 'axis') => 'axis',
-                                                default => '',
-                                            };
-                                            $chipLabel = collect(preg_split('/\s+/', trim($lenderName)))
-                                                ->filter()
-                                                ->take(2)
-                                                ->map(fn ($w) => \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($w, 0, 1)))
-                                                ->implode('') ?: 'BK';
-                                        @endphp
+                        @if($case->bankApplications->isEmpty())
+                            <div class="cw-empty-inline">No lender applications yet.</div>
+                        @else
+                            <div class="table-responsive">
+                                <table class="table table-sm mb-0 align-middle">
+                                    <thead>
                                         <tr>
-                                            <td>
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <span class="lender-chip {{ $chipClass }}">{{ $chipLabel }}</span>
-                                                    <span class="fw-semibold">{{ $ba->lender_name }}</span>
-                                                </div>
-                                            </td>
-                                            <td>{{ $ba->application_ref ?: '—' }}</td>
-                                            <td>{{ optional($ba->login_date)->format('d M Y') ?: '—' }}</td>
-                                            <td><span class="status-pill {{ $baStatusClass }}">{{ $ba->status }}</span></td>
-                                            <td>{{ optional($ba->follow_up_at)->format('d M Y') ?: '—' }}</td>
-                                            <td class="text-end">
-                                                <button type="button" class="btn-action" data-cw-tab-jump="lenders" title="Open"><i class="bi bi-three-dots-vertical"></i></button>
-                                            </td>
+                                            <th>Lender</th>
+                                            <th>Application Reference</th>
+                                            <th>Login Date</th>
+                                            <th>Status</th>
+                                            <th>Assigned Follow-up</th>
+                                            <th class="text-end">Actions</th>
                                         </tr>
-                                    @empty
-                                        <tr><td colspan="6" class="text-center text-muted py-3">No lender applications yet.</td></tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($case->bankApplications->take(5) as $ba)
+                                            @php
+                                                $baStatusClass = match($ba->status){
+                                                    'Processing' => 'process',
+                                                    'Bank Query' => 'query',
+                                                    'Sanctioned' => 'ok',
+                                                    'Disbursed' => 'done',
+                                                    'Rejected' => 'bad',
+                                                    default => 'login',
+                                                };
+                                                $lenderName = (string) ($ba->lender_name ?? '');
+                                                $lenderKey = strtolower($lenderName);
+                                                $chipClass = match(true){
+                                                    str_contains($lenderKey, 'hdfc') => 'hdfc',
+                                                    str_contains($lenderKey, 'icici') => 'icici',
+                                                    str_contains($lenderKey, 'sbi') || str_contains($lenderKey, 'state bank') => 'sbi',
+                                                    str_contains($lenderKey, 'axis') => 'axis',
+                                                    default => '',
+                                                };
+                                                $chipLabel = collect(preg_split('/\s+/', trim($lenderName)))
+                                                    ->filter()
+                                                    ->take(2)
+                                                    ->map(fn ($w) => \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($w, 0, 1)))
+                                                    ->implode('') ?: 'BK';
+                                            @endphp
+                                            <tr>
+                                                <td data-label="Lender">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <span class="lender-chip {{ $chipClass }}">{{ $chipLabel }}</span>
+                                                        <span class="fw-semibold">{{ $ba->lender_name }}</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="App Ref">{{ $ba->application_ref ?: '—' }}</td>
+                                                <td data-label="Login">{{ optional($ba->login_date)->format('d M Y') ?: '—' }}</td>
+                                                <td data-label="Status"><span class="status-pill {{ $baStatusClass }}">{{ $ba->status }}</span></td>
+                                                <td data-label="Follow-up">{{ optional($ba->follow_up_at)->format('d M Y') ?: '—' }}</td>
+                                                <td class="text-end cw-col-actions" data-label="Actions">
+                                                    <button type="button" class="btn-action" data-cw-tab-jump="lenders" aria-label="Open lenders"><i class="bi bi-three-dots-vertical"></i></button>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
                         <div class="cw-table-note"><i class="bi bi-info-circle"></i>A case can have multiple lender applications.</div>
                     </div>
                 </div>
@@ -1118,67 +1533,69 @@
                         <button type="button" class="btn-link-cw" data-cw-tab-jump="documents">View All →</button>
                     </div>
                     <div class="cw-table-wrap">
-                        <div class="table-responsive">
-                            <table class="table table-sm mb-0 align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Document Type</th>
-                                        <th>Uploaded</th>
-                                        <th>Verification</th>
-                                        <th>Reviewer</th>
-                                        <th class="text-end">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse(collect($docs)->take(5) as $doc)
-                                        @php
-                                            $st = $doc['status'] ?? 'Pending';
-                                            $badge = match($st){ 'Verified'=>'ok', 'Rejected'=>'bad', default=>'warn' };
-                                            $path = $doc['path'] ?? ($doc['storage_path'] ?? null);
-                                            $label = $doc['label'] ?? $doc['key'] ?? 'Document';
-                                            $docIcon = match(true){
-                                                str_contains(strtolower((string)$label), 'income') => 'bi-cash-stack',
-                                                str_contains(strtolower((string)$label), 'address') => 'bi-geo-alt',
-                                                str_contains(strtolower((string)$label), 'identity') || str_contains(strtolower((string)$label), 'id proof') => 'bi-person-vcard',
-                                                default => 'bi-file-earmark-text',
-                                            };
-                                        @endphp
+                        @if(collect($docs)->isEmpty())
+                            <div class="cw-empty-inline">No documents uploaded.</div>
+                        @else
+                            <div class="table-responsive">
+                                <table class="table table-sm mb-0 align-middle">
+                                    <thead>
                                         <tr>
-                                            <td>
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <i class="bi {{ $docIcon }} doc-type-ico"></i>
-                                                    <span class="fw-semibold">{{ $label }}</span>
-                                                </div>
-                                            </td>
-                                            <td>{{ $doc['uploaded_at'] ?? '—' }}</td>
-                                            <td>
-                                                <div class="d-flex align-items-center gap-2 flex-wrap">
-                                                    <span class="doc-badge {{ $badge }}">
-                                                        @if($st === 'Verified')<i class="bi bi-check-lg"></i>
-                                                        @elseif($st === 'Rejected')<i class="bi bi-x-lg"></i>
-                                                        @else<i class="bi bi-clock"></i>@endif
-                                                        {{ $st }}
-                                                    </span>
-                                                    @if($st === 'Rejected' && !empty($doc['rejection_reason']))
-                                                        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" title="{{ $doc['rejection_reason'] }}">Reason available</button>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                            <td>{{ $doc['reviewer'] ?? '—' }}</td>
-                                            <td class="text-end">
-                                                @if($path)
-                                                    <a class="btn-download" href="{{ asset('storage/'.$path) }}" target="_blank" title="Download"><i class="bi bi-download"></i></a>
-                                                @else
-                                                    <span class="text-muted">—</span>
-                                                @endif
-                                            </td>
+                                            <th>Document Type</th>
+                                            <th>Uploaded</th>
+                                            <th>Verification</th>
+                                            <th>Reviewer</th>
+                                            <th class="text-end">Actions</th>
                                         </tr>
-                                    @empty
-                                        <tr><td colspan="5" class="text-center text-muted py-3">No documents uploaded.</td></tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        @foreach(collect($docs)->take(5) as $doc)
+                                            @php
+                                                $st = $doc['status'] ?? 'Pending';
+                                                $badge = match($st){ 'Verified'=>'ok', 'Rejected'=>'bad', default=>'warn' };
+                                                $path = $doc['path'] ?? ($doc['storage_path'] ?? null);
+                                                $label = $doc['label'] ?? $doc['key'] ?? 'Document';
+                                                $docIcon = match(true){
+                                                    str_contains(strtolower((string)$label), 'income') => 'bi-cash-stack',
+                                                    str_contains(strtolower((string)$label), 'address') => 'bi-geo-alt',
+                                                    str_contains(strtolower((string)$label), 'identity') || str_contains(strtolower((string)$label), 'id proof') => 'bi-person-vcard',
+                                                    default => 'bi-file-earmark-text',
+                                                };
+                                            @endphp
+                                            <tr>
+                                                <td data-label="Document">
+                                                    <div class="d-flex align-items-center gap-2 justify-content-end">
+                                                        <i class="bi {{ $docIcon }} doc-type-ico"></i>
+                                                        <span class="fw-semibold">{{ $label }}</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Uploaded">{{ $doc['uploaded_at'] ?? '—' }}</td>
+                                                <td data-label="Status">
+                                                    <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+                                                        <span class="doc-badge {{ $badge }}">
+                                                            @if($st === 'Verified')<i class="bi bi-check-lg"></i>
+                                                            @elseif($st === 'Rejected')<i class="bi bi-x-lg"></i>
+                                                            @else<i class="bi bi-clock"></i>@endif
+                                                            {{ $st }}
+                                                        </span>
+                                                        @if($st === 'Rejected' && !empty($doc['rejection_reason']))
+                                                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" title="{{ $doc['rejection_reason'] }}">Reason available</button>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                                <td data-label="Reviewer">{{ $doc['reviewer'] ?? '—' }}</td>
+                                                <td class="text-end cw-col-actions" data-label="Actions">
+                                                    @if($path)
+                                                        <a class="btn-download" href="{{ asset('storage/'.$path) }}" target="_blank" aria-label="Download"><i class="bi bi-download"></i></a>
+                                                    @else
+                                                        <span class="text-muted">—</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -1297,7 +1714,7 @@
                                 <div class="sanc-mini green">
                                     <span class="sm-ico"><i class="bi bi-file-earmark-check"></i></span>
                                     <div>
-                                        <div class="sm-label">Total Disbursed <span class="sm-note">(Verified)</span></div>
+                                        <div class="sm-label"><span class="sm-label-full">Total Disbursed <span class="sm-note">(Verified)</span></span><span class="sm-label-short">Disbursed (Verified)</span></div>
                                         <div class="sm-value">{{ $fmtInr($verifiedDisbTotal) }}</div>
                                     </div>
                                 </div>
@@ -1328,7 +1745,7 @@
                             <span class="sec-ico ico-blue"><i class="bi bi-clock-history"></i></span>
                             <div><h6>Recent Activity</h6></div>
                         </div>
-                        <button type="button" class="btn-link-cw" data-cw-tab-jump="activity">View Activity History →</button>
+                        <button type="button" class="btn-link-cw" data-cw-tab-jump="activity"><span class="btn-link-full">View Activity History →</span><span class="btn-link-short">View all →</span></button>
                     </div>
                     <div class="sec-body" style="padding-top:6px">
                         <ul class="timeline">
@@ -1410,6 +1827,16 @@
             </div>
             @endif
         </form>
+        {{-- Equifax forms live outside cwRecommendationForm (HTML forbids nested forms). --}}
+        @if($canEdit)
+        <form id="cwEquifaxUploadForm" method="POST" action="{{ route('goal.cases.bm-reco.equifax', $case) }}" enctype="multipart/form-data" class="d-none" aria-hidden="true">
+            @csrf
+        </form>
+        <form id="cwEquifaxRemoveForm" method="POST" action="{{ route('goal.cases.bm-reco.equifax.remove', $case) }}" class="d-none" aria-hidden="true">
+            @csrf
+            @method('DELETE')
+        </form>
+        @endif
     </div>
 
     {{-- ===================== DOCUMENTS ===================== --}}
@@ -1437,6 +1864,16 @@
         @include('goal.cases.partials.tab_disbursement')
     </div>
 
+    {{-- ===================== BRANCH MIS ===================== --}}
+    <div class="cw-pane {{ $activeTab === 'mis' ? 'active' : '' }}" data-pane="mis">
+        @include('goal.cases.partials.tab_branch_mis')
+    </div>
+
+    {{-- ===================== VISITS & FOLLOW-UPS ===================== --}}
+    <div class="cw-pane {{ $activeTab === 'visits' ? 'active' : '' }}" data-pane="visits">
+        @include('goal.cases.partials.tab_visits')
+    </div>
+
     {{-- ===================== ACTIVITY ===================== --}}
     <div class="cw-pane {{ $activeTab === 'activity' ? 'active' : '' }}" data-pane="activity">
         @include('goal.cases.partials.tab_activity')
@@ -1444,14 +1881,14 @@
 
     @include('goal.cases.partials.modals')
 
-    @if($canEdit && $next !== [])
+    @if(!empty($canAdvanceStatus) && $next !== [])
     <div class="modal fade" id="cwAdvanceStatusModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <form method="POST" action="{{ route('goal.cases.transition', $case) }}" class="modal-content">
                 @csrf
                 <div class="modal-header">
                     <h5 class="modal-title">Advance Status</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="modal-close" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
                 </div>
                 <div class="modal-body">
                     <label class="form-label">Next status</label>
@@ -1493,9 +1930,29 @@
 (function () {
     var page = document.getElementById('cwPage');
     if (!page) return;
+    function centerActiveTab(tabBtn) {
+        var tabs = page.querySelector('.cw-tabs');
+        if (!tabs || !tabBtn) return;
+        // Keep selected tab in the middle of the scrollable tab strip (mobile/tablet).
+        var tabsRect = tabs.getBoundingClientRect();
+        var tabRect = tabBtn.getBoundingClientRect();
+        var nextLeft = tabs.scrollLeft + (tabRect.left - tabsRect.left) - (tabsRect.width / 2) + (tabRect.width / 2);
+        var maxLeft = Math.max(0, tabs.scrollWidth - tabs.clientWidth);
+        nextLeft = Math.max(0, Math.min(nextLeft, maxLeft));
+        if (typeof tabs.scrollTo === 'function') {
+            tabs.scrollTo({ left: nextLeft, behavior: 'smooth' });
+        } else {
+            tabs.scrollLeft = nextLeft;
+        }
+    }
+
     function activateTab(key) {
+        var activeBtn = null;
         page.querySelectorAll('.cw-tab').forEach(function (btn) {
-            btn.classList.toggle('active', btn.getAttribute('data-cw-tab') === key);
+            var on = btn.getAttribute('data-cw-tab') === key;
+            btn.classList.toggle('active', on);
+            btn.setAttribute('aria-selected', on ? 'true' : 'false');
+            if (on) activeBtn = btn;
         });
         page.querySelectorAll('.cw-pane').forEach(function (pane) {
             pane.classList.toggle('active', pane.getAttribute('data-pane') === key);
@@ -1505,6 +1962,8 @@
         });
         page.setAttribute('data-active-tab', key);
         try { history.replaceState(null, '', '?tab=' + encodeURIComponent(key)); } catch (e) {}
+        // Defer so layout (active styles / widths) settle before measuring.
+        requestAnimationFrame(function () { centerActiveTab(activeBtn); });
     }
 
     page.querySelectorAll('.cw-tab').forEach(function (btn) {

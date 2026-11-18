@@ -1,0 +1,787 @@
+/**
+ * App-wide theme tokens driven by html[data-sidebar-theme].
+ * Soft/Goal + Green remap primary blues → teal/green. Dark keeps navy blue.
+ */
+:root,
+html[data-sidebar-theme="dark"] {
+    --theme-primary: #2563EB;
+    --theme-primary-hover: #1D4ED8;
+    --theme-primary-deep: #1E40AF;
+    --theme-primary-soft: #DBEAFE;
+    --theme-primary-softer: #EFF6FF;
+    --theme-primary-ring: rgba(37, 99, 235, 0.25);
+    --theme-accent: #0EA5E9;
+    --theme-page-bg: #EFF6FF;
+    --theme-card-bg: #FFFFFF;
+    --theme-card-border: #E2E8F0;
+    --theme-50: #EFF6FF;
+    --theme-100: #DBEAFE;
+    --theme-200: #BFDBFE;
+    --theme-300: #93C5FD;
+    --theme-400: #60A5FA;
+    --theme-500: #2563EB;
+    --theme-600: #1D4ED8;
+    --theme-700: #1E40AF;
+}
+
+html[data-sidebar-theme="soft"],
+html[data-sidebar-theme="light"] {
+    --theme-primary: #0D9488;
+    --theme-primary-hover: #0F766E;
+    --theme-primary-deep: #115E59;
+    --theme-primary-soft: #CCFBF1;
+    --theme-primary-softer: #F0FDFA;
+    --theme-primary-ring: rgba(13, 148, 136, 0.28);
+    --theme-accent: #14B8A6;
+    --theme-page-bg: #F8FAFC;
+    --theme-card-bg: #FFFFFF;
+    --theme-card-border: #E2E8F0;
+    --theme-50: #F0FDFA;
+    --theme-100: #CCFBF1;
+    --theme-200: #99F6E4;
+    --theme-300: #5EEAD4;
+    --theme-400: #2DD4BF;
+    --theme-500: #0D9488;
+    --theme-600: #0F766E;
+    --theme-700: #115E59;
+}
+
+html[data-sidebar-theme="green"] {
+    --theme-primary: #087F5B;
+    --theme-primary-hover: #066649;
+    --theme-primary-deep: #05543C;
+    --theme-primary-soft: #D3F9D8;
+    --theme-primary-softer: #EBFBEE;
+    --theme-primary-ring: rgba(8, 127, 91, 0.28);
+    --theme-accent: #168653;
+    --theme-page-bg: #F8FAFC;
+    --theme-card-bg: #FFFFFF;
+    --theme-card-border: #E8EEF2;
+    --theme-50: #EBFBEE;
+    --theme-100: #D3F9D8;
+    --theme-200: #B2F2BB;
+    --theme-300: #8CE99A;
+    --theme-400: #40C057;
+    --theme-500: #087F5B;
+    --theme-600: #066649;
+    --theme-700: #05543C;
+}
+
+/* Page chrome */
+html[data-sidebar-theme="soft"] body,
+html[data-sidebar-theme="light"] body,
+html[data-sidebar-theme="green"] body,
+html[data-sidebar-theme="soft"] .bg-light,
+html[data-sidebar-theme="light"] .bg-light,
+html[data-sidebar-theme="green"] .bg-light {
+    background: var(--theme-page-bg) !important;
+}
+
+/* Primary buttons / badges / links + Tailwind brand utilities */
+.btn-primary,
+.btn-custom,
+a.btn-primary,
+button.btn-primary,
+.bg-brand-500,
+.bg-brand-600 {
+    background: var(--theme-primary) !important;
+    border-color: var(--theme-primary) !important;
+    color: #fff !important;
+    background-image: none !important;
+}
+.btn-primary:hover,
+.btn-custom:hover,
+a.btn-primary:hover,
+button.btn-primary:hover,
+.hover\:bg-brand-600:hover {
+    background: var(--theme-primary-hover) !important;
+    border-color: var(--theme-primary-hover) !important;
+    color: #fff !important;
+    background-image: none !important;
+}
+.btn-outline-primary {
+    color: var(--theme-primary) !important;
+    border-color: var(--theme-primary) !important;
+    background: #fff !important;
+}
+.btn-outline-primary:hover {
+    background: var(--theme-primary-softer) !important;
+    color: var(--theme-primary-hover) !important;
+}
+.bg-primary,
+.badge.bg-primary {
+    background-color: var(--theme-primary) !important;
+}
+.text-primary,
+a.text-primary,
+.text-brand-500,
+.text-brand-600 {
+    color: var(--theme-primary) !important;
+}
+.border-brand-500 {
+    border-color: var(--theme-primary) !important;
+}
+.bg-brand-50 { background-color: var(--theme-50) !important; }
+.bg-brand-100 { background-color: var(--theme-100) !important; }
+.progress-bar {
+    background-color: var(--theme-primary) !important;
+}
+
+/* Header chrome */
+.header-profile-btn {
+    border-color: var(--theme-card-border) !important;
+}
+.header-profile-fallback,
+.header-profile-btn .bg-primary,
+.rounded-circle.bg-primary {
+    background: var(--theme-primary) !important;
+}
+.top-slim-header {
+    background: var(--theme-card-bg) !important;
+    border-bottom-color: var(--theme-card-border) !important;
+}
+html[data-sidebar-theme="soft"] .header-profile-btn,
+html[data-sidebar-theme="light"] .header-profile-btn,
+html[data-sidebar-theme="green"] .header-profile-btn {
+    background: var(--theme-primary) !important;
+    border-color: var(--theme-primary) !important;
+    color: #fff !important;
+}
+html[data-sidebar-theme="soft"] .header-profile-name,
+html[data-sidebar-theme="light"] .header-profile-name,
+html[data-sidebar-theme="green"] .header-profile-name,
+html[data-sidebar-theme="soft"] .header-profile-caret,
+html[data-sidebar-theme="light"] .header-profile-caret,
+html[data-sidebar-theme="green"] .header-profile-caret {
+    color: #fff !important;
+}
+html[data-sidebar-theme="soft"] .header-profile-fallback,
+html[data-sidebar-theme="light"] .header-profile-fallback,
+html[data-sidebar-theme="green"] .header-profile-fallback {
+    background: rgba(255,255,255,.2) !important;
+}
+
+/* Cards / surfaces */
+.card,
+.hub-card,
+.kpi-card,
+[class*="-card"]:not(.user-card):not(.sidebar) {
+    /* keep existing structure; only soft-border when theme active */
+}
+html[data-sidebar-theme="soft"] .card,
+html[data-sidebar-theme="light"] .card,
+html[data-sidebar-theme="green"] .card {
+    background: var(--theme-card-bg);
+    border-color: var(--theme-card-border);
+}
+
+.cw-page {
+    --cw-primary: var(--theme-primary) !important;
+    --cw-purple: var(--theme-primary) !important;
+}
+
+/* Solid filled buttons → always white text/icons on theme primary */
+.btn-primary,
+.btn-custom,
+.btn-create,
+.btn-apply,
+.btn-save,
+.ll-page .btn-create,
+.ll-page .btn-apply,
+.ll-page .btn-save,
+.ll-page button.btn-create,
+.ll-page .pagination .page-item.active .page-link,
+.ld-page .ld-btn-primary,
+.ld-page .ld-btn.ld-btn-primary,
+.cw-page .btn-primary-cw,
+.ba-page .ba-primary,
+.gd-page .gd-primary,
+.vrm-page .btn-primary,
+.ga-page .period-btn.active,
+#createLeadModal .btn-save {
+    background: var(--theme-primary) !important;
+    border-color: var(--theme-primary) !important;
+    color: #ffffff !important;
+}
+.btn-primary i,
+.btn-custom i,
+.btn-create i,
+.btn-apply i,
+.btn-save i,
+.ll-page .btn-create i,
+.ll-page .btn-apply i,
+.ld-page .ld-btn-primary i,
+.cw-page .btn-primary-cw i,
+#createLeadModal .btn-save i,
+html[data-sidebar-theme="soft"] .header-profile-btn i,
+html[data-sidebar-theme="light"] .header-profile-btn i,
+html[data-sidebar-theme="green"] .header-profile-btn i {
+    color: #ffffff !important;
+}
+
+.btn-primary:hover,
+.btn-custom:hover,
+.btn-create:hover,
+.btn-apply:hover,
+.btn-save:hover,
+.ll-page .btn-create:hover,
+.ll-page .btn-apply:hover,
+.ld-page .ld-btn-primary:hover,
+.cw-page .btn-primary-cw:hover {
+    background: var(--theme-primary-hover) !important;
+    border-color: var(--theme-primary-hover) !important;
+    color: #ffffff !important;
+}
+
+/* Soft / outline accents → dark theme text on light wells */
+.ll-page .action-btn.open,
+.gd-page .qa-blue,
+.ba-page .ref-link,
+.btn-outline-primary,
+.btn-link-cw,
+.cw-page .btn-link-cw {
+    color: var(--theme-primary-hover) !important;
+}
+.ll-page .action-btn.open i,
+.btn-outline-primary i,
+.cw-page .btn-ghost i {
+    color: var(--theme-primary) !important;
+}
+
+/* Soft icon wells */
+.ll-page .kpi-icon,
+.vrm-page .kpi-icon.blue,
+.gd-page .kpi .ico,
+.cw-page .sec-ico {
+    background: var(--theme-primary-soft) !important;
+    color: var(--theme-primary-hover) !important;
+    border-color: var(--theme-200) !important;
+}
+.cw-page .btn-primary-cw {
+    box-shadow: 0 6px 14px var(--theme-primary-ring) !important;
+}
+
+/* Icon circles filled with primary → white glyph */
+.ga-page .sb-blue .ico,
+.gd-page .snap-stat .ico.b,
+.ll-page .page-hero-icon,
+.ba-page .hero-ico {
+    color: #ffffff !important;
+}
+
+/* Focus rings */
+.form-control:focus,
+.form-select:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--theme-300) !important;
+    box-shadow: 0 0 0 3px var(--theme-primary-ring) !important;
+}
+
+/* Bootstrap / native menus — match active theme (no default blue) */
+.dropdown-item:hover,
+.dropdown-item:focus {
+    background-color: var(--theme-primary-softer) !important;
+    color: var(--theme-primary-hover) !important;
+}
+.dropdown-item.active,
+.dropdown-item:active {
+    background-color: var(--theme-primary) !important;
+    color: #fff !important;
+}
+.dropdown-menu {
+    border-color: var(--theme-card-border) !important;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14) !important;
+}
+select.form-select option:checked,
+select.form-select option:hover {
+    background: linear-gradient(0deg, var(--theme-primary) 0%, var(--theme-primary) 100%);
+    color: #fff;
+}
+
+/* ── Goal hub pages: keep wide tables scrollable on phones ──
+   Flex/grid ancestors default to min-width:auto, so a 1100px table
+   expands the page and clips instead of scrolling inside .table-wrap. */
+.bp-page,
+.sd-page,
+.doc-page,
+.lc-page,
+.ll-page,
+.ba-page,
+.vrm-page,
+.goal-targets-page {
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+.bp-page .table-card,
+.bp-page .side-card,
+.bp-page .tabs-card,
+.bp-page .filter-card,
+.bp-page .bottom-grid,
+.sd-page .table-card,
+.sd-page .side-card,
+.sd-page .tabs-card,
+.sd-page .filter-card,
+.sd-page .bottom-grid,
+.doc-page .table-card,
+.doc-page .tabs-card,
+.doc-page .filter-card,
+.lc-page .table-card,
+.ll-page .table-card,
+.ba-page .ba-table-shell,
+.vrm-page .calls-table-wrap,
+.goal-targets-page .gt-table-wrap {
+    max-width: 100%;
+    min-width: 0;
+}
+.bp-page .table-card,
+.sd-page .table-card,
+.doc-page .table-card,
+.bp-page .side-card,
+.sd-page .side-card {
+    overflow: hidden; /* scrollport is the inner wrap, not the page */
+}
+.bp-page .table-card-body,
+.sd-page .table-card-body,
+.doc-page .table-card-body,
+.bp-page .side-card-body,
+.sd-page .side-card-body {
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+.bp-page .table-wrap,
+.sd-page .table-wrap,
+.doc-page .docs-table-wrap,
+.lc-page .cases-table-wrap,
+.ll-page .leads-table-wrap,
+.ba-page .ba-table-wrap,
+.vrm-page .calls-table-wrap,
+.goal-targets-page .gt-table-wrap,
+.bp-page .side-card-body .table-wrap {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #f1f5f9;
+}
+.bp-page .table-wrap::-webkit-scrollbar,
+.sd-page .table-wrap::-webkit-scrollbar,
+.doc-page .docs-table-wrap::-webkit-scrollbar,
+.lc-page .cases-table-wrap::-webkit-scrollbar,
+.ll-page .leads-table-wrap::-webkit-scrollbar,
+.ba-page .ba-table-wrap::-webkit-scrollbar,
+.vrm-page .calls-table-wrap::-webkit-scrollbar {
+    height: 8px;
+}
+.bp-page .table-wrap::-webkit-scrollbar-thumb,
+.sd-page .table-wrap::-webkit-scrollbar-thumb,
+.doc-page .docs-table-wrap::-webkit-scrollbar-thumb,
+.lc-page .cases-table-wrap::-webkit-scrollbar-thumb,
+.ll-page .leads-table-wrap::-webkit-scrollbar-thumb,
+.ba-page .ba-table-wrap::-webkit-scrollbar-thumb,
+.vrm-page .calls-table-wrap::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 999px;
+}
+.bp-page .table-wrap > table,
+.sd-page .table-wrap > table,
+.doc-page .docs-table-wrap > table,
+.lc-page .cases-table-wrap > table,
+.ll-page .leads-table-wrap > table {
+    width: max-content;
+    min-width: 100%;
+}
+
+main.custom-margin,
+main.with-top-header {
+    min-width: 0 !important;
+    max-width: 100%;
+}
+
+/* Mobile: stack Goal hub register rows as labeled cards.
+   Horizontal scroll kept failing under flex + overflow-x-clip ancestors. */
+@media (max-width: 575.98px) {
+    .bp-page .table-card,
+    .sd-page .table-card,
+    .doc-page .table-card,
+    .bp-page .side-card,
+    .sd-page .side-card {
+        overflow: visible !important;
+    }
+    .bp-page .table-card-body,
+    .sd-page .table-card-body,
+    .doc-page .table-card-body,
+    .bp-page .side-card-body,
+    .sd-page .side-card-body {
+        overflow: visible !important;
+        padding: 0.75rem 0.85rem !important;
+    }
+
+    .bp-page .table-wrap,
+    .sd-page .table-wrap,
+    .doc-page .docs-table-wrap,
+    .bp-page .side-card-body .table-wrap,
+    .sd-page .side-card-body .table-wrap {
+        overflow: visible !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .bp-page .table-wrap > table,
+    .sd-page .table-wrap > table,
+    .doc-page .docs-table-wrap > table,
+    .bp-page .side-card-body .table-wrap > table,
+    .sd-page .side-card-body .table-wrap > table {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        display: block !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .bp-page .table-wrap > table thead,
+    .sd-page .table-wrap > table thead,
+    .doc-page .docs-table-wrap > table thead,
+    .bp-page .side-card-body .table-wrap > table thead,
+    .sd-page .side-card-body .table-wrap > table thead {
+        display: none !important;
+    }
+
+    .bp-page .table-wrap > table tbody,
+    .sd-page .table-wrap > table tbody,
+    .doc-page .docs-table-wrap > table tbody,
+    .bp-page .side-card-body .table-wrap > table tbody,
+    .sd-page .side-card-body .table-wrap > table tbody {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .bp-page .table-wrap > table tr,
+    .sd-page .table-wrap > table tr,
+    .doc-page .docs-table-wrap > table tr,
+    .bp-page .side-card-body .table-wrap > table tr,
+    .sd-page .side-card-body .table-wrap > table tr {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        margin: 0 0 0.75rem !important;
+        border: 1px solid #e8edf5 !important;
+        border-radius: 12px !important;
+        background: #fff !important;
+        padding: 0.55rem 0.65rem !important;
+        box-shadow: 0 4px 14px rgba(148, 163, 184, 0.12);
+        overflow: hidden;
+    }
+
+    .bp-page .table-wrap > table tr:last-child,
+    .sd-page .table-wrap > table tr:last-child,
+    .doc-page .docs-table-wrap > table tr:last-child,
+    .bp-page .side-card-body .table-wrap > table tr:last-child,
+    .sd-page .side-card-body .table-wrap > table tr:last-child {
+        margin-bottom: 0 !important;
+    }
+
+    .bp-page .table-wrap > table td,
+    .sd-page .table-wrap > table td,
+    .doc-page .docs-table-wrap > table td,
+    .bp-page .side-card-body .table-wrap > table td,
+    .sd-page .side-card-body .table-wrap > table td {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 0.75rem !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        padding: 0.4rem 0.15rem !important;
+        border: 0 !important;
+        white-space: normal !important;
+        font-size: 0.84rem !important;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    .bp-page .table-wrap > table td > *,
+    .sd-page .table-wrap > table td > *,
+    .doc-page .docs-table-wrap > table td > *,
+    .bp-page .side-card-body .table-wrap > table td > *,
+    .sd-page .side-card-body .table-wrap > table td > * {
+        min-width: 0;
+        max-width: 58%;
+        text-align: right;
+    }
+
+    .bp-page .table-wrap > table td::before,
+    .sd-page .table-wrap > table td::before,
+    .doc-page .docs-table-wrap > table td::before,
+    .bp-page .side-card-body .table-wrap > table td::before,
+    .sd-page .side-card-body .table-wrap > table td::before {
+        content: attr(data-label);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #64748b;
+        flex: 0 1 42%;
+        max-width: 42%;
+        min-width: 0;
+    }
+
+    .bp-page .table-wrap > table td.col-actions,
+    .sd-page .table-wrap > table td.col-actions,
+    .doc-page .docs-table-wrap > table td.col-actions,
+    .bp-page .side-card-body .table-wrap > table td.col-actions,
+    .sd-page .side-card-body .table-wrap > table td.col-actions,
+    .bp-page .table-wrap > table td:last-child:not([colspan]),
+    .bp-page .side-card-body .table-wrap > table td:last-child:not([colspan]),
+    .sd-page .side-card-body .table-wrap > table td:last-child:not([colspan]) {
+        position: static !important;
+        box-shadow: none !important;
+        border-left: 0 !important;
+        min-width: 0 !important;
+        justify-content: flex-end !important;
+        padding-top: 0.55rem !important;
+        margin-top: 0.25rem !important;
+        border-top: 1px solid #f1f5f9 !important;
+    }
+
+    .bp-page .table-wrap > table td.col-actions > *,
+    .sd-page .table-wrap > table td.col-actions > *,
+    .doc-page .docs-table-wrap > table td.col-actions > *,
+    .bp-page .side-card-body .table-wrap > table td.col-actions > *,
+    .sd-page .side-card-body .table-wrap > table td.col-actions > *,
+    .bp-page .table-wrap > table td:last-child:not([colspan]) > *,
+    .bp-page .side-card-body .table-wrap > table td:last-child:not([colspan]) > *,
+    .sd-page .side-card-body .table-wrap > table td:last-child:not([colspan]) > * {
+        max-width: none;
+        text-align: inherit;
+    }
+
+    .bp-page .table-wrap > table td.col-actions::before,
+    .sd-page .table-wrap > table td.col-actions::before,
+    .doc-page .docs-table-wrap > table td.col-actions::before,
+    .bp-page .side-card-body .table-wrap > table td.col-actions::before,
+    .sd-page .side-card-body .table-wrap > table td.col-actions::before,
+    .bp-page .table-wrap > table td:last-child:not([colspan])::before,
+    .bp-page .side-card-body .table-wrap > table td:last-child:not([colspan])::before,
+    .sd-page .side-card-body .table-wrap > table td:last-child:not([colspan])::before,
+    .bp-page .table-wrap > table td[colspan]::before,
+    .sd-page .table-wrap > table td[colspan]::before,
+    .doc-page .docs-table-wrap > table td[colspan]::before,
+    .bp-page .side-card-body .table-wrap > table td[colspan]::before,
+    .sd-page .side-card-body .table-wrap > table td[colspan]::before {
+        display: none !important;
+        content: none !important;
+    }
+
+    .bp-page .table-wrap > table td[colspan],
+    .sd-page .table-wrap > table td[colspan],
+    .doc-page .docs-table-wrap > table td[colspan],
+    .bp-page .side-card-body .table-wrap > table td[colspan],
+    .sd-page .side-card-body .table-wrap > table td[colspan] {
+        display: block !important;
+        text-align: center !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 1rem 0.5rem !important;
+    }
+
+    .bp-page .table-wrap > table tr:has(td[colspan]),
+    .sd-page .table-wrap > table tr:has(td[colspan]),
+    .doc-page .docs-table-wrap > table tr:has(td[colspan]),
+    .bp-page .side-card-body .table-wrap > table tr:has(td[colspan]),
+    .sd-page .side-card-body .table-wrap > table tr:has(td[colspan]) {
+        border: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+}
+
+/* ── Sticky Actions column (horizontal table scroll) ── */
+.table-wrap,
+.docs-table-wrap,
+.cases-table-wrap,
+.leads-table-wrap,
+.ba-table-wrap,
+.calls-table-wrap,
+.gt-table-wrap,
+.sd-page .table-wrap,
+.bp-page .table-wrap {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+.table-wrap::-webkit-scrollbar,
+.docs-table-wrap::-webkit-scrollbar,
+.cases-table-wrap::-webkit-scrollbar,
+.leads-table-wrap::-webkit-scrollbar,
+.ba-table-wrap::-webkit-scrollbar,
+.calls-table-wrap::-webkit-scrollbar,
+.gt-table-wrap::-webkit-scrollbar,
+.table-responsive::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+.table-wrap::-webkit-scrollbar-thumb,
+.docs-table-wrap::-webkit-scrollbar-thumb,
+.cases-table-wrap::-webkit-scrollbar-thumb,
+.leads-table-wrap::-webkit-scrollbar-thumb,
+.ba-table-wrap::-webkit-scrollbar-thumb,
+.calls-table-wrap::-webkit-scrollbar-thumb,
+.gt-table-wrap::-webkit-scrollbar-thumb,
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+}
+
+.table-wrap > table,
+.docs-table-wrap > table,
+.cases-table-wrap > table,
+.leads-table-wrap > table,
+.ba-table-wrap > table,
+.calls-table-wrap > table,
+.gt-table-wrap > table,
+.table-responsive > table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+table thead th.col-actions,
+table tbody td.col-actions {
+    position: sticky;
+    right: 0;
+    z-index: 3;
+    min-width: 108px;
+    box-shadow: -6px 0 10px rgba(15, 23, 42, 0.06);
+    border-left: 1px solid #eef2f7;
+}
+table thead th.col-actions {
+    z-index: 4;
+    background: #f1f5f9;
+}
+table tbody td.col-actions {
+    background: #fff;
+}
+table tbody tr:hover td.col-actions {
+    background: #f8fafc;
+}
+/* Wider sticky cell when actions are inline forms (PMS / Accounts / Payouts) */
+table tbody td.col-actions:has(form) {
+    min-width: 260px;
+    max-width: 420px;
+}
+
+/* Keep sticky Actions on phone when the table scrolls horizontally.
+   Only disable sticky when a module converts rows into stacked cards. */
+@media (max-width: 767.98px) {
+    .table-responsive > table.table thead th.col-actions,
+    .table-responsive > table.table tbody td.col-actions {
+        position: static !important;
+        box-shadow: none !important;
+        border-left: 0 !important;
+        min-width: 0;
+    }
+}
+
+/*
+ * Modals: portaled to <body> by tw-ui.js.
+ * Layout lives in tw-overlays.css (sheet on mobile, centered card on desktop).
+ * Keep only stacking + close-button chrome here — do not force height/padding.
+ */
+body > .modal,
+body > .modal.show,
+.modal,
+.modal.show {
+    position: fixed !important;
+    z-index: 10650 !important;
+}
+body > .modal-backdrop,
+body > .modal-backdrop.show,
+.modal-backdrop,
+.modal-backdrop.show,
+body > .tw-modal-backdrop,
+.tw-modal-backdrop,
+.tw-modal-backdrop.show {
+    position: fixed !important;
+    z-index: 10640 !important;
+}
+body.modal-open .top-slim-header,
+body.modal-open .sidebar,
+body.modal-open .sidebar-shell,
+body.modal-open .top-slim-footer,
+body.tw-modal-open .top-slim-header,
+body.tw-modal-open .sidebar,
+body.tw-modal-open .top-slim-footer {
+    z-index: 1 !important;
+}
+@media (max-width: 767.98px) {
+    body.tw-modal-open .top-slim-header {
+        z-index: 10660 !important;
+    }
+}
+.modal-close {
+    width: 34px;
+    height: 34px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    flex-shrink: 0;
+    cursor: pointer;
+    line-height: 1;
+}
+.modal-close:hover {
+    background: #f8fafc;
+    color: #0f172a;
+}
+.modal-close i { font-size: 0.95rem; }
+
+/* Compact action tooltips (tw-ui shim — not Bootstrap CSS) */
+.tw-tooltip {
+    position: fixed; /* viewport-only — must not widen document / page scroll */
+    left: 0;
+    top: 0;
+    z-index: 1080;
+    pointer-events: none;
+    opacity: 0;
+    max-width: min(280px, calc(100vw - 16px));
+    transition: opacity .12s ease;
+}
+.tw-tooltip.show { opacity: 1; }
+.tw-tooltip-inner {
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    padding: 0.35rem 0.55rem;
+    border-radius: 8px;
+    background: #0f172a;
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: inherit;
+}

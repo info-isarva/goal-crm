@@ -98,7 +98,7 @@
 }
 .goal-targets-page .gt-table-head {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 18px 20px 14px;
+    padding: 14px 18px; border-bottom: 1px solid #eef0f6;
 }
 .goal-targets-page .gt-table-title {
     margin: 0; font-size: 1.05rem; font-weight: 800; color: #1a1c32;
@@ -108,7 +108,7 @@
 .goal-targets-page .gt-table-meta { font-size: .78rem; color: #64748b; font-weight: 600; }
 .goal-targets-page .gt-table-wrap {
     overflow-x: auto; -webkit-overflow-scrolling: touch;
-    padding: 0 8px 4px; width: 100%; max-width: 100%;
+    padding: 0; width: 100%; max-width: 100%;
 }
 .goal-targets-page .gt-table {
     font-size: .875rem; width: 100%; min-width: 920px; margin: 0;
@@ -262,7 +262,7 @@
     }
 }
 @media (max-width: 767.98px) {
-    .goal-targets-page .gt-table-wrap { padding: 0 4px 4px; }
+    .goal-targets-page .gt-table-wrap { padding: 0; }
     .goal-targets-page .gt-table-head { padding: 14px 14px 10px; }
     .goal-targets-page .gt-table-foot { padding: 12px 14px; }
 }
@@ -318,6 +318,9 @@
             </div>
         </div>
         <div class="hero-actions">
+            <a href="{{ route('goal.targets.export', request()->query()) }}" class="btn-gt-reset" style="text-decoration:none">
+                <i class="bi bi-download"></i> Export CSV
+            </a>
             @if($canManage)
                 <button type="button" class="btn-gt-primary" data-bs-toggle="modal" data-bs-target="#addTargetModal">
                     <i class="bi bi-plus-lg"></i> Add Target
@@ -403,15 +406,17 @@
                 <select name="owner_type" id="filter_owner_type" class="form-select">
                     <option value="">All owners</option>
                     <option value="employee" @selected(($filters['owner_type'] ?? '') === 'employee')>Team member</option>
-                    <option value="org_unit" @selected(($filters['owner_type'] ?? '') === 'org_unit')>Branch</option>
+                    <option value="org_unit" @selected(($filters['owner_type'] ?? '') === 'org_unit')>Org unit</option>
                 </select>
             </div>
             <div>
-                <label class="form-label" for="filter_branch">Branch</label>
+                <label class="form-label" for="filter_branch">Org unit</label>
                 <select name="goal_org_unit_id" id="filter_branch" class="form-select">
-                    <option value="">All branches</option>
+                    <option value="">All org units</option>
                     @foreach($branches as $b)
-                        <option value="{{ $b->id }}" @selected((string) $filters['goal_org_unit_id'] === (string) $b->id)>{{ $b->name }}</option>
+                        <option value="{{ $b->id }}" @selected((string) $filters['goal_org_unit_id'] === (string) $b->id)>
+                            {{ strtoupper($b->type) }} · {{ $b->name }}
+                        </option>
                     @endforeach
                 </select>
             </div>
@@ -476,7 +481,7 @@
                             </td>
                             <td>
                                 <div class="gt-owner-name">{{ $ownerLabel }}</div>
-                                <div class="gt-owner-sub">{{ $ownerType === 'employee' ? 'Team member' : 'Branch' }}</div>
+                                <div class="gt-owner-sub">{{ $ownerType === 'employee' ? 'Team member' : 'Org unit' }}</div>
                             </td>
                             <td class="col-amt">{{ number_format($effective, 2) }}</td>
                             <td class="col-amt">{{ number_format((float) $t->actual, 2) }}</td>
@@ -574,14 +579,14 @@
     @if($canManage)
     {{-- Add Modal --}}
     <div class="modal fade" id="addTargetModal" tabindex="-1" aria-labelledby="addTargetModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <form method="POST" action="{{ route('goal.targets.store') }}" id="addTargetForm" novalidate>
                     @csrf
                     <input type="hidden" name="_form" value="create">
                     <div class="modal-header">
                         <h5 class="modal-title" id="addTargetModalLabel"><i class="bi bi-plus-circle me-1"></i> Add Target</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
                     </div>
                     <div class="modal-body">
                         @include('goal.targets._form_fields', [
@@ -615,7 +620,7 @@
 
     {{-- Edit Modal --}}
     <div class="modal fade" id="editTargetModal" tabindex="-1" aria-labelledby="editTargetModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <form method="POST" action="{{ (old('_form') === 'edit' && old('target_id')) ? route('goal.targets.update', old('target_id')) : '#' }}" id="editTargetForm" novalidate>
                     @csrf
@@ -624,7 +629,7 @@
                     <input type="hidden" name="target_id" id="edit_target_id" value="{{ old('target_id') }}">
                     <div class="modal-header">
                         <h5 class="modal-title" id="editTargetModalLabel"><i class="bi bi-pencil-square me-1"></i> Edit Target</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
                     </div>
                     <div class="modal-body">
                         @include('goal.targets._form_fields', [

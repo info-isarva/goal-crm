@@ -57,7 +57,13 @@
             <div class="us-page-icon" aria-hidden="true"><i class="bi bi-people-fill"></i></div>
             <div>
                 <h1 class="us-page-title">User Settings</h1>
-                <p class="us-page-sub">Manage CRM users, roles, authentication and sales targets.</p>
+                <p class="us-page-sub">
+                    @if(\App\Services\Goal\GoalDashboardService::userUsesGoalDashboard(auth()->user()))
+                        Manage CRM users, roles and authentication. Monthly targets are set in Targets.
+                    @else
+                        Manage CRM users, roles, authentication and sales targets.
+                    @endif
+                </p>
             </div>
         </div>
     </div>

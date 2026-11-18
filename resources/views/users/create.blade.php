@@ -459,6 +459,7 @@
 
 @section('content')
 @php
+    $isGoalTenant = \App\Services\Goal\GoalDashboardService::userUsesGoalDashboard(auth()->user());
     $permMeta = [
         'Goal PMS & Accounts' => ['icon' => 'bi-database', 'tone' => 'tone-blue'],
         'Settings' => ['icon' => 'bi-gear', 'tone' => 'tone-violet'],
@@ -623,6 +624,7 @@
                             </div>
                             @error('password_confirmation')<div class="field-error-text">{{ $message }}</div>@enderror
                         </div>
+                        @unless($isGoalTenant)
                         <div>
                             <label for="sales_target" class="form-label">Sales Target ({{ config('app.currency_symbol', '₹') }})</label>
                             <div class="input-icon">
@@ -632,6 +634,7 @@
                             </div>
                             @error('sales_target')<div class="field-error-text">{{ $message }}</div>@enderror
                         </div>
+                        @endunless
                         <div id="assign-manager-container" style="display: none;">
                             <label for="assign_manager" class="form-label">Assign Manager</label>
                             <div class="input-icon">

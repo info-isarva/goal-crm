@@ -1,12 +1,12 @@
 {{-- Reassign --}}
 @if($canReassign)
 <div class="modal fade" id="cwReassignModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="{{ route('goal.cases.reassign', $case) }}" class="modal-content">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title">Reassign Case</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
@@ -35,12 +35,12 @@
 {{-- Add Lender Application --}}
 @if($canEdit)
 <div class="modal fade" id="cwAddLenderModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="{{ route('goal.cases.bank-applications.store', $case) }}" enctype="multipart/form-data" class="modal-content">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title">Add Lender Application</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="row g-3">
@@ -95,12 +95,12 @@
 
 {{-- Upload Document --}}
 <div class="modal fade" id="cwUploadDocModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="{{ route('goal.cases.documents.store', $case) }}" enctype="multipart/form-data" class="modal-content">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title">Upload Document</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
@@ -133,7 +133,7 @@
 
 {{-- Reject Document --}}
 <div class="modal fade" id="cwRejectDocModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="{{ route('goal.cases.documents.verify', $case) }}" class="modal-content" id="cwRejectDocForm">
             @csrf
             <input type="hidden" name="key" id="cwRejectDocKey">
@@ -141,7 +141,7 @@
             <input type="hidden" name="action" value="Rejected">
             <div class="modal-header">
                 <h5 class="modal-title">Reject Document</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <label class="form-label">Rejection reason <span class="text-danger">*</span></label>
@@ -157,12 +157,12 @@
 
 {{-- Add Query --}}
 <div class="modal fade" id="cwAddQueryModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="" id="cwAddQueryForm" enctype="multipart/form-data" class="modal-content">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title">Add Bank Query</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
@@ -217,12 +217,12 @@
 
 {{-- Resolve Query --}}
 <div class="modal fade" id="cwResolveQueryModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="" id="cwResolveQueryForm" enctype="multipart/form-data" class="modal-content">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title">Resolve Bank Query</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
@@ -248,12 +248,12 @@
 
 {{-- Add Sanction --}}
 <div class="modal fade" id="cwAddSanctionModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="" id="cwAddSanctionForm" enctype="multipart/form-data" class="modal-content">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title">Record Sanction</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
@@ -303,12 +303,12 @@
 
 {{-- Add Disbursement --}}
 <div class="modal fade" id="cwAddDisbModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="{{ route('goal.cases.disbursements.store', $case) }}" enctype="multipart/form-data" class="modal-content">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title">Record Disbursement</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="row g-3">
@@ -398,17 +398,28 @@
         });
     }
 
+    function applyLenderAppId(appId) {
+        if (!appId) return;
+        ['cwQueryAppSelect', 'cwSanctionAppSelect'].forEach(function (id) {
+            var sel = document.getElementById(id);
+            if (!sel) return;
+            sel.value = String(appId);
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
+
     document.querySelectorAll('[data-bs-target="#cwAddQueryModal"], [data-bs-target="#cwAddSanctionModal"]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            var appId = btn.getAttribute('data-app-id');
-            if (!appId) return;
-            ['cwQueryAppSelect', 'cwSanctionAppSelect'].forEach(function (id) {
-                var sel = document.getElementById(id);
-                if (sel) {
-                    sel.value = appId;
-                    sel.dispatchEvent(new Event('change'));
-                }
-            });
+            applyLenderAppId(btn.getAttribute('data-app-id'));
+        });
+    });
+
+    ['cwAddQueryModal', 'cwAddSanctionModal'].forEach(function (id) {
+        var modal = document.getElementById(id);
+        if (!modal) return;
+        modal.addEventListener('show.bs.modal', function (e) {
+            var btn = e.relatedTarget;
+            if (btn) applyLenderAppId(btn.getAttribute('data-app-id'));
         });
     });
 })();

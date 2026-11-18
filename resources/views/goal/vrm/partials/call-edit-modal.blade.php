@@ -1,6 +1,6 @@
 {{-- Edit Call Log — same design/fields as Log Call create popup --}}
 <div class="modal fade vrm-call-modal" id="editVrmCallModal" tabindex="-1" aria-labelledby="editVrmCallModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <form method="POST" class="vrm-log-form" id="editVrmCallForm" novalidate>
                 @csrf
@@ -13,7 +13,7 @@
                             <div class="modal-sub">Update customer call details and linked lead information.</div>
                         </div>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
                 </div>
 
                 <div class="modal-body">

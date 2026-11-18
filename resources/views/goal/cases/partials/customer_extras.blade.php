@@ -11,7 +11,11 @@
                     Proposal brief for <strong>{{ strtoupper($case->customer_name) }}</strong>
                 </div>
             </div>
-            <div class="cw-reco-banner-meta">Saved with workspace · Export from Branch MIS if needed</div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <a href="{{ route('goal.cases.bm-reco.export', $case) }}" class="btn-ghost" style="height:34px;padding:0 12px">
+                    <i class="bi bi-file-earmark-pdf"></i> Export PDF
+                </a>
+            </div>
         </div>
 
         <div class="cw-reco-top">
@@ -486,6 +490,54 @@
                     </td>
                 </tr>
             </template>
+        </div>
+    </div>
+
+    {{-- ========== EQUIFAX ========== --}}
+    @php
+        $equifax = data_get($br, 'equifax', []) ?: [];
+        $hasEquifax = filled($equifax['path'] ?? null);
+    @endphp
+    <div class="cw-extra-section" id="cwEquifax">
+        <div class="cw-card-tw cw-card-soft">
+            <div class="cw-card-head cw-card-head-soft">
+                <span class="cw-ico cw-ico-amber"><i class="bi bi-file-earmark-lock"></i></span>
+                <h6 class="cw-card-title">Equifax / Credit Bureau</h6>
+            </div>
+            <div class="cw-reco-col-grid cw-collateral-fields" style="align-items:end">
+                <div class="cw-reco-col-span">
+                    <label class="cw-label">Attached report</label>
+                    @if($hasEquifax)
+                        <div class="d-flex align-items-center gap-2 flex-wrap" style="min-height:40px">
+                            <a href="{{ route('goal.cases.bm-reco.equifax.download', $case) }}" target="_blank" rel="noopener" class="btn-ghost" style="height:36px;padding:0 12px">
+                                <i class="bi bi-eye"></i> {{ $equifax['file_name'] ?? 'View report' }}
+                            </a>
+                            <span class="text-muted" style="font-size:.78rem">
+                                {{ $equifax['uploaded_at'] ?? '' }}
+                                @if(!empty($equifax['uploaded_by'])) · {{ $equifax['uploaded_by'] }} @endif
+                            </span>
+                            @if($canEdit)
+                                <button type="submit" form="cwEquifaxRemoveForm" class="btn btn-outline-danger btn-sm" style="height:36px;border-radius:10px"
+                                        onclick="return confirm('Remove Equifax attachment?');">Remove</button>
+                            @endif
+                        </div>
+                    @else
+                        <div class="text-muted" style="font-size:.84rem;min-height:40px;display:flex;align-items:center">No Equifax report attached yet.</div>
+                    @endif
+                </div>
+                @if($canEdit)
+                    <div class="cw-reco-col-span">
+                        <div class="d-flex flex-wrap gap-2 align-items-end">
+                            <div style="flex:1;min-width:220px">
+                                <label class="cw-label">{{ $hasEquifax ? 'Replace file' : 'Upload Equifax PDF / image' }}</label>
+                                <input type="file" name="file" form="cwEquifaxUploadForm" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" required>
+                            </div>
+                            <button type="submit" form="cwEquifaxUploadForm" class="btn-save" style="height:40px"><i class="bi bi-upload"></i> {{ $hasEquifax ? 'Replace' : 'Upload' }}</button>
+                        </div>
+                        <div class="text-muted mt-1" style="font-size:.72rem">PDF or image · max 10 MB · stored privately with the case</div>
+                    </div>
+                @endif
+            </div>
         </div>
     </div>
 

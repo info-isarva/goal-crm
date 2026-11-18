@@ -44,6 +44,9 @@
             animate: true,
             altInput: true,
             altInputClass: altInputClassFor(el),
+            // Keep picker above Bootstrap / tw modals (10650)
+            static: false,
+            appendTo: document.body,
             onReady: function (selectedDates, dateStr, instance) {
                 if (instance.altInput) {
                     instance.altInput.setAttribute(
@@ -104,7 +107,8 @@
             enableTime: true,
             noCalendar: true,
             time_24hr: false,
-            dateFormat: 'h:i K',
+            // Submit 24h H:i for Laravel date_format:H:i; show 12h in the UI
+            dateFormat: 'H:i',
             altFormat: 'h:i K',
             defaultDate: el.value || null,
             minuteIncrement: step

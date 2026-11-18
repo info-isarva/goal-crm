@@ -9,6 +9,7 @@ use App\Models\GoalTarget;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GoalTargetController extends Controller
 {
@@ -101,9 +102,14 @@ class GoalTargetController extends Controller
 
         $scopedOrgIds = $actor->goalScopedOrgUnitIds();
         $branches = GoalOrgUnit::query()
-            ->ofType('branch')
             ->active()
+            ->whereIn('type', [
+                GoalOrgUnit::TYPE_BRANCH,
+                GoalOrgUnit::TYPE_CLUSTER,
+                GoalOrgUnit::TYPE_REGION,
+            ])
             ->when(!$this->isGlobalTargetViewer($actor), fn ($q) => $q->whereIn('id', $scopedOrgIds ?: [0]))
+            ->orderByRaw("CASE type WHEN 'region' THEN 0 WHEN 'cluster' THEN 1 ELSE 2 END")
             ->orderBy('name')
             ->get();
 
@@ -129,6 +135,57 @@ class GoalTargetController extends Controller
             'canManage',
             'canApprove'
         ));
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $this->requireGoalPermission('view_targets_guard');
+
+        $actor = auth()->user();
+        $filters = [
+            'period' => trim((string) $request->get('period', '')),
+            'metric' => trim((string) $request->get('metric', '')),
+            'status' => trim((string) $request->get('status', '')),
+            'goal_org_unit_id' => $request->get('goal_org_unit_id'),
+            'owner_type' => trim((string) $request->get('owner_type', '')),
+            'user_id' => $request->get('user_id'),
+        ];
+
+        $query = GoalTarget::query()->with(['orgUnit', 'user']);
+        $this->applyScope($query, $actor);
+        $this->applyFilters($query, $filters);
+        $rows = $query->orderByDesc('period')->orderBy('metric')->limit(5000)->get();
+        $filename = 'targets-carry-forward-'.now()->format('Ymd-His').'.csv';
+
+        return response()->streamDownload(function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, [
+                'Period', 'Metric', 'Owner', 'Owner Type',
+                'Base Target', 'Opening Shortfall', 'Adjustments', 'Effective',
+                'Actual', 'Closing Shortfall', 'Status',
+            ]);
+            foreach ($rows as $t) {
+                $ownerType = $t->user_id ? 'employee' : 'org_unit';
+                $ownerLabel = $t->user_id
+                    ? ($t->user?->name ?? ('User #'.$t->user_id))
+                    : ($t->orgUnit?->name ?? '');
+                fputcsv($out, [
+                    $t->period,
+                    $t->metric,
+                    $ownerLabel,
+                    $ownerType,
+                    $t->base_target,
+                    $t->opening_shortfall,
+                    $t->adjustments,
+                    $t->effectiveTarget(),
+                    $t->actual,
+                    $t->closing_shortfall,
+                    $t->status,
+                ]);
+            }
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function store(Request $request)
@@ -293,8 +350,8 @@ class GoalTargetController extends Controller
             'actual' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
             'status' => ['nullable', 'in:Draft,Approved'],
         ], [
-            'owner_type.required' => 'Select whether the target is for a team member or a branch.',
-            'owner_type.in' => 'Owner must be either Employee or Branch.',
+            'owner_type.required' => 'Select whether the target is for a team member or an org unit.',
+            'owner_type.in' => 'Owner must be either Employee or Org unit.',
             'period.required' => 'Period is required (YYYY-MM).',
             'period.regex' => 'Period must be in YYYY-MM format (e.g. 2026-11).',
             'metric.required' => 'Please select a metric.',
@@ -315,12 +372,16 @@ class GoalTargetController extends Controller
             }
         } else {
             if (!$orgUnitId) {
-                throw ValidationException::withMessages(['goal_org_unit_id' => 'Please select a branch.']);
+                throw ValidationException::withMessages(['goal_org_unit_id' => 'Please select a region, cluster, or branch.']);
             }
             $userId = null;
+            $unit = GoalOrgUnit::query()->find($orgUnitId);
+            if (! $unit || ! in_array($unit->type, [GoalOrgUnit::TYPE_BRANCH, GoalOrgUnit::TYPE_CLUSTER, GoalOrgUnit::TYPE_REGION], true)) {
+                throw ValidationException::withMessages(['goal_org_unit_id' => 'Select a valid region, cluster, or branch.']);
+            }
             $scoped = $actor->goalScopedOrgUnitIds();
             if (!$this->isGlobalTargetViewer($actor) && !in_array($orgUnitId, array_map('intval', $scoped), true)) {
-                throw ValidationException::withMessages(['goal_org_unit_id' => 'You can only set targets for branches in your scope.']);
+                throw ValidationException::withMessages(['goal_org_unit_id' => 'You can only set targets for org units in your scope.']);
             }
         }
 

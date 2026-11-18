@@ -9,7 +9,7 @@
         .meta { font-size: 9pt; color: #64748b; margin-bottom: 12px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #cbd5e1; padding: 5px 6px; text-align: left; vertical-align: top; }
-        th { background: #eff6ff; color: #1e3a5f; font-weight: 700; font-size: 9pt; }
+        th { background: var(--theme-50); color: #1e3a5f; font-weight: 700; font-size: 9pt; }
         td { font-size: 8.5pt; }
         .empty { text-align: center; color: #94a3b8; padding: 18px; }
     </style>

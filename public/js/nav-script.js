@@ -73,6 +73,14 @@
             el.addEventListener('click', toggleMenu);
         });
 
+        Array.prototype.slice.call(document.querySelectorAll('.js-mobile-menu-close')).forEach(function (el) {
+            el.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                setMenuOpen(false);
+            });
+        });
+
         if (backdrop) {
             backdrop.addEventListener('click', function () {
                 setMenuOpen(false);

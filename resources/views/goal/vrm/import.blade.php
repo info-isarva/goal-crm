@@ -4,7 +4,7 @@
 <style>
 .vrm-import {
     --vi-ink:#0f172a; --vi-muted:#64748b; --vi-line:#e8edf5;
-    --vi-blue:#2563eb; --vi-purple:#7c3aed; --vi-green:#16a34a;
+    --vi-blue:var(--theme-primary); --vi-purple:#7c3aed; --vi-green:#16a34a;
 }
 .vrm-import .page-hero {
     display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
@@ -17,8 +17,25 @@
     color:#fff; display:inline-flex; align-items:center; justify-content:center;
     font-size:1.35rem; box-shadow:0 10px 20px rgba(99,102,241,.28);
 }
+.vrm-import .vi-crumbs {
+    display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+    margin:0 0 8px; padding:0; list-style:none; font-size:.78rem; color:#64748b;
+}
+.vrm-import .vi-crumbs a { color:var(--theme-primary); text-decoration:none; font-weight:600; }
+.vrm-import .vi-crumbs a:hover { text-decoration:underline; }
+.vrm-import .vi-crumbs .sep { opacity:.5; }
 .vrm-import .vi-title { font-size:1.55rem; font-weight:800; color:var(--vi-ink); margin:0; line-height:1.2; }
 .vrm-import .vi-sub { color:var(--vi-muted); font-size:.9rem; margin-top:4px; line-height:1.35; }
+.vrm-import .vi-note {
+    margin:0 0 1rem; padding:.7rem .9rem; border-radius:12px; font-size:.82rem; color:#475569; line-height:1.45;
+    background:#f8fafc; border:1px dashed #cbd5e1;
+}
+@media (max-width:767.98px) {
+    .vrm-import.container-fluid { padding:.75rem .7rem 1.1rem !important; }
+    .vrm-import .vi-title { font-size:1.2rem; }
+    .vrm-import .page-hero { flex-direction:column; align-items:stretch; }
+    .vrm-import .btn-back { width:100%; justify-content:center; }
+}
 .vrm-import .btn-back {
     height:40px; padding:0 1rem; border-radius:10px; font-weight:700; font-size:.88rem;
     display:inline-flex; align-items:center; gap:.4rem;
@@ -47,7 +64,7 @@
     display:inline-flex; align-items:center; justify-content:center; font-size:1.05rem;
 }
 .vrm-import .vi-card-ico.upload { background:#ede9fe; color:var(--vi-purple); }
-.vrm-import .vi-card-ico.guide { background:#dbeafe; color:var(--vi-blue); }
+.vrm-import .vi-card-ico.guide { background:var(--theme-100); color:var(--vi-blue); }
 .vrm-import .vi-card-head h2 {
     margin:0; font-size:1.05rem; font-weight:800; color:var(--vi-ink); line-height:1.25;
 }
@@ -59,7 +76,7 @@
 .vrm-import .vi-sample {
     display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
     padding:14px 16px; border-radius:14px; margin-bottom:18px;
-    background:linear-gradient(120deg,#eff6ff 0%,#f5f3ff 100%);
+    background:linear-gradient(120deg,var(--theme-50) 0%,#f5f3ff 100%);
     border:1px solid #e0e7ff;
 }
 .vrm-import .vi-sample-left { display:flex; align-items:center; gap:12px; min-width:0; }
@@ -67,17 +84,17 @@
     width:40px; height:40px; border-radius:12px; flex-shrink:0;
     background:#fff; color:var(--vi-blue);
     display:inline-flex; align-items:center; justify-content:center; font-size:1.15rem;
-    box-shadow:0 4px 12px rgba(37,99,235,.12);
+    box-shadow:0 4px 12px var(--theme-primary-ring);
 }
 .vrm-import .vi-sample strong { display:block; font-size:.9rem; color:var(--vi-ink); font-weight:800; }
 .vrm-import .vi-sample span { display:block; font-size:.78rem; color:var(--vi-muted); margin-top:2px; }
 .vrm-import .btn-sample {
     height:38px; padding:0 14px; border-radius:10px; font-weight:700; font-size:.84rem;
     display:inline-flex; align-items:center; gap:.4rem; text-decoration:none; white-space:nowrap;
-    background:#2563eb; color:#fff; border:0;
-    box-shadow:0 6px 14px rgba(37,99,235,.22);
+    background:var(--theme-primary); color:#fff; border:0;
+    box-shadow:0 6px 14px var(--theme-primary-ring);
 }
-.vrm-import .btn-sample:hover { background:#1d4ed8; color:#fff; }
+.vrm-import .btn-sample:hover { background:var(--theme-primary-hover); color:#fff; }
 
 .vrm-import .vi-drop {
     position:relative; border:1.5px dashed #c7d2fe; border-radius:14px;
@@ -161,6 +178,13 @@
         <div class="page-hero-left">
             <span class="page-hero-icon"><i class="bi bi-cloud-upload"></i></span>
             <div>
+                <ul class="vi-crumbs">
+                    <li><a href="{{ url('/') }}">Home</a></li>
+                    <li class="sep">›</li>
+                    <li><a href="{{ route('goal.vrm.index') }}">VRM Calling</a></li>
+                    <li class="sep">›</li>
+                    <li>Import</li>
+                </ul>
                 <h1 class="vi-title">Import VRM Call Logs</h1>
                 <div class="vi-sub">Upload Excel/CSV into Goal VRM Calling with the sample column format.</div>
             </div>
@@ -169,6 +193,8 @@
             <i class="bi bi-arrow-left"></i> Back to VRM Calling
         </a>
     </div>
+
+    <p class="vi-note"><i class="bi bi-bullseye me-1"></i>Imported calls count toward the <strong>200 logged calls / working day</strong> target shown on VRM Calling.</p>
 
     <div class="vi-grid">
         <div class="vi-card">

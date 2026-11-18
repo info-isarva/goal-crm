@@ -5,9 +5,51 @@ document.addEventListener('DOMContentLoaded', function() {
     if(typeof bootstrap !== 'undefined') {
         console.log('✓ Bootstrap loaded');
         initFixedTableDropdowns();
+        initActionTooltips(document);
     } else {
         console.warn('⚠️ Bootstrap not available');
     }
+
+    /**
+     * Bootstrap tooltips for table action icon buttons (title / data-bs-title).
+     * Safe alongside modal/dropdown toggles — does not overwrite data-bs-toggle.
+     */
+    function initActionTooltips(root) {
+        if (!bootstrap.Tooltip) return;
+        var scope = root || document;
+        var nodes = scope.querySelectorAll([
+            '.action-btn[title]',
+            '.action-btn[data-bs-title]',
+            '.gt-action-btn[title]',
+            '.gt-action-btn[data-bs-title]',
+            '.icon-btn[title]',
+            '.btn-row-assign[title]',
+            '.btn-reassign[title]',
+            '.col-actions [title]',
+            '.col-actions [data-bs-title]',
+            '.actions-cell [title]',
+            '.actions-cell [data-bs-title]',
+            '.ba-actions [title]',
+            '[data-bs-toggle="tooltip"]'
+        ].join(','));
+
+        nodes.forEach(function (el) {
+            if (el.dataset.actionTipReady === '1') return;
+            var label = el.getAttribute('data-bs-title') || el.getAttribute('title');
+            if (!label || !String(label).trim()) return;
+            el.dataset.actionTipReady = '1';
+            try {
+                bootstrap.Tooltip.getOrCreateInstance(el, {
+                    container: 'body',
+                    trigger: 'hover focus',
+                    placement: 'top',
+                    title: label,
+                    customClass: 'action-tip'
+                });
+            } catch (err) { /* ignore */ }
+        });
+    }
+    window.IsarvaInitActionTooltips = initActionTooltips;
 
     /**
      * Keep row action (3-dots) menus above scrollable tables / pipeline columns.
@@ -21,11 +63,13 @@ document.addEventListener('DOMContentLoaded', function() {
             '.pipeline-body [data-bs-toggle="dropdown"]',
             '.deal-card [data-bs-toggle="dropdown"]',
             'table td [data-bs-toggle="dropdown"]',
-            'table th [data-bs-toggle="dropdown"]'
+            'table th [data-bs-toggle="dropdown"]',
+            '#sidebarUserMenu'
         ].join(',');
 
         document.querySelectorAll(selector).forEach(function(el) {
-            if (el.closest('nav, .navbar, .sidebar, #sidebarOffcanvas, header.navbar')) {
+            // Skip other nav/header menus; keep sidebar profile (#sidebarUserMenu)
+            if (el.id !== 'sidebarUserMenu' && el.closest('nav, .navbar, .sidebar, #sidebarOffcanvas, header.navbar')) {
                 return;
             }
 
@@ -98,20 +142,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 
-// Sidebar toggle logic (desktop collapse) — uses in-sidebar collapse button only
+// Sidebar toggle logic (desktop collapse) — header + in-sidebar collapse buttons
 (function(){
-    var toggleBtn = document.getElementById('sidebarCollapseBtn') || document.getElementById('sidebarToggle');
+    var toggleBtns = [
+        document.getElementById('sidebarCollapseBtn'),
+        document.getElementById('sidebarToggle')
+    ].filter(Boolean);
     var sidebar = document.getElementById('sidebarOffcanvas') || document.querySelector('.sidebar');
     var body = document.body;
 
     function syncCollapseIcon(collapsed) {
-        if (!toggleBtn) return;
-        var icon = toggleBtn.querySelector('i');
-        if (!icon) return;
-        icon.classList.remove('bi-chevron-double-left', 'bi-chevron-double-right', 'bi-arrow-bar-left', 'bi-arrow-bar-right');
-        icon.classList.add(collapsed ? 'bi-chevron-double-right' : 'bi-chevron-double-left');
-        toggleBtn.setAttribute('title', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
-        toggleBtn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+        toggleBtns.forEach(function (toggleBtn) {
+            var icon = toggleBtn.querySelector('i');
+            if (!icon) return;
+            icon.classList.remove('bi-chevron-double-left', 'bi-chevron-double-right', 'bi-arrow-bar-left', 'bi-arrow-bar-right');
+            icon.classList.add(collapsed ? 'bi-chevron-double-right' : 'bi-chevron-double-left');
+            toggleBtn.setAttribute('title', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+            toggleBtn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+        });
     }
 
     function applyState(collapsed) {
@@ -133,38 +181,37 @@ document.addEventListener('DOMContentLoaded', function() {
         else syncCollapseIcon(false);
     } catch(e) { /* ignore */ }
 
-    if(toggleBtn) {
-        toggleBtn.addEventListener('click', function(e){
-            e.preventDefault();
-            // Tablet/mobile use Alpine mobile drawer (navigation.blade.php), not Bootstrap offcanvas.
-            // Calling Offcanvas here left a stuck .offcanvas-backdrop that locked the whole UI.
-            if(window.innerWidth < 1024) {
-                try {
-                    var existing = bootstrap.Offcanvas.getInstance(sidebar);
-                    if (existing) existing.hide();
-                } catch (err) { /* ignore */ }
-                document.querySelectorAll('.offcanvas-backdrop').forEach(function (el) {
-                    el.remove();
-                });
-                document.body.classList.remove('modal-open');
-                document.body.style.removeProperty('overflow');
-                document.body.style.removeProperty('padding-right');
-                return;
-            }
+    function onToggleClick(e){
+        e.preventDefault();
+        // Tablet/mobile use Alpine mobile drawer (navigation.blade.php), not Bootstrap offcanvas.
+        // Calling Offcanvas here left a stuck .offcanvas-backdrop that locked the whole UI.
+        if(window.innerWidth < 1024) {
+            try {
+                var existing = bootstrap.Offcanvas.getInstance(sidebar);
+                if (existing) existing.hide();
+            } catch (err) { /* ignore */ }
+            document.querySelectorAll('.offcanvas-backdrop').forEach(function (el) {
+                el.remove();
+            });
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+            return;
+        }
 
-            var now = sidebar.classList.contains('collapsed');
-            applyState(!now);
-            // If the sidebar was collapsed and is now being expanded, ensure any hover popover is closed.
-            // (window.hideSidebarPopover is exposed by the popover module when available)
-            if (now) {
-                try { window.hideSidebarPopover && window.hideSidebarPopover(); } catch(e){}
-            }
-            try { localStorage.setItem('sidebar-collapsed', !now ? '1' : '0'); } catch(e){}
-            // update nav-link tooltips for collapsed/expanded state if helpers available
-            try { window.updateSidebarTooltips && window.updateSidebarTooltips(!now); } catch(e) {}
-            try { window.enableSidebarBootstrapTooltips && window.enableSidebarBootstrapTooltips(!now); } catch(e) {}
-        });
+        var now = sidebar.classList.contains('collapsed');
+        applyState(!now);
+        if (now) {
+            try { window.hideSidebarPopover && window.hideSidebarPopover(); } catch(err){}
+        }
+        try { localStorage.setItem('sidebar-collapsed', !now ? '1' : '0'); } catch(err){}
+        try { window.updateSidebarTooltips && window.updateSidebarTooltips(!now); } catch(err) {}
+        try { window.enableSidebarBootstrapTooltips && window.enableSidebarBootstrapTooltips(!now); } catch(err) {}
     }
+
+    toggleBtns.forEach(function (btn) {
+        btn.addEventListener('click', onToggleClick);
+    });
 })();
 
 
@@ -639,3 +686,45 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Sidebar theme switch: soft (SOW mock) | green (solid) | dark (navy)
+(function () {
+    var KEY = 'sidebar-theme';
+    var ALLOWED = { soft: 1, green: 1, dark: 1, light: 1 };
+
+    function normalize(theme) {
+        if (theme === 'light') return 'soft';
+        return ALLOWED[theme] ? (theme === 'light' ? 'soft' : theme) : 'soft';
+    }
+
+    function currentTheme() {
+        return normalize(document.documentElement.getAttribute('data-sidebar-theme'));
+    }
+
+    function applyTheme(theme) {
+        var next = normalize(theme);
+        document.documentElement.setAttribute('data-sidebar-theme', next);
+        try { localStorage.setItem(KEY, next); } catch (e) {}
+        syncButtons(next);
+    }
+
+    function syncButtons(theme) {
+        document.querySelectorAll('[data-sidebar-theme-set]').forEach(function (btn) {
+            var val = normalize(btn.getAttribute('data-sidebar-theme-set'));
+            var isActive = val === theme;
+            btn.classList.toggle('is-active', isActive);
+            btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-sidebar-theme-set]');
+        if (!btn) return;
+        e.preventDefault();
+        applyTheme(btn.getAttribute('data-sidebar-theme-set'));
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        syncButtons(currentTheme());
+    });
+})();

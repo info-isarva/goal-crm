@@ -11,16 +11,22 @@
     }
     $avatar = Auth::user()->avatar;
 @endphp
-<nav class="sidebar custom-block offcanvas-md offcanvas-start min-h-screen w-full p-0 lg:w-[272px] lg:shrink-0" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarLabel" style="z-index:1045;">
+<nav class="sidebar custom-block offcanvas-md offcanvas-start min-h-screen w-full p-0 lg:w-[270px] lg:shrink-0" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarLabel" style="z-index:1045;">
     <div class="sidebar-shell flex h-full flex-col justify-between">
         <div class="sidebar-brand">
-            <div class="sidebar-brand-mark">
-                @php $company = \App\Models\Company::current(); @endphp
-                <img
-                    src="{{ $company->logo_url ?? asset('images/logoisarva-1.svg') }}"
-                    alt="{{ $company->name ?? 'Isarva' }}"
-                    class="company-logo sidebar-brand-logo"
-                >
+            @php $company = \App\Models\Company::current(); @endphp
+            <div class="sidebar-brand-row">
+                <div class="sidebar-brand-mark">
+                    <img
+                        src="{{ $company->logo_url ?? asset('images/logoisarva-1.svg') }}"
+                        alt="{{ $company->name ?? 'Goal Corporation' }}"
+                        class="company-logo sidebar-brand-logo"
+                    >
+                </div>
+                <div class="sidebar-brand-text nav-label">
+                    <div class="sidebar-brand-title">GOAL CORPORATION</div>
+                    <div class="sidebar-brand-sub">Goal Loan CRM</div>
+                </div>
             </div>
         </div>
 
@@ -30,16 +36,36 @@
             </ul>
         </div>
 
-        <div class="user-card flex items-center">
-            @if($avatar)
-                <img src="{{ asset('assets/employee_profile_image/' . $avatar) }}" alt="{{ Auth::user()->name }}">
-            @else
-                <span class="user-avatar-fallback" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
-            @endif
-            <div class="user-meta nav-label">
-                <div class="user-name">{{ Auth::user()->name }}</div>
-                <div class="user-role">{{ strtoupper($roleName) }}</div>
-            </div>
+        <div class="user-card dropdown dropup">
+            {{-- strategy:fixed escapes .sidebar { overflow:hidden } so the menu is visible --}}
+            <button type="button"
+                    class="user-card-toggle"
+                    id="sidebarUserMenu"
+                    data-bs-toggle="dropdown"
+                    data-bs-popper-config='{"strategy":"fixed","modifiers":[{"name":"preventOverflow","options":{"boundary":"viewport","padding":8}}]}'
+                    aria-expanded="false">
+                @if($avatar)
+                    <img src="{{ asset('assets/employee_profile_image/' . $avatar) }}" alt="{{ Auth::user()->name }}">
+                @else
+                    <span class="user-avatar-fallback" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
+                @endif
+                <div class="user-meta nav-label">
+                    <div class="user-name">{{ Auth::user()->name }}</div>
+                    <div class="user-role">{{ strtoupper($roleName) }}</div>
+                </div>
+                <i class="bi bi-chevron-down user-card-chevron nav-label" aria-hidden="true"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="sidebarUserMenu">
+                <li><a class="dropdown-item" href="{{ route('profile.edit') }}"><i class="bi bi-person me-2"></i>Profile</a></li>
+                <li><a class="dropdown-item" href="{{ route('password.edit') }}"><i class="bi bi-key me-2"></i>Change Password</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <form method="POST" action="{{ route('logout') }}" class="m-0">
+                        @csrf
+                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>Sign out</button>
+                    </form>
+                </li>
+            </ul>
         </div>
     </div>
 </nav>
@@ -64,10 +90,11 @@
 
      .sidebar-menu-gap .nav-item {
         margin-bottom: 0;
+        margin-top: 0;
     }
     .sidebar-menu-gap .nav-item.sidebar-section {
-        margin-top: 14px;
-        margin-bottom: 4px;
+        margin-top: 10px;
+        margin-bottom: 2px;
     }
 </style>
 
@@ -75,15 +102,43 @@
 <style>
     .sidebar-flyout {
         position: fixed;
-        background: #0d1a2f;
-        border: 1px solid rgba(148,163,184,0.2);
-        box-shadow: 0 12px 28px rgba(2,8,23,0.45);
+        background: var(--sb-flyout-bg, #FFFFFF);
+        border: 1px solid var(--sb-flyout-border, #E8EEF2);
+        box-shadow: var(--sb-flyout-shadow, 0 12px 28px rgba(36, 50, 71, 0.12));
         border-radius: 14px;
         padding: 0.5rem;
         z-index: 2000;
         min-width: 180px;
         max-width: 340px;
-        color: #e8eef8;
+        color: var(--sb-flyout-text, #243247);
+    }
+    html[data-sidebar-theme="soft"],
+    html[data-sidebar-theme="light"] {
+        --sb-flyout-bg: #FFFFFF;
+        --sb-flyout-border: #E2E8F0;
+        --sb-flyout-shadow: 0 12px 28px rgba(15, 23, 42, 0.10);
+        --sb-flyout-text: #0F172A;
+        --sb-flyout-hover: #F1F5F9;
+        --sb-flyout-accent: #0F766E;
+        --sb-flyout-icon: #0D9488;
+    }
+    html[data-sidebar-theme="green"] {
+        --sb-flyout-bg: #FFFFFF;
+        --sb-flyout-border: #E8EEF2;
+        --sb-flyout-shadow: 0 12px 28px rgba(36, 50, 71, 0.12);
+        --sb-flyout-text: #243247;
+        --sb-flyout-hover: rgba(22, 134, 83, 0.08);
+        --sb-flyout-accent: #087F5B;
+        --sb-flyout-icon: #168653;
+    }
+    html[data-sidebar-theme="dark"] {
+        --sb-flyout-bg: #0d1a2f;
+        --sb-flyout-border: rgba(148,163,184,0.2);
+        --sb-flyout-shadow: 0 12px 28px rgba(2,8,23,0.45);
+        --sb-flyout-text: #e8eef8;
+        --sb-flyout-hover: rgba(56,189,248,0.16);
+        --sb-flyout-accent: #fff;
+        --sb-flyout-icon: #7dd3fc;
     }
     .sidebar-flyout::before {
         content: '';
@@ -93,12 +148,13 @@
         height: 0;
         border-top: 8px solid transparent;
         border-bottom: 8px solid transparent;
-        border-right: 8px solid #0d1a2f;
+        border-right: 8px solid var(--sb-flyout-bg, #FFFFFF);
         top: var(--arrow-top, 16px);
+        filter: drop-shadow(-1px 0 0 var(--sb-flyout-border, #E8EEF2));
     }
     .sidebar-flyout .flyout-title {
         font-weight: 600;
-        color: #f8fafc;
+        color: var(--sb-flyout-text, #243247);
         display: flex;
         align-items: center;
         gap: .25rem;
@@ -109,21 +165,67 @@
         cursor: pointer;
     }
     .sidebar-flyout .flyout-title.clickable:hover {
-        background: rgba(56,189,248,0.16);
+        background: var(--sb-flyout-hover, rgba(22, 134, 83, 0.08));
     }
     .sidebar-flyout .flyout-submenu {
         margin-top: .25rem;
     }
     .sidebar-flyout .nav-link {
         padding: .35rem .55rem;
-        color: #d7e0ee;
+        color: var(--sb-flyout-text, #243247);
         font-size: 0.9rem;
         border-radius: 10px;
         gap: .35rem;
     }
     .sidebar-flyout .nav-link:hover {
-        background: rgba(56,189,248,0.16);
-        color: #fff;
+        background: var(--sb-flyout-hover, rgba(22, 134, 83, 0.08));
+        color: var(--sb-flyout-accent, #087F5B);
+    }
+    .sidebar-flyout .nav-link i {
+        color: var(--sb-flyout-icon, #168653);
+    }
+    .sidebar-theme-switch {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+    }
+    .sidebar-theme-switch .sidebar-theme-label {
+        display: block;
+        margin: 0;
+        padding: 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #64748b;
+        line-height: 1.2;
+        position: static;
+    }
+    .sidebar-theme-switch .sidebar-theme-options {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px;
+        width: 100%;
+        position: static;
+    }
+    .sidebar-theme-switch .sidebar-theme-btn {
+        position: static !important;
+        float: none !important;
+        width: 100%;
+        margin: 0 !important;
+        font-size: 0.72rem;
+        line-height: 1.2;
+        padding: 0.4rem 0.35rem;
+        border-radius: 8px !important;
+        white-space: nowrap;
+    }
+    .sidebar-theme-btn.is-active {
+        background: #087F5B !important;
+        border-color: #087F5B !important;
+        color: #fff !important;
+    }
+    html[data-sidebar-theme="dark"] .sidebar-theme-btn.is-active {
+        background: #1d4ed8 !important;
+        border-color: #1d4ed8 !important;
     }
 </style>
 

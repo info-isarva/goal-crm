@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class GoalLoanLead extends Model
 {
+    use HasFactory;
     use SoftDeletes;
 
     protected $table = 'goal_loan_leads';
@@ -14,7 +16,7 @@ class GoalLoanLead extends Model
     protected $fillable = [
         'ref_no', 'customer_name', 'mobile', 'email', 'source', 'channel_partner',
         'product', 'loan_amount', 'lead_type', 'status', 'disposition', 'follow_up_at',
-        'notes', 'consent_recorded', 'goal_org_unit_id', 'created_by', 'assigned_to',
+        'notes', 'consent_recorded', 'goal_org_unit_id', 'goal_party_id', 'created_by', 'assigned_to',
         'assigned_by', 'assigned_at', 'closure_reason',
     ];
 
@@ -28,6 +30,11 @@ class GoalLoanLead extends Model
     public function orgUnit()
     {
         return $this->belongsTo(GoalOrgUnit::class, 'goal_org_unit_id');
+    }
+
+    public function party()
+    {
+        return $this->belongsTo(GoalCustomerParty::class, 'goal_party_id');
     }
 
     public function assignee()

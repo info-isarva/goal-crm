@@ -8,7 +8,7 @@
     --gd-text:#0f172a;
     --gd-muted:#64748b;
     --gd-line:#e8eef5;
-    --gd-blue:#2563eb;
+    --gd-blue:var(--theme-primary);
     --gd-pink:#ec4899;
     --gd-green:#16a34a;
     --gd-orange:#f97316;
@@ -19,8 +19,8 @@
 .gd-page .welcome-row{margin-bottom:1.1rem}
 .gd-page .welcome-card{
     position:relative;overflow:hidden;border:0;border-radius:18px;min-height:122px;height:100%;
-    background:linear-gradient(105deg,#dbeafe 0%,#bfdbfe 42%,#93c5fd 100%);
-    box-shadow:0 10px 28px rgba(37,99,235,.14);
+    background:linear-gradient(105deg,var(--theme-100) 0%,var(--theme-200) 42%,var(--theme-300) 100%);
+    box-shadow:0 10px 28px var(--theme-primary-ring);
     padding:1.2rem 1.4rem;display:flex;align-items:center;gap:1rem;
 }
 .gd-page .welcome-card::after{
@@ -40,6 +40,17 @@
     display:inline-flex;align-items:center;gap:.35rem;margin-top:.55rem;padding:.32rem .75rem;
     border-radius:999px;background:#0f172a;color:#fff;font-size:.72rem;font-weight:700;
 }
+.gd-page .pipe-strip{
+    display:flex;flex-wrap:wrap;gap:6px;margin-top:.7rem;position:relative;z-index:1;
+}
+.gd-page .pipe-chip{
+    height:30px;padding:0 10px;border-radius:999px;border:1px solid rgba(255,255,255,.55);
+    background:rgba(255,255,255,.55);color:#1e3a8a;font-size:.72rem;font-weight:700;
+    text-decoration:none;display:inline-flex;align-items:center;gap:5px;
+}
+.gd-page .pipe-chip:hover{background:#fff;color:#0f172a}
+.gd-page a.metric-card{text-decoration:none;color:inherit;display:flex;flex-direction:column;cursor:pointer}
+.gd-page a.metric-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(23,32,51,.09)}
 .gd-page .control-card{
     background:var(--gd-card);border:1px solid var(--gd-line);border-radius:18px;
     box-shadow:0 6px 20px rgba(15,23,42,.05);padding:1.15rem 1.25rem;height:100%;
@@ -51,9 +62,9 @@
 .gd-page .analytics-cta{
     display:inline-flex;align-items:center;justify-content:center;gap:.5rem;align-self:flex-end;
     padding:.62rem 1.15rem;border-radius:12px;background:var(--gd-blue);color:#fff;
-    font-size:.86rem;font-weight:700;text-decoration:none;box-shadow:0 8px 18px rgba(37,99,235,.28);
+    font-size:.86rem;font-weight:700;text-decoration:none;box-shadow:0 8px 18px var(--theme-primary-ring);
 }
-.gd-page .analytics-cta:hover{background:#1d4ed8;color:#fff}
+.gd-page .analytics-cta:hover{background:var(--theme-primary-hover);color:#fff}
 
 /* KPI cards — compact reference (Image 2) */
 .gd-page .metric-card{
@@ -94,7 +105,7 @@
     --kpi-wave-a:#f3e0ff;--kpi-wave-b:#f9c2e8;--kpi-wave-c:#e8b4f0;
 }
 .gd-page .metric-card.t-blue{
-    --kpi-accent:#2563eb;--kpi-icon-bg:#dbeafe;--kpi-icon:#2563eb;
+    --kpi-accent:var(--theme-primary);--kpi-icon-bg:var(--theme-100);--kpi-icon:var(--theme-primary);
     --kpi-wave-a:#e0ecff;--kpi-wave-b:#c7dbff;--kpi-wave-c:#a8c8ff;
 }
 .gd-page .metric-card.t-green{
@@ -194,7 +205,7 @@
     width:40px;height:40px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;
     color:#fff;font-size:1.1rem;flex-shrink:0;
 }
-.gd-page .panel-ico.blue{background:#1e40af}
+.gd-page .panel-ico.blue{background:var(--theme-primary-deep)}
 .gd-page .panel-ico.purple{background:#7c3aed}
 .gd-page .panel-ico.teal{background:#0f766e}
 .gd-page .view-all{font-size:.84rem;font-weight:700;color:#1555d8;text-decoration:none;white-space:nowrap}
@@ -209,7 +220,7 @@
 .gd-page .target-amounts .ach{font-size:1.05rem;font-weight:800;color:#0f172a}
 .gd-page .target-amounts .rem{font-size:.86rem;font-weight:700;color:#c2410c;margin-top:.2rem}
 .gd-page .prog{height:10px;background:#eef2f7;border-radius:999px;overflow:hidden}
-.gd-page .prog>span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#7c3aed 0%,#2563eb 100%)}
+.gd-page .prog>span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#7c3aed 0%,var(--theme-primary) 100%)}
 .gd-page .snap-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.65rem;margin-top:auto}
 .gd-page .snap-stat{
     background:#f8fafc;border:1px solid #eef2f7;border-radius:12px;padding:.7rem .65rem;
@@ -219,7 +230,7 @@
     width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
     color:#fff;font-size:.78rem;flex-shrink:0;
 }
-.gd-page .snap-stat .ico.g{background:#16a34a}.gd-page .snap-stat .ico.b{background:#2563eb}.gd-page .snap-stat .ico.p{background:#7c3aed}
+.gd-page .snap-stat .ico.g{background:#16a34a}.gd-page .snap-stat .ico.b{background:var(--theme-primary)}.gd-page .snap-stat .ico.p{background:#7c3aed}
 .gd-page .snap-stat .n{font-size:.88rem;font-weight:800;color:#0f172a;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gd-page .snap-stat .l{font-size:.68rem;font-weight:600;color:#64748b;margin-top:.1rem}
 
@@ -234,7 +245,7 @@
 }
 .gd-page .qa-tile:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(15,23,42,.08);color:inherit}
 .gd-page .qa-tile i{font-size:1.4rem}
-.gd-page .qa-blue{background:#eff6ff;color:#2563eb;border-color:#dbeafe}
+.gd-page .qa-blue{background:var(--theme-50);color:var(--theme-primary);border-color:var(--theme-100)}
 .gd-page .qa-purple{background:#f5f3ff;color:#7c3aed;border-color:#ede9fe}
 .gd-page .qa-green{background:#ecfdf5;color:#16a34a;border-color:#d1fae5}
 .gd-page .qa-orange{background:#fff7ed;color:#ea580c;border-color:#ffedd5}
@@ -262,7 +273,7 @@
 .gd-page .list-row:hover{color:inherit}
 .gd-page .avatar{
     width:38px;height:38px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
-    color:#fff;font-size:.78rem;font-weight:800;flex-shrink:0;background:#3b82f6;
+    color:#fff;font-size:.78rem;font-weight:800;flex-shrink:0;background:var(--theme-primary);
 }
 .gd-page .avatar.av2{background:#7c3aed}.gd-page .avatar.av3{background:#0ea5e9}
 .gd-page .avatar.av4{background:#14b8a6}.gd-page .avatar.av5{background:#f59e0b}
@@ -277,19 +288,19 @@
 }
 .gd-page .status-pill.ok{background:#dcfce7;color:#15803d}
 .gd-page .status-pill.warn{background:#ffedd5;color:#c2410c}
-.gd-page .status-pill.info{background:#dbeafe;color:#1d4ed8}
+.gd-page .status-pill.info{background:var(--theme-100);color:var(--theme-primary-hover)}
 .gd-page .status-pill.muted{background:#f1f5f9;color:#64748b}
 .gd-page .open{
-    border:1.5px solid #bfdbfe;background:#fff;border-radius:8px;padding:.3rem .75rem;
+    border:1.5px solid var(--theme-200);background:#fff;border-radius:8px;padding:.3rem .75rem;
     font-size:.76rem;font-weight:700;color:var(--gd-blue);flex-shrink:0;text-decoration:none;
 }
-.gd-page .open:hover{background:#eff6ff;color:#1d4ed8}
+.gd-page .open:hover{background:var(--theme-50);color:var(--theme-primary-hover)}
 
 /* Recent leads table — reference card */
 .gd-page .leads-panel .panel-h{padding:1.1rem 1.25rem;border-bottom:1px solid #eef2f7}
 .gd-page .leads-panel .panel-ico.blue{
-    background:linear-gradient(145deg,#1e40af 0%,#2563eb 100%);
-    box-shadow:0 6px 14px rgba(37,99,235,.25);
+    background:linear-gradient(145deg,var(--theme-primary-deep) 0%,var(--theme-primary) 100%);
+    box-shadow:0 6px 14px var(--theme-primary-ring);
 }
 .gd-page .leads-table-wrap{padding:0 0 .35rem}
 .gd-page .leads-table{width:100%;margin:0;border-collapse:separate;border-spacing:0}
@@ -304,14 +315,14 @@
 .gd-page .leads-table tbody tr:hover{background:#f8fafc}
 .gd-page .lead-avatar{
     width:38px;height:38px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
-    background:#3b82f6;color:#fff;font-size:.82rem;font-weight:800;flex-shrink:0;
+    background:var(--theme-primary);color:#fff;font-size:.82rem;font-weight:800;flex-shrink:0;
 }
 .gd-page .lead-name-cell{display:flex;flex-direction:column;gap:.12rem;min-width:0}
 .gd-page .lead-name{font-weight:700;color:#0f172a;line-height:1.2}
 .gd-page .lead-sub{font-size:.75rem;color:#94a3b8;line-height:1.25}
 .gd-page .pill-product{
     display:inline-flex;align-items:center;padding:.28rem .7rem;border-radius:999px;
-    font-size:.74rem;font-weight:700;background:#dbeafe;color:#1d4ed8;white-space:nowrap;
+    font-size:.74rem;font-weight:700;background:var(--theme-100);color:var(--theme-primary-hover);white-space:nowrap;
 }
 .gd-page .pill-status{
     display:inline-flex;align-items:center;padding:.28rem .7rem;border-radius:999px;
@@ -320,7 +331,7 @@
 }
 .gd-page .pill-status.ok{background:#dcfce7;color:#15803d}
 .gd-page .pill-status.warn{background:#ffedd5;color:#c2410c}
-.gd-page .pill-status.info{background:#dbeafe;color:#1d4ed8}
+.gd-page .pill-status.info{background:var(--theme-100);color:var(--theme-primary-hover)}
 .gd-page .pill-status.muted{background:#f1f5f9;color:#64748b}
 .gd-page .received-cell{
     display:inline-flex;align-items:center;gap:.4rem;color:#64748b;font-size:.82rem;white-space:nowrap;
@@ -427,6 +438,15 @@ SVG;
                     <h2>{{ $greet }}, {{ $dash['role_label'] }}!</h2>
                     <p class="sub"><strong>{{ $dash['scope_label'] }}</strong> · {{ $dash['summary'] }}</p>
                     <span class="role-badge"><i class="bi bi-eye"></i> {{ $dash['badge'] }}</span>
+                    <div class="pipe-strip" aria-label="Pipeline shortcuts">
+                        <a class="pipe-chip" href="{{ route('goal.leads.index') }}"><i class="bi bi-people"></i> Leads</a>
+                        <a class="pipe-chip" href="{{ route('goal.allocation.index') }}"><i class="bi bi-diagram-3"></i> Allocation</a>
+                        <a class="pipe-chip" href="{{ route('goal.cases.index') }}"><i class="bi bi-briefcase"></i> Cases</a>
+                        <a class="pipe-chip" href="{{ route('goal.documents.index') }}"><i class="bi bi-file-earmark"></i> Docs</a>
+                        <a class="pipe-chip" href="{{ route('goal.bank-processing.index') }}"><i class="bi bi-bank"></i> Bank</a>
+                        <a class="pipe-chip" href="{{ route('goal.sanction-disbursement.index') }}"><i class="bi bi-award"></i> Sanction</a>
+                        <a class="pipe-chip" href="{{ route('goal.pms.index') }}"><i class="bi bi-shield-check"></i> PMS</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -448,7 +468,7 @@ SVG;
         @foreach($dash['kpis'] as $kpi)
             @php $tone = $kpi['tone'] ?? 'blue'; @endphp
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="metric-card {{ $toneCard($tone) }}">
+                <a href="{{ $kpi['link'] }}" class="metric-card {{ $toneCard($tone) }}">
                     <div class="metric-head">
                         <span class="metric-icon" aria-hidden="true"><i class="{{ $faIcon($kpi['icon'] ?? '') }}"></i></span>
                         <h6 class="metric-label">{{ $kpi['label'] }}</h6>
@@ -456,10 +476,10 @@ SVG;
                     <div class="metric-body">
                         <p class="metric-value">{{ $kpi['value'] }}</p>
                         <p class="metric-trend">{{ $kpi['trend'] }}</p>
-                        <a href="{{ $kpi['link'] }}" class="metric-link">{{ $kpi['link_text'] }}</a>
+                        <span class="metric-link">{{ $kpi['link_text'] }}</span>
                     </div>
                     <div class="metric-wave" aria-hidden="true">{!! $wave !!}</div>
-                </div>
+                </a>
             </div>
         @endforeach
     </div>
@@ -580,9 +600,9 @@ SVG;
                                 <div class="u">{{ $row['unit'] }} · {{ $money($row['actual']) }} / {{ $money($row['effective']) }}</div>
                             </div>
                             <div class="team-prog">
-                                <div class="prog" style="margin:0"><span style="width:{{ min(100, $row['percent']) }}%;background:{{ $row['percent'] >= 75 ? '#16a34a' : ($row['percent'] >= 50 ? '#3b82f6' : '#f59e0b') }}"></span></div>
+                                <div class="prog" style="margin:0"><span style="width:{{ min(100, $row['percent']) }}%;background:{{ $row['percent'] >= 75 ? '#16a34a' : ($row['percent'] >= 50 ? 'var(--theme-primary)' : '#f59e0b') }}"></span></div>
                             </div>
-                            <div class="team-pct" style="color:{{ $row['percent'] >= 75 ? '#16a34a' : ($row['percent'] >= 50 ? '#2563eb' : '#d97706') }}">{{ $row['percent'] }}%</div>
+                            <div class="team-pct" style="color:{{ $row['percent'] >= 75 ? '#16a34a' : ($row['percent'] >= 50 ? 'var(--theme-primary)' : '#d97706') }}">{{ $row['percent'] }}%</div>
                         </div>
                     @empty
                         <div class="empty-state">

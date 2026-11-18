@@ -24,10 +24,10 @@
                        id="{{ $prefix }}_owner_org" value="org_unit"
                        data-prefix="{{ $prefix }}"
                        @checked($ownerType === 'org_unit')>
-                <label class="form-check-label" for="{{ $prefix }}_owner_org">Branch (org unit)</label>
+                <label class="form-check-label" for="{{ $prefix }}_owner_org">Org unit (region / cluster / branch)</label>
             </div>
         </div>
-        <div class="field-hint">Requirement: exactly one owner — employee <em>or</em> branch, not both.</div>
+        <div class="field-hint">Requirement: exactly one owner — employee <em>or</em> org unit, not both.</div>
         @if($showErrors) @error('owner_type')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror @endif
     </div>
 
@@ -46,12 +46,14 @@
     </div>
 
     <div class="col-md-4 owner-org-wrap" data-prefix="{{ $prefix }}" style="{{ $ownerType === 'org_unit' ? '' : 'display:none' }}">
-        <label class="form-label" for="{{ $prefix }}_goal_org_unit_id">Branch <span class="text-danger">*</span></label>
+        <label class="form-label" for="{{ $prefix }}_goal_org_unit_id">Org unit <span class="text-danger">*</span></label>
         <select class="form-select @if($showErrors && $errors->has('goal_org_unit_id')) is-invalid @endif"
                 id="{{ $prefix }}_goal_org_unit_id" name="goal_org_unit_id">
-            <option value="">Select branch…</option>
+            <option value="">Select region / cluster / branch…</option>
             @foreach($branches as $b)
-                <option value="{{ $b->id }}" @selected((string) $v('goal_org_unit_id') === (string) $b->id)>{{ $b->name }}</option>
+                <option value="{{ $b->id }}" @selected((string) $v('goal_org_unit_id') === (string) $b->id)>
+                    {{ strtoupper($b->type) }} · {{ $b->name }}
+                </option>
             @endforeach
         </select>
         @if($showErrors) @error('goal_org_unit_id')<div class="invalid-feedback">{{ $message }}</div>@enderror @endif

@@ -10,7 +10,11 @@ class GoalAccountsItem extends Model
 
     protected $fillable = [
         'goal_loan_case_id', 'goal_disbursement_id', 'status',
-        'report_number', 'updated_by',
+        'report_number', 'updated_by', 'approved_by', 'approved_at',
+    ];
+
+    protected $casts = [
+        'approved_at' => 'datetime',
     ];
 
     public function loanCase()

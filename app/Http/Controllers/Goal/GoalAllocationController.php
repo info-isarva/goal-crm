@@ -9,12 +9,14 @@ use App\Models\GoalLoanLeadAssignment;
 use App\Models\GoalLoanLeadEvent;
 use App\Models\GoalOrgUnit;
 use App\Models\User;
+use App\Notifications\GoalCaseAlert;
 use App\Services\Goal\GoalDashboardService;
 use App\Services\Goal\GoalWorkflow;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GoalAllocationController extends Controller
 {
@@ -76,8 +78,6 @@ class GoalAllocationController extends Controller
             'action' => 'nullable|in:assign,reassign',
         ]);
 
-        $this->assertSalesAssignee((int) $data['assigned_to']);
-
         $action = $data['action'] ?? ($lead->assigned_to ? 'reassign' : 'assign');
         if ($action === 'reassign' && empty(trim((string) ($data['reason'] ?? '')))) {
             throw ValidationException::withMessages([
@@ -85,6 +85,7 @@ class GoalAllocationController extends Controller
             ]);
         }
 
+        $this->assertSalesAssignee((int) $data['assigned_to'], $lead);
         $this->applyAssignment($lead, (int) $data['assigned_to'], $action, $data['reason'] ?? null);
 
         return back()
@@ -108,7 +109,6 @@ class GoalAllocationController extends Controller
             $scope = $this->scopedOrgIds();
             $count = 0;
             foreach ($data['assignments'] as $row) {
-                $this->assertSalesAssignee((int) $row['assigned_to']);
                 $lead = GoalLoanLead::query()
                     ->whereKey($row['lead_id'])
                     ->where('status', 'Pending BM Allocation')
@@ -117,6 +117,7 @@ class GoalAllocationController extends Controller
                 if (!$lead) {
                     continue;
                 }
+                $this->assertSalesAssignee((int) $row['assigned_to'], $lead);
                 $this->applyAssignment($lead, (int) $row['assigned_to'], 'assign', null);
                 $count++;
             }
@@ -138,8 +139,6 @@ class GoalAllocationController extends Controller
             'assigned_to' => 'required|exists:users,id',
         ]);
 
-        $this->assertSalesAssignee((int) $data['assigned_to']);
-
         $scope = $this->scopedOrgIds();
         $leads = GoalLoanLead::query()
             ->whereIn('id', $data['lead_ids'])
@@ -155,6 +154,7 @@ class GoalAllocationController extends Controller
 
         $count = 0;
         foreach ($leads as $lead) {
+            $this->assertSalesAssignee((int) $data['assigned_to'], $lead);
             $this->applyAssignment($lead, (int) $data['assigned_to'], 'assign', null);
             $count++;
         }
@@ -162,6 +162,66 @@ class GoalAllocationController extends Controller
         return back()
             ->with('success', $count === 1 ? '1 lead assigned.' : "{$count} leads assigned.")
             ->with('tab', 'pending');
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $this->requireGoalPermission('bm_allocation_guard');
+        $scope = $this->scopedOrgIds();
+        $tab = in_array($request->input('tab'), ['pending', 'assigned'], true)
+            ? $request->input('tab')
+            : 'pending';
+
+        $filename = 'bm-allocation-'.$tab.'-'.now()->format('Ymd-His').'.csv';
+
+        return response()->streamDownload(function () use ($scope, $tab) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+
+            if ($tab === 'assigned') {
+                fputcsv($out, ['Ref', 'Customer', 'Branch', 'Assignee', 'Assigned At', 'Status', 'Lead Type']);
+                $rows = GoalLoanLead::query()
+                    ->with(['assignee', 'orgUnit'])
+                    ->whereNotNull('assigned_to')
+                    ->when($scope !== [], fn ($q) => $q->whereIn('goal_org_unit_id', $scope))
+                    ->latest('assigned_at')
+                    ->limit(5000)
+                    ->get();
+                foreach ($rows as $lead) {
+                    fputcsv($out, [
+                        $lead->ref_no,
+                        $lead->customer_name,
+                        $lead->orgUnit?->name,
+                        $lead->assignee?->name,
+                        optional($lead->assigned_at)->format('Y-m-d H:i'),
+                        $lead->status,
+                        $lead->lead_type,
+                    ]);
+                }
+            } else {
+                fputcsv($out, ['Ref', 'Customer', 'Mobile', 'Branch', 'Lead Type', 'Status', 'Received On']);
+                $rows = GoalLoanLead::query()
+                    ->with('orgUnit')
+                    ->where('status', 'Pending BM Allocation')
+                    ->when($scope !== [], fn ($q) => $q->whereIn('goal_org_unit_id', $scope))
+                    ->latest()
+                    ->limit(5000)
+                    ->get();
+                foreach ($rows as $lead) {
+                    fputcsv($out, [
+                        $lead->ref_no,
+                        $lead->customer_name,
+                        $lead->mobile,
+                        $lead->orgUnit?->name,
+                        $lead->lead_type,
+                        $lead->status,
+                        optional($lead->created_at)->format('Y-m-d H:i'),
+                    ]);
+                }
+            }
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function history(GoalLoanLead $lead)
@@ -321,11 +381,21 @@ class GoalAllocationController extends Controller
                 ['from_status' => $fromStatus, 'to_status' => $lead->status]
             );
         }
+
+        $assignee = User::query()->find($toUserId);
+        $this->notifyAssignee(
+            $assignee,
+            $action === 'reassign' ? 'Lead reassigned to you' : 'New lead assigned',
+            ($lead->ref_no ?: 'Lead').' · '.($lead->customer_name ?: 'Customer'),
+            route('goal.leads.show', $lead),
+            'lead-assign-'.$lead->id.'-'.$toUserId
+        );
     }
 
     protected function salesUsers(array $scope): Collection
     {
         return User::query()
+            ->where('status', 1)
             ->where(function ($q) {
                 $q->whereIn('crm_role_type', [10, 11, 12])
                     ->orWhereIn('job_role', ['jsm', 'sm', 'ssm']);
@@ -340,7 +410,7 @@ class GoalAllocationController extends Controller
             ->get(['id', 'name', 'job_role', 'crm_role_type', 'goal_org_unit_id']);
     }
 
-    protected function assertSalesAssignee(int $userId): void
+    protected function assertSalesAssignee(int $userId, GoalLoanLead $lead): void
     {
         $user = User::query()->find($userId);
         if (!$user) {
@@ -355,6 +425,38 @@ class GoalAllocationController extends Controller
                 'assigned_to' => 'Assignee must be JSM, SM, or SSM.',
             ]);
         }
+
+        if ((int) ($user->status ?? 1) !== 1) {
+            throw ValidationException::withMessages([
+                'assigned_to' => 'Assignee must be an active user.',
+            ]);
+        }
+
+        $leadOrg = (int) ($lead->goal_org_unit_id ?? 0);
+        $userOrg = (int) ($user->goal_org_unit_id ?? 0);
+        if (! $leadOrg || ! $userOrg || $leadOrg !== $userOrg) {
+            throw ValidationException::withMessages([
+                'assigned_to' => 'Assignee must belong to the same branch as the lead.',
+            ]);
+        }
+    }
+
+    protected function notifyAssignee(?User $user, string $title, string $message, string $url, string $eventKey): void
+    {
+        if (! $user) {
+            return;
+        }
+        $exists = $user->notifications()
+            ->whereNull('read_at')
+            ->where('type', GoalCaseAlert::class)
+            ->where('data->event', $eventKey)
+            ->where('data->url', $url)
+            ->where('created_at', '>=', now()->subHours(6))
+            ->exists();
+        if ($exists) {
+            return;
+        }
+        $user->notify(new GoalCaseAlert($title, $message, $url, $eventKey));
     }
 
     protected function assertLeadInScope(GoalLoanLead $lead): void

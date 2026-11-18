@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GoalLoanCaseController extends Controller
 {
@@ -30,6 +31,7 @@ class GoalLoanCaseController extends Controller
         $request->validate([
             'q' => 'nullable|string|max:150',
             'tab' => 'nullable|string|max:40',
+            'module' => 'nullable|string|max:40',
             'branch' => 'nullable|integer',
             'status' => 'nullable|string|max:80',
             'product' => 'nullable|string|max:100',
@@ -37,6 +39,73 @@ class GoalLoanCaseController extends Controller
             'date_to' => 'nullable|date',
             'per_page' => 'nullable|in:10,25,50,100',
         ]);
+
+        // Sidebar Loan Processing deep-links → workspace tab when a case is opened
+        $moduleMeta = [
+            'visits' => [
+                'tab' => 'activity',
+                'title' => 'Customer Visits & Follow-ups',
+                'sub' => 'Open a case to manage visits, tasks and follow-ups.',
+                'icon' => 'bi-geo-alt',
+            ],
+            'activity' => [
+                'tab' => 'activity',
+                'title' => 'Customer Visits & Follow-ups',
+                'sub' => 'Open a case to manage visits, tasks and follow-ups.',
+                'icon' => 'bi-geo-alt',
+            ],
+            'documents' => [
+                'tab' => 'documents',
+                'title' => 'Documents',
+                'sub' => 'Document management and verification — open a case to continue.',
+                'icon' => 'bi-file-earmark-text',
+            ],
+            'lenders' => [
+                'tab' => 'lenders',
+                'title' => 'Bank Processing',
+                'sub' => 'Bank login and lender applications — open a case to continue.',
+                'icon' => 'bi-bank',
+            ],
+            'queries' => [
+                'tab' => 'queries',
+                'title' => 'Bank Processing',
+                'sub' => 'Bank queries and lender follow-ups — open a case to continue.',
+                'icon' => 'bi-bank',
+            ],
+            'sanction' => [
+                'tab' => 'sanction',
+                'title' => 'Sanction & Disbursement',
+                'sub' => 'Sanction and verified disbursement — open a case to continue.',
+                'icon' => 'bi-award',
+            ],
+            'disbursement' => [
+                'tab' => 'disbursement',
+                'title' => 'Sanction & Disbursement',
+                'sub' => 'Sanction and verified disbursement — open a case to continue.',
+                'icon' => 'bi-award',
+            ],
+        ];
+        $module = (string) $request->input('module', '');
+        // Dedicated module hubs — keep old deep-links working
+        if (in_array($module, ['visits', 'activity'], true)) {
+            return redirect()->route('goal.visits.index');
+        }
+        if ($module === 'documents') {
+            return redirect()->route('goal.documents.index');
+        }
+        if (in_array($module, ['lenders', 'queries'], true)) {
+            return redirect()->route('goal.bank-processing.index');
+        }
+        if (in_array($module, ['sanction', 'disbursement'], true)) {
+            return redirect()->route('goal.sanction-disbursement.index');
+        }
+        $moduleView = $moduleMeta[$module] ?? null;
+        $workspaceTab = $moduleView['tab'] ?? null;
+        if ($workspaceTab) {
+            session(['cw_tab' => $workspaceTab]);
+        } else {
+            session()->forget('cw_tab');
+        }
 
         $scope = $this->scopedOrgIds();
         $tab = $request->input('tab', 'all');
@@ -174,6 +243,101 @@ class GoalLoanCaseController extends Controller
             'rejected' => ['label' => 'Rejected', 'icon' => 'bi-x-circle'],
         ];
 
+        // Module hubs: focused KPIs + per-row progress (still opens case workspace tabs)
+        $moduleKpis = null;
+        $caseModuleStats = [];
+        if ($workspaceTab === 'documents') {
+            $docRows = (clone $kpiBase)->get(['id', 'customer_details']);
+            $moduleKpis = [
+                'cases' => $docRows->count(),
+                'pending' => 0,
+                'verified' => 0,
+                'rejected' => 0,
+                'missing' => 0,
+            ];
+            foreach ($docRows as $row) {
+                $stats = $this->summarizeCaseDocuments($row);
+                $moduleKpis['pending'] += $stats['pending'];
+                $moduleKpis['verified'] += $stats['verified'];
+                $moduleKpis['rejected'] += $stats['rejected'];
+                $moduleKpis['missing'] += $stats['missing'];
+            }
+            foreach ($cases as $case) {
+                $caseModuleStats[$case->id] = $this->summarizeCaseDocuments($case);
+            }
+        } elseif (in_array($workspaceTab, ['lenders', 'queries'], true)) {
+            $appBase = \App\Models\GoalBankApplication::query()
+                ->whereHas('loanCase', function ($q) use ($scope) {
+                    if ($scope !== []) {
+                        $q->whereIn('goal_org_unit_id', $scope);
+                    }
+                });
+            $queryBase = \App\Models\GoalBankQuery::query()
+                ->whereHas('loanCase', function ($q) use ($scope) {
+                    if ($scope !== []) {
+                        $q->whereIn('goal_org_unit_id', $scope);
+                    }
+                });
+            $moduleKpis = [
+                'applications' => (clone $appBase)->count(),
+                'login' => (clone $appBase)->where('status', 'Bank Login')->count(),
+                'processing' => (clone $appBase)->where('status', 'Processing')->count(),
+                'queries' => (clone $queryBase)->where('status', '!=', 'Resolved')->count(),
+                'sanctioned' => (clone $appBase)->where('status', 'Sanctioned')->count(),
+            ];
+            $cases->loadCount([
+                'bankApplications',
+                'bankQueries as open_queries_count' => fn ($q) => $q->where('status', '!=', 'Resolved'),
+            ]);
+            foreach ($cases as $case) {
+                $caseModuleStats[$case->id] = [
+                    'applications' => (int) ($case->bank_applications_count ?? 0),
+                    'open_queries' => (int) ($case->open_queries_count ?? 0),
+                ];
+            }
+        } elseif (in_array($workspaceTab, ['sanction', 'disbursement'], true)) {
+            $moduleKpis = [
+                'sanctioned_cases' => (clone $kpiBase)->where('status', 'Sanctioned')->count(),
+                'disbursed_cases' => (clone $kpiBase)->where('status', 'Disbursed')->count(),
+                'active_sanctions' => \App\Models\GoalSanction::query()
+                    ->where('status', 'Active')
+                    ->whereHas('loanCase', function ($q) use ($scope) {
+                        if ($scope !== []) {
+                            $q->whereIn('goal_org_unit_id', $scope);
+                        }
+                    })->count(),
+                'pending_disb' => \App\Models\GoalDisbursement::query()
+                    ->whereNull('verified_at')
+                    ->where('status', 'Pending Verification')
+                    ->whereHas('loanCase', function ($q) use ($scope) {
+                        if ($scope !== []) {
+                            $q->whereIn('goal_org_unit_id', $scope);
+                        }
+                    })->count(),
+                'verified_disb' => \App\Models\GoalDisbursement::query()
+                    ->whereNotNull('verified_at')
+                    ->whereHas('loanCase', function ($q) use ($scope) {
+                        if ($scope !== []) {
+                            $q->whereIn('goal_org_unit_id', $scope);
+                        }
+                    })->count(),
+            ];
+            $cases->load(['sanctions' => fn ($q) => $q->latest(), 'disbursements']);
+            foreach ($cases as $case) {
+                $active = $case->sanctions->firstWhere('status', 'Active');
+                $verified = (float) $case->disbursements->whereNotNull('verified_at')->sum('amount');
+                $pending = (float) $case->disbursements
+                    ->whereNull('verified_at')
+                    ->where('status', 'Pending Verification')
+                    ->sum('amount');
+                $caseModuleStats[$case->id] = [
+                    'sanction_amount' => $active?->sanction_amount ?? $case->sanction_amount,
+                    'verified_disb' => $verified,
+                    'pending_disb' => $pending,
+                ];
+            }
+        }
+
         return view('goal.cases.index', compact(
             'cases',
             'kpis',
@@ -185,8 +349,146 @@ class GoalLoanCaseController extends Controller
             'tabs',
             'perPage',
             'branchManagersById',
-            'caseBranchManagerIds'
+            'caseBranchManagerIds',
+            'module',
+            'moduleView',
+            'workspaceTab',
+            'moduleKpis',
+            'caseModuleStats'
         ));
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $this->requireGoalPermission('view_loan_cases_guard');
+
+        $request->validate([
+            'q' => 'nullable|string|max:150',
+            'tab' => 'nullable|string|max:40',
+            'branch' => 'nullable|integer',
+            'status' => 'nullable|string|max:80',
+            'product' => 'nullable|string|max:100',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+        ]);
+
+        $scope = $this->scopedOrgIds();
+        $tab = $request->input('tab', 'all');
+
+        $baseQuery = GoalLoanCase::query()->with([
+            'owner:id,name',
+            'orgUnit:id,name',
+        ]);
+        if ($scope !== []) {
+            $baseQuery->whereIn('goal_org_unit_id', $scope);
+        }
+
+        if ($tab === 'mine') {
+            $baseQuery->where('owner_id', auth()->id());
+        } elseif (! $request->filled('status')) {
+            if ($tab === 'in_process') {
+                $baseQuery->where('status', 'Processing');
+            } elseif ($tab === 'bank_query') {
+                $baseQuery->where('status', 'Bank Query');
+            } elseif ($tab === 'sanctioned') {
+                $baseQuery->where('status', 'Sanctioned');
+            } elseif ($tab === 'disbursed') {
+                $baseQuery->where('status', 'Disbursed');
+            } elseif ($tab === 'rejected') {
+                $baseQuery->where('status', 'Rejected');
+            }
+        }
+
+        if ($request->filled('q')) {
+            $q = trim((string) $request->input('q'));
+            $baseQuery->where(function ($inner) use ($q) {
+                $inner->where('case_no', 'like', "%{$q}%")
+                    ->orWhere('customer_name', 'like', "%{$q}%")
+                    ->orWhere('mobile', 'like', "%{$q}%");
+            });
+        }
+        if ($request->filled('status')) {
+            $baseQuery->where('status', $request->input('status'));
+        }
+        if ($request->filled('branch')) {
+            $baseQuery->where('goal_org_unit_id', (int) $request->input('branch'));
+        }
+        if ($request->filled('product')) {
+            $baseQuery->where('product', $request->input('product'));
+        }
+        if ($request->filled('date_from')) {
+            $baseQuery->whereDate('updated_at', '>=', $request->input('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $baseQuery->whereDate('updated_at', '<=', $request->input('date_to'));
+        }
+
+        $rows = $baseQuery->latest('updated_at')->limit(5000)->get();
+        $filename = 'loan-cases-'.now()->format('Ymd-His').'.csv';
+
+        return response()->streamDownload(function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, [
+                'Case No', 'Customer', 'Mobile', 'Product', 'Status',
+                'Loan Amount', 'Branch', 'Owner', 'Updated At',
+            ]);
+            foreach ($rows as $case) {
+                fputcsv($out, [
+                    $case->case_no,
+                    $case->customer_name,
+                    $case->mobile,
+                    $case->product,
+                    $case->status,
+                    $case->loan_amount,
+                    $case->orgUnit?->name,
+                    $case->owner?->name,
+                    optional($case->updated_at)->format('Y-m-d H:i'),
+                ]);
+            }
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * Aggregate document checklist progress for a case (customer_details.documents).
+     *
+     * @return array{total:int,uploaded:int,pending:int,verified:int,rejected:int,missing:int,label:string}
+     */
+    protected function summarizeCaseDocuments(GoalLoanCase $case): array
+    {
+        $docs = collect(data_get($case->customer_details, 'documents', []) ?: []);
+        $uploaded = $docs->filter(fn ($d) => !empty($d['path'] ?? null) || !empty($d['storage_path'] ?? null))->count();
+        $pending = $docs->filter(function ($d) {
+            $st = $d['status'] ?? 'Pending';
+            $hasFile = !empty($d['path'] ?? null) || !empty($d['storage_path'] ?? null);
+
+            return $hasFile && in_array($st, ['Pending', 'Uploaded'], true);
+        })->count();
+        $verified = $docs->where('status', 'Verified')->count();
+        $rejected = $docs->where('status', 'Rejected')->count();
+        $mandatory = $docs->filter(fn ($d) => !empty($d['mandatory']))->count();
+        $mandatoryUploaded = $docs->filter(function ($d) {
+            return !empty($d['mandatory'])
+                && (!empty($d['path'] ?? null) || !empty($d['storage_path'] ?? null));
+        })->count();
+        $missing = max(0, $mandatory - $mandatoryUploaded);
+        $total = $docs->count();
+        $label = $total === 0
+            ? 'No checklist'
+            : ($missing > 0
+                ? $missing.' missing'
+                : ($pending > 0 ? $pending.' pending' : ($rejected > 0 ? $rejected.' rejected' : 'Complete')));
+
+        return [
+            'total' => $total,
+            'uploaded' => $uploaded,
+            'pending' => $pending,
+            'verified' => $verified,
+            'rejected' => $rejected,
+            'missing' => $missing,
+            'label' => $label,
+        ];
     }
 
     /**
@@ -700,7 +1002,7 @@ class GoalLoanCaseController extends Controller
             'owner:id,name,job_role,crm_role_type,reports_to_user_id,mobile,goal_org_unit_id',
             'orgUnit:id,name',
             'lead:id,ref_no,status,source,assigned_to,consent_recorded',
-            'tasks' => fn ($q) => $q->latest()->limit(30),
+            'tasks' => fn ($q) => $q->with('assignee:id,name')->latest()->limit(50),
             'disbursements' => fn ($q) => $q->latest(),
             'disbursements.application',
             'disbursements.verifier',
@@ -719,14 +1021,28 @@ class GoalLoanCaseController extends Controller
             'events' => fn ($q) => $q->with('user:id,name,job_role,crm_role_type')->latest()->limit(100),
         ]);
 
+        // Hydrate Branch MIS for the tab (pipeline sync + commercial auto-calc; not persisted until Save / PD-01).
+        $case->setAttribute(
+            'branch_mis',
+            app(\App\Services\Goal\GoalBranchMisService::class)->apply($case, [])
+        );
+
         $next = GoalWorkflow::CASE_TRANSITIONS[$case->status] ?? [];
         $user = auth()->user();
-        $canEdit = $user->hasCrmPermission('edit_case_workspace_guard');
-        $canDisburse = $user->hasCrmPermission('record_disbursement_guard');
-        $canReassign = $user->hasCrmPermission('bm_allocation_guard');
-        $canVerifyDocs = $user->hasCrmPermission('bm_allocation_guard')
+        $workspaceLocked = GoalWorkflow::isWorkspaceLocked($case->status);
+        $canOverrideLock = $user->hasCrmPermission('manage_permissions_guard');
+        $canEdit = $user->hasCrmPermission('edit_case_workspace_guard')
+            && (! $workspaceLocked || $canOverrideLock);
+        // Status transitions (e.g. Disbursed → PMS, Rejected → Closed) stay available.
+        $canAdvanceStatus = $user->hasCrmPermission('edit_case_workspace_guard') && $next !== [];
+        $canDisburse = $user->hasCrmPermission('record_disbursement_guard')
+            && in_array($case->status, ['Sanctioned', 'Disbursed'], true);
+        $canReassign = $user->hasCrmPermission('bm_allocation_guard')
+            && (! $workspaceLocked || $canOverrideLock);
+        $canVerifyDocs = ($user->hasCrmPermission('bm_allocation_guard')
             || $user->hasCrmPermission('pms_verification_guard')
-            || $user->hasCrmPermission('manage_permissions_guard');
+            || $user->hasCrmPermission('manage_permissions_guard'))
+            && (! $workspaceLocked || $canOverrideLock);
         $canPms = $user->hasCrmPermission('pms_verification_guard');
 
         $bmId = $this->resolveCaseBranchManagerId($case);
@@ -736,11 +1052,13 @@ class GoalLoanCaseController extends Controller
 
         $progress = $this->caseProgressSteps($case);
 
-        $activeTab = session('cw_tab', request('tab', 'overview'));
-        $allowedTabs = ['overview', 'customer', 'recommendation', 'documents', 'lenders', 'queries', 'sanction', 'disbursement', 'activity'];
+        // Prefer explicit ?tab= (sidebar / list deep-link); else consume session from module hub
+        $activeTab = (string) request('tab', session('cw_tab', 'overview'));
+        $allowedTabs = ['overview', 'customer', 'recommendation', 'documents', 'lenders', 'queries', 'sanction', 'disbursement', 'mis', 'visits', 'activity'];
         if (!in_array($activeTab, $allowedTabs, true)) {
             $activeTab = 'overview';
         }
+        session()->forget('cw_tab');
 
         $scope = $this->scopedOrgIds();
         $reassignUsers = ($canReassign || $canEdit)
@@ -780,6 +1098,8 @@ class GoalLoanCaseController extends Controller
             'case',
             'next',
             'canEdit',
+            'canAdvanceStatus',
+            'workspaceLocked',
             'canDisburse',
             'canReassign',
             'canVerifyDocs',
@@ -802,6 +1122,9 @@ class GoalLoanCaseController extends Controller
     {
         $this->requireGoalPermission('edit_case_workspace_guard');
         $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, (string) $request->input('cw_tab', 'overview'))) {
+            return $redirect;
+        }
 
         $mobileRule = ['nullable', 'string', 'max:15', 'regex:/^[6-9]\d{9}$/'];
         $data = $request->validate([
@@ -850,8 +1173,29 @@ class GoalLoanCaseController extends Controller
 
         $incomingCd = $data['customer_details'] ?? [];
         $mergedCd = $this->mergeWorkspaceJson($case->customer_details, $incomingCd);
+        // Preserve verification status from stored docs — only verify endpoints may set Verified/Rejected.
         if (array_key_exists('documents', $incomingCd)) {
-            $mergedCd['documents'] = array_values($incomingCd['documents'] ?? []);
+            $existingByKey = collect(data_get($case->customer_details, 'documents', []) ?: [])
+                ->keyBy(fn ($d) => ($d['party'] ?? 'Applicant').'|'.($d['key'] ?? ''));
+            $mergedDocs = [];
+            foreach (array_values($incomingCd['documents'] ?? []) as $doc) {
+                $k = ($doc['party'] ?? 'Applicant').'|'.($doc['key'] ?? '');
+                $prev = $existingByKey->get($k, []);
+                $incomingStatus = $doc['status'] ?? null;
+                if (in_array($incomingStatus, ['Verified', 'Rejected'], true)) {
+                    $doc['status'] = $prev['status'] ?? 'Pending';
+                    $doc['reviewer'] = $prev['reviewer'] ?? null;
+                    $doc['rejection_reason'] = $prev['rejection_reason'] ?? null;
+                }
+                // Keep file path / upload metadata from stored row unless newly uploaded elsewhere.
+                foreach (['path', 'storage_path', 'file_name', 'uploaded_at', 'uploaded_by', 'uploaded_by_id'] as $fileKey) {
+                    if (empty($doc[$fileKey]) && ! empty($prev[$fileKey])) {
+                        $doc[$fileKey] = $prev[$fileKey];
+                    }
+                }
+                $mergedDocs[] = $doc;
+            }
+            $mergedCd['documents'] = $mergedDocs;
         }
 
         // Keep top-level identity in sync with applicant form fields when provided
@@ -884,7 +1228,17 @@ class GoalLoanCaseController extends Controller
         ];
 
         $case->customer_details = $mergedCd;
-        $case->bm_reco = $this->mergeWorkspaceJson($case->bm_reco, $data['bm_reco'] ?? null);
+        $prevEquifax = data_get($case->bm_reco, 'equifax');
+        $incomingBm = $data['bm_reco'] ?? null;
+        if (is_array($incomingBm)) {
+            unset($incomingBm['equifax']); // Equifax managed via dedicated upload route
+        }
+        $case->bm_reco = $this->mergeWorkspaceJson($case->bm_reco, $incomingBm);
+        if (is_array($prevEquifax) && ! empty($prevEquifax['path'])) {
+            $mergedBm = is_array($case->bm_reco) ? $case->bm_reco : [];
+            $mergedBm['equifax'] = $prevEquifax;
+            $case->bm_reco = $mergedBm;
+        }
         $case->collateral = $this->mergeWorkspaceJson($case->collateral, $data['collateral'] ?? null);
         $incomingLoans = $data['existing_loans'] ?? null;
         if (is_array($incomingLoans)) {
@@ -915,7 +1269,12 @@ class GoalLoanCaseController extends Controller
             }
             $case->existing_loans = $mergedLoans;
         }
-        $case->branch_mis = $this->mergeWorkspaceJson($case->branch_mis, $data['branch_mis'] ?? null);
+        if (array_key_exists('branch_mis', $data) || ($data['cw_tab'] ?? '') === 'mis') {
+            $case->branch_mis = app(\App\Services\Goal\GoalBranchMisService::class)
+                ->apply($case, $data['branch_mis'] ?? []);
+        } else {
+            $case->branch_mis = $this->mergeWorkspaceJson($case->branch_mis, $data['branch_mis'] ?? null);
+        }
         $case->save();
 
         GoalCaseAudit::record($case, 'updated', 'Case details updated', auth()->user(), [
@@ -1078,24 +1437,46 @@ class GoalLoanCaseController extends Controller
 
         if ($data['to_status'] === 'Disbursed') {
             $this->requireGoalPermission('record_disbursement_guard');
-            try {
-                $pd01->execute($case, [
-                    'amount' => $data['amount'],
-                    'disbursed_on' => $data['disbursed_on'],
-                    'bank_reference' => $data['bank_reference'],
-                    'evidence_note' => $data['evidence_note'] ?? null,
-                ], auth()->user());
-            } catch (\Throwable $e) {
-                return back()->withErrors(['to_status' => $e->getMessage()])->with('cw_tab', 'bank');
+            $case->loadMissing('disbursements');
+            $hasVerified = $case->disbursements->whereNotNull('verified_at')->isNotEmpty();
+
+            // Single PD-01 path: never atomically verify via status transition.
+            // If amount fields are present, create Pending Verification only.
+            if (! empty($data['amount']) || ! empty($data['bank_reference']) || ! empty($data['disbursed_on'])) {
+                try {
+                    $pd01->recordPending($case, [
+                        'amount' => $data['amount'],
+                        'disbursed_on' => $data['disbursed_on'],
+                        'bank_reference' => $data['bank_reference'],
+                        'evidence_note' => $data['evidence_note'] ?? null,
+                    ], auth()->user());
+                } catch (\Throwable $e) {
+                    return back()->withErrors(['to_status' => $e->getMessage()])->with('cw_tab', 'disbursement');
+                }
+
+                return back()->with(
+                    'success',
+                    'Disbursement recorded as Pending Verification. Use Verify (PD-01) to recognize revenue and open PMS / Accounts.'
+                )->with('cw_tab', 'disbursement');
             }
-            return back()->with('success', 'PD-01 complete — PMS + Accounts queues opened, payout On Hold.')->with('cw_tab', 'bank');
+
+            if (! $hasVerified) {
+                return back()->withErrors([
+                    'to_status' => 'Record and verify a disbursement (PD-01) before moving the case to Disbursed.',
+                ])->with('cw_tab', 'disbursement');
+            }
+            // Fall through: allow status update when verified disbursement already exists.
         }
 
         $case->loadMissing(['bankApplications', 'bankQueries', 'sanctions', 'disbursements']);
         $docs = collect(data_get($case->customer_details, 'documents', []) ?: []);
         $mandatory = $docs->where('mandatory', true);
-        $requiredDocsComplete = $mandatory->isEmpty()
-            || $mandatory->every(fn ($d) => ($d['status'] ?? '') === 'Verified');
+        // Empty checklist = incomplete (must seed product docs and verify them).
+        $requiredDocsComplete = $mandatory->isNotEmpty()
+            && $mandatory->every(function ($d) {
+                return ($d['status'] ?? '') === 'Verified'
+                    && filled($d['path'] ?? ($d['storage_path'] ?? null));
+            });
         $caseDetailsComplete = filled($case->customer_name) && filled($case->product) && (float) $case->loan_amount > 0;
         $hasLender = $case->bankApplications->isNotEmpty() || filled($data['lender_name'] ?? $case->lender_name);
         $queriesCleared = !$case->bankQueries
@@ -1111,7 +1492,7 @@ class GoalLoanCaseController extends Controller
             'queryOwner' => true, // legacy transition path; dedicated query store enforces owner
             'sancAmt' => $data['sanction_amount'] ?? $activeSanc?->sanction_amount ?? $case->sanction_amount,
             'sancDate' => $data['sanction_date'] ?? $activeSanc?->sanction_date ?? $case->sanction_date,
-            'sancEvidence' => $hasSancEvidence || !empty($data['sanction_amount']),
+            'sancEvidence' => $hasSancEvidence,
             'reason' => $data['rejection_reason'] ?? null,
             'requiredDocsComplete' => $requiredDocsComplete,
             'caseDetailsComplete' => $caseDetailsComplete,
@@ -1161,6 +1542,9 @@ class GoalLoanCaseController extends Controller
     {
         $this->requireGoalPermission('edit_case_workspace_guard');
         $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'overview')) {
+            return $redirect;
+        }
         $data = $request->validate([
             'title' => 'required|string|max:200',
             'task_type' => 'nullable|in:visit,followup,document,other',
@@ -1169,7 +1553,7 @@ class GoalLoanCaseController extends Controller
         ], [
             'due_at.after_or_equal' => 'Task due date must be today or a future date/time.',
         ]);
-        GoalCaseTask::create([
+        $task = GoalCaseTask::create([
             'goal_loan_case_id' => $case->id,
             'title' => $data['title'],
             'task_type' => $data['task_type'] ?? 'visit',
@@ -1177,9 +1561,16 @@ class GoalLoanCaseController extends Controller
             'notes' => $data['notes'] ?? null,
             'assigned_to' => $case->owner_id,
             'created_by' => auth()->id(),
-            'status' => 'Open',
+            'status' => GoalCaseTask::STATUS_OPEN,
         ]);
-        return back()->with('success', 'Task added.')->with('cw_tab', 'tasks');
+        GoalCaseAudit::record($case, 'visit', 'Task scheduled', auth()->user(), [
+            'to' => optional($task->due_at)->format('d-m-Y H:i'),
+            'related_type' => GoalCaseTask::class,
+            'related_id' => $task->id,
+            'body' => $data['notes'] ?? null,
+        ]);
+
+        return back()->with('success', 'Task added.')->with('cw_tab', 'visits');
     }
 
     protected function salesUsers(array $scope, $branchId = null): Collection
@@ -1238,57 +1629,19 @@ class GoalLoanCaseController extends Controller
         return round((float) $clean, 2);
     }
 
-    /**
-     * Product document catalog — keys are matched by product name keywords until
-     * a dedicated product-document configuration table exists.
-     */
     protected function documentCatalog(): array
     {
-        return [
-            ['key' => 'pan', 'label' => 'PAN Card', 'products' => ['*'], 'mandatory' => true],
-            ['key' => 'aadhaar', 'label' => 'Aadhaar', 'products' => ['*'], 'mandatory' => true],
-            ['key' => 'photo', 'label' => 'Photograph', 'products' => ['*'], 'mandatory' => true],
-            ['key' => 'address_proof', 'label' => 'Address Proof', 'products' => ['*'], 'mandatory' => true],
-            ['key' => 'income_proof', 'label' => 'Income Proof', 'products' => ['personal', 'business', 'home'], 'mandatory' => true],
-            ['key' => 'bank_statement', 'label' => 'Bank Statement (6 months)', 'products' => ['personal', 'business', 'home'], 'mandatory' => true],
-            ['key' => 'salary_slip', 'label' => 'Salary Slips (3 months)', 'products' => ['personal', 'home'], 'mandatory' => false],
-            ['key' => 'property_docs', 'label' => 'Property Documents', 'products' => ['home'], 'mandatory' => true],
-            ['key' => 'business_proof', 'label' => 'Business Registration / ITR', 'products' => ['business'], 'mandatory' => true],
-        ];
+        return \App\Services\Goal\GoalDocumentCatalog::catalog();
     }
 
     protected function documentsForProduct(?string $productName): array
     {
-        $key = $this->productKey($productName);
-        $out = [];
-        foreach ($this->documentCatalog() as $doc) {
-            $products = $doc['products'] ?? ['*'];
-            if (in_array('*', $products, true) || ($key && in_array($key, $products, true))) {
-                $out[] = [
-                    'key' => $doc['key'],
-                    'label' => $doc['label'],
-                    'mandatory' => (bool) ($doc['mandatory'] ?? false),
-                ];
-            }
-        }
-
-        return $out;
+        return \App\Services\Goal\GoalDocumentCatalog::forProduct($productName);
     }
 
     protected function productKey(?string $name): string
     {
-        $p = strtolower((string) $name);
-        if (str_contains($p, 'home')) {
-            return 'home';
-        }
-        if (str_contains($p, 'personal')) {
-            return 'personal';
-        }
-        if (str_contains($p, 'business') || str_contains($p, 'sme')) {
-            return 'business';
-        }
-
-        return 'other';
+        return \App\Services\Goal\GoalDocumentCatalog::productKey($name);
     }
 
     protected function selectableLeadsQuery(array $scope)

@@ -12,6 +12,19 @@
 
     <title>{{ !empty($company->name) ? $company->name : config('app.name', 'Laravel') }}</title>
 
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('sidebar-theme') || 'soft';
+                if (t === 'light') t = 'soft';
+                if (t !== 'soft' && t !== 'green' && t !== 'dark') t = 'soft';
+                document.documentElement.setAttribute('data-sidebar-theme', t);
+            } catch (e) {
+                document.documentElement.setAttribute('data-sidebar-theme', 'soft');
+            }
+        })();
+    </script>
+
     <link rel="icon" href="{{ $company->favicon_url }}">
     <link rel="shortcut icon" href="{{ $company->favicon_url }}">
     <!-- Fonts: Inter (ISARVA enterprise typography) -->
@@ -29,6 +42,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
     <!---Custom CSS (Tailwind via Vite above; app chrome extras below) --->
+    <link href="{{ asset('css/app-theme.css') }}?v={{ @filemtime(public_path('css/app-theme.css')) }}" rel="stylesheet">
     <link href="{{ asset('css/custom-style.css') }}" rel="stylesheet">
     <link href="{{ asset('css/isarva-typography.css') }}?v={{ @filemtime(public_path('css/isarva-typography.css')) }}" rel="stylesheet">
     <link href="{{ asset('css/hub-page-skeleton.css') }}?v={{ @filemtime(public_path('css/hub-page-skeleton.css')) }}" rel="stylesheet">
@@ -69,7 +83,7 @@
         <div class="min-h-screen bg-slate-50">
             <div class="flex min-h-screen flex-col lg:flex-row">
                 @include('layouts.sidebar')
-                <main class="custom-margin @auth with-top-header @endauth flex min-h-screen w-full flex-1 flex-col">
+                <main class="custom-margin @auth with-top-header @endauth flex min-h-screen w-full min-w-0 max-w-full flex-1 flex-col overflow-x-clip">
 
                     @auth
 
@@ -356,6 +370,17 @@
                                             <li><hr class="dropdown-divider m-0"></li>
                                             <li><a class="dropdown-item" href="{{ route('profile.edit') }}">Profile</a></li>
                                             <li><a class="dropdown-item" href="{{ route('password.edit') }}">Change Password</a></li>
+                                            <li><hr class="dropdown-divider m-0"></li>
+                                            <li class="px-3 py-2">
+                                                <div class="sidebar-theme-switch" role="group" aria-label="Sidebar theme">
+                                                    <div class="sidebar-theme-label">Sidebar theme</div>
+                                                    <div class="sidebar-theme-options" role="group">
+                                                        <button type="button" class="btn btn-outline-secondary sidebar-theme-btn" data-sidebar-theme-set="soft" title="Goal teal / cyan (reference)">Goal</button>
+                                                        <button type="button" class="btn btn-outline-secondary sidebar-theme-btn" data-sidebar-theme-set="green" title="Solid green active">Green</button>
+                                                        <button type="button" class="btn btn-outline-secondary sidebar-theme-btn" data-sidebar-theme-set="dark" title="Classic navy">Dark</button>
+                                                    </div>
+                                                </div>
+                                            </li>
                                             <li>
                                                 <form method="POST" action="{{ route('logout') }}" class="m-0">
                                                     @csrf
@@ -610,7 +635,7 @@
         <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
         <script src="{{ asset('js/tw-ui.js') }}?v={{ @filemtime(public_path('js/tw-ui.js')) }}"></script>
 
-        <script src="{{ asset('js/custom-script.js') }}"></script>
+        <script src="{{ asset('js/custom-script.js') }}?v={{ @filemtime(public_path('js/custom-script.js')) }}"></script>
         <script src="{{ asset('js/hub-page-skeleton.js') }}?v={{ @filemtime(public_path('js/hub-page-skeleton.js')) }}"></script>
         <script src="{{ asset('js/select2.min.js') }}"></script>
         <script src="{{ asset('js/select2-init.js') }}?v={{ @filemtime(public_path('js/select2-init.js')) }}"></script>

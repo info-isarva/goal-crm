@@ -152,7 +152,7 @@ class GoalDashboardService
             ->whereNotNull('callback_at')
             ->where('callback_at', '<', now())
             ->count();
-        $dailyCallTarget = 200;
+        $dailyCallTarget = (int) config('goal.daily_call_target', 200);
 
         $target = $this->resolveTarget($user, $scopeIds, $periodMeta);
         $targetEffective = $target ? $target->effectiveTarget() : 0.0;

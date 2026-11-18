@@ -52,6 +52,30 @@ class GoalWorkflow
         return in_array($to, self::CASE_TRANSITIONS[$from] ?? [], true);
     }
 
+    /**
+     * Statuses where case workspace capture is frozen.
+     * Accounts / PMS / revenue adjustment remain on their own modules.
+     * Disbursed still allows PD-01 partials + transfer to PMS.
+     *
+     * @return list<string>
+     */
+    public static function workspaceLockedStatuses(): array
+    {
+        return ['Disbursed', 'PMS', 'Rejected', 'Closed'];
+    }
+
+    public static function isWorkspaceLocked(?string $status): bool
+    {
+        return in_array((string) $status, self::workspaceLockedStatuses(), true);
+    }
+
+    public static function workspaceLockMessage(?string $status = null): string
+    {
+        $status = $status ?: 'this status';
+
+        return "Case workspace is locked after {$status}. Sales edits are disabled; use Accounts / PMS for post-disbursement work.";
+    }
+
     public static function validateLead(string $from, string $to, array $ctx = []): array
     {
         if ($from === 'Closed / Lost') {
@@ -69,6 +93,12 @@ class GoalWorkflow
         }
         if ($to === 'Qualified' && empty($ctx['consent'])) {
             $errors[] = 'Consent must be recorded.';
+        }
+        if ($to === 'Documents Pending' && empty($ctx['product'])) {
+            $errors[] = 'Product is required before Documents Pending.';
+        }
+        if ($to === 'Ready for Bank Login' && empty($ctx['docsVerified'])) {
+            $errors[] = 'Mandatory documents must be uploaded and verified before Ready for Bank Login.';
         }
         if ($to === 'Closed / Lost' && empty($ctx['reason'])) {
             $errors[] = 'Closure reason required.';
@@ -134,6 +164,44 @@ class GoalWorkflow
         if (!empty($ctx['from']) && $ctx['from'] !== 'Sanctioned') {
             $errors[] = 'PD-01 only from Sanctioned.';
         }
+        return ['ok' => $errors === [], 'errors' => $errors];
+    }
+
+    /** Lender application status graph (Bank Processing). */
+    public const APPLICATION_TRANSITIONS = [
+        'Bank Login' => ['Bank Query', 'Processing', 'Rejected'],
+        'Bank Query' => ['Processing', 'Bank Query', 'Rejected'],
+        'Processing' => ['Sanctioned', 'Rejected', 'Bank Query'],
+        'Sanctioned' => ['Disbursed', 'Rejected'],
+        'Disbursed' => [],
+        'Rejected' => [],
+    ];
+
+    public static function canApplication(string $from, string $to): bool
+    {
+        if ($from === $to) {
+            return true;
+        }
+
+        return in_array($to, self::APPLICATION_TRANSITIONS[$from] ?? [], true);
+    }
+
+    public static function validateApplication(string $from, string $to, array $ctx = []): array
+    {
+        if (! self::canApplication($from, $to)) {
+            return ['ok' => false, 'errors' => ["Illegal application transition: {$from} → {$to}"]];
+        }
+        $errors = [];
+        if ($to === 'Rejected' && empty(trim((string) ($ctx['reason'] ?? '')))) {
+            $errors[] = 'Rejection reason required.';
+        }
+        if ($to === 'Sanctioned' && empty($ctx['hasActiveSanction'])) {
+            $errors[] = 'Record an Active sanction before marking the application Sanctioned.';
+        }
+        if ($to === 'Disbursed' && empty($ctx['verifiedDisbursement'])) {
+            $errors[] = 'Verify a disbursement (PD-01) before marking application Disbursed.';
+        }
+
         return ['ok' => $errors === [], 'errors' => $errors];
     }
 }

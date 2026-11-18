@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GoalOrgUnit extends Model
 {
+    use HasFactory;
+
     public const TYPE_REGION = 'region';
     public const TYPE_CLUSTER = 'cluster';
     public const TYPE_BRANCH = 'branch';
@@ -68,6 +71,23 @@ class GoalOrgUnit extends Model
                     $queue[] = $childId;
                 }
             }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Ancestor chain (parent → … → region), excluding self.
+     */
+    public function ancestorIds(): array
+    {
+        $ids = [];
+        $parentId = $this->parent_id;
+        $guard = 0;
+        while ($parentId && $guard < 20) {
+            $ids[] = (int) $parentId;
+            $parentId = self::query()->whereKey($parentId)->value('parent_id');
+            $guard++;
         }
 
         return $ids;

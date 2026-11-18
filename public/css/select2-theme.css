@@ -1,16 +1,17 @@
 /**
  * Global dropdown design (native .form-select + Select2) — all modules
- * Light grey border, 8–10px radius, blue focus ring, high z-index over cards
+ * Follows html[data-sidebar-theme] tokens from app-theme.css (teal/green/dark).
  */
 :root {
     --s2-border: #d1d5db;
-    --s2-border-focus: #93c5fd;
-    --s2-ring: rgba(59, 130, 246, 0.18);
+    --s2-border-focus: var(--theme-300, #99F6E4);
+    --s2-ring: var(--theme-primary-ring, rgba(13, 148, 136, 0.28));
     --s2-text: #0f172a;
     --s2-muted: #94a3b8;
     --s2-bg: #fff;
-    --s2-primary: #2563eb;
-    --s2-primary-hover: #1d4ed8;
+    --s2-primary: var(--theme-primary, #0D9488);
+    --s2-primary-hover: var(--theme-primary-hover, #0F766E);
+    --s2-primary-soft: var(--theme-primary-softer, #F0FDFA);
     --s2-radius: 10px;
     --s2-height-md: 38px;
     --s2-font-md: 0.9rem;
@@ -190,7 +191,7 @@ span.select2.select2-container {
     font-weight: 600;
 }
 
-/* Focus / open — blue ring on the closed control */
+/* Focus / open — theme ring on the closed control */
 .select2-container--default.select2-container--focus .select2-selection--single,
 .select2-container--default.select2-container--open .select2-selection--single,
 .select2-container--default.select2-container--focus .select2-selection--multiple,
@@ -219,10 +220,10 @@ span.select2.select2-container {
 }
 
 .select2-container--default .select2-selection--multiple .select2-selection__choice {
-    background-color: #eff6ff;
-    border: 1px solid #bfdbfe;
+    background-color: var(--s2-primary-soft) !important;
+    border: 1px solid var(--theme-200, #99F6E4) !important;
     border-radius: 6px;
-    color: #1e40af;
+    color: var(--s2-primary-hover) !important;
     font-size: 0.875rem;
     padding: 2px 8px;
     margin: 0;
@@ -338,19 +339,23 @@ body > .select2-container--open {
 }
 
 .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable,
-.select2-container--default .select2-results__option--selected.select2-results__option--highlighted {
+.select2-container--default .select2-results__option--selected.select2-results__option--highlighted,
+.select2-container--default .select2-results__option--highlighted {
     background-color: var(--s2-primary) !important;
+    background: var(--s2-primary) !important;
     color: #fff !important;
 }
 
 .select2-container--default .select2-results__option--selected {
-    background-color: #eff6ff !important;
-    color: var(--s2-primary) !important;
+    background-color: var(--s2-primary-soft) !important;
+    background: var(--s2-primary-soft) !important;
+    color: var(--s2-primary-hover) !important;
     font-weight: 600;
 }
 
 .select2-container--default .select2-results__option--selected.select2-results__option--highlighted {
     background-color: var(--s2-primary) !important;
+    background: var(--s2-primary) !important;
     color: #fff !important;
 }
 
@@ -360,11 +365,12 @@ body > .select2-container--open {
     padding: 0.5rem 0.75rem;
 }
 
-/* Stop page scrollbar jump when dropdown opens */
-html:has(body > .select2-container--open),
-body:has(> .select2-container--open) {
-    overflow-x: hidden !important;
-}
+/*
+ * Do NOT set overflow on html/body when Select2 opens.
+ * overflow-x:hidden creates a scroll containment that breaks
+ * position:sticky on .top-slim-header — the chrome header
+ * vanishes the moment a dropdown opens.
+ */
 
 /* Don't clip filter/toolbar dropdowns under cards */
 .filter-card,

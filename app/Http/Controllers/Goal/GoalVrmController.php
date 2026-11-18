@@ -29,6 +29,7 @@ class GoalVrmController extends Controller
             'disposition' => 'nullable|in:Interested,Not Interested,No Answer,Busy,Callback,Invalid Number',
             'disposition_filter' => 'nullable|in:Interested,Not Interested,No Answer,Busy,Callback,Invalid Number',
             'lead_status' => 'nullable|in:all,yes,no',
+            'callbacks_due' => 'nullable|in:1,0',
             'from_date' => 'nullable|date',
             'to_date' => 'nullable|date|after_or_equal:from_date',
             'date_filter' => 'nullable|date',
@@ -40,6 +41,19 @@ class GoalVrmController extends Controller
         $todayCount = GoalVrmCallLog::query()
             ->where('user_id', $userId)
             ->whereDate('called_at', today())
+            ->count();
+
+        $dailyTarget = (int) config('goal.daily_call_target', 200);
+        $isWorkingDay = now()->isWeekday();
+
+        $callbacksDueCount = GoalVrmCallLog::query()
+            ->where('user_id', $userId)
+            ->whereNotNull('callback_at')
+            ->where('callback_at', '<=', now())
+            ->where(function ($q) {
+                $q->where('disposition', 'Callback')
+                    ->orWhereNotNull('callback_at');
+            })
             ->count();
 
         $baseQuery = $this->filteredCallLogsQuery($request);
@@ -62,6 +76,9 @@ class GoalVrmController extends Controller
 
         return view('goal.vrm.index', compact(
             'todayCount',
+            'dailyTarget',
+            'isWorkingDay',
+            'callbacksDueCount',
             'totalCalls',
             'interestedCount',
             'callbackCount',
@@ -455,6 +472,11 @@ class GoalVrmController extends Controller
             $query->whereNull('goal_loan_lead_id');
         }
 
+        if ($request->input('callbacks_due') === '1') {
+            $query->whereNotNull('callback_at')
+                ->where('callback_at', '<=', now());
+        }
+
         if ($request->filled('date_filter') && !$request->filled('from_date') && !$request->filled('to_date')) {
             $query->whereDate('called_at', $request->input('date_filter'));
         } else {
@@ -487,13 +509,30 @@ class GoalVrmController extends Controller
                 Rule::in($this->activeProducts()->pluck('product_name')->all()),
             ],
             'loan_amount' => 'nullable|numeric|min:0',
-            'goal_org_unit_id' => 'nullable|exists:goal_org_units,id',
+            'goal_org_unit_id' => 'nullable|exists:goal_org_units,id,is_active,1',
             'save_and_new' => 'nullable|boolean',
         ]);
 
         $leadId = null;
         if ($request->boolean('create_lead') && in_array($data['disposition'], ['Interested', 'Callback'], true)) {
             $this->requireGoalPermission('create_lead_guard');
+
+            $mobile = trim((string) ($data['mobile'] ?? ''));
+            $name = trim((string) $data['customer_name']);
+            $dup = $mobile !== ''
+                ? GoalLoanLead::query()->where('mobile', $mobile)->orderByDesc('id')->first()
+                : GoalLoanLead::query()
+                    ->whereRaw('LOWER(customer_name) = ?', [mb_strtolower($name)])
+                    ->whereDate('created_at', today())
+                    ->orderByDesc('id')
+                    ->first();
+
+            if ($dup) {
+                return back()->withInput()->withErrors([
+                    'mobile' => 'Possible duplicate lead '.$dup->ref_no.' ('.$dup->customer_name.'). Clear create-lead or use the existing record.',
+                ])->with('reopen_log_call', true);
+            }
+
             $leadType = $data['lead_type'] ?? ($data['disposition'] === 'Callback' ? 'future' : 'immediate');
             $lead = GoalLoanLead::create([
                 'ref_no' => 'LD-' . now()->format('ymd') . '-' . Str::upper(Str::random(4)),
@@ -510,6 +549,7 @@ class GoalVrmController extends Controller
                 'goal_org_unit_id' => $data['goal_org_unit_id'] ?? auth()->user()->goal_org_unit_id,
                 'created_by' => auth()->id(),
             ]);
+            app(\App\Services\Goal\GoalPartyService::class)->attachLead($lead);
             $leadId = $lead->id;
         }
 

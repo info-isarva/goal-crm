@@ -11,11 +11,8 @@
         'email.compose.settings.*',
         'quotation.settings.*',
         'quotation_templates.*',
-        'users.*',
         'access.settings.*',
         'backup',
-        'permissions.*',
-        'roles.*',
         'tax_rates.*',
         'product_categories.*',
         'main_categories.*',
@@ -23,12 +20,23 @@
         'outreach_types.*',
         'password.*',
         'quotation_email_templates.*',
-        'activity-logs.*',
         'quotations.email_send_logs',
         'quotations.whatsapp_send_logs',
         'web_forms.*',
         'social_ads.*',
     ];
+
+    // Goal SOW nav has dedicated User / Audit items — don't double-activate Settings there
+    $isGoalNav = \App\Services\Goal\GoalDashboardService::userUsesGoalDashboard(auth()->user());
+    if (!$isGoalNav) {
+        array_push(
+            $settingsActiveRoutes,
+            'users.*',
+            'permissions.*',
+            'roles.*',
+            'activity-logs.*'
+        );
+    }
 @endphp
 <li class="nav-item">
     <a class="nav-link {{ request()->routeIs($settingsActiveRoutes) ? 'active' : '' }}"

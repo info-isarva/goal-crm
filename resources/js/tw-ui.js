@@ -70,20 +70,40 @@
         }
         return backdropEl;
     }
+    function portalModalToBody(el) {
+        if (!el || el.parentElement === document.body) return;
+        document.body.appendChild(el);
+    }
+    function portalAllModals() {
+        qsa('.modal').forEach(portalModalToBody);
+    }
     function Modal(el, opts) {
         this.el = typeof el === 'string' ? qs(el) : el;
         this.opts = opts || {};
-        if (this.el) this.el._twModal = this;
+        if (this.el) {
+            this.el._twModal = this;
+            portalModalToBody(this.el);
+        }
     }
-    Modal.prototype.show = function () {
+    Modal.prototype.show = function (relatedTarget) {
         if (!this.el) return;
+        var showEv = new Event('show.bs.modal', { bubbles: true, cancelable: true });
+        showEv.relatedTarget = relatedTarget || null;
+        this.el.dispatchEvent(showEv);
+        if (showEv.defaultPrevented) return;
+        portalModalToBody(this.el);
         ensureBackdrop().classList.add('show');
+        if (backdropEl) document.body.insertBefore(backdropEl, this.el);
         this.el.classList.add('show');
         this.el.style.display = 'block';
+        this.el.style.zIndex = '10650';
+        this.el.scrollTop = 0;
         this.el.removeAttribute('aria-hidden');
         this.el.setAttribute('aria-modal', 'true');
         document.body.classList.add('tw-modal-open');
-        this.el.dispatchEvent(new CustomEvent('shown.bs.modal', { bubbles: true }));
+        var shownEv = new Event('shown.bs.modal', { bubbles: true });
+        shownEv.relatedTarget = relatedTarget || null;
+        this.el.dispatchEvent(shownEv);
     };
     Modal.prototype.hide = function () {
         if (!this.el) return;
@@ -136,32 +156,94 @@
     }
 
     /* ── Dropdown ─────────────────────────────────────────── */
+    function resetDropdownMenu(menu) {
+        if (!menu) return;
+        menu.classList.remove('show');
+        menu.style.position = '';
+        menu.style.top = '';
+        menu.style.left = '';
+        menu.style.right = '';
+        menu.style.bottom = '';
+        menu.style.zIndex = '';
+        menu.style.minWidth = '';
+        menu.style.maxWidth = '';
+        menu.style.maxHeight = '';
+        menu.style.overflowY = '';
+        if (menu._twDropdownHome && menu.parentElement === document.body) {
+            menu._twDropdownHome.appendChild(menu);
+        }
+        menu._twDropdownHome = null;
+        if (menu._twDropdownTrigger) {
+            menu._twDropdownTrigger.setAttribute('aria-expanded', 'false');
+            menu._twDropdownTrigger = null;
+        }
+    }
+    function positionDropdownMenu(trigger, menu) {
+        // Portal to body + fixed coords so overflow:hidden table cards cannot clip it.
+        if (menu.parentElement !== document.body) {
+            menu._twDropdownHome = menu.parentElement;
+            document.body.appendChild(menu);
+        }
+        menu._twDropdownTrigger = trigger;
+        menu.style.position = 'fixed';
+        menu.style.zIndex = '1080';
+        menu.style.right = 'auto';
+        menu.style.bottom = 'auto';
+        menu.style.maxWidth = 'min(280px, calc(100vw - 16px))';
+        menu.style.minWidth = Math.max(trigger.offsetWidth, 200) + 'px';
+        menu.style.maxHeight = 'min(70vh, 360px)';
+        menu.style.overflowY = 'auto';
+        menu.classList.add('show');
+
+        var rect = trigger.getBoundingClientRect();
+        var mw = menu.offsetWidth || 220;
+        var mh = menu.offsetHeight || 160;
+        var gap = 6;
+        var left = menu.classList.contains('dropdown-menu-end')
+            ? (rect.right - mw)
+            : rect.left;
+        left = Math.max(8, Math.min(left, window.innerWidth - mw - 8));
+        var top = rect.bottom + gap;
+        if (top + mh > window.innerHeight - 8 && rect.top - gap - mh > 8) {
+            top = rect.top - gap - mh;
+        }
+        menu.style.left = left + 'px';
+        menu.style.top = Math.max(8, top) + 'px';
+    }
     function closeAllDropdowns(except) {
         qsa('.dropdown-menu.show').forEach(function (menu) {
             if (except && menu === except) return;
-            menu.classList.remove('show');
-            var parent = menu.closest('.dropdown');
-            if (parent) {
-                var btn = qs('[data-bs-toggle="dropdown"]', parent);
-                if (btn) btn.setAttribute('aria-expanded', 'false');
-            }
+            resetDropdownMenu(menu);
         });
     }
-    function toggleDropdown(trigger) {
+    function resolveDropdownMenu(trigger) {
+        if (trigger._twMenu && document.body.contains(trigger._twMenu)) {
+            return trigger._twMenu;
+        }
         var parent = trigger.closest('.dropdown') || trigger.parentElement;
-        if (!parent) return;
+        if (!parent) return null;
         var menu = qs('.dropdown-menu', parent);
+        if (menu) trigger._twMenu = menu;
+        return menu;
+    }
+    function toggleDropdown(trigger) {
+        var menu = resolveDropdownMenu(trigger);
         if (!menu) return;
         var willShow = !menu.classList.contains('show');
         closeAllDropdowns(willShow ? menu : null);
         if (willShow) {
-            menu.classList.add('show');
+            positionDropdownMenu(trigger, menu);
             trigger.setAttribute('aria-expanded', 'true');
         } else {
-            menu.classList.remove('show');
+            resetDropdownMenu(menu);
             trigger.setAttribute('aria-expanded', 'false');
         }
     }
+    window.addEventListener('resize', function () { closeAllDropdowns(); });
+    window.addEventListener('scroll', function (e) {
+        if (e.target && e.target.closest && e.target.closest('.dropdown-menu')) return;
+        closeAllDropdowns();
+    }, true);
 
     /* ── Global bootstrap shim ────────────────────────────── */
     window.bootstrap = window.bootstrap || {};
@@ -195,8 +277,9 @@
 
         if (toggle === 'modal' && targetSel) {
             e.preventDefault();
+            closeAllDropdowns();
             var modalEl = qs(targetSel);
-            if (modalEl) Modal.getOrCreateInstance(modalEl).show();
+            if (modalEl) Modal.getOrCreateInstance(modalEl).show(t);
             return;
         }
         if (toggle === 'collapse' && targetSel) {
@@ -224,4 +307,10 @@
             Modal.getOrCreateInstance(m).hide();
         });
     });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', portalAllModals);
+    } else {
+        portalAllModals();
+    }
 })(window, document);

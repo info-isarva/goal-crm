@@ -10,11 +10,13 @@ class GoalPmsItem extends Model
 
     protected $fillable = [
         'goal_loan_case_id', 'goal_disbursement_id', 'status',
-        'notes', 'verified_by', 'verified_at',
+        'notes', 'follow_up_at', 'activity_type', 'referral_org_unit_id',
+        'verified_by', 'verified_at',
     ];
 
     protected $casts = [
         'verified_at' => 'datetime',
+        'follow_up_at' => 'datetime',
     ];
 
     public function loanCase()
@@ -25,5 +27,10 @@ class GoalPmsItem extends Model
     public function verifier()
     {
         return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function referralOrgUnit()
+    {
+        return $this->belongsTo(GoalOrgUnit::class, 'referral_org_unit_id');
     }
 }

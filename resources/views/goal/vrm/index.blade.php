@@ -23,13 +23,34 @@
 }
 .vrm-page .vrm-pill {
     display: inline-flex; align-items: center; gap: 0.45rem;
-    background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
+    background: var(--theme-50); color: var(--theme-primary-hover); border: 1px solid var(--theme-200);
     border-radius: 999px; padding: 0.45rem 0.95rem; font-size: 0.85rem; font-weight: 600;
     height: 40px;
 }
 .vrm-page .vrm-pill .dot {
-    width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; display: inline-block;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--theme-primary); display: inline-block;
 }
+.vrm-page .vrm-daily {
+    min-width: 210px; padding: .55rem .85rem; border-radius: 12px;
+    background: #fff; border: 1px solid #e8edf5;
+    box-shadow: 0 4px 12px rgba(148,163,184,.1);
+}
+.vrm-page .vrm-daily-top {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: .72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .03em;
+}
+.vrm-page .vrm-daily-count { font-size: .95rem; font-weight: 800; color: #0f172a; text-transform: none; letter-spacing: 0; }
+.vrm-page .vrm-daily-bar {
+    margin-top: 6px; height: 7px; border-radius: 999px; background: #e2e8f0; overflow: hidden;
+}
+.vrm-page .vrm-daily-bar > span {
+    display: block; height: 100%; border-radius: 999px; background: var(--theme-primary);
+    transition: width .25s ease;
+}
+.vrm-page .vrm-daily.is-low .vrm-daily-bar > span { background: #dc2626; }
+.vrm-page .vrm-daily.is-mid .vrm-daily-bar > span { background: #ea580c; }
+.vrm-page .vrm-daily.is-done .vrm-daily-bar > span { background: #16a34a; }
+.vrm-page .vrm-daily.is-done .vrm-daily-count { color: #15803d; }
 .vrm-page .btn-log-call {
     background: linear-gradient(90deg, #7c3aed, #6d28d9);
     color: #fff; border: none; border-radius: 10px;
@@ -73,9 +94,9 @@
     opacity: 0.16;
 }
 .vrm-page .kpi-card.tone-blue::before {
-    background: linear-gradient(135deg, transparent 20%, #93c5fd 100%);
+    background: linear-gradient(135deg, transparent 20%, var(--theme-300) 100%);
 }
-.vrm-page .kpi-card.tone-blue::after { background: #3b82f6; }
+.vrm-page .kpi-card.tone-blue::after { background: var(--theme-primary); }
 .vrm-page .kpi-card.tone-green::before {
     background: linear-gradient(135deg, transparent 20%, #86efac 100%);
 }
@@ -94,7 +115,7 @@
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 1.3rem; line-height: 1;
 }
-.vrm-page .kpi-icon.blue { background: #dbeafe; color: #2563eb; }
+.vrm-page .kpi-icon.blue { background: var(--theme-100); color: var(--theme-primary); }
 .vrm-page .kpi-icon.green { background: #dcfce7; color: #16a34a; }
 .vrm-page .kpi-icon.orange { background: #ffedd5; color: #ea580c; }
 .vrm-page .kpi-icon.purple { background: #ede9fe; color: #7c3aed; }
@@ -125,7 +146,7 @@
 }
 .vrm-page .section-icon {
     width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
-    background: #dbeafe; color: #2563eb;
+    background: var(--theme-100); color: var(--theme-primary);
     display: inline-flex; align-items: center; justify-content: center; font-size: 1.15rem;
 }
 .vrm-page .vrm-card-head h5 {
@@ -134,7 +155,7 @@
 .vrm-page .vrm-card-head .head-sub {
     margin: 3px 0 0; font-size: 0.82rem; color: #64748b; line-height: 1.3;
 }
-.vrm-page .vrm-card-body { padding: 1rem 1.25rem 1.2rem; }
+.vrm-page .vrm-card-body { padding: 0; }
 .vrm-page .filter-card {
     background: #fff; border: 1px solid #e8edf5; border-radius: 16px;
     box-shadow: 0 8px 24px rgba(148, 163, 184, 0.12); margin-bottom: 1.15rem;
@@ -220,8 +241,8 @@
 .vrm-page .table-footer-bar {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
     gap: 12px 16px;
-    margin-top: 0.95rem;
-    padding: 14px 4px 2px;
+    margin-top: 0;
+    padding: .75rem 1.15rem;
     border-top: 1px solid #eef2f7;
     color: #64748b; font-size: 0.84rem;
 }
@@ -292,7 +313,7 @@
 .vrm-page .dt-buttons { display: none; }
 
 .vrm-page .calls-table-wrap {
-    border: 1px solid #e8edf5; border-radius: 12px;
+    border: 0; border-radius: 0;
     overflow-x: auto; -webkit-overflow-scrolling: touch; background: #fff;
     width: 100%; max-width: 100%;
 }
@@ -361,7 +382,7 @@
 }
 .vrm-page .disp-pill.interested { background: #dcfce7; color: #15803d; }
 .vrm-page .disp-pill.callback { background: #fef3c7; color: #b45309; }
-.vrm-page .disp-pill.not-interested { background: #dbeafe; color: #1d4ed8; }
+.vrm-page .disp-pill.not-interested { background: var(--theme-100); color: var(--theme-primary-hover); }
 .vrm-page .disp-pill.busy,
 .vrm-page .disp-pill.no-answer,
 .vrm-page .disp-pill.follow-up { background: #ede9fe; color: #6d28d9; }
@@ -454,18 +475,15 @@
 /* Modal: design field sizes, sticky footer — size via Bootstrap modal-xl */
 .vrm-call-modal .modal-content {
     border: none;
-    border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
-    max-height: 85vh;
-    display: flex;
-    flex-direction: column;
 }
 .vrm-call-modal form.vrm-log-form {
     min-height: 0;
-    max-height: 85vh;
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+    overflow: hidden;
 }
 .vrm-call-modal .modal-header {
     border-bottom: 1px solid #e8edf5;
@@ -477,13 +495,13 @@
 .vrm-call-modal .modal-title-wrap { display: flex; align-items: flex-start; gap: 12px; }
 .vrm-call-modal .modal-icon {
     width: 44px; height: 44px; border-radius: 12px;
-    background: #dbeafe; color: #2563eb;
+    background: var(--theme-100); color: var(--theme-primary);
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 1.2rem; flex-shrink: 0;
 }
 .vrm-call-modal .modal-title { font-size: 1.2rem; font-weight: 800; color: #0f172a; margin: 0; line-height: 1.25; }
 .vrm-call-modal .modal-sub { font-size: 0.86rem; color: #64748b; margin-top: 3px; line-height: 1.35; }
-.vrm-call-modal .btn-close { margin-top: 6px; opacity: 0.55; }
+.vrm-call-modal .modal-close { margin-top: 2px; }
 .vrm-call-modal .modal-body {
     padding: 18px 24px 12px;
     overflow-y: auto;
@@ -503,11 +521,31 @@
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     flex-shrink: 0; background: #fff;
 }
+@media (max-width: 767.98px) {
+    .vrm-call-modal .modal-footer {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+    .vrm-call-modal .modal-footer .footer-actions {
+        display: contents;
+    }
+    .vrm-call-modal .modal-footer .btn-clear,
+    .vrm-call-modal .modal-footer .btn-cancel,
+    .vrm-call-modal .modal-footer .btn-save-new,
+    .vrm-call-modal .modal-footer .btn-save-call {
+        width: 100%;
+        min-height: 48px;
+        height: 48px;
+        justify-content: center;
+    }
+}
 .vrm-call-modal .form-section { margin-bottom: 20px; }
 .vrm-call-modal .form-section:last-child { margin-bottom: 8px; }
 .vrm-call-modal .section-bar {
     display: flex; align-items: center; gap: 8px;
-    background: #eff6ff; color: #1d4ed8; border-radius: 8px;
+    background: var(--theme-50); color: var(--theme-primary-hover); border-radius: 8px;
     padding: 10px 14px; margin: 0 0 12px; font-weight: 700; font-size: 0.9rem;
 }
 .vrm-call-modal .section-bar i { font-size: 0.95rem; }
@@ -645,8 +683,8 @@
 }
 .vrm-call-modal .form-control::placeholder { color: #94a3b8; }
 .vrm-call-modal .form-control:focus {
-    border-color: #93c5fd;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+    border-color: var(--theme-300);
+    box-shadow: 0 0 0 3px var(--theme-primary-ring);
 }
 .vrm-call-modal .field-error {
     display: none;
@@ -683,7 +721,7 @@
     width: 16px; height: 16px; margin: 0; flex-shrink: 0;
     border-color: #cbd5e1;
 }
-.vrm-call-modal .form-check-input:checked { background-color: #2563eb; border-color: #2563eb; }
+.vrm-call-modal .form-check-input:checked { background-color: var(--theme-primary); border-color: var(--theme-primary); }
 .vrm-call-modal .form-check-label { font-size: 0.875rem; color: #334155; margin: 0; line-height: 1.3; }
 .vrm-call-modal .footer-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .vrm-call-modal .btn-clear,
@@ -695,19 +733,19 @@
     display: inline-flex; align-items: center; gap: 6px;
 }
 .vrm-call-modal .btn-clear {
-    border: 1px solid #93c5fd; background: #fff; color: #2563eb;
+    border: 1px solid var(--theme-300); background: #fff; color: var(--theme-primary);
 }
-.vrm-call-modal .btn-clear:hover { background: #eff6ff; color: #1d4ed8; }
+.vrm-call-modal .btn-clear:hover { background: var(--theme-50); color: var(--theme-primary-hover); }
 .vrm-call-modal .btn-cancel,
 .vrm-call-modal .btn-save-new {
-    border: 1px solid #93c5fd; background: #fff; color: #2563eb;
+    border: 1px solid var(--theme-300); background: #fff; color: var(--theme-primary);
 }
 .vrm-call-modal .btn-cancel:hover,
-.vrm-call-modal .btn-save-new:hover { background: #eff6ff; color: #1d4ed8; }
+.vrm-call-modal .btn-save-new:hover { background: var(--theme-50); color: var(--theme-primary-hover); }
 .vrm-call-modal .btn-save-call {
-    background: #2563eb; color: #fff; border: 1px solid #2563eb; font-weight: 700;
+    background: var(--theme-primary); color: #fff; border: 1px solid var(--theme-primary); font-weight: 700;
 }
-.vrm-call-modal .btn-save-call:hover { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+.vrm-call-modal .btn-save-call:hover { background: var(--theme-primary-hover); color: #fff; border-color: var(--theme-primary-hover); }
 @media (max-width: 1199.98px) {
     .vrm-page .filter-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -810,7 +848,7 @@
     .vrm-page .section-icon {
         width: 36px; height: 36px; border-radius: 10px; font-size: 1rem;
     }
-    .vrm-page .vrm-card-body { padding: 0.85rem 0.95rem 1rem; }
+    .vrm-page .vrm-card-body { padding: 0; }
     .vrm-page .toolbar-actions {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -975,21 +1013,6 @@
         min-height: 0;
         justify-content: flex-start;
     }
-    .vrm-call-modal .modal-footer {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .vrm-call-modal .footer-actions {
-        width: 100%;
-        justify-content: stretch;
-    }
-    .vrm-call-modal .footer-actions .btn-clear,
-    .vrm-call-modal .footer-actions .btn-cancel,
-    .vrm-call-modal .footer-actions .btn-save-new,
-    .vrm-call-modal .footer-actions .btn-save-call {
-        flex: 1 1 auto;
-        justify-content: center;
-    }
 }
 @media (max-width: 575.98px) {
     .vrm-page .kpi-label {
@@ -1006,7 +1029,13 @@
 
 @section('content')
 @php
-    $dailyTarget = 200;
+    $dailyTarget = (int) ($dailyTarget ?? config('goal.daily_call_target', 200));
+    $isWorkingDay = $isWorkingDay ?? now()->isWeekday();
+    $callbacksDueCount = (int) ($callbacksDueCount ?? 0);
+    $todayCount = (int) ($todayCount ?? 0);
+    $dailyPct = (int) min(100, round(($todayCount / max(1, $dailyTarget)) * 100));
+    $dailyTone = $todayCount >= $dailyTarget ? 'is-done' : ($dailyPct >= 50 ? 'is-mid' : 'is-low');
+    $dailyRemain = max(0, $dailyTarget - $todayCount);
     $openModal = $errors->any() || request()->boolean('log_call') || session('reopen_log_call');
     $dispClass = function ($d) {
         return [
@@ -1032,7 +1061,13 @@
             </div>
         </div>
         <div class="page-hero-actions">
-            <span class="vrm-pill"><span class="dot"></span> Today: {{ $todayCount }} / {{ $dailyTarget }} calls</span>
+            <div class="vrm-daily {{ $dailyTone }}" title="Spec minimum: {{ $dailyTarget }} logged calls per working day{{ $isWorkingDay ? '' : ' (weekend — target paused)' }}">
+                <div class="vrm-daily-top">
+                    <span>Daily {{ $dailyTarget }}-call{{ $isWorkingDay ? '' : ' · weekend' }}</span>
+                    <span class="vrm-daily-count">{{ $todayCount }} / {{ $dailyTarget }}</span>
+                </div>
+                <div class="vrm-daily-bar"><span style="width: {{ $dailyPct }}%"></span></div>
+            </div>
             <button type="button" class="btn btn-log-call" data-bs-toggle="modal" data-bs-target="#logCallModal">
                 <i class="bi bi-plus-lg"></i> Log Call
             </button>
@@ -1090,13 +1125,33 @@
 
     <div class="row g-3 kpi-row">
         <div class="col-6 col-xl-3">
-            <div class="kpi-card tone-blue">
-                <span class="kpi-icon blue"><i class="bi bi-telephone"></i></span>
+            <div class="kpi-card tone-{{ $todayCount >= $dailyTarget ? 'green' : 'orange' }}">
+                <span class="kpi-icon {{ $todayCount >= $dailyTarget ? 'green' : 'orange' }}"><i class="bi bi-bullseye"></i></span>
                 <div class="kpi-meta">
-                    <div class="kpi-label">Total Calls</div>
-                    <div class="kpi-value">{{ $totalCalls }}</div>
+                    <div class="kpi-label">Today vs {{ $dailyTarget }}</div>
+                    <div class="kpi-value">{{ $todayCount }}<span style="font-size:.85rem;font-weight:650;color:#64748b"> / {{ $dailyTarget }}</span></div>
+                    <div style="font-size:.72rem;color:#94a3b8;margin-top:2px">
+                        @if(! $isWorkingDay)
+                            Weekend — working-day target paused
+                        @elseif($todayCount >= $dailyTarget)
+                            Daily target met
+                        @else
+                            {{ $dailyRemain.' to go · '.$dailyPct.'%' }}
+                        @endif
+                    </div>
                 </div>
             </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <a href="{{ route('goal.vrm.index', ['callbacks_due' => 1]) }}" class="text-decoration-none">
+                <div class="kpi-card tone-{{ $callbacksDueCount > 0 ? 'orange' : 'blue' }}">
+                    <span class="kpi-icon {{ $callbacksDueCount > 0 ? 'orange' : 'blue' }}"><i class="bi bi-alarm"></i></span>
+                    <div class="kpi-meta">
+                        <div class="kpi-label">Callbacks due</div>
+                        <div class="kpi-value">{{ $callbacksDueCount }}</div>
+                    </div>
+                </div>
+            </a>
         </div>
         <div class="col-6 col-xl-3">
             <div class="kpi-card tone-green">
@@ -1104,15 +1159,6 @@
                 <div class="kpi-meta">
                     <div class="kpi-label">Interested</div>
                     <div class="kpi-value">{{ $interestedCount }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-xl-3">
-            <div class="kpi-card tone-orange">
-                <span class="kpi-icon orange"><i class="bi bi-calendar-event"></i></span>
-                <div class="kpi-meta">
-                    <div class="kpi-label">Callback</div>
-                    <div class="kpi-value">{{ $callbackCount }}</div>
                 </div>
             </div>
         </div>
@@ -1184,7 +1230,7 @@
                             <th>Lead</th>
                             <th>Notes</th>
                             <th>Branch</th>
-                            <th>Actions</th>
+                            <th class="col-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1330,7 +1376,7 @@
 
 {{-- Log Call Modal --}}
 <div class="modal fade vrm-call-modal" id="logCallModal" tabindex="-1" aria-labelledby="logCallModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <form method="POST" action="{{ route('goal.vrm.store') }}" id="vrmCallForm" class="vrm-log-form" novalidate>
                 @csrf
@@ -1342,7 +1388,7 @@
                             <div class="modal-sub">Record a customer call and update lead details.</div>
                         </div>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
                 </div>
 
                 <div class="modal-body">
@@ -1516,11 +1562,11 @@
 {{-- Quick Add Product (nested over Log Call; opened via JS so Log Call stays open) --}}
 <div class="modal fade" id="quickAddProductModal" tabindex="-1" aria-labelledby="quickAddProductModalLabel" aria-hidden="true"
      data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-dialog modal-sm modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="quickAddProductModalLabel">Quick Add Product</h5>
-                <button type="button" class="btn-close" id="btnCloseQuickProduct" aria-label="Close"></button>
+                <button type="button" class="modal-close" id="btnCloseQuickProduct" aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <label class="form-label" for="quick_product_name">Product Name <span class="text-danger">*</span></label>
@@ -1880,7 +1926,7 @@
     quickModalEl.addEventListener('hidden.bs.modal', function () {
         if (logCallEl && logCallEl.classList.contains('show')) {
             document.body.classList.add('modal-open');
-            const closeBtn = logCallEl.querySelector('.btn-close');
+            const closeBtn = logCallEl.querySelector('.modal-close, .btn-close');
             if (closeBtn) closeBtn.focus();
         }
     });

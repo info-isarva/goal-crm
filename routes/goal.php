@@ -4,6 +4,9 @@ use App\Http\Controllers\Goal\GoalAccountsController;
 use App\Http\Controllers\Goal\GoalAllocationController;
 use App\Http\Controllers\Goal\GoalAnalyticsController;
 use App\Http\Controllers\Goal\GoalCaseWorkspaceController;
+use App\Http\Controllers\Goal\GoalBankProcessingController;
+use App\Http\Controllers\Goal\GoalDocumentsController;
+use App\Http\Controllers\Goal\GoalSanctionDisbursementController;
 use App\Http\Controllers\Goal\GoalLoanCaseController;
 use App\Http\Controllers\Goal\GoalLoanLeadController;
 use App\Http\Controllers\Goal\GoalMisController;
@@ -11,6 +14,7 @@ use App\Http\Controllers\Goal\GoalOrgUnitController;
 use App\Http\Controllers\Goal\GoalPayoutController;
 use App\Http\Controllers\Goal\GoalPmsController;
 use App\Http\Controllers\Goal\GoalTargetController;
+use App\Http\Controllers\Goal\GoalVisitsController;
 use App\Http\Controllers\Goal\GoalVrmController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +22,7 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::get('analytics', [GoalAnalyticsController::class, 'index'])->name('analytics');
 
     Route::get('org-units', [GoalOrgUnitController::class, 'index'])->name('org-units.index');
+    Route::get('org-units/export', [GoalOrgUnitController::class, 'export'])->name('org-units.export');
     Route::get('org-units/create', [GoalOrgUnitController::class, 'create'])->name('org-units.create');
     Route::post('org-units', [GoalOrgUnitController::class, 'store'])->name('org-units.store');
     Route::get('org-units/{org_unit}/edit', [GoalOrgUnitController::class, 'edit'])->name('org-units.edit');
@@ -36,6 +41,7 @@ Route::prefix('goal')->name('goal.')->group(function () {
 
     Route::get('leads', [GoalLoanLeadController::class, 'index'])->name('leads.index');
     Route::get('leads/create', [GoalLoanLeadController::class, 'create'])->name('leads.create');
+    Route::get('leads/party-matches', [GoalLoanLeadController::class, 'partyMatches'])->name('leads.party-matches');
     Route::post('leads', [GoalLoanLeadController::class, 'store'])->name('leads.store');
     Route::get('leads/{lead}', [GoalLoanLeadController::class, 'show'])->name('leads.show');
     Route::put('leads/{lead}', [GoalLoanLeadController::class, 'update'])->name('leads.update');
@@ -48,11 +54,32 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::post('leads/{lead}/loan-cases', [GoalLoanCaseController::class, 'storeFromLead'])->name('leads.loan-cases.store');
 
     Route::get('allocation', [GoalAllocationController::class, 'index'])->name('allocation.index');
+    Route::get('allocation/export', [GoalAllocationController::class, 'export'])->name('allocation.export');
     Route::post('allocation/bulk', [GoalAllocationController::class, 'assignBulk'])->name('allocation.bulk');
     Route::get('allocation/{lead}/history', [GoalAllocationController::class, 'history'])->name('allocation.history');
     Route::post('allocation/{lead}', [GoalAllocationController::class, 'assign'])->name('allocation.assign');
 
+    Route::get('documents', [GoalDocumentsController::class, 'index'])->name('documents.index');
+    Route::get('documents/export', [GoalDocumentsController::class, 'export'])->name('documents.export');
+    Route::post('documents/upload', [GoalDocumentsController::class, 'upload'])->name('documents.upload');
+    Route::get('documents/{case}/file', [GoalDocumentsController::class, 'file'])->name('documents.file');
+    Route::post('documents/{case}/verify', [GoalDocumentsController::class, 'verify'])->name('documents.verify');
+
+    Route::get('bank-processing', [GoalBankProcessingController::class, 'index'])->name('bank-processing.index');
+    Route::get('bank-processing/export', [GoalBankProcessingController::class, 'export'])->name('bank-processing.export');
+    Route::post('bank-processing/applications', [GoalBankProcessingController::class, 'storeApplication'])->name('bank-processing.applications.store');
+    Route::post('bank-processing/applications/{application}/queries', [GoalBankProcessingController::class, 'storeQuery'])->name('bank-processing.queries.store');
+
+    Route::get('sanction-disbursement', [GoalSanctionDisbursementController::class, 'index'])->name('sanction-disbursement.index');
+
+    Route::get('visits', [GoalVisitsController::class, 'index'])->name('visits.index');
+    Route::get('visits/export', [GoalVisitsController::class, 'export'])->name('visits.export');
+    Route::post('visits', [GoalVisitsController::class, 'store'])->name('visits.store');
+    Route::put('visits/{task}', [GoalVisitsController::class, 'update'])->name('visits.update');
+    Route::post('visits/{task}/complete', [GoalVisitsController::class, 'complete'])->name('visits.complete');
+
     Route::get('cases', [GoalLoanCaseController::class, 'index'])->name('cases.index');
+    Route::get('cases/export', [GoalLoanCaseController::class, 'export'])->name('cases.export');
     Route::get('cases/create', [GoalLoanCaseController::class, 'create'])->name('cases.create');
     Route::get('cases/lead-lookup', [GoalLoanCaseController::class, 'leadLookup'])->name('cases.lead-lookup');
     Route::get('cases/product-documents', [GoalLoanCaseController::class, 'productDocuments'])->name('cases.product-documents');
@@ -62,6 +89,10 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::post('cases/{case}/transition', [GoalLoanCaseController::class, 'transition'])->name('cases.transition');
     Route::post('cases/{case}/tasks', [GoalLoanCaseController::class, 'storeTask'])->name('cases.tasks');
     Route::post('cases/{case}/reassign', [GoalCaseWorkspaceController::class, 'reassign'])->name('cases.reassign');
+    Route::get('cases/{case}/bm-reco/export', [GoalCaseWorkspaceController::class, 'exportBmReco'])->name('cases.bm-reco.export');
+    Route::post('cases/{case}/bm-reco/equifax', [GoalCaseWorkspaceController::class, 'uploadBmRecoEquifax'])->name('cases.bm-reco.equifax');
+    Route::get('cases/{case}/bm-reco/equifax', [GoalCaseWorkspaceController::class, 'downloadBmRecoEquifax'])->name('cases.bm-reco.equifax.download');
+    Route::delete('cases/{case}/bm-reco/equifax', [GoalCaseWorkspaceController::class, 'removeBmRecoEquifax'])->name('cases.bm-reco.equifax.remove');
     Route::post('cases/{case}/documents', [GoalCaseWorkspaceController::class, 'uploadDocument'])->name('cases.documents.store');
     Route::post('cases/{case}/documents/verify', [GoalCaseWorkspaceController::class, 'verifyDocument'])->name('cases.documents.verify');
     Route::post('cases/{case}/bank-applications', [GoalCaseWorkspaceController::class, 'storeApplication'])->name('cases.bank-applications.store');
@@ -74,19 +105,27 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::post('cases/{case}/pms-transfer', [GoalCaseWorkspaceController::class, 'transferPms'])->name('cases.pms-transfer');
 
     Route::get('pms', [GoalPmsController::class, 'index'])->name('pms.index');
+    Route::get('pms/export', [GoalPmsController::class, 'export'])->name('pms.export');
     Route::post('pms/{item}/verify', [GoalPmsController::class, 'verify'])->name('pms.verify');
 
     Route::get('accounts', [GoalAccountsController::class, 'index'])->name('accounts.index');
+    Route::get('accounts/export', [GoalAccountsController::class, 'export'])->name('accounts.export');
     Route::post('accounts/{item}/report', [GoalAccountsController::class, 'updateReport'])->name('accounts.report');
+    Route::post('accounts/{item}/approve', [GoalAccountsController::class, 'approve'])->name('accounts.approve');
 
     Route::get('payouts', [GoalPayoutController::class, 'index'])->name('payouts.index');
+    Route::get('payouts/export', [GoalPayoutController::class, 'export'])->name('payouts.export');
     Route::post('payouts/{payout}/receipt', [GoalPayoutController::class, 'recordReceipt'])->name('payouts.receipt');
     Route::post('payouts/{payout}/exception', [GoalPayoutController::class, 'markException'])->name('payouts.exception');
 
     Route::get('targets', [GoalTargetController::class, 'index'])->name('targets.index');
+    Route::get('targets/export', [GoalTargetController::class, 'export'])->name('targets.export');
     Route::post('targets', [GoalTargetController::class, 'store'])->name('targets.store');
     Route::put('targets/{target}', [GoalTargetController::class, 'update'])->name('targets.update');
 
     Route::get('branch-mis', [GoalMisController::class, 'branchMis'])->name('branch-mis');
+    Route::get('branch-mis/export', [GoalMisController::class, 'exportBranchMis'])->name('branch-mis.export');
     Route::get('revenue-ledger', [GoalMisController::class, 'revenueLedger'])->name('revenue-ledger');
+    Route::get('revenue-ledger/export', [GoalMisController::class, 'exportRevenueLedger'])->name('revenue-ledger.export');
+    Route::post('revenue-ledger/adjust', [GoalMisController::class, 'adjustRevenue'])->name('revenue-ledger.adjust');
 });

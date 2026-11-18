@@ -24,7 +24,7 @@
 #callDetailModal .cd-head-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 #callDetailModal .cd-call-id {
     display: inline-flex; align-items: center; border-radius: 999px;
-    background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
+    background: var(--theme-50); color: var(--theme-primary-hover); border: 1px solid var(--theme-200);
     padding: 0.3rem 0.7rem; font-size: 0.78rem; font-weight: 700; white-space: nowrap;
 }
 #callDetailModal .modal-body {
@@ -40,10 +40,10 @@
     gap: 14px; margin-bottom: 14px;
 }
 #callDetailModal .cd-card {
-    border: 1px solid #dbeafe; border-radius: 14px; background: #fff; padding: 14px 16px;
+    border: 1px solid var(--theme-100); border-radius: 14px; background: #fff; padding: 14px 16px;
 }
 #callDetailModal .cd-card-title {
-    font-size: 0.78rem; font-weight: 800; color: #1d4ed8; text-transform: uppercase;
+    font-size: 0.78rem; font-weight: 800; color: var(--theme-primary-hover); text-transform: uppercase;
     letter-spacing: .04em; margin: 0 0 12px;
 }
 #callDetailModal .cd-customer-top {
@@ -51,7 +51,7 @@
 }
 #callDetailModal .cd-avatar {
     width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
-    background: #dbeafe; color: #2563eb;
+    background: var(--theme-100); color: var(--theme-primary);
     display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem;
 }
 #callDetailModal .cd-name { margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a; line-height: 1.25; }
@@ -64,7 +64,7 @@
 #callDetailModal .cd-copy {
     border: none; background: transparent; color: #94a3b8; padding: 0; line-height: 1; cursor: pointer;
 }
-#callDetailModal .cd-copy:hover { color: #2563eb; }
+#callDetailModal .cd-copy:hover { color: var(--theme-primary); }
 #callDetailModal .cd-summary-grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px;
 }
@@ -94,7 +94,7 @@
     width: 10px; height: 10px; border-radius: 50%; background: #7c3aed;
     border: 2px solid #ede9fe; box-shadow: 0 0 0 2px #fff;
 }
-#callDetailModal .cd-tl-item.is-current::before { background: #2563eb; border-color: #dbeafe; }
+#callDetailModal .cd-tl-item.is-current::before { background: var(--theme-primary); border-color: var(--theme-100); }
 #callDetailModal .cd-tl-top {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px;
 }
@@ -107,7 +107,7 @@
 }
 #callDetailModal .disp-pill.interested { background: #dcfce7; color: #15803d; }
 #callDetailModal .disp-pill.callback { background: #fef3c7; color: #b45309; }
-#callDetailModal .disp-pill.not-interested { background: #dbeafe; color: #1d4ed8; }
+#callDetailModal .disp-pill.not-interested { background: var(--theme-100); color: var(--theme-primary-hover); }
 #callDetailModal .disp-pill.busy,
 #callDetailModal .disp-pill.no-answer,
 #callDetailModal .disp-pill.follow-up { background: #ede9fe; color: #6d28d9; }
@@ -120,11 +120,11 @@
 }
 #callDetailModal .btn-cd-close:hover { background: #6d28d9; color: #fff; }
 #callDetailModal .btn-cd-lead {
-    border: 1px solid #93c5fd; background: #fff; color: #2563eb; border-radius: 8px;
+    border: 1px solid var(--theme-300); background: #fff; color: var(--theme-primary); border-radius: 8px;
     height: 36px; padding: 0 14px; font-weight: 700; font-size: 0.875rem; text-decoration: none;
     display: inline-flex; align-items: center; gap: 6px;
 }
-#callDetailModal .btn-cd-lead:hover { background: #eff6ff; color: #1d4ed8; }
+#callDetailModal .btn-cd-lead:hover { background: var(--theme-50); color: var(--theme-primary-hover); }
 #callDetailModal .cd-loading,
 #callDetailModal .cd-error { padding: 2rem 1rem; text-align: center; }
 #callDetailModal .cd-loading .spinner-border { width: 2rem; height: 2rem; color: #7c3aed; }
@@ -136,7 +136,7 @@
 </style>
 
 <div class="modal fade" id="callDetailModal" tabindex="-1" aria-labelledby="callDetailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <div class="cd-head">
@@ -149,7 +149,7 @@
                     </div>
                     <div class="cd-head-right">
                         <span class="cd-call-id" id="cdCallId">Call ID: —</span>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
                     </div>
                 </div>
             </div>

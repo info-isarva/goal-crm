@@ -11,6 +11,7 @@ class GoalPayout extends Model
     protected $fillable = [
         'goal_loan_case_id', 'goal_disbursement_id', 'expected_amount',
         'received_amount', 'status', 'exception_reason',
+        'reconciliation_status', 'difference_reason',
     ];
 
     protected $casts = [

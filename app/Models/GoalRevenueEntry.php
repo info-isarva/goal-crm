@@ -9,8 +9,8 @@ class GoalRevenueEntry extends Model
     protected $table = 'goal_revenue_entries';
 
     protected $fillable = [
-        'goal_loan_case_id', 'goal_disbursement_id', 'amount',
-        'attributed_user_id', 'goal_org_unit_id', 'note',
+        'goal_loan_case_id', 'goal_disbursement_id', 'amount', 'entry_type',
+        'attributed_user_id', 'goal_org_unit_id', 'note', 'created_by',
     ];
 
     protected $casts = [
@@ -25,5 +25,10 @@ class GoalRevenueEntry extends Model
     public function disbursement()
     {
         return $this->belongsTo(GoalDisbursement::class, 'goal_disbursement_id');
+    }
+
+    public function orgUnit()
+    {
+        return $this->belongsTo(GoalOrgUnit::class, 'goal_org_unit_id');
     }
 }

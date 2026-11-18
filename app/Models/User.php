@@ -131,6 +131,40 @@ class User extends Authenticatable implements MustVerifyEmail
 
 
     /**
+     * Goal ↔ classic CRM guard equivalents.
+     * Goal seeds manage_users_guard / manage_roles_guard, while Users / Roles /
+     * Audit controllers still check manage_crm_* / view_crm_activity_log_guard.
+     * Directed: key = guard being checked, values = other rights that also grant it.
+     *
+     * @return list<string>
+     */
+    public static function crmPermissionEquivalents(string $permission): array
+    {
+        static $map = [
+            // Users
+            'manage_crm_user_guard' => ['manage_users_guard'],
+            'view_crm_user_guard' => ['manage_users_guard'],
+            'create_crm_user_guard' => ['manage_users_guard'],
+            'edit_crm_user_guard' => ['manage_users_guard'],
+            'manage_users_guard' => ['manage_crm_user_guard'],
+            // Roles
+            'manage_crm_role_guard' => ['manage_roles_guard'],
+            'create_crm_role_guard' => ['manage_roles_guard'],
+            'edit_crm_role_guard' => ['manage_roles_guard'],
+            'manage_roles_guard' => ['manage_crm_role_guard'],
+            // Permissions catalog
+            'manage_crm_permission_guard' => ['manage_permissions_guard'],
+            'create_crm_permission_guard' => ['manage_permissions_guard'],
+            'edit_crm_permission_guard' => ['manage_permissions_guard'],
+            'manage_permissions_guard' => ['manage_crm_permission_guard'],
+            // Audit logs — Goal managers with user/role admin may open audit
+            'view_crm_activity_log_guard' => ['manage_users_guard', 'manage_roles_guard'],
+        ];
+
+        return $map[$permission] ?? [];
+    }
+
+    /**
      * Check if user has a specific CRM permission.
      */
     public function hasCrmPermission($permission)
@@ -139,19 +173,32 @@ class User extends Authenticatable implements MustVerifyEmail
             return true;
         }
 
-        if (Permission::isWebFormsGuard((string) $permission) && !Company::current()->isWebFormsEnabled()) {
+        $permission = (string) $permission;
+
+        if (Permission::isWebFormsGuard($permission) && !Company::current()->isWebFormsEnabled()) {
             return false;
         }
 
-        if (Permission::isSocialAdsGuard((string) $permission) && !Company::current()->isSocialAdsEnabled()) {
+        if (Permission::isSocialAdsGuard($permission) && !Company::current()->isSocialAdsEnabled()) {
             return false;
         }
 
         $rights = json_decode($this->crm_page_right ?? '[]', true);
-        if (is_array($rights) && in_array('all', $rights)) {
+        if (!is_array($rights)) {
+            return false;
+        }
+        if (in_array('all', $rights, true)) {
             return true;
         }
-        return is_array($rights) && in_array($permission, $rights);
+
+        $candidates = array_merge([$permission], self::crmPermissionEquivalents($permission));
+        foreach ($candidates as $guard) {
+            if (in_array($guard, $rights, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function isSuperAdmin(): bool

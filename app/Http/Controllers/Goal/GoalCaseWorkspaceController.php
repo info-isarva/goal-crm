@@ -11,10 +11,12 @@ use App\Models\GoalLoanCase;
 use App\Models\GoalSanction;
 use App\Models\User;
 use App\Notifications\GoalCaseAlert;
+use App\Library\MpdfDocument;
 use App\Services\Goal\GoalCaseAudit;
 use App\Services\Goal\Pd01Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class GoalCaseWorkspaceController extends Controller
@@ -25,6 +27,9 @@ class GoalCaseWorkspaceController extends Controller
     {
         $this->requireGoalPermission('bm_allocation_guard');
         $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'overview')) {
+            return $redirect;
+        }
 
         $data = $request->validate([
             'owner_id' => 'required|integer|exists:users,id',
@@ -60,6 +65,9 @@ class GoalCaseWorkspaceController extends Controller
     {
         $this->requireGoalPermission('edit_case_workspace_guard');
         $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'lenders')) {
+            return $redirect;
+        }
 
         $data = $request->validate([
             'lender_name' => 'required|string|max:150',
@@ -128,17 +136,26 @@ class GoalCaseWorkspaceController extends Controller
         $this->requireGoalPermission('edit_case_workspace_guard');
         $case = $application->loanCase;
         $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'lenders')) {
+            return $redirect;
+        }
 
         $data = $request->validate([
             'status' => 'required|in:Bank Login,Bank Query,Processing,Sanctioned,Rejected,Disbursed',
             'rejection_reason' => 'nullable|string|max:500',
         ]);
 
-        if ($data['status'] === 'Rejected' && empty(trim((string) ($data['rejection_reason'] ?? '')))) {
-            return back()->withErrors(['rejection_reason' => 'Rejection reason required.'])->with('cw_tab', 'lenders');
+        $from = $application->status;
+        $case->loadMissing(['sanctions', 'disbursements']);
+        $gate = \App\Services\Goal\GoalWorkflow::validateApplication($from, $data['status'], [
+            'reason' => $data['rejection_reason'] ?? null,
+            'hasActiveSanction' => $case->sanctions->contains(fn ($s) => $s->status === 'Active'),
+            'verifiedDisbursement' => $case->disbursements->whereNotNull('verified_at')->isNotEmpty(),
+        ]);
+        if (! $gate['ok']) {
+            return back()->withErrors(['status' => implode(' ', $gate['errors'])])->with('cw_tab', 'lenders');
         }
 
-        $from = $application->status;
         $application->status = $data['status'];
         $application->save();
 
@@ -158,6 +175,9 @@ class GoalCaseWorkspaceController extends Controller
         $this->requireGoalPermission('edit_case_workspace_guard');
         $case = $application->loanCase;
         $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'queries')) {
+            return $redirect;
+        }
 
         $data = $request->validate([
             'details' => 'required|string|max:2000',
@@ -221,6 +241,9 @@ class GoalCaseWorkspaceController extends Controller
         $this->requireGoalPermission('edit_case_workspace_guard');
         $case = $query->loanCase;
         $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'queries')) {
+            return $redirect;
+        }
 
         $data = $request->validate([
             'resolution_remarks' => 'required|string|max:2000',
@@ -271,6 +294,9 @@ class GoalCaseWorkspaceController extends Controller
         $this->requireGoalPermission('edit_case_workspace_guard');
         $case = $application->loanCase;
         $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'sanction')) {
+            return $redirect;
+        }
 
         $data = $request->validate([
             'sanction_amount' => 'required|numeric|min:0.01',
@@ -413,6 +439,9 @@ class GoalCaseWorkspaceController extends Controller
     {
         $this->requireGoalPermission('edit_case_workspace_guard');
         $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'documents')) {
+            return $redirect;
+        }
 
         $data = $request->validate([
             'key' => 'required|string|max:60',
@@ -422,7 +451,7 @@ class GoalCaseWorkspaceController extends Controller
         ]);
 
         $file = $request->file('file');
-        $path = $file->store('goal/case-docs/'.$case->id, 'public');
+        $path = $file->store('goal/case-docs/'.$case->id, 'local');
 
         $details = is_array($case->customer_details) ? $case->customer_details : [];
         $docs = array_values($details['documents'] ?? []);
@@ -480,6 +509,9 @@ class GoalCaseWorkspaceController extends Controller
             abort(403, 'Unauthorized action.');
         }
         $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'documents')) {
+            return $redirect;
+        }
 
         $data = $request->validate([
             'key' => 'required|string|max:60',
@@ -566,6 +598,120 @@ class GoalCaseWorkspaceController extends Controller
         return redirect()
             ->route('goal.pms.index')
             ->with('success', 'Case '.$case->case_no.' transferred to PMS.');
+    }
+
+    /**
+     * Upload Equifax / credit-bureau report for BM Reco proposal (private disk).
+     */
+    public function uploadBmRecoEquifax(Request $request, GoalLoanCase $case)
+    {
+        $this->requireGoalPermission('edit_case_workspace_guard');
+        $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'recommendation')) {
+            return $redirect;
+        }
+
+        $data = $request->validate([
+            'file' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,webp',
+        ]);
+
+        $file = $request->file('file');
+        $bm = is_array($case->bm_reco) ? $case->bm_reco : [];
+        $prevPath = data_get($bm, 'equifax.path');
+
+        $path = $file->store('goal/bm-reco/'.$case->id, 'local');
+        if ($prevPath && $prevPath !== $path && Storage::disk('local')->exists($prevPath)) {
+            Storage::disk('local')->delete($prevPath);
+        }
+
+        $bm['equifax'] = [
+            'path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'mime' => $file->getClientMimeType(),
+            'size' => $file->getSize(),
+            'uploaded_at' => now()->toDateTimeString(),
+            'uploaded_by' => auth()->user()?->name,
+            'uploaded_by_id' => auth()->id(),
+        ];
+        $case->bm_reco = $bm;
+        $case->save();
+
+        GoalCaseAudit::record($case, 'document', 'Equifax report attached to BM Reco', auth()->user(), [
+            'to' => $file->getClientOriginalName(),
+        ]);
+
+        return back()->with('success', 'Equifax report attached.')->with('cw_tab', 'recommendation');
+    }
+
+    public function downloadBmRecoEquifax(GoalLoanCase $case)
+    {
+        $this->requireGoalPermission('view_loan_cases_guard');
+        $this->assertCaseInScope($case);
+
+        $path = data_get($case->bm_reco, 'equifax.path');
+        $name = data_get($case->bm_reco, 'equifax.file_name') ?: 'equifax-report.pdf';
+        if (! $path || ! Storage::disk('local')->exists($path)) {
+            abort(404, 'Equifax file not found.');
+        }
+
+        $mime = Storage::disk('local')->mimeType($path) ?: 'application/octet-stream';
+
+        return Storage::disk('local')->response($path, $name, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.addslashes($name).'"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store, max-age=0',
+        ]);
+    }
+
+    public function removeBmRecoEquifax(GoalLoanCase $case)
+    {
+        $this->requireGoalPermission('edit_case_workspace_guard');
+        $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'recommendation')) {
+            return $redirect;
+        }
+
+        $bm = is_array($case->bm_reco) ? $case->bm_reco : [];
+        $path = data_get($bm, 'equifax.path');
+        if ($path && Storage::disk('local')->exists($path)) {
+            Storage::disk('local')->delete($path);
+        }
+        unset($bm['equifax']);
+        $case->bm_reco = $bm;
+        $case->save();
+
+        GoalCaseAudit::record($case, 'document', 'Equifax report removed from BM Reco', auth()->user());
+
+        return back()->with('success', 'Equifax report removed.')->with('cw_tab', 'recommendation');
+    }
+
+    /**
+     * Export BM Reco proposal brief as PDF (client BM Reco letter layout).
+     */
+    public function exportBmReco(GoalLoanCase $case)
+    {
+        $this->requireGoalPermission('view_loan_cases_guard');
+        $this->assertCaseInScope($case);
+
+        $case->loadMissing(['owner:id,name,mobile', 'orgUnit:id,name']);
+
+        $stamp = now()->format('Ymd_His');
+        $safeNo = preg_replace('/[^A-Za-z0-9\-_]/', '_', (string) $case->case_no) ?: 'case';
+
+        return MpdfDocument::fromView(
+            'goal.cases.exports.bm-reco-pdf',
+            [
+                'case' => $case,
+                'br' => is_array($case->bm_reco) ? $case->bm_reco : [],
+                'col' => is_array($case->collateral) ? $case->collateral : [],
+                'loans' => is_array($case->existing_loans) ? $case->existing_loans : [],
+                'exportedAt' => now(),
+            ],
+            'BM-Reco_'.$safeNo.'_'.$stamp.'.pdf',
+            true,
+            'A4'
+        );
     }
 
     protected function assertCaseInScope(GoalLoanCase $case): void

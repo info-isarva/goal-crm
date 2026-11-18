@@ -17,7 +17,7 @@
 .lc-create .wiz-title{margin:0;font-size:1.55rem;font-weight:800;color:var(--lc-text);letter-spacing:-.02em}
 .lc-create .wiz-sub{margin:4px 0 0;font-size:.9rem;color:var(--lc-muted)}
 .lc-create .wiz-crumb{margin-top:8px;font-size:.8rem;color:#94a3b8}
-.lc-create .wiz-crumb a{color:#1e40af;text-decoration:none;font-weight:600}
+.lc-create .wiz-crumb a{color:var(--theme-primary-deep);text-decoration:none;font-weight:600}
 .lc-create .wiz-crumb a:hover{text-decoration:underline}
 .lc-create .wiz-crumb .current{color:#94a3b8}
 
@@ -37,7 +37,7 @@
     width:38px;height:38px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;
     background:#ede9fe;color:var(--lc-purple);font-size:1rem;flex-shrink:0;
 }
-.lc-create .sec-ico.ico-blue{background:#dbeafe;color:var(--lc-primary)}
+.lc-create .sec-ico.ico-blue{background:var(--theme-100);color:var(--lc-primary)}
 .lc-create .sec-ico.ico-indigo{background:#e0e7ff;color:#4f46e5}
 .lc-create .sec-ico.ico-teal{background:#ccfbf1;color:#0d9488}
 .lc-create .sec-ico.ico-amber{background:#fef3c7;color:#d97706}
@@ -55,7 +55,7 @@
 }
 .lc-create .form-control::placeholder{color:#94a3b8}
 .lc-create .form-control:focus,.lc-create .form-select:focus{
-    border-color:#93c5fd;background:#fff;box-shadow:0 0 0 3px rgba(36,91,235,.12);
+    border-color:var(--theme-300);background:#fff;box-shadow:0 0 0 3px rgba(36,91,235,.12);
 }
 .lc-create .form-control:disabled,.lc-create .form-control.is-readonly{
     background:#eef4ff;color:#64748b;border-color:#dbe4f0;cursor:default;
@@ -109,7 +109,7 @@
 }
 .lc-create .doc-badge{
     display:inline-block;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:999px;
-    background:#eff6ff;color:var(--lc-primary);
+    background:var(--theme-50);color:var(--lc-primary);
 }
 .lc-create .doc-badge.req{background:#fef2f2;color:#dc2626}
 .lc-create .doc-file{font-size:.8rem;color:var(--lc-muted)}
@@ -131,7 +131,7 @@
 }
 .lc-create .btn-draft{
     height:42px;padding:0 16px;border-radius:10px;font-weight:700;font-size:.86rem;
-    border:1.5px solid #93c5fd;background:#fff;color:var(--lc-primary);
+    border:1.5px solid var(--theme-300);background:#fff;color:var(--lc-primary);
     display:inline-flex;align-items:center;gap:6px;
 }
 .lc-create .btn-next{
@@ -274,7 +274,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                                        class="form-control js-timepicker" value="{{ $pctFrom }}"
                                        placeholder="From" autocomplete="off" data-minute-increment="15">
                             </div>
-                            <span class="text-muted small fw-semibold">–</span>
+                            <span class="text-muted small fw-semibold">—</span>
                             <div class="ld-input-ico flex-grow-1">
                                 <i class="bi bi-clock"></i>
                                 <input type="text" name="preferred_contact_to" id="preferred_contact_to"
@@ -322,9 +322,9 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                         @error('product')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-12 col-md-6 col-xl-3">
-                        <label class="form-label" for="loan_amount">Requested Amount (₹) <span class="req">*</span></label>
+                        <label class="form-label" for="loan_amount">Requested Amount (?) <span class="req">*</span></label>
                         <div class="ld-input-ico">
-                            <span class="rupee">₹</span>
+                            <span class="rupee">?</span>
                             <input type="text" inputmode="decimal" data-decimals="2" name="loan_amount" id="loan_amount"
                                    class="form-control js-decimal" value="{{ old('loan_amount', $prefill['loan_amount'] ?? '') }}" placeholder="0.00">
                         </div>
@@ -369,18 +369,18 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                                 </select>
                             </div>
                             <div class="col-12 col-md-4">
-                                <label class="form-label" for="monthly_income">Monthly Income (₹) <span class="req">*</span></label>
+                                <label class="form-label" for="monthly_income">Monthly Income (?) <span class="req">*</span></label>
                                 <div class="ld-input-ico">
-                                    <span class="rupee">₹</span>
+                                    <span class="rupee">?</span>
                                     <input type="text" inputmode="decimal" data-decimals="2" name="monthly_income" id="monthly_income"
                                            class="form-control js-decimal" value="{{ old('monthly_income') }}" placeholder="0.00">
                                 </div>
                                 @error('monthly_income')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-12 col-md-4">
-                                <label class="form-label" for="existing_obligations">Existing Obligations (₹)</label>
+                                <label class="form-label" for="existing_obligations">Existing Obligations (?)</label>
                                 <div class="ld-input-ico">
-                                    <span class="rupee">₹</span>
+                                    <span class="rupee">?</span>
                                     <input type="text" inputmode="decimal" data-decimals="2" name="existing_obligations" id="existing_obligations"
                                            class="form-control js-decimal" value="{{ old('existing_obligations') }}" placeholder="0.00">
                                 </div>
@@ -398,9 +398,9 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                                 @error('work_experience_years')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-12 col-md-4">
-                                <label class="form-label" for="net_income">Net Income (₹)</label>
+                                <label class="form-label" for="net_income">Net Income (?)</label>
                                 <div class="ld-input-ico">
-                                    <span class="rupee">₹</span>
+                                    <span class="rupee">?</span>
                                     <input type="text" inputmode="decimal" data-decimals="2" name="net_income" id="net_income"
                                            class="form-control js-decimal is-readonly" value="{{ old('net_income') }}"
                                            placeholder="Auto-calculated" readonly tabindex="-1">
@@ -585,8 +585,8 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
 
     setMsg('Optional — pick a Qualified lead without a case, or leave blank to create a new customer.', null);
 
-    // Cascade: Branch → Branch Manager → Assigned To (reports to BM).
-    // Keep Select2 design: destroy → rebuild options → re-init.
+    // Cascade: Branch ? Branch Manager ? Assigned To (reports to BM).
+    // Keep Select2 design: destroy ? rebuild options ? re-init.
     var peopleCaches = {};
     function cachePeopleSelect(selectId) {
         var sel = document.getElementById(selectId);
@@ -912,7 +912,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         if (lead.can_create === false) {
             setMsg(lead.eligibility_message || ('Lead loaded, but status ' + (lead.status || '') + ' cannot create a case yet.'), false);
         } else {
-            setMsg('Lead ' + (lead.ref_no || '') + ' loaded · ' + (lead.status || '') + '.', true);
+            setMsg('Lead ' + (lead.ref_no || '') + ' loaded — ' + (lead.status || '') + '.', true);
         }
         loadProductDocs(lead.product);
     }
@@ -944,7 +944,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
 
     function loadLeadById(id) {
         if (!id) return;
-        setMsg('Loading lead…', true);
+        setMsg('Loading lead—', true);
         fetch(lookupUrl + '?lead_id=' + encodeURIComponent(id), {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         }).then(function (r) {
@@ -991,7 +991,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         });
 
         if (prefill && prefill.id) {
-            var option = new Option(prefill.ref_no + ' · ' + prefill.customer_name + ' · ' + (prefill.mobile || '—'), prefill.id, true, true);
+            var option = new Option(prefill.ref_no + ' — ' + prefill.customer_name + ' — ' + (prefill.mobile || '—'), prefill.id, true, true);
             $lead.append(option).trigger('change');
             applyLead(prefill);
         } else if (leadIdEl.value) {

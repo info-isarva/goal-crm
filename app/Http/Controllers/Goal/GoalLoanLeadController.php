@@ -40,7 +40,9 @@ class GoalLoanLeadController extends Controller
 
         $baseQuery = GoalLoanLead::query()->with(['assignee', 'orgUnit']);
         $scope = $this->scopedOrgIds();
-        if ($scope !== []) {
+        if ($scope === []) {
+            $baseQuery->whereRaw('0 = 1');
+        } else {
             $baseQuery->whereIn('goal_org_unit_id', $scope);
         }
 
@@ -144,7 +146,7 @@ class GoalLoanLeadController extends Controller
             'disposition' => 'nullable|string|max:40',
             'follow_up_at' => 'nullable|date',
             'notes' => 'nullable|string',
-            'goal_org_unit_id' => 'nullable|exists:goal_org_units,id',
+            'goal_org_unit_id' => 'nullable|exists:goal_org_units,id,is_active,1',
             'consent_recorded' => 'nullable|boolean',
         ]);
 
@@ -157,6 +159,11 @@ class GoalLoanLeadController extends Controller
             : 'Future Prospect';
 
         $source = $data['source'] ?? ($channel ? 'channel' : 'manual');
+        if (strtolower((string) $source) === 'channel' && ! filled(trim((string) ($data['channel_partner'] ?? '')))) {
+            return back()->withInput()->withErrors([
+                'channel_partner' => 'Channel partner name is required for channel leads.',
+            ])->with('reopen_create_lead', true);
+        }
 
         $lead = GoalLoanLead::create([
             ...$data,
@@ -167,6 +174,8 @@ class GoalLoanLeadController extends Controller
             'created_by' => auth()->id(),
             'goal_org_unit_id' => $data['goal_org_unit_id'] ?? auth()->user()->goal_org_unit_id,
         ]);
+
+        app(\App\Services\Goal\GoalPartyService::class)->attachLead($lead);
 
         GoalLoanLeadEvent::record(
             $lead,
@@ -208,6 +217,7 @@ class GoalLoanLeadController extends Controller
             'assigner',
             'creator',
             'orgUnit',
+            'party',
             'assignments.toUser',
             'assignments.fromUser',
             'assignments.assigner',
@@ -242,6 +252,10 @@ class GoalLoanLeadController extends Controller
         $canOpenCase = (bool) $lead->loanCase;
 
         $noteEntries = $this->parseNotes($lead->notes);
+        $linkedMatches = app(\App\Services\Goal\GoalPartyService::class)
+            ->matchesForMobile($lead->mobile, $lead->id, $this->scopedOrgIds());
+        $linkedLeads = $linkedMatches['leads'];
+        $linkedCases = $linkedMatches['cases'];
 
         return view('goal.leads.show', compact(
             'lead',
@@ -259,7 +273,9 @@ class GoalLoanLeadController extends Controller
             'canConvert',
             'canOpenCase',
             'noteEntries',
-            'hasVisit'
+            'hasVisit',
+            'linkedLeads',
+            'linkedCases'
         ));
     }
 
@@ -277,16 +293,58 @@ class GoalLoanLeadController extends Controller
             'lead_type' => 'required|in:immediate,future',
             'source' => 'nullable|string|max:40',
             'channel_partner' => 'nullable|string|max:150',
-            'goal_org_unit_id' => 'nullable|exists:goal_org_units,id',
+            'goal_org_unit_id' => 'nullable|exists:goal_org_units,id,is_active,1',
             'disposition' => 'nullable|string|max:40',
             'consent_recorded' => 'nullable|boolean',
         ]);
 
+        $source = strtolower((string) ($data['source'] ?? $lead->source ?? ''));
+        if ($source === 'channel' && ! filled(trim((string) ($data['channel_partner'] ?? $lead->channel_partner ?? '')))) {
+            return back()->withInput()->withErrors([
+                'channel_partner' => 'Channel partner name is required for channel leads.',
+            ]);
+        }
+
         $lead->fill($data);
         $lead->consent_recorded = $request->boolean('consent_recorded');
         $lead->save();
+        app(\App\Services\Goal\GoalPartyService::class)->attachLead($lead);
 
         return back()->with('success', 'Lead details updated.');
+    }
+
+    public function partyMatches(Request $request)
+    {
+        $this->requireGoalPermission('view_leads_guard');
+        $data = $request->validate([
+            'mobile' => 'required|string|max:20',
+            'exclude_lead_id' => 'nullable|integer',
+        ]);
+
+        $scope = $this->scopedOrgIds();
+        $matches = app(\App\Services\Goal\GoalPartyService::class)->matchesForMobile(
+            $data['mobile'],
+            isset($data['exclude_lead_id']) ? (int) $data['exclude_lead_id'] : null,
+            $scope
+        );
+
+        return response()->json([
+            'party_id' => $matches['party']?->id,
+            'leads' => $matches['leads']->map(fn ($l) => [
+                'id' => $l->id,
+                'ref_no' => $l->ref_no,
+                'customer_name' => $l->customer_name,
+                'status' => $l->status,
+                'url' => route('goal.leads.show', $l),
+            ])->values(),
+            'cases' => $matches['cases']->map(fn ($c) => [
+                'id' => $c->id,
+                'case_no' => $c->case_no,
+                'customer_name' => $c->customer_name,
+                'status' => $c->status,
+                'url' => route('goal.cases.show', $c),
+            ])->values(),
+        ]);
     }
 
     public function addNote(Request $request, GoalLoanLead $lead)
@@ -417,6 +475,11 @@ class GoalLoanLeadController extends Controller
                 'convert' => 'Lead must reach Qualified before converting to a case. Current status: ' . $lead->status,
             ]);
         }
+        if (! filled($lead->product) && ! filled($request->input('product'))) {
+            return back()->withErrors([
+                'convert' => 'Set a product on the lead before converting to a case.',
+            ]);
+        }
 
         $request->merge([
             'to_status' => 'Documents Pending',
@@ -442,12 +505,14 @@ class GoalLoanLeadController extends Controller
             'follow_up_at.after_or_equal' => 'Follow-up must be today or a future date/time.',
         ]);
 
+        $lead->loadMissing('loanCase');
         $ctx = [
             'follow_up' => $data['follow_up_at'] ?? $lead->follow_up_at,
             'reason' => $data['closure_reason'] ?? null,
             'consent' => $request->boolean('consent_recorded') || $lead->consent_recorded,
             'product' => $data['product'] ?? $lead->product,
             'assignee' => $lead->assigned_to,
+            'docsVerified' => $this->leadMandatoryDocsVerified($lead),
         ];
 
         $gate = GoalWorkflow::validateLead($lead->status, $data['to_status'], $ctx);
@@ -509,9 +574,11 @@ class GoalLoanLeadController extends Controller
                     ->when($lead->goal_org_unit_id, fn ($q) => $q->where('goal_org_unit_id', $lead->goal_org_unit_id))
                     ->value('id');
 
+            $seedDocs = \App\Services\Goal\GoalDocumentCatalog::forProduct($lead->product, true);
             $case = GoalLoanCase::create([
                 'case_no' => 'CS-' . now()->format('ymd') . '-' . Str::upper(Str::random(4)),
                 'goal_loan_lead_id' => $lead->id,
+                'goal_party_id' => $lead->goal_party_id,
                 'goal_org_unit_id' => $lead->goal_org_unit_id,
                 'owner_id' => $lead->assigned_to,
                 'status' => 'Draft',
@@ -527,8 +594,10 @@ class GoalLoanLeadController extends Controller
                         'recorded' => (bool) $lead->consent_recorded,
                         'source' => 'lead_convert',
                     ],
+                    'documents' => $seedDocs,
                 ], fn ($v) => $v !== null && $v !== ''),
             ]);
+            app(\App\Services\Goal\GoalPartyService::class)->attachCase($case, $lead);
 
             GoalLoanLeadEvent::record(
                 $lead,
@@ -549,9 +618,25 @@ class GoalLoanLeadController extends Controller
     protected function assertLeadInScope(GoalLoanLead $lead): void
     {
         $scope = $this->scopedOrgIds();
-        if ($scope !== [] && !in_array((int) $lead->goal_org_unit_id, array_map('intval', $scope), true)) {
+        if ($scope === [] || ($lead->goal_org_unit_id && ! in_array((int) $lead->goal_org_unit_id, array_map('intval', $scope), true))) {
             abort(403, 'Lead is outside your branch scope.');
         }
+    }
+
+    protected function leadMandatoryDocsVerified(GoalLoanLead $lead): bool
+    {
+        $case = $lead->loanCase;
+        if (! $case) {
+            return false;
+        }
+        $docs = collect(data_get($case->customer_details, 'documents', []) ?: []);
+        $mandatory = $docs->where('mandatory', true);
+
+        return $mandatory->isNotEmpty()
+            && $mandatory->every(function ($d) {
+                return ($d['status'] ?? '') === 'Verified'
+                    && filled($d['path'] ?? ($d['storage_path'] ?? null));
+            });
     }
 
     protected function priorityFor(GoalLoanLead $lead): string

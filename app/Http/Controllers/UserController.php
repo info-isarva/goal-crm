@@ -12,9 +12,15 @@ use App\Mail\UserWelcomeMail;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 use App\Support\SafeUpload;
+use App\Services\Goal\GoalDashboardService;
 
 class UserController extends Controller
 {
+    protected function usesGoalTargets(?User $user = null): bool
+    {
+        return GoalDashboardService::userUsesGoalDashboard($user ?: auth()->user());
+    }
+
     protected function isSuperAdmin(?User $user = null): bool
     {
         $user = $user ?: auth()->user();
@@ -588,7 +594,10 @@ class UserController extends Controller
         $user->mobile = $validated['mobile'] ?? null;
         $user->password = $plainPassword;
         $user->crm_role_type = $validated['crm_role_type'];
-        $user->sales_target = $validated['sales_target'] ?? 0;
+        // Goal tenants manage targets in Performance & Finance → Targets (not on user form)
+        $user->sales_target = $this->usesGoalTargets()
+            ? 0
+            : ($validated['sales_target'] ?? 0);
         $user->crm_page_right = json_encode($pageRights);
         $user->assign_manager = $validated['assign_manager'] ?? null;
         $user->goal_org_unit_id = $validated['goal_org_unit_id'] ?? null;
@@ -743,7 +752,10 @@ class UserController extends Controller
         if (!empty($validated['password'])) {
             $user->password = $validated['password'];
         }
-        $user->sales_target = $validated['sales_target'] ?? ($user->sales_target ?? 0);
+        // Goal: keep synced value from Targets module; classic CRM still edits sales_target here
+        if (!$this->usesGoalTargets()) {
+            $user->sales_target = $validated['sales_target'] ?? ($user->sales_target ?? 0);
+        }
         $user->crm_role_type = $validated['crm_role_type'];
         $user->crm_page_right = json_encode($pageRights);
         if ($validated['crm_role_type'] == 3) {

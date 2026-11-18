@@ -238,6 +238,13 @@
             bg-transparent border-0 cursor-pointer;
     }
     .dropdown-item:hover { @apply bg-slate-100; }
+    .dropdown-item.disabled,
+    .dropdown-item:disabled {
+        @apply pointer-events-none opacity-60 text-slate-400;
+    }
+    .dropdown-header {
+        @apply px-3 py-1.5 text-[0.7rem] font-bold uppercase tracking-wide text-slate-400;
+    }
     .dropdown-divider { @apply my-1 h-px bg-slate-200 border-0; }
 
     /* —— List group —— */

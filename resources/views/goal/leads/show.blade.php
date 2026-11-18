@@ -61,7 +61,7 @@
     display:inline-flex;align-items:center;justify-content:center;text-decoration:none;flex-shrink:0;
     box-shadow:0 2px 8px rgba(15,23,42,.05);margin-top:2px;
 }
-.ld-page .ld-back:hover{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+.ld-page .ld-back:hover{background:var(--theme-50);color:var(--theme-primary-hover);border-color:var(--theme-200)}
 .ld-page .ld-title{margin:0;font-size:1.55rem;font-weight:800;color:var(--ld-ink);letter-spacing:-.025em;line-height:1.15}
 .ld-page .ld-sub{margin:.28rem 0 0;font-size:.86rem;color:var(--ld-muted);font-weight:500}
 .ld-page .ld-crumbs{margin-top:.4rem;font-size:.78rem;color:#94a3b8;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
@@ -120,7 +120,7 @@
 }
 @media(max-width:900px){
     .ld-page{
-        margin:0 !important;padding:.85rem .85rem 1.5rem !important;
+        margin:0 !important;padding:.7rem .7rem 1.25rem !important;
         overflow-x:hidden;
     }
     .ld-page .ld-grid{
@@ -131,36 +131,115 @@
             "left"
             "main"
             "right";
-        gap:12px;
+        gap:10px;
         width:100%;
     }
-    .ld-page .ld-top{flex-direction:column;align-items:stretch;gap:.85rem;margin-bottom:.9rem}
-    .ld-page .ld-top-left{width:100%}
-    .ld-page .ld-title{font-size:1.25rem}
-    .ld-page .ld-sub{font-size:.8rem}
-    .ld-page .ld-actions{margin-left:0;width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .ld-page .ld-top{flex-direction:column;align-items:stretch;gap:.65rem;margin-bottom:.7rem}
+    .ld-page .ld-top-left{width:100%;gap:10px}
+    .ld-page .ld-back{width:38px;height:38px;margin-top:0}
+    .ld-page .ld-title{font-size:1.15rem}
+    .ld-page .ld-sub{display:none}
+    .ld-page .ld-crumbs{font-size:.7rem;margin-top:4px;gap:4px}
+    .ld-page .ld-actions{
+        margin-left:0;width:100%;
+        display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    }
     .ld-page .ld-actions .ld-btn,
     .ld-page .ld-actions form,
-    .ld-page .ld-actions .dropdown{width:100%}
-    .ld-page .ld-actions .ld-btn{justify-content:center;padding:0 10px;font-size:.8rem;height:38px}
+    .ld-page .ld-actions .dropdown{width:100%;min-width:0}
+    .ld-page .ld-actions .ld-btn{
+        justify-content:center;padding:0 8px;font-size:.78rem;height:40px;border-radius:10px;gap:6px;
+    }
     .ld-page .ld-actions .dropdown .ld-btn{width:100%}
-    .ld-page .ld-progress{padding:14px 10px 12px}
-    .ld-page .ld-step{min-width:88px;flex:0 0 auto}
+    .ld-page .ld-actions .ld-btn-primary,
+    .ld-page .ld-actions .dropdown{grid-column:1 / -1}
+
+    /* Progress: swipeable compact chips */
     .ld-page .ld-progress-wrap,
     .ld-page .ld-tabs-wrap{width:100%;max-width:100%;min-width:0}
-    .ld-page .ld-tab{padding:.62rem .95rem;font-size:.78rem}
-    .ld-page .ld-meta-list li{padding:12px;grid-template-columns:1fr;gap:6px;min-height:0}
-    .ld-page .ld-meta-v{justify-content:flex-start;text-align:left}
-    .ld-page .ld-tl-main{flex-direction:column;gap:4px}
-    .ld-page .ld-tl-at{white-space:normal}
-    .ld-page .ld-card-pad{padding:14px}
-    .ld-page .ld-owner{flex-wrap:wrap}
+    .ld-page .ld-progress{padding:10px 8px 10px;gap:0}
+    .ld-page .ld-step{min-width:72px;flex:0 0 auto}
+    .ld-page .ld-step-ico{width:30px;height:30px;font-size:.8rem}
+    .ld-page .ld-step:not(:last-child)::after{top:15px;left:calc(50% + 16px);right:calc(-50% + 16px);height:2px}
+    .ld-page .ld-step-label{margin-top:5px;font-size:.6rem;line-height:1.2}
+    .ld-page .ld-step-at{font-size:.55rem;margin-top:2px}
+
+    /* Tabs */
+    .ld-page .ld-tabs{gap:6px}
+    .ld-page .ld-tab{padding:.55rem .9rem;font-size:.76rem;gap:6px;box-shadow:0 2px 8px rgba(20,33,61,.05)}
+    .ld-page .ld-tab i{font-size:.95rem}
+
+    /* Cards denser */
+    .ld-page .ld-card{border-radius:14px}
+    .ld-page .ld-card + .ld-card{margin-top:10px}
+    .ld-page .ld-card-pad{padding:12px}
+    .ld-page .ld-card-head{padding:0 0 8px;margin:0 0 8px}
+    .ld-page .ld-card-head h6{font-size:.88rem}
+    .ld-page .ld-card-head .ld-head-ico{width:26px;height:26px;margin-right:8px;font-size:.85rem}
+
+    /* Lead profile meta: keep label | value, tighter */
+    .ld-page .ld-profile-hero{padding:1rem .95rem .9rem}
+    .ld-page .ld-ref{font-size:1.05rem;word-break:break-word}
+    .ld-page .ld-status{margin-top:8px;padding:.26rem .65rem;font-size:.68rem}
+    .ld-page .ld-meta-list li{
+        grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);
+        padding:9px 12px;min-height:0;column-gap:8px;align-items:center;
+    }
+    .ld-page .ld-meta-k{font-size:.72rem;gap:7px}
+    .ld-page .ld-meta-k .ld-meta-ico{width:18px;height:18px;font-size:.9rem}
+    .ld-page .ld-meta-v{
+        justify-content:flex-end;text-align:right;font-size:.78rem;
+        flex-wrap:wrap;gap:4px;min-width:0;
+    }
+    .ld-page .ld-pill{font-size:.65rem;padding:.18rem .5rem}
+
+    /* Owner */
+    .ld-page .ld-owner{gap:10px;flex-wrap:nowrap}
+    .ld-page .ld-avatar{width:40px;height:40px;font-size:.95rem}
+    .ld-page .ld-owner-name{font-size:.84rem}
+    .ld-page .ld-owner-role{font-size:.7rem}
+    .ld-page .ld-owner-acts{gap:6px}
+    .ld-page .ld-ico{width:36px;height:36px}
+
+    /* Summary KV denser */
+    .ld-page .ld-summary-table{border-radius:12px}
+    .ld-page .ld-sum-cell{
+        padding:9px 12px;min-height:0;gap:8px;
+    }
+    .ld-page .ld-sum-cell .ld-field-label{font-size:.72rem;flex-basis:40%}
+    .ld-page .ld-sum-cell .ld-field-val{font-size:.8rem;gap:5px}
+
+    /* Timeline denser */
+    .ld-page .ld-timeline li{gap:10px;padding:9px 0}
+    .ld-page .ld-timeline li:not(:last-child)::before{left:14px;top:34px}
+    .ld-page .ld-timeline li:not(:last-child)::after{left:11px}
+    .ld-page .ld-tl-ico{width:28px;height:28px;font-size:.78rem}
+    .ld-page .ld-tl-main{flex-direction:column;align-items:flex-start;gap:2px}
+    .ld-page .ld-tl-title{font-size:.8rem}
+    .ld-page .ld-tl-meta{font-size:.72rem;margin-top:2px}
+    .ld-page .ld-tl-at{font-size:.68rem;white-space:normal}
+
+    /* Follow-up / QA / notes */
+    .ld-page .ld-follow{padding:14px}
+    .ld-page .ld-follow-body{min-height:0;margin-bottom:10px}
+    .ld-page .ld-follow-date{font-size:1.15rem}
+    .ld-page .ld-follow-time{font-size:.78rem;margin-top:.25rem}
+    .ld-page .ld-follow-art{width:72px;height:72px;font-size:2.6rem;opacity:.9}
+    .ld-page .ld-follow .ld-btn{height:38px;font-size:.8rem;padding:0 14px}
+    .ld-page .ld-qa-grid{gap:8px}
+    .ld-page .ld-qa{min-height:64px;padding:.55rem .4rem;font-size:.72rem;border-radius:12px;gap:4px}
+    .ld-page .ld-qa span{font-size:1rem}
+    .ld-page .ld-note{padding:11px;border-radius:12px;margin-bottom:8px}
+    .ld-page .ld-note-body{font-size:.8rem}
+    .ld-page .ld-note-foot{margin-top:8px}
 }
 @media(max-width:576px){
-    .ld-page{padding:.7rem .7rem 1.25rem !important}
-    .ld-page .ld-actions{grid-template-columns:1fr}
-    .ld-page .ld-ref{font-size:1.05rem;word-break:break-all}
-    .ld-page .ld-qa{min-height:72px;padding:.65rem .45rem}
+    .ld-page{padding:.65rem .65rem 1.1rem !important}
+    .ld-page .ld-actions{grid-template-columns:1fr 1fr}
+    .ld-page .ld-ref{font-size:.98rem}
+    .ld-page .ld-meta-list li{padding:8px 10px}
+    .ld-page .ld-sum-cell{padding:8px 10px}
+    .ld-page .ld-qa{min-height:60px}
 }
 
 .ld-page .ld-card{
@@ -210,17 +289,17 @@
 .ld-page .ld-ref-row{position:relative;z-index:1;display:flex;align-items:center;gap:8px;margin-top:4px}
 .ld-page .ld-ref{margin:0;font-size:1.2rem;font-weight:800;color:#0f172a;letter-spacing:-.02em;line-height:1.2}
 .ld-page .ld-copy{
-    width:30px;height:30px;border-radius:8px;border:1.5px solid #93c5fd;background:#fff;color:#2563eb;
+    width:30px;height:30px;border-radius:8px;border:1.5px solid var(--theme-300);background:#fff;color:var(--theme-primary);
     display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
 }
-.ld-page .ld-copy:hover{background:#eff6ff;border-color:#60a5fa}
+.ld-page .ld-copy:hover{background:var(--theme-50);border-color:var(--theme-400)}
 .ld-page .ld-status{
     position:relative;z-index:1;
     display:inline-flex;align-items:center;margin-top:12px;padding:.32rem .8rem;border-radius:999px;
     font-size:.72rem;font-weight:800;
 }
 .ld-page .ld-status.green{background:#D1FAE5;color:#047857}
-.ld-page .ld-status.blue{background:#DBEAFE;color:#1D4ED8}
+.ld-page .ld-status.blue{background:var(--theme-100);color:var(--theme-primary-hover)}
 .ld-page .ld-status.amber{background:#FFEDD5;color:#C2410C}
 .ld-page .ld-status.slate{background:#E2E8F0;color:#475569}
 
@@ -249,7 +328,7 @@
 .ld-page .ld-pill-green{background:#D1FAE5;color:#047857}
 .ld-page .ld-pill-red{background:#FEE2E2;color:var(--ld-danger)}
 .ld-page .ld-pill-amber{background:#FFEDD5;color:#C2410C}
-.ld-page .ld-pill-blue{background:#DBEAFE;color:#1D4ED8}
+.ld-page .ld-pill-blue{background:var(--theme-100);color:var(--theme-primary-hover)}
 .ld-page .ld-pill-purple{background:#EDE9FE;color:var(--ld-purple)}
 .ld-page .ld-pill-slate{background:#F1F5F9;color:#334155}
 .ld-page .ld-pill-slate i{font-size:.78rem;color:#64748b}
@@ -272,10 +351,10 @@
 .ld-page .ld-owner-role{margin:2px 0 0;font-size:.74rem;color:var(--ld-muted);font-weight:600}
 .ld-page .ld-owner-acts{margin-left:auto;display:inline-flex;gap:8px;flex-shrink:0}
 .ld-page .ld-ico{
-    width:34px;height:34px;border-radius:999px;border:1.5px solid #BFDBFE;background:#fff;color:var(--ld-blue);
+    width:34px;height:34px;border-radius:999px;border:1.5px solid var(--theme-200);background:#fff;color:var(--ld-blue);
     display:inline-flex;align-items:center;justify-content:center;text-decoration:none;
 }
-.ld-page .ld-ico:hover{background:#EFF6FF;color:#1D4ED8;border-color:#93C5FD}
+.ld-page .ld-ico:hover{background:var(--theme-50);color:var(--theme-primary-hover);border-color:var(--theme-300)}
 .ld-page .ld-ico.is-off{opacity:.35;pointer-events:none;border-color:#E2E8F0;color:#94A3B8}
 
 /* Progress — center column only */
@@ -296,7 +375,7 @@
     background:#F8FAFC;color:#CBD5E1;border:2px solid #E3EAF5;
 }
 .ld-page .ld-step.done .ld-step-ico{background:var(--ld-success);color:#fff;border-color:#059669;box-shadow:0 4px 10px rgba(22,185,120,.25)}
-.ld-page .ld-step.current .ld-step-ico{background:var(--ld-blue);color:#fff;border-color:#1D4ED8;box-shadow:0 0 0 4px rgba(36,91,235,.16)}
+.ld-page .ld-step.current .ld-step-ico{background:var(--ld-blue);color:#fff;border-color:var(--theme-primary-hover);box-shadow:0 0 0 4px rgba(36,91,235,.16)}
 .ld-page .ld-step-label{display:block;margin-top:8px;font-size:.7rem;font-weight:700;color:#94A3B8;line-height:1.25}
 .ld-page .ld-step.done .ld-step-label{color:var(--ld-success)}
 .ld-page .ld-step.current .ld-step-label{color:var(--ld-ink)}
@@ -330,7 +409,7 @@
 .ld-page .ld-tab:hover{background:#F8FAFC;border-color:#D0D9E8;color:#0F172A}
 .ld-page .ld-tab.active{
     border-color:transparent;
-    background:linear-gradient(90deg,#3B82F6 0%,#2563EB 55%,#1D4ED8 100%);
+    background:linear-gradient(90deg,var(--theme-primary) 0%,var(--theme-primary) 55%,var(--theme-primary-hover) 100%);
     color:#fff;
     box-shadow:none;
 }
@@ -419,11 +498,11 @@
 .ld-page .ld-timeline li:last-child{padding-bottom:0;border-bottom:0}
 .ld-page .ld-timeline li:not(:last-child)::before{
     content:"";position:absolute;left:17px;top:42px;bottom:-2px;width:2px;
-    background:#BFDBFE;border-radius:99px;z-index:0;
+    background:var(--theme-200);border-radius:99px;z-index:0;
 }
 .ld-page .ld-timeline li:not(:last-child)::after{
     content:"";position:absolute;left:14px;bottom:-5px;width:8px;height:8px;
-    border-radius:999px;background:#60A5FA;border:2px solid #fff;
+    border-radius:999px;background:var(--theme-400);border:2px solid #fff;
     box-shadow:0 0 0 2px rgba(96,165,250,.25);z-index:2;
 }
 .ld-page .ld-tl-ico{
@@ -445,7 +524,7 @@
 /* Right widgets — Next Follow-up (reference: soft wash + watermark + pill) */
 .ld-page .ld-card.ld-follow-card{
     border:1px solid rgba(226,232,240,.9);
-    box-shadow:0 12px 32px rgba(59,130,246,.10),0 2px 8px rgba(15,23,42,.03);
+    box-shadow:0 12px 32px var(--theme-primary-ring),0 2px 8px rgba(15,23,42,.03);
     overflow:hidden;
 }
 .ld-page .ld-follow{
@@ -488,20 +567,20 @@
 }
 .ld-page .ld-follow-art i{
     opacity:.38;
-    color:#93C5FD;
+    color:var(--theme-300);
     filter:drop-shadow(0 10px 20px rgba(96,165,250,.25));
 }
 .ld-page .ld-follow .ld-btn{
     position:relative;z-index:1;
-    border:0;color:#2563EB;background:#fff;
+    border:0;color:var(--theme-primary);background:#fff;
     width:auto;min-width:0;padding:0 20px;justify-content:center;margin-top:0;
     border-radius:999px;font-weight:700;height:42px;font-size:.88rem;
-    box-shadow:0 6px 16px rgba(37,99,235,.16),0 1px 3px rgba(15,23,42,.06);
+    box-shadow:0 6px 16px var(--theme-primary-ring),0 1px 3px rgba(15,23,42,.06);
 }
-.ld-page .ld-follow .ld-btn i{color:#2563EB}
+.ld-page .ld-follow .ld-btn i{color:var(--theme-primary)}
 .ld-page .ld-follow .ld-btn:hover{
-    background:#fff;color:#1D4ED8;
-    box-shadow:0 8px 20px rgba(37,99,235,.22),0 1px 3px rgba(15,23,42,.06);
+    background:#fff;color:var(--theme-primary-hover);
+    box-shadow:0 8px 20px var(--theme-primary-ring),0 1px 3px rgba(15,23,42,.06);
 }
 /* Quick Actions — full pastel tiles (reference) */
 .ld-page .ld-card.ld-qa-card{
@@ -523,8 +602,8 @@
 }
 .ld-page .ld-qa.call{background:#ECFDF5}
 .ld-page .ld-qa.call span{color:#059669}
-.ld-page .ld-qa.sms{background:#EFF6FF}
-.ld-page .ld-qa.sms span{color:#2563EB}
+.ld-page .ld-qa.sms{background:var(--theme-50)}
+.ld-page .ld-qa.sms span{color:var(--theme-primary)}
 .ld-page .ld-qa.email{background:#F5F3FF}
 .ld-page .ld-qa.email span{color:#7C3AED}
 .ld-page .ld-qa.schedule{background:#FFF7ED}
@@ -557,7 +636,14 @@
 .ld-page .table.ld-table{font-size:.84rem}
 .ld-page .table.ld-table th{font-size:.72rem;text-transform:uppercase;letter-spacing:.03em;color:#64748b;font-weight:700}
 /* Shared Lead Details modals */
-.ld-modal .modal-content{border:0;border-radius:16px;overflow:hidden;box-shadow:0 24px 48px rgba(15,23,42,.18)}
+.ld-modal .modal-content{border:0;overflow:hidden;box-shadow:0 24px 48px rgba(15,23,42,.18)}
+@media (max-width:767.98px){
+    .ld-modal .modal-footer .btn-cancel,
+    .ld-modal .modal-footer .btn-apply,
+    .ld-modal .modal-footer button{
+        width:100%;min-height:48px;justify-content:center;
+    }
+}
 .ld-modal .modal-header{
     border-bottom:1px solid #e8edf5;padding:16px 20px;align-items:flex-start;background:#fff;
 }
@@ -565,7 +651,7 @@
 .ld-modal .ld-modal-ico{
     width:42px;height:42px;border-radius:12px;flex-shrink:0;
     display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;
-    background:linear-gradient(135deg,#ede9fe,#dbeafe);color:#4f46e5;
+    background:linear-gradient(135deg,#ede9fe,var(--theme-100));color:#4f46e5;
 }
 .ld-modal .modal-title{font-size:1.1rem;font-weight:800;color:#0f172a;margin:0;line-height:1.25}
 .ld-modal .ld-modal-sub{font-size:.82rem;color:#64748b;margin-top:3px;line-height:1.35}
@@ -610,10 +696,10 @@
 }
 .ld-modal .ld-input-ico .select2-container--default.select2-container--focus .select2-selection--single,
 .ld-modal .ld-input-ico .select2-container--default.select2-container--open .select2-selection--single{
-    border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12);
+    border-color:var(--theme-300);box-shadow:0 0 0 3px var(--theme-primary-ring);
 }
 .ld-modal .form-control:focus,.ld-modal .form-select:focus{
-    border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12);
+    border-color:var(--theme-300);box-shadow:0 0 0 3px var(--theme-primary-ring);
 }
 .ld-modal .ld-current{
     display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;
@@ -629,10 +715,10 @@
 .ld-modal .ld-check .form-check-label{margin:0;font-size:.86rem;font-weight:600;color:#334155}
 .ld-modal .ld-hint{
     display:flex;align-items:flex-start;gap:8px;margin-top:14px;
-    padding:10px 12px;border-radius:10px;background:#eff6ff;border:1px solid #dbeafe;
+    padding:10px 12px;border-radius:10px;background:var(--theme-50);border:1px solid var(--theme-100);
     font-size:.8rem;color:#475569;line-height:1.4;
 }
-.ld-modal .ld-hint i{color:#2563eb;margin-top:2px}
+.ld-modal .ld-hint i{color:var(--theme-primary);margin-top:2px}
 .ld-modal .btn-cancel{
     height:40px;padding:0 16px;border-radius:10px;font-weight:700;font-size:.86rem;
     border:1px solid #e2e8f0;background:#fff;color:#334155;
@@ -640,9 +726,9 @@
 .ld-modal .btn-cancel:hover{background:#f8fafc;color:#0f172a}
 .ld-modal .btn-apply{
     height:40px;padding:0 16px;border-radius:10px;font-weight:700;font-size:.86rem;
-    border:0;color:#fff;background:linear-gradient(90deg,#2563eb,#1d4ed8);
+    border:0;color:#fff;background:linear-gradient(90deg,var(--theme-primary),var(--theme-primary-hover));
     display:inline-flex;align-items:center;gap:6px;
-    box-shadow:0 8px 16px rgba(37,99,235,.22);
+    box-shadow:0 8px 16px var(--theme-primary-ring);
 }
 .ld-modal .btn-apply:hover{filter:brightness(1.05);color:#fff}
 .ld-modal .btn-apply:disabled{opacity:.5;box-shadow:none}
@@ -1071,7 +1157,26 @@
 
             <div class="ld-pane {{ $activeTab === 'case' ? 'active' : '' }}" data-ld-pane="case">
                 <div class="ld-card"><div class="ld-card-pad">
-                    <div class="ld-card-head"><h6>Linked Case</h6></div>
+                    <div class="ld-card-head"><h6>Linked records</h6></div>
+                    <div class="ld-card-body" style="padding:12px 14px">
+                        @if(($linkedLeads ?? collect())->isEmpty() && ($linkedCases ?? collect())->isEmpty())
+                            <div class="ld-muted" style="font-size:.82rem">No other leads/cases on this mobile yet.</div>
+                        @else
+                            @foreach(($linkedLeads ?? []) as $ll)
+                                <div style="margin-bottom:6px">
+                                    <a href="{{ route('goal.leads.show', $ll) }}">{{ $ll->ref_no }}</a>
+                                    <span class="ld-muted"> · {{ $ll->status }}</span>
+                                </div>
+                            @endforeach
+                            @foreach(($linkedCases ?? []) as $lc)
+                                <div style="margin-bottom:6px">
+                                    <a href="{{ route('goal.cases.show', $lc) }}">{{ $lc->case_no }}</a>
+                                    <span class="ld-muted"> · {{ $lc->status }}</span>
+                                </div>
+                            @endforeach
+                        @endif
+                    </div>
+                    <div class="ld-card-head" style="border-top:1px solid #eef2f7"><h6>Linked Case</h6></div>
                     @if($lead->loanCase)
                         <div class="ld-summary-grid">
                             <div><div class="ld-field-label">Case No</div><div class="ld-field-val"><a href="{{ route('goal.cases.show', $lead->loanCase) }}">{{ $lead->loanCase->case_no }}</a></div></div>
@@ -1181,7 +1286,7 @@
 
 {{-- Edit modal --}}
 <div class="modal fade ld-modal" id="editLeadModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="{{ route('goal.leads.update', $lead) }}" class="modal-content">
             @csrf @method('PUT')
             <div class="modal-header">
@@ -1192,7 +1297,7 @@
                         <div class="ld-modal-sub">Update customer and loan details for {{ $lead->ref_no }}.</div>
                     </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="row g-3">
@@ -1302,7 +1407,7 @@
 {{-- Reassign --}}
 @if($canAllocate)
 <div class="modal fade ld-modal" id="reassignLeadModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="{{ route('goal.allocation.assign', $lead) }}" class="modal-content">
             @csrf
             <input type="hidden" name="action" value="{{ $lead->assigned_to ? 'reassign' : 'assign' }}">
@@ -1314,7 +1419,7 @@
                         <div class="ld-modal-sub">{{ $lead->ref_no }} · {{ $lead->customer_name }}</div>
                     </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="ld-field">
@@ -1354,7 +1459,7 @@
 
 {{-- Transition / convert helper --}}
 <div class="modal fade ld-modal" id="transitionModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="{{ route('goal.leads.transition', $lead) }}" class="modal-content" id="ldTransitionForm">
             @csrf
             <div class="modal-header">
@@ -1365,7 +1470,7 @@
                         <div class="ld-modal-sub">Move this lead to the next workflow stage.</div>
                     </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="ld-current"><i class="bi bi-info-circle"></i> Current: <strong>{{ $lead->status }}</strong></div>
@@ -1440,7 +1545,7 @@
 
 {{-- Reschedule --}}
 <div class="modal fade ld-modal" id="rescheduleModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="{{ route('goal.leads.reschedule', $lead) }}" class="modal-content">
             @csrf
             <div class="modal-header">
@@ -1451,7 +1556,7 @@
                         <div class="ld-modal-sub">Set the next follow-up date and time.</div>
                     </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="ld-field">
@@ -1476,7 +1581,7 @@
 
 {{-- Add note --}}
 <div class="modal fade ld-modal" id="addNoteModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="{{ route('goal.leads.notes', $lead) }}" class="modal-content">
             @csrf
             <div class="modal-header">
@@ -1487,7 +1592,7 @@
                         <div class="ld-modal-sub">Notes are stamped with your name and time.</div>
                     </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="ld-field">
@@ -1508,7 +1613,7 @@
 
 {{-- Log visit --}}
 <div class="modal fade ld-modal" id="logVisitModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" action="{{ route('goal.leads.visit', $lead) }}" class="modal-content">
             @csrf
             <div class="modal-header">
@@ -1519,7 +1624,7 @@
                         <div class="ld-modal-sub">Advances the Visited stage on the progress tracker.</div>
                     </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="ld-field">

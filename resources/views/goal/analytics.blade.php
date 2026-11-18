@@ -10,18 +10,18 @@
 .ga-page .head-controls{display:flex;flex-direction:column;align-items:flex-end;gap:.65rem}
 .ga-page .period-seg{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;justify-content:flex-end}
 .ga-page .period-btn{border:1px solid #e2e8f0;background:#fff;border-radius:8px;padding:.42rem .78rem;font-size:.78rem;font-weight:600;color:#64748b;text-decoration:none;transition:all .15s}
-.ga-page .period-btn.active,.ga-page .period-btn:hover{background:#2563eb;border-color:#2563eb;color:#fff}
+.ga-page .period-btn.active,.ga-page .period-btn:hover{background:var(--theme-primary);border-color:var(--theme-primary);color:#fff}
 .ga-page .interval-seg{display:inline-flex;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff}
 .ga-page .interval-btn{border:0;background:transparent;padding:.38rem .85rem;font-size:.76rem;font-weight:700;color:#64748b;text-decoration:none;transition:all .15s}
 .ga-page .interval-btn.active{background:#1e3a8a;color:#fff}
-.ga-page .interval-btn:hover:not(.active){background:#f8fafc;color:#1e40af}
+.ga-page .interval-btn:hover:not(.active){background:#f8fafc;color:var(--theme-primary-deep)}
 
 /* KPI cards — match Home / mockup */
 .ga-page .metric-card{--kpi-accent:#f63383;--kpi-icon-bg:#fce3ef;--kpi-icon:#e91e63;--kpi-heading:#1555d8;--kpi-value:#172033;--kpi-sub:#64748b;--kpi-link:#1555d8;--kpi-wave-a:#f3e0ff;--kpi-wave-b:#f9c2e8;--kpi-wave-c:#e8b4f0;position:relative;display:flex;flex-direction:column;background:linear-gradient(160deg,#ffffff 0%,#faf8ff 55%,#ffffff 100%);border:1px solid #eaeaf2;border-radius:14px;padding:.85rem 1rem .75rem 1.05rem;height:100%;min-height:108px;overflow:hidden;box-shadow:0 4px 14px rgba(23,32,51,.06);transition:transform .2s ease,box-shadow .2s ease}
 .ga-page .metric-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--kpi-accent);z-index:3}
 .ga-page .metric-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(23,32,51,.09)}
 .ga-page .metric-card.t-magenta{--kpi-accent:#f63383;--kpi-icon-bg:#fce3ef;--kpi-icon:#e91e63;--kpi-wave-a:#f3e0ff;--kpi-wave-b:#f9c2e8;--kpi-wave-c:#e8b4f0}
-.ga-page .metric-card.t-blue{--kpi-accent:#2563eb;--kpi-icon-bg:#dbeafe;--kpi-icon:#2563eb;--kpi-wave-a:#e0ecff;--kpi-wave-b:#c7dbff;--kpi-wave-c:#a8c8ff}
+.ga-page .metric-card.t-blue{--kpi-accent:var(--theme-primary);--kpi-icon-bg:var(--theme-100);--kpi-icon:var(--theme-primary);--kpi-wave-a:#e0ecff;--kpi-wave-b:#c7dbff;--kpi-wave-c:#a8c8ff}
 .ga-page .metric-card.t-green{--kpi-accent:#16a34a;--kpi-icon-bg:#dcfce7;--kpi-icon:#16a34a;--kpi-wave-a:#e3f9eb;--kpi-wave-b:#c6f0d4;--kpi-wave-c:#9fe3b8}
 .ga-page .metric-card.t-orange,.ga-page .metric-card.t-red{--kpi-accent:#f97316;--kpi-icon-bg:#ffedd5;--kpi-icon:#ea580c;--kpi-wave-a:#fff0e0;--kpi-wave-b:#ffd9b3;--kpi-wave-c:#ffc48a}
 .ga-page .metric-head{display:flex;align-items:center;justify-content:space-between;gap:.55rem;margin-bottom:.35rem;position:relative;z-index:2}
@@ -32,6 +32,7 @@
 .ga-page .metric-trend{margin:.15rem 0 0;font-size:9.5px;font-weight:500;color:var(--kpi-sub);line-height:1.2}
 .ga-page .metric-link{display:inline-block;margin-top:.35rem;font-size:10.5px;font-weight:600;text-decoration:none;color:var(--kpi-link);position:relative;z-index:2}
 .ga-page .metric-link:hover{color:#0f3fb8;text-decoration:none}
+.ga-page a.metric-card{text-decoration:none;color:inherit;display:flex;flex-direction:column;cursor:pointer}
 .ga-page .metric-wave{position:absolute;right:0;bottom:0;width:46%;height:62%;pointer-events:none;z-index:1}
 .ga-page .metric-wave svg{display:block;width:100%;height:100%}
 .ga-page .metric-wave .w0{fill:var(--kpi-wave-a);opacity:.9}
@@ -46,10 +47,10 @@
 .ga-page .panel-b{padding:1rem 1.15rem}
 .ga-page .panel-title-row{display:flex;align-items:flex-start;gap:.65rem}
 .ga-page .panel-ico{width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:1rem;flex-shrink:0}
-.ga-page .panel-ico.purple{background:#7c3aed}.ga-page .panel-ico.blue{background:#1e40af}
+.ga-page .panel-ico.purple{background:#7c3aed}.ga-page .panel-ico.blue{background:var(--theme-primary-deep)}
 .ga-page .panel-actions{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
-.ga-page .view-all{font-size:.82rem;font-weight:700;color:#2563eb;text-decoration:none;white-space:nowrap}
-.ga-page .view-all:hover{color:#1d4ed8;text-decoration:underline}
+.ga-page .view-all{font-size:.82rem;font-weight:700;color:var(--theme-primary);text-decoration:none;white-space:nowrap}
+.ga-page .view-all:hover{color:var(--theme-primary-hover);text-decoration:underline}
 .ga-page .target-head-right{text-align:right}
 .ga-page .target-head-right .tgt-amt{font-size:.82rem;font-weight:800;color:#0f172a;margin-top:.35rem}
 .ga-page .target-layout{display:grid;grid-template-columns:150px 1fr;gap:1.1rem 1.35rem;align-items:center}
@@ -66,7 +67,7 @@
 .ga-page .stat-badge .num{font-size:1rem;font-weight:800;line-height:1.1}
 .ga-page .stat-badge .lbl{font-size:.72rem;font-weight:600;opacity:.85}
 .ga-page .sb-green{background:#ecfdf5;color:#047857}.ga-page .sb-green .ico{background:#16a34a}
-.ga-page .sb-blue{background:#eff6ff;color:#1d4ed8}.ga-page .sb-blue .ico{background:#2563eb}
+.ga-page .sb-blue{background:var(--theme-50);color:var(--theme-primary-hover)}.ga-page .sb-blue .ico{background:var(--theme-primary)}
 .ga-page .sb-purple{background:#f5f3ff;color:#6d28d9}.ga-page .sb-purple .ico{background:#7c3aed}
 .ga-page .chart-box{position:relative;height:248px}
 .ga-page .chart-box.is-empty{display:flex;align-items:center;justify-content:center}
@@ -87,7 +88,7 @@
 .ga-page .qa-tile{border:1px solid transparent;border-radius:14px;padding:1.05rem .75rem;text-align:center;text-decoration:none;font-weight:700;font-size:.82rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.45rem;min-height:96px;transition:transform .15s,box-shadow .15s}
 .ga-page .qa-tile:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(15,23,42,.08);color:inherit}
 .ga-page .qa-tile i{font-size:1.35rem}
-.ga-page .qa-blue{background:#eff6ff;color:#2563eb;border-color:#dbeafe}
+.ga-page .qa-blue{background:var(--theme-50);color:var(--theme-primary);border-color:var(--theme-100)}
 .ga-page .qa-purple{background:#f5f3ff;color:#7c3aed;border-color:#ede9fe}
 .ga-page .qa-green{background:#ecfdf5;color:#16a34a;border-color:#d1fae5}
 .ga-page .qa-orange{background:#fff7ed;color:#ea580c;border-color:#ffedd5}
@@ -101,7 +102,7 @@
 .ga-page .error-banner i{font-size:1.15rem;margin-top:.1rem}
 .ga-page .loading-overlay{position:absolute;inset:0;z-index:20;background:rgba(248,250,252,.72);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;border-radius:16px}
 .ga-page.is-loading .loading-overlay{display:flex}
-.ga-page .loading-spinner{width:42px;height:42px;border:3px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;animation:ga-spin .7s linear infinite}
+.ga-page .loading-spinner{width:42px;height:42px;border:3px solid var(--theme-100);border-top-color:var(--theme-primary);border-radius:50%;animation:ga-spin .7s linear infinite}
 @keyframes ga-spin{to{transform:rotate(360deg)}}
 .ga-page .kpi-skel{height:108px;border-radius:14px;background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);background-size:200% 100%;animation:ga-shimmer 1.2s infinite}
 @keyframes ga-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
@@ -171,8 +172,8 @@
   <path class="w2" d="M55 150 C62 128 82 112 118 110 C146 108 166 96 180 78 L180 150 Z"/>
 </svg>
 SVG;
-    $sourceColorMap = ['vrm'=>'#60a5fa','channel'=>'#2563eb','manual'=>'#a855f7','walk-in'=>'#f97316','referral'=>'#06b6d4','digital'=>'#14b8a6'];
-    $statusPalette = ['#2563eb','#7c3aed','#16a34a','#f59e0b','#ef4444','#06b6d4','#64748b','#db2777'];
+    $sourceColorMap = ['vrm'=>'var(--theme-400)','channel'=>'var(--theme-primary)','manual'=>'#a855f7','walk-in'=>'#f97316','referral'=>'#06b6d4','digital'=>'#14b8a6'];
+    $statusPalette = ['var(--theme-primary)','#7c3aed','#16a34a','#f59e0b','#ef4444','#06b6d4','#64748b','#db2777'];
     $money = fn ($n) => '₹ ' . number_format((float) $n, 0);
     $targetUnit = $dash['target']['unit'] ?? 'money';
     $fmtTarget = function ($n) use ($money, $targetUnit) {
@@ -253,7 +254,7 @@ SVG;
         @if($hasKpis)
             @foreach($dash['kpis'] as $kpi)
                 <div class="col-12 col-sm-6 col-xl-3">
-                    <div class="metric-card {{ $toneCard($kpi['tone'] ?? 'blue') }}">
+                    <a href="{{ $kpi['link'] }}" class="metric-card {{ $toneCard($kpi['tone'] ?? 'blue') }}">
                         <div class="metric-head">
                             <span class="metric-icon" aria-hidden="true"><i class="{{ $faIcon($kpi['icon'] ?? '') }}"></i></span>
                             <h6 class="metric-label">{{ $kpi['label'] }}</h6>
@@ -261,10 +262,10 @@ SVG;
                         <div class="metric-body">
                             <p class="metric-value">{{ $kpi['value'] }}</p>
                             <p class="metric-trend">{{ $kpi['trend'] }}</p>
-                            <a href="{{ $kpi['link'] }}" class="metric-link">{{ $kpi['link_text'] }}</a>
+                            <span class="metric-link">{{ $kpi['link_text'] }}</span>
                         </div>
                         <div class="metric-wave" aria-hidden="true">{!! $wave !!}</div>
-                    </div>
+                    </a>
                 </div>
             @endforeach
         @elseif(!$hasError)

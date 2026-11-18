@@ -16,6 +16,16 @@ class GoalAnalyticsController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        // Match sidebar: Analytics / MIS is for Performance & Finance roles
+        $canAnalytics = $user->isSuperAdmin()
+            || $user->hasCrmPermission('view_targets_guard')
+            || $user->hasCrmPermission('manage_targets_guard')
+            || $user->hasCrmPermission('branch_mis_guard')
+            || $user->hasCrmPermission('revenue_ledger_guard');
+        if (!$canAnalytics) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $period = request('period', 'this_month');
         $allowedPeriods = ['today', 'this_month', 'last_month', 'this_year'];
         if (!in_array($period, $allowedPeriods, true)) {
