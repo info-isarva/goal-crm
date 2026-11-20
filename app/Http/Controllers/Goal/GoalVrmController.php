@@ -48,9 +48,6 @@ class GoalVrmController extends Controller
             ->whereDate('called_at', today())
             ->count();
 
-        $dailyTarget = (int) config('goal.daily_call_target', 200);
-        $isWorkingDay = now()->isWeekday();
-
         $callbacksDueCount = GoalVrmCallLog::query()
             ->whereIn('user_id', $visibleUserIds)
             ->whereNotNull('callback_at')
@@ -85,8 +82,6 @@ class GoalVrmController extends Controller
 
         return view('goal.vrm.index', compact(
             'todayCount',
-            'dailyTarget',
-            'isWorkingDay',
             'callbacksDueCount',
             'totalCalls',
             'interestedCount',

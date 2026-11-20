@@ -180,7 +180,17 @@
 .lc-create .lead-hint{font-size:.78rem;color:var(--lc-muted);margin-top:6px;line-height:1.35}
 .lc-create .lead-hint.err{color:#b91c1c}
 .lc-create .lead-hint.ok{color:#15803d}
-.lc-create .alert-top{border-radius:12px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;padding:10px 14px;margin-bottom:1rem;font-size:.86rem}
+.lc-create .text-danger,
+.lc-create .invalid-feedback,
+.lc-create #consentClientError{color:#dc2626!important}
+.lc-create .form-control.is-invalid,
+.lc-create .form-select.is-invalid{
+    border-color:#fca5a5;background:#fff;
+}
+.lc-create .form-control.is-invalid:focus,
+.lc-create .form-select.is-invalid:focus{
+    border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.15);
+}
 
 body > .select2-container{z-index:2000!important}
 body > .select2-container .select2-dropdown{
@@ -240,10 +250,6 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         <span class="wiz-badge"><i class="bi bi-shield-check"></i> Consent required</span>
     </div>
 
-    @if($errors->any())
-        <div class="alert-top">{{ $errors->first() }}</div>
-    @endif
-
     <form method="POST" action="{{ $storeUrl }}" id="lcCreateForm" enctype="multipart/form-data" novalidate>
         @csrf
         <input type="hidden" name="goal_loan_lead_id" id="goal_loan_lead_id" value="{{ old('goal_loan_lead_id', $prefill['id'] ?? '') }}">
@@ -272,7 +278,8 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                     </div>
                     <div class="col-12 col-md-6 col-xl-3">
                         <label class="form-label" for="customer_name">Customer Name <span class="req">*</span></label>
-                        <input type="text" name="customer_name" id="customer_name" class="form-control"
+                        <input type="text" name="customer_name" id="customer_name"
+                               class="form-control @error('customer_name') is-invalid @enderror"
                                value="{{ old('customer_name', $prefill['customer_name'] ?? '') }}" required maxlength="150" placeholder="Full name">
                         @error('customer_name')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
@@ -280,7 +287,8 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                         <label class="form-label" for="mobile">Mobile Number <span class="req">*</span></label>
                         <div class="ld-input-ico">
                             <i class="bi bi-telephone"></i>
-                            <input type="text" name="mobile" id="mobile" class="form-control js-mobile"
+                            <input type="text" name="mobile" id="mobile"
+                                   class="form-control js-mobile @error('mobile') is-invalid @enderror"
                                    value="{{ old('mobile', $prefill['mobile'] ?? '') }}" required maxlength="10" inputmode="numeric"
                                    pattern="[0-9]{10}" placeholder="10-digit mobile">
                         </div>
@@ -362,7 +370,8 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                 <div class="row g-3">
                     <div class="col-12 col-md-6 col-xl-3">
                         <label class="form-label" for="product">Product <span class="req">*</span></label>
-                        <select name="product" id="product" data-draft-optional="1" class="form-select" required>
+                        <select name="product" id="product" data-draft-optional="1"
+                                class="form-select @error('product') is-invalid @enderror" required>
                             <option value="">Select product</option>
                             @foreach($products as $p)
                                 <option value="{{ $p->product_name }}" @selected(old('product', $prefill['product'] ?? '') === $p->product_name)>{{ $p->product_name }}</option>
@@ -375,13 +384,14 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                         <div class="ld-input-ico">
                             <span class="rupee">₹</span>
                             <input type="text" inputmode="decimal" data-decimals="2" name="loan_amount" id="loan_amount" data-draft-optional="1"
-                                   class="form-control js-decimal" value="{{ old('loan_amount', $prefill['loan_amount'] ?? '') }}" placeholder="0.00" required>
+                                   class="form-control js-decimal @error('loan_amount') is-invalid @enderror"
+                                   value="{{ old('loan_amount', $prefill['loan_amount'] ?? '') }}" placeholder="0.00" required>
                         </div>
                         @error('loan_amount')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-12 col-md-6 col-xl-3">
                         <label class="form-label" for="purpose">Purpose</label>
-                        <select name="purpose" id="purpose" class="form-select" data-search="false">
+                        <select name="purpose" id="purpose" class="form-select" data-search="true" data-placeholder="Select purpose">
                             <option value="">Select</option>
                             @foreach($purposes as $p)
                                 <option value="{{ $p }}" @selected(old('purpose') === $p)>{{ $p }}</option>

@@ -8,10 +8,12 @@ use App\Models\GoalCaseTask;
 use App\Models\GoalLoanCase;
 use App\Models\GoalLoanLead;
 use App\Models\GoalLoanLeadEvent;
+use App\Models\GoalLoanPurpose;
 use App\Models\GoalOrgUnit;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\Goal\GoalCaseAudit;
+use App\Services\Goal\GoalCaseRequiredFields;
 use App\Services\Goal\GoalWorkflow;
 use App\Services\Goal\Pd01Service;
 use App\Support\PhoneNumber;
@@ -523,10 +525,7 @@ class GoalLoanCaseController extends Controller
             ->orderBy('product_name')
             ->get(['id', 'product_name']);
 
-        $purposes = [
-            'Home Renovation', 'Education', 'Medical', 'Wedding',
-            'Business Expansion', 'Debt Consolidation', 'Travel', 'Other',
-        ];
+        $purposes = GoalLoanPurpose::activeNames();
         $contactTimes = [
             '9:00 AM - 12:00 PM', '10:00 AM - 5:00 PM', '12:00 PM - 3:00 PM',
             '3:00 PM - 6:00 PM', '6:00 PM - 9:00 PM',
@@ -666,7 +665,20 @@ class GoalLoanCaseController extends Controller
             'consent_recorded' => 'accepted',
             'product' => 'required|string|max:100',
             'loan_amount' => $amountRule,
-            'purpose' => 'nullable|string|max:100',
+            'purpose' => [
+                'nullable',
+                'string',
+                'max:100',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+                    $allowed = GoalLoanPurpose::activeNames();
+                    if ($allowed !== [] && ! in_array((string) $value, $allowed, true)) {
+                        $fail('Select a valid purpose from the master list.');
+                    }
+                },
+            ],
             'tenure_months' => ['nullable', 'string', 'max:5', 'regex:/^\d{1,3}$/'],
             'employment_type' => $saveAction === 'next' ? 'required|string|max:60' : 'nullable|string|max:60',
             'monthly_income' => $saveAction === 'next'
@@ -1174,6 +1186,15 @@ class GoalLoanCaseController extends Controller
         }
 
         $incomingCd = $data['customer_details'] ?? [];
+        if (is_array($incomingCd) && $incomingCd !== []) {
+            $reqErrors = GoalCaseRequiredFields::validateCustomerDetails($incomingCd);
+            if ($reqErrors !== []) {
+                return back()
+                    ->withInput()
+                    ->withErrors($reqErrors)
+                    ->with('cw_tab', $data['cw_tab'] ?? 'customer');
+            }
+        }
         $mergedCd = $this->mergeWorkspaceJson($case->customer_details, $incomingCd);
         // Preserve verification status from stored docs — only verify endpoints may set Verified/Rejected.
         if (array_key_exists('documents', $incomingCd)) {

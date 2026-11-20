@@ -311,6 +311,9 @@ Route::middleware(['auth', 'compliance.consent'])->group(function () {
     Route::get('/weekly-target-alert-settings', [\App\Http\Controllers\WeeklyTargetAlertSettingController::class, 'edit'])->name('weekly_target_alert.settings.edit');
     Route::post('/weekly-target-alert-settings', [\App\Http\Controllers\WeeklyTargetAlertSettingController::class, 'update'])->name('weekly_target_alert.settings.update');
 
+    Route::get('/goal-case-required-fields', [\App\Http\Controllers\GoalCaseRequiredFieldsSettingController::class, 'edit'])->name('goal_case_required_fields.settings.edit');
+    Route::post('/goal-case-required-fields', [\App\Http\Controllers\GoalCaseRequiredFieldsSettingController::class, 'update'])->name('goal_case_required_fields.settings.update');
+
     Route::get('/data-export', [\App\Http\Controllers\DataExportController::class, 'index'])->name('data_export.index');
     Route::post('/data-export', [\App\Http\Controllers\DataExportController::class, 'export'])->name('data_export.download');
 

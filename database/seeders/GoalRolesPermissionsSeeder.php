@@ -125,6 +125,7 @@ class GoalRolesPermissionsSeeder extends Seeder
             ['parent' => 'Goal Masters', 'name' => 'Manage Products', 'guard' => 'manage_products_guard', 'desc' => 'Product master under Masters'],
             ['parent' => 'Goal Masters', 'name' => 'Manage Dispositions', 'guard' => 'manage_dispositions_guard', 'desc' => 'VRM disposition master under Masters'],
             ['parent' => 'Goal Masters', 'name' => 'Manage Sources', 'guard' => 'manage_sources_guard', 'desc' => 'Lead source master under Masters'],
+            ['parent' => 'Goal Masters', 'name' => 'Manage Purposes', 'guard' => 'manage_purposes_guard', 'desc' => 'Loan purpose master under Masters'],
             // Organization
             ['parent' => 'Goal Organisation', 'name' => 'Manage Org Units', 'guard' => 'manage_org_units_guard', 'desc' => 'Region / cluster / branch CRUD'],
             ['parent' => 'Goal Organisation', 'name' => 'Company / Branches', 'guard' => 'manage_company_guard', 'desc' => 'Company and organization master'],
@@ -190,13 +191,13 @@ class GoalRolesPermissionsSeeder extends Seeder
                 'view_leads_guard', 'view_loan_cases_guard', 'view_targets_guard',
                 'branch_mis_guard', 'revenue_ledger_guard', 'manage_users_guard', 'manage_org_units_guard',
                 'manage_company_guard', 'view_audit_logs_guard',
-                'manage_products_guard', 'manage_dispositions_guard', 'manage_sources_guard',
+                'manage_products_guard', 'manage_dispositions_guard', 'manage_sources_guard', 'manage_purposes_guard',
             ],
             7 => [ // Cluster
                 'goal_analytics_guard', 'mis_reports_guard',
                 'view_leads_guard', 'view_loan_cases_guard', 'view_targets_guard', 'manage_targets_guard',
                 'branch_mis_guard', 'revenue_ledger_guard', 'manage_users_guard', 'view_audit_logs_guard',
-                'manage_products_guard', 'manage_dispositions_guard', 'manage_sources_guard',
+                'manage_products_guard', 'manage_dispositions_guard', 'manage_sources_guard', 'manage_purposes_guard',
             ],
             8 => [ // BM — can create/revise branch & team targets (approval by Cluster+)
                 'goal_analytics_guard', 'mis_reports_guard',
@@ -205,7 +206,7 @@ class GoalRolesPermissionsSeeder extends Seeder
                 'customer_visits_guard', 'case_documents_guard', 'bank_processing_guard', 'sanction_disbursement_guard',
                 'view_targets_guard', 'manage_targets_guard', 'branch_mis_guard', 'revenue_ledger_guard',
                 'manage_users_guard',
-                'manage_products_guard', 'manage_dispositions_guard', 'manage_sources_guard',
+                'manage_products_guard', 'manage_dispositions_guard', 'manage_sources_guard', 'manage_purposes_guard',
             ],
             9 => [ // VRM — calling only; masters assigned separately if needed
                 'vrm_calling_guard', 'create_lead_guard', 'channel_lead_guard', 'view_leads_guard',

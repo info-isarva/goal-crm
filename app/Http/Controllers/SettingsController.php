@@ -139,6 +139,18 @@ class SettingsController extends Controller
                 },
             ],
             [
+                'id' => 'goal_case_required_fields',
+                'name' => 'Loan Case Required Fields',
+                'description' => 'Enable or disable mandatory Customer Details fields on Loan Case workspace.',
+                'category' => 'Goal Loan CRM',
+                'icon' => 'bi-ui-checks-grid',
+                'icon_color' => '#0f766e',
+                'route' => 'goal_case_required_fields.settings.edit',
+                'callable' => function ($user) {
+                    return (int) ($user->crm_role_type ?? -1) === 0;
+                },
+            ],
+            [
                 'id' => 'data_export',
                 'name' => 'Export Data',
                 'description' => 'Export CRM modules (Leads, Deals, Contacts, etc.) to Excel or CSV.',
@@ -408,6 +420,7 @@ class SettingsController extends Controller
             'users.edit' => 'Edit User',
             'access.settings.edit' => 'Access Control',
             'weekly_target_alert.settings.edit' => 'Weekly Target Alert Timings',
+            'goal_case_required_fields.settings.edit' => 'Loan Case Required Fields',
             'data_export.index' => 'Export Data',
             'web_forms.index' => 'Web Forms',
             'web_forms.create' => 'New Web Form',
@@ -470,6 +483,7 @@ class SettingsController extends Controller
             'users.',
             'access.settings.',
             'weekly_target_alert.settings.',
+            'goal_case_required_fields.settings.',
             'data_export.',
             'web_forms.',
             'social_ads.',

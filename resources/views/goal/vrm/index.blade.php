@@ -30,27 +30,6 @@
 .vrm-page .vrm-pill .dot {
     width: 8px; height: 8px; border-radius: 50%; background: var(--theme-primary); display: inline-block;
 }
-.vrm-page .vrm-daily {
-    min-width: 210px; padding: .55rem .85rem; border-radius: 12px;
-    background: #fff; border: 1px solid #e8edf5;
-    box-shadow: 0 4px 12px rgba(148,163,184,.1);
-}
-.vrm-page .vrm-daily-top {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    font-size: .72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .03em;
-}
-.vrm-page .vrm-daily-count { font-size: .95rem; font-weight: 800; color: #0f172a; text-transform: none; letter-spacing: 0; }
-.vrm-page .vrm-daily-bar {
-    margin-top: 6px; height: 7px; border-radius: 999px; background: #e2e8f0; overflow: hidden;
-}
-.vrm-page .vrm-daily-bar > span {
-    display: block; height: 100%; border-radius: 999px; background: var(--theme-primary);
-    transition: width .25s ease;
-}
-.vrm-page .vrm-daily.is-low .vrm-daily-bar > span { background: #dc2626; }
-.vrm-page .vrm-daily.is-mid .vrm-daily-bar > span { background: #ea580c; }
-.vrm-page .vrm-daily.is-done .vrm-daily-bar > span { background: #16a34a; }
-.vrm-page .vrm-daily.is-done .vrm-daily-count { color: #15803d; }
 .vrm-page .btn-log-call {
     background: linear-gradient(90deg, #7c3aed, #6d28d9);
     color: #fff; border: none; border-radius: 10px;
@@ -1026,13 +1005,8 @@
 
 @section('content')
 @php
-    $dailyTarget = (int) ($dailyTarget ?? config('goal.daily_call_target', 200));
-    $isWorkingDay = $isWorkingDay ?? now()->isWeekday();
     $callbacksDueCount = (int) ($callbacksDueCount ?? 0);
     $todayCount = (int) ($todayCount ?? 0);
-    $dailyPct = (int) min(100, round(($todayCount / max(1, $dailyTarget)) * 100));
-    $dailyTone = $todayCount >= $dailyTarget ? 'is-done' : ($dailyPct >= 50 ? 'is-mid' : 'is-low');
-    $dailyRemain = max(0, $dailyTarget - $todayCount);
     $openModal = $errors->any() || request()->boolean('log_call') || session('reopen_log_call');
     $seesTeamLogs = (bool) ($seesTeamLogs ?? false);
     $tableColCount = $seesTeamLogs ? 11 : 10;
@@ -1060,13 +1034,6 @@
             </div>
         </div>
         <div class="page-hero-actions">
-            <div class="vrm-daily {{ $dailyTone }}" title="Spec minimum: {{ $dailyTarget }} logged calls per working day{{ $isWorkingDay ? '' : ' (weekend — target paused)' }}">
-                <div class="vrm-daily-top">
-                    <span>Daily {{ $dailyTarget }}-call{{ $isWorkingDay ? '' : ' · weekend' }}</span>
-                    <span class="vrm-daily-count">{{ $todayCount }} / {{ $dailyTarget }}</span>
-                </div>
-                <div class="vrm-daily-bar"><span style="width: {{ $dailyPct }}%"></span></div>
-            </div>
             <button type="button" class="btn btn-log-call" data-bs-toggle="modal" data-bs-target="#logCallModal">
                 <i class="bi bi-plus-lg"></i> Log Call
             </button>
@@ -1124,20 +1091,11 @@
 
     <div class="row g-3 kpi-row">
         <div class="col-6 col-xl-3">
-            <div class="kpi-card tone-{{ $todayCount >= $dailyTarget ? 'green' : 'orange' }}">
-                <span class="kpi-icon {{ $todayCount >= $dailyTarget ? 'green' : 'orange' }}"><i class="bi bi-bullseye"></i></span>
+            <div class="kpi-card tone-blue">
+                <span class="kpi-icon blue"><i class="bi bi-telephone"></i></span>
                 <div class="kpi-meta">
-                    <div class="kpi-label">Today vs {{ $dailyTarget }}</div>
-                    <div class="kpi-value">{{ $todayCount }}<span style="font-size:.85rem;font-weight:650;color:#64748b"> / {{ $dailyTarget }}</span></div>
-                    <div style="font-size:.72rem;color:#94a3b8;margin-top:2px">
-                        @if(! $isWorkingDay)
-                            Weekend — working-day target paused
-                        @elseif($todayCount >= $dailyTarget)
-                            Daily target met
-                        @else
-                            {{ $dailyRemain.' to go · '.$dailyPct.'%' }}
-                        @endif
-                    </div>
+                    <div class="kpi-label">Calls Today</div>
+                    <div class="kpi-value">{{ $todayCount }}</div>
                 </div>
             </div>
         </div>

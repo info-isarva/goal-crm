@@ -19,6 +19,7 @@ use App\Http\Controllers\Goal\GoalTargetController;
 use App\Http\Controllers\Goal\GoalVisitsController;
 use App\Http\Controllers\Goal\GoalVrmController;
 use App\Http\Controllers\Goal\GoalLeadSourceController;
+use App\Http\Controllers\Goal\GoalLoanPurposeController;
 use App\Http\Controllers\Goal\GoalVrmDispositionController;
 use Illuminate\Support\Facades\Route;
 
@@ -58,6 +59,10 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::post('masters/sources', [GoalLeadSourceController::class, 'store'])->name('masters.sources.store');
     Route::put('masters/sources/{source}', [GoalLeadSourceController::class, 'update'])->name('masters.sources.update');
     Route::post('masters/sources/{source}/restore', [GoalLeadSourceController::class, 'restore'])->name('masters.sources.restore');
+
+    Route::get('masters/purposes', [GoalLoanPurposeController::class, 'index'])->name('masters.purposes.index');
+    Route::post('masters/purposes', [GoalLoanPurposeController::class, 'store'])->name('masters.purposes.store');
+    Route::put('masters/purposes/{purpose}', [GoalLoanPurposeController::class, 'update'])->name('masters.purposes.update');
     Route::get('vrm/calls', [GoalVrmController::class, 'calls'])->name('vrm.calls');
     Route::get('vrm/calls/export', [GoalVrmController::class, 'exportCalls'])->name('vrm.calls.export');
     Route::get('vrm/calls/import', [GoalVrmController::class, 'importForm'])->name('vrm.calls.import');

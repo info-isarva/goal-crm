@@ -25,6 +25,7 @@ class Company extends Model
         'weekly_target_alert_morning',
         'weekly_target_alert_afternoon',
         'weekly_target_alert_evening',
+        'goal_case_required_fields',
         'expire_date',
     ];
 
@@ -36,6 +37,7 @@ class Company extends Model
         'web_forms_enabled' => 'boolean',
         'social_ads_enabled' => 'boolean',
         'weekly_target_alert_enabled' => 'boolean',
+        'goal_case_required_fields' => 'array',
         'expire_date' => 'date',
     ];
 
