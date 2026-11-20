@@ -1185,8 +1185,10 @@ class GoalLoanCaseController extends Controller
             }
         }
 
-        $incomingCd = $data['customer_details'] ?? [];
-        if (is_array($incomingCd) && $incomingCd !== []) {
+        $incomingCd = is_array($data['customer_details'] ?? null) ? $data['customer_details'] : [];
+        // Empty co-applicant / optional selects often post as "" — normalize before required checks.
+        $incomingCd = $this->normalizeCustomerDetailsInput($incomingCd);
+        if ($incomingCd !== []) {
             $reqErrors = GoalCaseRequiredFields::validateCustomerDetails($incomingCd);
             if ($reqErrors !== []) {
                 return back()
@@ -1332,6 +1334,44 @@ class GoalLoanCaseController extends Controller
         }
 
         return array_replace_recursive($base, $in);
+    }
+
+    /**
+     * Normalize posted customer_details (trim strings, drop empty nested leaves for cleaner JSON).
+     *
+     * @param  array<string, mixed>  $incoming
+     * @return array<string, mixed>
+     */
+    protected function normalizeCustomerDetailsInput(array $incoming): array
+    {
+        $walk = function ($value) use (&$walk) {
+            if (! is_array($value)) {
+                if (is_string($value)) {
+                    $value = trim($value);
+                }
+
+                return $value;
+            }
+
+            $out = [];
+            foreach ($value as $k => $v) {
+                $out[$k] = $walk($v);
+            }
+
+            return $out;
+        };
+
+        $normalized = $walk($incoming);
+
+        // Applicant relationship defaults to Self when left blank.
+        if (is_array($normalized['applicant'] ?? null)) {
+            $rel = trim((string) ($normalized['applicant']['relationship'] ?? ''));
+            if ($rel === '') {
+                $normalized['applicant']['relationship'] = 'Self';
+            }
+        }
+
+        return $normalized;
     }
 
     protected function caseProgressSteps(GoalLoanCase $case): array

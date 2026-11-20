@@ -1,6 +1,7 @@
 /**
  * Global page navigation loader for Goal Loan CRM.
  * Shows overlay when leaving a page (sidebar / nav / form GET|POST).
+ * Skips file downloads / exports — those keep the page mounted.
  */
 (function () {
     'use strict';
@@ -8,13 +9,31 @@
     var loader = null;
     var hideTimer = null;
     var showTimer = null;
+    var stuckTimer = null;
     var active = false;
+    var suppressUnloadShowUntil = 0;
     var MIN_VISIBLE_MS = 280;
+    var STUCK_CLEAR_MS = 1800;
 
     function el() {
         if (loader) return loader;
         loader = document.getElementById('goalPageLoader');
         return loader;
+    }
+
+    function clearStuckWatch() {
+        clearTimeout(stuckTimer);
+        stuckTimer = null;
+    }
+
+    function armStuckWatch() {
+        clearStuckWatch();
+        // Downloads / cancelled navigations never unload — clear overlay if still here.
+        stuckTimer = setTimeout(function () {
+            if (document.visibilityState !== 'hidden') {
+                hide(true);
+            }
+        }, STUCK_CLEAR_MS);
     }
 
     function show(immediate) {
@@ -29,6 +48,7 @@
             node.setAttribute('aria-busy', 'true');
             node.setAttribute('aria-hidden', 'false');
             document.documentElement.classList.add('gpl-busy');
+            armStuckWatch();
         };
 
         if (immediate) {
@@ -39,18 +59,20 @@
         }
     }
 
-    function hide() {
+    function hide(force) {
         var node = el();
         if (!node) return;
         clearTimeout(showTimer);
         clearTimeout(hideTimer);
+        clearStuckWatch();
+        var delay = (!force && active) ? MIN_VISIBLE_MS : 0;
         hideTimer = setTimeout(function () {
             active = false;
             node.classList.remove('is-active');
             node.setAttribute('aria-busy', 'false');
             node.setAttribute('aria-hidden', 'true');
             document.documentElement.classList.remove('gpl-busy');
-        }, active ? MIN_VISIBLE_MS : 0);
+        }, delay);
     }
 
     function sameOrigin(href) {
@@ -67,6 +89,7 @@
             var url = new URL(href, window.location.href);
             var path = (url.pathname || '').toLowerCase();
             if (path.indexOf('/export') !== -1) return true;
+            if (path.indexOf('/download') !== -1) return true;
             if (/\.(csv|xlsx|xls|pdf|zip|doc|docx)(\?|$)/i.test(path)) return true;
             var format = String(url.searchParams.get('format') || '').toLowerCase();
             if (['csv', 'xlsx', 'xls', 'excel', 'pdf'].indexOf(format) !== -1) return true;
@@ -74,6 +97,12 @@
         } catch (e) {
             return false;
         }
+    }
+
+    function markDownloadNavigation() {
+        // Chrome may fire beforeunload for attachment downloads without leaving the page.
+        suppressUnloadShowUntil = Date.now() + 5000;
+        hide(true);
     }
 
     function shouldIgnoreLink(a, event) {
@@ -90,7 +119,6 @@
         }
         if (href.charAt(0) === '#') return true;
         if (!sameOrigin(href)) return true;
-        // File downloads keep the current page mounted, so the loader would never clear.
         if (isLikelyFileDownload(href)) return true;
 
         try {
@@ -106,6 +134,19 @@
 
     function onLinkClick(event) {
         var a = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+        if (!a) return;
+
+        var href = a.getAttribute('href') || '';
+        var isDownload = a.hasAttribute('download')
+            || a.hasAttribute('data-no-loader')
+            || !!a.closest('[data-no-loader]')
+            || isLikelyFileDownload(href);
+
+        if (isDownload) {
+            markDownloadNavigation();
+            return;
+        }
+
         if (shouldIgnoreLink(a, event)) return;
         show(false);
     }
@@ -115,11 +156,9 @@
         if (!form || form.tagName !== 'FORM') return;
         if (form.hasAttribute('data-no-loader') || form.closest('[data-no-loader]')) return;
         if (form.getAttribute('target') && form.getAttribute('target') !== '_self') return;
-        // AJAX / fetch forms often preventDefault — only show if navigation proceeds
         show(false);
-        // If submit was cancelled shortly after, hide
         setTimeout(function () {
-            if (event.defaultPrevented) hide();
+            if (event.defaultPrevented) hide(true);
         }, 0);
     }
 
@@ -127,37 +166,42 @@
         document.addEventListener('click', onLinkClick, true);
         document.addEventListener('submit', onSubmit, true);
 
-        window.addEventListener('pageshow', function (e) {
-            hide();
-            if (e.persisted) hide();
+        window.addEventListener('pageshow', function () {
+            hide(true);
         });
-        window.addEventListener('pagehide', function () {
-            // keep visible during unload
+        window.addEventListener('focus', function () {
+            // Returning from a download / print dialog: ensure overlay is gone.
+            if (Date.now() < suppressUnloadShowUntil) {
+                hide(true);
+            }
         });
         window.addEventListener('beforeunload', function () {
-            // browser may ignore DOM updates; still attempt
+            if (Date.now() < suppressUnloadShowUntil) {
+                return;
+            }
             show(true);
         });
 
-        // Initial paint: brief loader then hide (covers slow first paint)
         if (document.readyState === 'loading') {
             show(true);
-            document.addEventListener('DOMContentLoaded', hide);
+            document.addEventListener('DOMContentLoaded', function () {
+                hide(true);
+            });
         }
-        window.addEventListener('load', hide);
+        window.addEventListener('load', function () {
+            hide(true);
+        });
     }
 
-    // Public API for manual use (e.g. SPA-ish redirects)
     window.GoalPageLoader = {
         show: function () { show(true); },
-        hide: hide
+        hide: function () { hide(true); }
     };
 
     if (document.readyState === 'loading') {
-        // Insert may run before DOM ready if script is deferred; bind ASAP
         bind();
     } else {
         bind();
-        hide();
+        hide(true);
     }
 })();

@@ -93,6 +93,9 @@ class GoalCaseRequiredFields
     /**
      * Validate customer_details payload against required flags.
      *
+     * Co-applicant / *_co fields are only enforced when that party section
+     * has any entered value — otherwise applicant-only cases can still save.
+     *
      * @param  array<string, mixed>  $customerDetails
      * @return array<string, string>  field => message
      */
@@ -101,9 +104,13 @@ class GoalCaseRequiredFields
         $errors = [];
         $map = static::map($company);
         $catalog = static::catalog();
+        $coInUse = static::coApplicantSectionInUse($customerDetails);
 
         foreach ($map as $key => $required) {
             if (! $required) {
+                continue;
+            }
+            if (! $coInUse && static::isCoApplicantField($key)) {
                 continue;
             }
             $value = data_get($customerDetails, $key);
@@ -115,6 +122,59 @@ class GoalCaseRequiredFields
         }
 
         return $errors;
+    }
+
+    /**
+     * @param  array<string, mixed>  $customerDetails
+     */
+    public static function coApplicantSectionInUse(array $customerDetails): bool
+    {
+        if (static::hasAnyFilledValue(data_get($customerDetails, 'co_applicant', []))) {
+            return true;
+        }
+
+        foreach ([
+            'residence.years_co',
+            'employment.type_co',
+            'employment.employer_co',
+            'employment.income_co',
+            'employment.total_exp_co',
+            'employment.present_exp_co',
+            'employment.designation_co',
+            'employment.industry_co',
+        ] as $path) {
+            $v = data_get($customerDetails, $path);
+            if ($v !== null && trim((string) $v) !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static function isCoApplicantField(string $key): bool
+    {
+        return str_starts_with($key, 'co_applicant.')
+            || str_ends_with($key, '_co')
+            || str_contains($key, '.years_co')
+            || str_contains($key, '.type_co')
+            || str_contains($key, '.employer_co')
+            || str_contains($key, '.income_co');
+    }
+
+    protected static function hasAnyFilledValue(mixed $value): bool
+    {
+        if (! is_array($value)) {
+            return $value !== null && trim((string) $value) !== '';
+        }
+
+        foreach ($value as $item) {
+            if (static::hasAnyFilledValue($item)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -1,18 +1,20 @@
 @extends('layouts.app')
 
 @php
-    $cd = old('customer_details', $case->customer_details ?? []) ?: [];
+    $cdStored = is_array($case->customer_details) ? $case->customer_details : [];
+    $cdOld = old('customer_details');
+    $cd = is_array($cdOld) ? array_replace_recursive($cdStored, $cdOld) : $cdStored;
     $br = old('bm_reco', $case->bm_reco ?? []) ?: [];
     $col = old('collateral', $case->collateral ?? []) ?: [];
     $loans = old('existing_loans', $case->existing_loans ?? []) ?: [];
     $mis = old('branch_mis', $case->branch_mis ?? []) ?: [];
     $docs = $cd['documents'] ?? [];
-    $app = $cd['applicant'] ?? [];
-    $co = $cd['co_applicant'] ?? [];
-    $res = $cd['residence'] ?? [];
-    $emp = $cd['employment'] ?? [];
-    $prop = $cd['property'] ?? [];
-    $refs = $cd['references'] ?? [];
+    $app = is_array($cd['applicant'] ?? null) ? $cd['applicant'] : [];
+    $co = is_array($cd['co_applicant'] ?? null) ? $cd['co_applicant'] : [];
+    $res = is_array($cd['residence'] ?? null) ? $cd['residence'] : [];
+    $emp = is_array($cd['employment'] ?? null) ? $cd['employment'] : [];
+    $prop = is_array($cd['property'] ?? null) ? $cd['property'] : [];
+    $refs = is_array($cd['references'] ?? null) ? $cd['references'] : [];
     $bt = $loans['bt_source'] ?? [];
     if ($bt === []) {
         $btRows = [['loan_type' => '', 'loan_amt' => '', 'roi' => '', 'tenor' => '', 'emi' => '']];
