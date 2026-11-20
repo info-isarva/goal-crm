@@ -30,8 +30,7 @@
     background: #ede9fe;
     color: #6d28d9;
 }
-#quickAddProductModal { z-index: 1065; }
-.modal-backdrop.show + .modal-backdrop { z-index: 1060; }
+#quickAddProductModal.modal.show { z-index: 10670 !important; }
 #quickAddProductModal .modal-content {
     border: none;
     border-radius: 14px;

@@ -54,12 +54,27 @@
     <link href="{{ asset('css/flatpickr-theme.css') }}?v={{ @filemtime(public_path('css/flatpickr-theme.css')) }}" rel="stylesheet" />
     <!-- Global toastr-style flash notifications -->
     <link href="{{ asset('css/app-toastr.css') }}?v={{ @filemtime(public_path('css/app-toastr.css')) }}" rel="stylesheet" />
+    <link href="{{ asset('css/page-loader.css') }}?v={{ @filemtime(public_path('css/page-loader.css')) }}" rel="stylesheet" />
 
     <!-- Font Awesome for time/date icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 
 <body class="font-sans antialiased">
+    {{-- Global page transition loader --}}
+    <div id="goalPageLoader" class="is-active" aria-busy="true" aria-hidden="false" role="status" aria-live="polite">
+        <div class="gpl-backdrop"></div>
+        <div class="gpl-progress" aria-hidden="true"><span></span></div>
+        <div class="gpl-card">
+            <div class="gpl-orbit">
+                <div class="gpl-core"><i class="bi bi-building"></i></div>
+            </div>
+            <p class="gpl-text">Loading<span class="gpl-dots" aria-hidden="true"><i></i><i></i><i></i></span></p>
+            <p class="gpl-sub">Please wait</p>
+        </div>
+    </div>
+    <script src="{{ asset('js/page-loader.js') }}?v={{ @filemtime(public_path('js/page-loader.js')) }}"></script>
+
     <!-- Before </body> -->
     <!-- jQuery and Select2 JS (only once, before custom scripts) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

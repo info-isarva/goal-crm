@@ -32,7 +32,7 @@
     background: #ccfbf1;
     color: #0f766e;
 }
-#quickAddDispositionModal { z-index: 1065; }
+#quickAddDispositionModal.modal.show { z-index: 10670 !important; }
 #quickAddDispositionModal .modal-content {
     border: none;
     border-radius: 14px;

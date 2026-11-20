@@ -61,8 +61,13 @@
         return el._twCollapse;
     };
 
-    /* ── Modal ────────────────────────────────────────────── */
+    /* ── Modal (supports nested / stacked modals) ─────────── */
     var backdropEl = null;
+    var openModalStack = [];
+    var BASE_MODAL_Z = 10650;
+    var BASE_BACKDROP_Z = 10640;
+    var STACK_STEP = 20;
+
     function ensureBackdrop() {
         if (!backdropEl) {
             backdropEl = document.createElement('div');
@@ -79,6 +84,31 @@
     function portalAllModals() {
         qsa('.modal').forEach(portalModalToBody);
     }
+    function syncModalStackLayers() {
+        var bd = ensureBackdrop();
+        var depth = openModalStack.length;
+        if (depth === 0) {
+            bd.classList.remove('show');
+            bd.style.zIndex = '';
+            document.body.classList.remove('tw-modal-open');
+            return;
+        }
+        bd.classList.add('show');
+        // Backdrop sits just under the topmost modal (!important beats app-theme.css)
+        bd.style.setProperty('z-index', String(BASE_BACKDROP_Z + (depth - 1) * STACK_STEP), 'important');
+        openModalStack.forEach(function (modalEl, idx) {
+            var z = BASE_MODAL_Z + idx * STACK_STEP;
+            modalEl.style.setProperty('z-index', String(z), 'important');
+            // Keep topmost modal last in DOM so equal-specificity paint order is correct
+            if (idx === depth - 1) {
+                document.body.appendChild(modalEl);
+                if (bd.parentElement === document.body) {
+                    document.body.insertBefore(bd, modalEl);
+                }
+            }
+        });
+        document.body.classList.add('tw-modal-open');
+    }
     function Modal(el, opts) {
         this.el = typeof el === 'string' ? qs(el) : el;
         this.opts = opts || {};
@@ -94,19 +124,19 @@
         this.el.dispatchEvent(showEv);
         if (showEv.defaultPrevented) return;
         portalModalToBody(this.el);
-        ensureBackdrop().classList.add('show');
-        // Backdrop under modal
-        if (backdropEl && this.el.parentElement === document.body) {
-            document.body.insertBefore(backdropEl, this.el);
-        }
+
+        // Avoid duplicate stack entries if re-shown
+        openModalStack = openModalStack.filter(function (m) { return m !== this.el; }.bind(this));
+        openModalStack.push(this.el);
+
         this.el.classList.add('show');
         // block (not flex): tall forms stay reachable from the top when overlay scrolls
         this.el.style.display = 'block';
-        this.el.style.zIndex = '10650';
         this.el.scrollTop = 0;
         this.el.removeAttribute('aria-hidden');
         this.el.setAttribute('aria-modal', 'true');
-        document.body.classList.add('tw-modal-open');
+        syncModalStackLayers();
+
         var shownEv = new Event('shown.bs.modal', { bubbles: true });
         shownEv.relatedTarget = relatedTarget || null;
         this.el.dispatchEvent(shownEv);
@@ -115,10 +145,11 @@
         if (!this.el) return;
         this.el.classList.remove('show');
         this.el.style.display = 'none';
+        this.el.style.removeProperty('z-index');
         this.el.setAttribute('aria-hidden', 'true');
         this.el.removeAttribute('aria-modal');
-        if (backdropEl) backdropEl.classList.remove('show');
-        document.body.classList.remove('tw-modal-open');
+        openModalStack = openModalStack.filter(function (m) { return m !== this.el; }.bind(this));
+        syncModalStackLayers();
         this.el.dispatchEvent(new CustomEvent('hidden.bs.modal', { bubbles: true }));
     };
     Modal.prototype.toggle = function () {
@@ -406,9 +437,11 @@
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape') return;
         closeAllDropdowns();
-        qsa('.modal.show').forEach(function (m) {
-            Modal.getOrCreateInstance(m).hide();
-        });
+        // Close only the topmost modal so nested quick-add does not dismiss Log Call
+        if (openModalStack.length) {
+            var top = openModalStack[openModalStack.length - 1];
+            Modal.getOrCreateInstance(top).hide();
+        }
     });
 
     // Keep every modal on <body> so sticky header / overflow-x-clip cannot cover it
