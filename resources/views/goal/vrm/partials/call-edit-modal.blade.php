@@ -23,9 +23,9 @@
                             <div class="field">
                                 <label class="form-label" for="edit_customer_name">Customer <span class="req">*</span></label>
                                 <div class="input-icon">
-                                    <i class="bi bi-search"></i>
+                                    <i class="bi bi-person"></i>
                                     <input type="text" name="customer_name" id="edit_customer_name"
-                                           class="form-control" placeholder="Search customer (name, mobile, or ID)..."
+                                           class="form-control" placeholder="Enter customer name"
                                            required maxlength="150" autocomplete="off"
                                            data-required-message="Please enter customer name.">
                                 </div>

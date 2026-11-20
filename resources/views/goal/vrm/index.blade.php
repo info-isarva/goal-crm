@@ -1399,10 +1399,10 @@
                             <div class="field {{ $errors->has('customer_name') ? 'is-invalid' : '' }}">
                                 <label class="form-label" for="customer_name">Customer <span class="req">*</span></label>
                                 <div class="input-icon">
-                                    <i class="bi bi-search"></i>
+                                    <i class="bi bi-person"></i>
                                     <input type="text" name="customer_name" id="customer_name"
                                            class="form-control {{ $errors->has('customer_name') ? 'is-invalid' : '' }}"
-                                           placeholder="Search customer (name, mobile, or ID)..."
+                                           placeholder="Enter customer name"
                                            value="{{ old('customer_name') }}" required autocomplete="off"
                                            data-required-message="Please enter customer name.">
                                 </div>
