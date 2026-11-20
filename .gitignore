@@ -13,9 +13,12 @@
 /.zed
 /auth.json
 /node_modules
-/public/build
+# Keep Vite build in git so server deploys (git pull) still have CSS/JS.
+# Rebuild locally with `npm run build` before pushing frontend changes.
+# /public/build
 /public/hot
 /public/storage
+/public/build/hot
 /storage/*.key
 /storage/pail
 /vendor

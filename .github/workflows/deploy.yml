@@ -17,7 +17,16 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script_stop: true
+          # CSS/JS: commit public/build (Vite) so git pull always has assets.
+          # Optional: if Node exists on the host, rebuild after pull.
           script: |
             set -e
             /bin/bash /home/goalcrm.isarva.in/bin/auto-deploy.sh
+            if command -v npm >/dev/null 2>&1; then
+              cd /home/goalcrm.isarva.in/public_html
+              if [ -f package.json ]; then
+                npm ci 2>/dev/null || npm install 2>/dev/null || true
+                npm run build 2>/dev/null || true
+              fi
+            fi
             tail -n 40 /home/goalcrm.isarva.in/public_html/storage/logs/auto-deploy.log
