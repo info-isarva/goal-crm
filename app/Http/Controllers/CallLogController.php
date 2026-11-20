@@ -9,6 +9,7 @@ use App\Exports\CallLogsExport;
 use App\Exports\CallLogsReportsExport;
 use App\Models\Call;
 use App\Models\User;
+use App\Support\PhoneNumber;
 use Carbon\Carbon;
 
 class CallLogController extends Controller
@@ -140,24 +141,21 @@ class CallLogController extends Controller
             'logs' => 'required|array|min:1',
             'logs.*.name' => 'required|string|max:255',
             'logs.*.company_name' => 'nullable|string|max:255',
-            'logs.*.mobile_number' => ['required', 'string', 'max:13', 'regex:/^\+?[0-9\-\s]{7,20}$/'],
+            'logs.*.mobile_number' => PhoneNumber::mobileRules(true),
             'logs.*.email' => 'nullable|email|max:255',
             'logs.*.requirement' => 'nullable|string',
             'logs.*.call_status' => 'required|string|max:50',
             'logs.*.lead_status' => 'nullable|string|max:50',
         ];
 
-        $messages = [
+        $messages = array_merge([
             'logs.required' => 'Please add at least one call log.',
             'logs.*.name.required' => 'Please enter the contact name.',
             'logs.*.name.max' => 'Name may not be greater than :max characters.',
-            'logs.*.mobile_number.required' => 'Please enter a mobile number.',
-            'logs.*.mobile_number.max' => 'Mobile number may not be greater than :max characters.',
-            'logs.*.mobile_number.regex' => 'Please enter a valid mobile number (digits, spaces, + and - allowed).',
             'logs.*.email.email' => 'Please enter a valid email address.',
             'logs.*.email.max' => 'Email may not be greater than :max characters.',
             'logs.*.call_status.required' => 'Please select call status.',
-        ];
+        ], PhoneNumber::messages('logs.*.mobile_number'));
         $attributes = [
             'logs.*.name' => 'Name',
             'logs.*.company_name' => 'Company Name',
@@ -407,7 +405,7 @@ class CallLogController extends Controller
             'name' => 'nullable|string|max:255',
             'company_name' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:255',
-            'mobile_number' => ['required', 'string', 'max:13', 'regex:/^\+?[0-9\-\s]{7,20}$/'],
+            'mobile_number' => PhoneNumber::mobileRules(true),
             'email' => 'nullable|email|max:255',
             'requirement' => 'nullable|string',
             'estimated_budget' => 'nullable|string|max:255',
@@ -417,7 +415,7 @@ class CallLogController extends Controller
             'next_action' => 'nullable|string',
             'remarks' => 'nullable|string',
             'source' => 'nullable|string|max:255',
-        ]);
+        ], PhoneNumber::messages('mobile_number'));
         $validated['updated_by'] = Auth::id();
         $call->update($validated);
         return redirect()->route('calllogs.index')->with('success', 'Call log updated successfully');

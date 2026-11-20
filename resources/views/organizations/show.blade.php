@@ -217,7 +217,7 @@
 
           <div class="mb-3">
             <label for="person_mobile" class="form-label">Mobile <span class="text-danger">*</span></label>
-            <input type="tel" placeholder="+91 9876543210" class="form-control" id="person_mobile" name="mobile">
+            <input type="tel" placeholder="10-digit mobile" class="form-control" id="person_mobile" name="mobile" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" required>
             <div class="text-danger small" id="error_mobile"></div>
           </div>
           <div class="mb-3">
@@ -291,9 +291,9 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('error_last_name').textContent = 'Enter a valid last name.';
             valid = false;
         }
-        // Mobile: required, +, digits, spaces, hyphens, 7-20 chars
-        if (!mobile || !/^\+?[0-9\-\s]{7,20}$/.test(mobile)) {
-            document.getElementById('error_mobile').textContent = 'Enter a valid mobile number.';
+        // Mobile: required, exactly 10 digits starting with 6–9
+        if (!mobile || !/^\d{10}$/.test(mobile)) {
+            document.getElementById('error_mobile').textContent = 'Mobile number must be exactly 10 digits.';
             valid = false;
         }
         // Email: required, basic email regex

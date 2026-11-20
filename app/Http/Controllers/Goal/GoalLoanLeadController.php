@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Services\Goal\GoalDashboardService;
 use App\Services\Goal\GoalWorkflow;
+use App\Support\PhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -136,7 +137,7 @@ class GoalLoanLeadController extends Controller
 
         $data = $request->validate([
             'customer_name' => 'required|string|max:150',
-            'mobile' => 'nullable|string|max:20',
+            'mobile' => PhoneNumber::mobileRules(true),
             'email' => 'nullable|email',
             'source' => 'nullable|string|max:40',
             'channel_partner' => 'nullable|string|max:150',
@@ -148,7 +149,7 @@ class GoalLoanLeadController extends Controller
             'notes' => 'nullable|string',
             'goal_org_unit_id' => 'nullable|exists:goal_org_units,id,is_active,1',
             'consent_recorded' => 'nullable|boolean',
-        ]);
+        ], PhoneNumber::messages('mobile'));
 
         if (($data['lead_type'] ?? '') === 'future' && empty($data['follow_up_at'])) {
             return back()->withInput()->withErrors(['follow_up_at' => 'Follow-up required for Future leads.'])->with('reopen_create_lead', true);
@@ -286,7 +287,7 @@ class GoalLoanLeadController extends Controller
 
         $data = $request->validate([
             'customer_name' => 'required|string|max:150',
-            'mobile' => 'nullable|string|max:20',
+            'mobile' => PhoneNumber::mobileRules(true),
             'email' => 'nullable|email',
             'product' => 'nullable|string|max:100',
             'loan_amount' => 'nullable|numeric|min:0',
@@ -296,7 +297,7 @@ class GoalLoanLeadController extends Controller
             'goal_org_unit_id' => 'nullable|exists:goal_org_units,id,is_active,1',
             'disposition' => 'nullable|string|max:40',
             'consent_recorded' => 'nullable|boolean',
-        ]);
+        ], PhoneNumber::messages('mobile'));
 
         $source = strtolower((string) ($data['source'] ?? $lead->source ?? ''));
         if ($source === 'channel' && ! filled(trim((string) ($data['channel_partner'] ?? $lead->channel_partner ?? '')))) {
@@ -317,9 +318,9 @@ class GoalLoanLeadController extends Controller
     {
         $this->requireGoalPermission('view_leads_guard');
         $data = $request->validate([
-            'mobile' => 'required|string|max:20',
+            'mobile' => PhoneNumber::mobileRules(true),
             'exclude_lead_id' => 'nullable|integer',
-        ]);
+        ], PhoneNumber::messages('mobile'));
 
         $scope = $this->scopedOrgIds();
         $matches = app(\App\Services\Goal\GoalPartyService::class)->matchesForMobile(

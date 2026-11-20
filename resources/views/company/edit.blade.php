@@ -49,7 +49,7 @@
                                         <div class="row">
                                             <div class="col-md-4 mb-3">
                                                 <label class="form-label">Mobile Number</label>
-                                                <input type="text" name="mobile" class="form-control" value="{{ old('mobile', $company->mobile ?? '') }}" @if(!$canEdit) disabled @endif>
+                                                <input type="text" name="mobile" class="form-control" value="{{ old('mobile', $company->mobile ?? '') }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" @if(!$canEdit) disabled @endif>
                                                 @error('mobile')<div class="text-danger small">{{ $message }}</div>@enderror
                                             </div>
                                             <div class="col-md-4 mb-3">
@@ -103,10 +103,10 @@
                                                     @php
                                                         $countries = [
                                                             'United States' => ['code'=>'USD','symbol'=>'$'],
-                                                            'India' => ['code'=>'INR','symbol'=>'â‚¹'],
-                                                            'United Kingdom' => ['code'=>'GBP','symbol'=>'Â£'],
-                                                            'European Union' => ['code'=>'EUR','symbol'=>'â‚¬'],
-                                                            'Japan' => ['code'=>'JPY','symbol'=>'Â¥'],
+                                                            'India' => ['code'=>'INR','symbol'=>'?'],
+                                                            'United Kingdom' => ['code'=>'GBP','symbol'=>'£'],
+                                                            'European Union' => ['code'=>'EUR','symbol'=>'€'],
+                                                            'Japan' => ['code'=>'JPY','symbol'=>'¥'],
                                                         ];
                                                     @endphp
                                                     @foreach($countries as $cName => $cData)

@@ -85,10 +85,13 @@
 
                                             <hr class="my-4">
 
-                                            <div class="form-check form-switch mb-4 p-3 bg-light rounded border d-flex justify-content-between align-items-center">
+                                            <div class="form-check form-switch mb-4 p-3 rounded border d-flex justify-content-between align-items-center {{ ($setting->is_active ?? false) ? 'bg-light' : 'bg-warning bg-opacity-10 border-warning' }}">
                                                 <div>
                                                     <label class="form-check-label fw-bold text-dark mb-0" for="is_active">Enable Integration for Selected Provider</label>
-                                                    <div class="text-muted small">Turn on/off outbound email for this provider</div>
+                                                    <div class="text-muted small">Required for scheduled reports and system emails. Turn this on, then Save Settings.</div>
+                                                    @unless($setting->is_active ?? false)
+                                                        <div class="text-warning small fw-semibold mt-1">Currently off — outbound mail will not use these credentials.</div>
+                                                    @endunless
                                                 </div>
                                                 <input class="form-check-input ms-0 fs-4" type="checkbox" name="is_active" id="is_active" value="1"
                                                     {{ old('is_active', $setting->is_active ?? false) ? 'checked' : '' }} @if(!$canEdit) disabled @endif>

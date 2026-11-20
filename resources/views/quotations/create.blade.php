@@ -97,9 +97,9 @@
                                                               style="{{ !empty($selectedQuotationTemplate) && $selectedQuotationTemplate->is_default ? '' : 'display:none;' }}">Default</span>
                                                     </div>
                                                     <div class="small text-muted mb-2" id="qtSelectedMeta">
-                                                        Version {{ optional($selectedQuotationTemplate ?? null)->version ?? 'â€”' }}
+                                                        Version {{ optional($selectedQuotationTemplate ?? null)->version ?? '—' }}
                                                         @if(!empty(optional($selectedQuotationTemplate ?? null)->description))
-                                                            Â· {{ \Illuminate\Support\Str::limit($selectedQuotationTemplate->description, 70) }}
+                                                            · {{ \Illuminate\Support\Str::limit($selectedQuotationTemplate->description, 70) }}
                                                         @endif
                                                     </div>
                                                     <button type="button" class="btn btn-sm btn-outline-primary" id="btnChangeQuotationTemplate"
@@ -200,7 +200,7 @@
                                                value="v{{ (int) ($nextProposalVersion ?? 1) }}" readonly>
                                         <input type="hidden" name="proposal_version" id="proposal_version"
                                                value="{{ (int) ($nextProposalVersion ?? 1) }}">
-                                        <small class="text-muted">Auto-updates from this dealâ€™s quotation list (v1, v2, â€¦).</small>
+                                        <small class="text-muted">Auto-updates from this deal’s quotation list (v1, v2, …).</small>
                                     </div>
 
                                 </div>
@@ -465,7 +465,7 @@
                                     <i class="bi bi-dash-lg" style="display:none;"></i>
                                 </button>
                                 <label class="form-label mb-0"><b>Project Detail</b>
-                                    <span class="text-muted small fw-normal">(optional â€” click + to edit)</span>
+                                    <span class="text-muted small fw-normal">(optional — click + to edit)</span>
                                 </label>
                             </div>
                             <div id="projectDetailPanel" style="display:none;">
@@ -484,7 +484,7 @@
                         <div class="mb-3">
                             <div class="qt-rich-label mb-1">
                                 <label for="description" class="form-label mb-0">Description / Remarks</label>
-                                <span class="qt-rich-hint">Rich text Â· code Â· images Â· tables</span>
+                                <span class="qt-rich-hint">Rich text · code · images · tables</span>
                             </div>
                             <textarea class="form-control qt-rich-editor" id="description" name="description" rows="8"></textarea>
                             <script type="application/json" id="description_json">@json(old('description') ?? '')</script>
@@ -499,7 +499,7 @@
                         <div class="mb-3">
                             <div class="qt-rich-label mb-1">
                                 <label for="terms_conditions" class="form-label mb-0">Terms and Conditions</label>
-                                <span class="qt-rich-hint">Use Source code for HTML Â· Preview before save</span>
+                                <span class="qt-rich-hint">Use Source code for HTML · Preview before save</span>
                             </div>
                             <textarea class="form-control qt-rich-editor" id="terms_conditions" name="terms_conditions" rows="10"></textarea>
                             <script type="application/json" id="terms_conditions_json">@json(old('terms_conditions', $defaultTermsConditions ?? '') ?? '')</script>
@@ -515,7 +515,7 @@
                         <div class="qt-review-preview-wrap">
                             <div class="qt-review-preview-loading" id="qtReviewPreviewLoading">
                                 <span class="spinner-border spinner-border-sm me-2"></span>
-                                Loading template previewâ€¦
+                                Loading template preview…
                             </div>
                             <iframe id="qtReviewTemplatePreview"
                                 class="qt-review-preview-iframe"
@@ -677,7 +677,7 @@
             if (badge) badge.style.display = isDefault ? '' : 'none';
 
             let meta = 'Version ' + version;
-            if (description) meta += ' Â· ' + (description.length > 70 ? description.slice(0, 70) + 'â€¦' : description);
+            if (description) meta += ' · ' + (description.length > 70 ? description.slice(0, 70) + '…' : description);
             document.getElementById('qtSelectedMeta').textContent = meta;
 
             const wrap = document.getElementById('qtSelectedThumbWrap');
@@ -815,7 +815,7 @@
                     <div class="mb-3">
                         <label for="person_phone" class="form-label">Mobile <span
                                 class="text-danger">*</span></label>
-                        <input type="text" placeholder="+91 9457834901" class="form-control" id="person_mobile" name="person_phone">
+                        <input type="text" placeholder="10-digit mobile" class="form-control" id="person_mobile" name="person_phone" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" required>
                         <div id="person_phone_error" class="text-danger small mt-1" style="display:none;"></div>
                     </div>
                 </div>
@@ -972,7 +972,7 @@
                                 }
                             }
 
-                            // Deals for this company â€” autofill deal + next proposal version
+                            // Deals for this company — autofill deal + next proposal version
                             function applyOrgDealSelection(deal) {
                                 const custInputEl = document.getElementById('deal_id');
                                 if (custInputEl) {
@@ -1001,7 +1001,7 @@
                             }
 
                             if (Array.isArray(data.deals) && data.deals.length > 0) {
-                                // Fill only one deal (latest) + proposal version â€” no multi-deal list UI
+                                // Fill only one deal (latest) + proposal version — no multi-deal list UI
                                 applyOrgDealSelection(data.deals[0]);
                             } else {
                                 applyOrgDealSelection(null);
@@ -1899,12 +1899,12 @@
             'Kuwait': ['Al Asimah (Kuwait City)', 'Hawalli', 'Farwaniya', 'Ahmadi', 'Jahra', 'Mubarak Al-Kabeer'],
             'Bahrain': ['Capital Governorate', 'Muharraq Governorate', 'Northern Governorate', 'Southern Governorate'],
             'Oman': ['Muscat', 'Dhofar', 'Musandam', 'Al Buraimi', 'Ad Dakhiliyah', 'North Al Batinah', 'South Al Batinah', 'North Ash Sharqiyah', 'South Ash Sharqiyah', 'Ad Dhahirah', 'Al Wusta'],
-            'Germany': ['Baden-WÃ¼rttemberg', 'Bavaria', 'Berlin', 'Brandenburg', 'Bremen', 'Hamburg', 'Hesse', 'Lower Saxony', 'Mecklenburg-Vorpommern', 'North Rhine-Westphalia', 'Rhineland-Palatinate', 'Saarland', 'Saxony', 'Saxony-Anhalt', 'Schleswig-Holstein', 'Thuringia'],
-            'France': ['ÃŽle-de-France', 'Auvergne-RhÃ´ne-Alpes', 'Bourgogne-Franche-ComtÃ©', 'Brittany', 'Centre-Val de Loire', 'Corsica', 'Grand Est', 'Hauts-de-France', 'Normandy', 'Nouvelle-Aquitaine', 'Occitanie', 'Pays de la Loire', 'Provence-Alpes-CÃ´te d\'Azur'],
+            'Germany': ['Baden-Württemberg', 'Bavaria', 'Berlin', 'Brandenburg', 'Bremen', 'Hamburg', 'Hesse', 'Lower Saxony', 'Mecklenburg-Vorpommern', 'North Rhine-Westphalia', 'Rhineland-Palatinate', 'Saarland', 'Saxony', 'Saxony-Anhalt', 'Schleswig-Holstein', 'Thuringia'],
+            'France': ['Île-de-France', 'Auvergne-Rhône-Alpes', 'Bourgogne-Franche-Comté', 'Brittany', 'Centre-Val de Loire', 'Corsica', 'Grand Est', 'Hauts-de-France', 'Normandy', 'Nouvelle-Aquitaine', 'Occitanie', 'Pays de la Loire', 'Provence-Alpes-Côte d\'Azur'],
             'Singapore': ['Central Region', 'East Region', 'North Region', 'North-East Region', 'West Region'],
             'Japan': ['Hokkaido', 'Tohoku', 'Kanto (Tokyo)', 'Chubu', 'Kansai (Osaka)', 'Chugoku', 'Shikoku', 'Kyushu & Okinawa'],
             'China': ['Beijing', 'Shanghai', 'Guangdong', 'Zhejiang', 'Jiangsu', 'Sichuan', 'Shandong', 'Hubei', 'Fujian', 'Henan'],
-            'Switzerland': ['Zurich', 'Bern', 'Lucerne', 'Uri', 'Schwyz', 'Obwalden', 'Nidwalden', 'Glarus', 'Zug', 'Fribourg', 'Solothurn', 'Basel-Stadt', 'Basel-Landschaft', 'Schaffhausen', 'Appenzell Ausserrhoden', 'Appenzell Innerrhoden', 'St. Gallen', 'GraubÃ¼nden', 'Aargau', 'Thurgau', 'Ticino', 'Vaud', 'Valais', 'NeuchÃ¢tel', 'Geneva', 'Jura'],
+            'Switzerland': ['Zurich', 'Bern', 'Lucerne', 'Uri', 'Schwyz', 'Obwalden', 'Nidwalden', 'Glarus', 'Zug', 'Fribourg', 'Solothurn', 'Basel-Stadt', 'Basel-Landschaft', 'Schaffhausen', 'Appenzell Ausserrhoden', 'Appenzell Innerrhoden', 'St. Gallen', 'Graubünden', 'Aargau', 'Thurgau', 'Ticino', 'Vaud', 'Valais', 'Neuchâtel', 'Geneva', 'Jura'],
             'Malaysia': ['Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang', 'Penang', 'Perak', 'Perlis', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu', 'Kuala Lumpur', 'Labuan', 'Putrajaya'],
             'New Zealand': ['Auckland', 'Bay of Plenty', 'Canterbury', 'Gisborne', 'Hawke\'s Bay', 'Manawatu-Whanganui', 'Marlborough', 'Nelson', 'Northland', 'Otago', 'Southland', 'Taranaki', 'Tasman', 'Waikato', 'Wellington', 'West Coast'],
             'South Africa': ['Gauteng', 'Western Cape', 'KwaZulu-Natal', 'Eastern Cape', 'Free State', 'Limpopo', 'Mpumalanga', 'North West', 'Northern Cape']

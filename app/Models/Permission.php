@@ -66,4 +66,49 @@ class Permission extends Model
     {
         return in_array($guard, static::socialAdsGuards(), true) || str_contains($guard, '_social_ads_');
     }
+
+    /**
+     * Parent module names that belong to Goal Loan CRM.
+     *
+     * @return list<string>
+     */
+    public static function goalParentNames(): array
+    {
+        return [
+            'Goal Dashboard',
+            'Goal Leads & Calling',
+            'Goal Allocation & Cases',
+            'Goal PMS & Accounts',
+            'Goal Masters',
+            'Goal Organisation',
+            'Goal MIS & Targets',
+        ];
+    }
+
+    /**
+     * Guard names under Goal parent modules.
+     *
+     * @return list<string>
+     */
+    public static function goalGuards(): array
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $cache = static::query()
+            ->whereHas('parentPermission', fn ($q) => $q->whereIn('name', static::goalParentNames()))
+            ->pluck('guard_name')
+            ->map(fn ($g) => (string) $g)
+            ->values()
+            ->all();
+
+        return $cache;
+    }
+
+    public static function isGoalGuard(string $guard): bool
+    {
+        return in_array($guard, static::goalGuards(), true);
+    }
 }

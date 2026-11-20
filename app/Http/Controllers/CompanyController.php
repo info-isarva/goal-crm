@@ -45,8 +45,8 @@ class CompanyController extends Controller
             'state' => 'nullable|string|max:100',
             'district' => 'nullable|string|max:100',
             'pincode' => 'nullable|string|max:50',
-            'phone' => 'nullable|string|max:50',
-            'mobile' => 'nullable|string|max:50',
+            'phone' => 'nullable|string|max:20|regex:/^\+?[0-9\-\s]{7,20}$/',
+            'mobile' => \App\Support\PhoneNumber::mobileRules(false),
             'email' => 'nullable|email|max:255',
             'website' => 'nullable|url|max:255',
             'gstin' => 'nullable|string|max:20',
@@ -64,7 +64,7 @@ class CompanyController extends Controller
             'currency_position' => 'nullable|in:prefix,suffix',
             'country' => 'nullable|string|max:100',
             'expire_date' => 'nullable|date',
-        ]);
+        ], \App\Support\PhoneNumber::messages('mobile'));
 
         if (! $isSuperAdmin) {
             unset($data['expire_date']);

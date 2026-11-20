@@ -96,7 +96,7 @@
 
                         <div class="mb-3">
                             <label for="mobile" class="form-label">Mobile <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control @error('mobile') is-invalid @enderror" id="mobile" name="mobile" value="{{ old('mobile') }}">
+                            <input type="text" class="form-control @error('mobile') is-invalid @enderror" id="mobile" name="mobile" value="{{ old('mobile') }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" required>
                             @error('mobile')
                                 <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror

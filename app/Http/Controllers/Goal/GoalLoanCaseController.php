@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Goal\GoalCaseAudit;
 use App\Services\Goal\GoalWorkflow;
 use App\Services\Goal\Pd01Service;
+use App\Support\PhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -658,8 +659,8 @@ class GoalLoanCaseController extends Controller
             'goal_loan_lead_id' => 'nullable|integer|exists:goal_loan_leads,id',
             'customer_ref' => 'nullable|string|max:40',
             'customer_name' => 'required|string|max:150',
-            'mobile' => ['required', 'string', 'max:15', 'regex:/^[6-9]\d{9}$/'],
-            'alt_mobile' => ['nullable', 'string', 'max:15', 'regex:/^[6-9]\d{9}$/'],
+            'mobile' => PhoneNumber::mobileRules(true),
+            'alt_mobile' => PhoneNumber::mobileRules(false),
             'email' => 'nullable|email|max:150',
             'preferred_contact_time' => 'nullable|string|max:80',
             'consent_recorded' => 'accepted',
@@ -692,8 +693,6 @@ class GoalLoanCaseController extends Controller
             'goal_org_unit_id.required' => 'Branch is required when creating without a lead.',
             'branch_manager_id.required' => 'Branch Manager is required when creating without a lead.',
             'owner_id.required' => 'Assigned To (SM/JSM) is required when creating without a lead.',
-            'mobile.regex' => 'Enter a valid 10-digit Indian mobile number.',
-            'alt_mobile.regex' => 'Enter a valid 10-digit alternate mobile number.',
             'consent_recorded.accepted' => 'Customer consent must be recorded.',
             'loan_amount.required' => 'Requested amount is required to proceed.',
             'loan_amount.regex' => 'Enter a valid amount (digits, optional 2 decimals).',
@@ -702,7 +701,7 @@ class GoalLoanCaseController extends Controller
             'net_income.regex' => 'Enter a valid net income.',
             'tenure_months.regex' => 'Tenure must be a whole number of months.',
             'work_experience_years.regex' => 'Enter valid work experience in years.',
-        ]);
+        ], array_merge(PhoneNumber::messages('mobile'), PhoneNumber::messages('alt_mobile')));
 
         $data['case_origin'] = $caseOrigin;
 
@@ -1126,10 +1125,10 @@ class GoalLoanCaseController extends Controller
             return $redirect;
         }
 
-        $mobileRule = ['nullable', 'string', 'max:15', 'regex:/^[6-9]\d{9}$/'];
+        $mobileRule = PhoneNumber::mobileRules(false);
         $data = $request->validate([
             'customer_name' => 'required|string|max:150',
-            'mobile' => $mobileRule,
+            'mobile' => PhoneNumber::mobileRules(true),
             'product' => 'nullable|string|max:100',
             'loan_amount' => ['nullable', 'string', 'max:20', 'regex:/^\d{1,12}(\.\d{1,2})?$/'],
             'lender_name' => 'nullable|string|max:150',
@@ -1153,11 +1152,10 @@ class GoalLoanCaseController extends Controller
             'existing_loans' => 'nullable|array',
             'branch_mis' => 'nullable|array',
             'cw_tab' => 'nullable|string|max:40',
-        ], [
+        ], array_merge([
             'customer_name.required' => 'Customer name is required.',
-            'mobile.regex' => 'Enter a valid 10-digit Indian mobile number.',
             'loan_amount.regex' => 'Enter a valid amount (digits, optional 2 decimals).',
-        ]);
+        ], PhoneNumber::messages('mobile'), PhoneNumber::messages('customer_details.applicant.mobile'), PhoneNumber::messages('customer_details.co_applicant.mobile')));
 
         $docs = data_get($data, 'customer_details.documents', []);
         if (is_array($docs)) {

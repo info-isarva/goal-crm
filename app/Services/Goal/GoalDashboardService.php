@@ -332,7 +332,7 @@ class GoalDashboardService
         $q = clone $casesQ;
         if ($roleKey === 'pms') {
             $q->whereHas('pmsItems', function ($p) {
-                $p->whereIn('status', ['Pending', 'pending', 'PD-01', 'Awaiting Verification']);
+                $p->whereIn('status', ['Pending', 'Pending Verification', 'In Progress', 'PD-01', 'Awaiting Verification']);
             });
         }
         if ($roleKey === 'accounts') {
@@ -806,7 +806,7 @@ class GoalDashboardService
         return $d;
     }
 
-    protected function resolveRoleKey(User $user): string
+    public function resolveRoleKey(User $user): string
     {
         $job = strtolower((string) ($user->job_role ?? ''));
         if ($job !== '' && isset(self::ROLE_LABELS[$job])) {

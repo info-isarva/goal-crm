@@ -24,6 +24,11 @@ class Kernel extends ConsoleKernel
         $schedule->command('goal:bank-query-reminders')
             ->dailyAt('09:15')
             ->withoutOverlapping();
+
+        // Goal scheduled analytics reports (email PDF/XLSX/CSV)
+        $schedule->command('goal:process-scheduled-reports')
+            ->everyMinute()
+            ->withoutOverlapping();
     }
 
     /**

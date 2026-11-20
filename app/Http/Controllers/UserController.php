@@ -12,6 +12,7 @@ use App\Mail\UserWelcomeMail;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 use App\Support\SafeUpload;
+use App\Support\PhoneNumber;
 use App\Services\Goal\GoalDashboardService;
 
 class UserController extends Controller
@@ -29,34 +30,88 @@ class UserController extends Controller
     }
 
     /**
+     * Main users who may see/assign the full permission catalog (within company rules).
+     * Super Admin, Admin, MD, CEO.
+     */
+    protected function isMainPermissionUser(?User $actor = null): bool
+    {
+        $actor = $actor ?: auth()->user();
+        $role = (int) ($actor->crm_role_type ?? -1);
+
+        return $this->isSuperAdmin($actor) || in_array($role, [1, 4, 5], true);
+    }
+
+    /**
+     * Guard names the actor is allowed to grant on create/edit.
+     * Main users: full (SA) or Admin whitelist. Others: only their own crm_page_right.
+     */
+    protected function actorAssignableGuards(?User $actor = null): array
+    {
+        $actor = $actor ?: auth()->user();
+        $company = Company::current();
+        $all = Permission::query()->orderBy('name')->pluck('guard_name')->map(fn ($g) => (string) $g)->all();
+
+        // Goal Loan CRM: only Goal modules. Classic CRM: hide Goal modules.
+        if ($this->usesGoalTargets($actor)) {
+            $all = array_values(array_filter($all, fn ($g) => Permission::isGoalGuard($g)));
+        } else {
+            $all = array_values(array_filter($all, fn ($g) => !Permission::isGoalGuard($g)));
+        }
+
+        if (!$company->isWebFormsEnabled()) {
+            $all = array_values(array_filter($all, fn ($g) => !Permission::isWebFormsGuard($g)));
+        }
+        if (!$company->isSocialAdsEnabled()) {
+            $all = array_values(array_filter($all, fn ($g) => !Permission::isSocialAdsGuard($g)));
+        }
+
+        if ($this->isSuperAdmin($actor)) {
+            return $all;
+        }
+
+        $role = (int) ($actor->crm_role_type ?? -1);
+        $rights = json_decode($actor->crm_page_right ?? '[]', true);
+        if (!is_array($rights)) {
+            $rights = [];
+        }
+
+        // Admin: company Super-Admin whitelist
+        if ($role === 1) {
+            $allowed = $company->adminAssignableGuards();
+
+            return array_values(array_intersect($all, $allowed));
+        }
+
+        // MD / CEO: full enabled catalog (or explicit rights if set without "all")
+        if (in_array($role, [4, 5], true)) {
+            if ($rights === [] || in_array('all', $rights, true)) {
+                return $all;
+            }
+
+            return array_values(array_intersect($all, $rights));
+        }
+
+        // BM / Cluster / RD / sales / etc.: only permissions they themselves have
+        if (in_array('all', $rights, true)) {
+            return $all;
+        }
+
+        return array_values(array_intersect($all, $rights));
+    }
+
+    /**
      * Permissions the current user is allowed to assign on create/edit.
-     * Super Admin: all. Admin/others: Super-Admin whitelist only.
+     * Main users (SA/Admin/MD/CEO): full set. Others: only their own permissions.
      */
     protected function assignablePermissions()
     {
-        $permissions = Permission::with('parentPermission')->orderBy('name')->get();
-        $company = Company::current();
+        $allowedGuards = $this->actorAssignableGuards();
 
-        if (!$company->isWebFormsEnabled()) {
-            $permissions = $permissions->reject(fn ($p) => Permission::isWebFormsGuard($p->guard_name));
-        }
-
-        if (!$company->isSocialAdsEnabled()) {
-            $permissions = $permissions->reject(fn ($p) => Permission::isSocialAdsGuard($p->guard_name));
-        }
-
-        if ($this->isSuperAdmin()) {
-            return $permissions->values();
-        }
-
-        $allowed = $company->adminAssignableGuards();
-        if (empty($allowed)) {
-            return $permissions->filter(fn () => false)->values();
-        }
-
-        return $permissions->filter(function ($permission) use ($allowed) {
-            return in_array($permission->guard_name, $allowed, true);
-        })->values();
+        return Permission::with('parentPermission')
+            ->orderBy('name')
+            ->get()
+            ->filter(fn ($permission) => in_array((string) $permission->guard_name, $allowedGuards, true))
+            ->values();
     }
 
     /**
@@ -73,6 +128,153 @@ class UserController extends Controller
             })
             ->when($excludeUserId, fn ($q) => $q->where('id', '!=', $excludeUserId))
             ->orderBy('name');
+    }
+
+    /**
+     * Numeric rank for Goal hierarchy (lower = higher authority).
+     */
+    protected function roleHierarchyRankMap(): array
+    {
+        return [
+            1 => 10,  // Admin
+            4 => 40,  // MD
+            5 => 50,  // CEO
+            6 => 60,  // RD
+            7 => 70,  // Cluster Head
+            8 => 80,  // BM
+            9 => 90,  // VRM
+            10 => 100, // JSM
+            11 => 110, // SM
+            12 => 120, // SSM
+            13 => 130, // PMS
+            14 => 140, // Accounts
+        ];
+    }
+
+    /**
+     * CRM roles ordered by org hierarchy (not alphabetically).
+     */
+    protected function crmRolesByHierarchy(?array $onlyIds = null)
+    {
+        $rank = $this->roleHierarchyRankMap();
+
+        return \App\Models\Role::query()
+            ->when($onlyIds !== null, fn ($q) => $q->whereIn('id', $onlyIds))
+            ->get()
+            ->sortBy(fn ($role) => $rank[(int) $role->id] ?? (1000 + (int) $role->id))
+            ->values();
+    }
+
+    /**
+     * Roles the logged-in user may assign when creating/editing users.
+     * BM → VRM/JSM/SM/SSM only; Cluster → BM + sales; etc.
+     */
+    protected function creatableRoleIdsFor(?User $actor = null): array
+    {
+        $actor = $actor ?: auth()->user();
+        $role = (int) ($actor->crm_role_type ?? -1);
+
+        if ($this->isSuperAdmin($actor) || in_array($role, [1, 4, 5], true)) {
+            // Super Admin / Admin / MD / CEO: full Goal ladder (+ Admin for SA/Admin)
+            $ids = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+            if (in_array($role, [0, 1], true)) {
+                $ids = array_merge([1], $ids);
+            }
+
+            return $ids;
+        }
+
+        return match ($role) {
+            6 => [7, 8, 9, 10, 11, 12],          // RD → Cluster + BM + sales
+            7 => [8, 9, 10, 11, 12],             // Cluster → BM + sales
+            8 => [9, 10, 11, 12],                // BM → VRM + sales team
+            9 => [10, 11, 12],                   // VRM → JSM/SM/SSM
+            10 => [11, 12],                      // JSM → SM/SSM
+            11 => [12],                          // SM → SSM
+            default => [],
+        };
+    }
+
+    /**
+     * Org unit types allowed for a target CRM role.
+     * BM / sales → branches; Cluster Head → clusters; RD/MD/CEO → regions.
+     */
+    protected function orgUnitTypesForRole(int $roleId): array
+    {
+        return match ($roleId) {
+            4, 5, 6 => [\App\Models\GoalOrgUnit::TYPE_REGION],
+            7 => [\App\Models\GoalOrgUnit::TYPE_CLUSTER],
+            8, 9, 10, 11, 12 => [\App\Models\GoalOrgUnit::TYPE_BRANCH],
+            13, 14 => [
+                \App\Models\GoalOrgUnit::TYPE_REGION,
+                \App\Models\GoalOrgUnit::TYPE_CLUSTER,
+                \App\Models\GoalOrgUnit::TYPE_BRANCH,
+            ],
+            default => [
+                \App\Models\GoalOrgUnit::TYPE_REGION,
+                \App\Models\GoalOrgUnit::TYPE_CLUSTER,
+                \App\Models\GoalOrgUnit::TYPE_BRANCH,
+            ],
+        };
+    }
+
+    /**
+     * Org units the actor may assign, optionally filtered by target role type.
+     */
+    protected function assignableGoalOrgUnits(?User $actor = null, ?int $forRoleId = null)
+    {
+        $actor = $actor ?: auth()->user();
+        $query = \App\Models\GoalOrgUnit::query()->active()->orderBy('type')->orderBy('name');
+
+        if (!$this->isSuperAdmin($actor) && !in_array((int) ($actor->crm_role_type ?? -1), [1, 4, 5], true)) {
+            $scopeIds = $actor->goalScopedOrgUnitIds();
+            if ($scopeIds === []) {
+                return collect();
+            }
+            $query->whereIn('id', $scopeIds);
+        }
+
+        if ($forRoleId !== null) {
+            $types = $this->orgUnitTypesForRole($forRoleId);
+            $query->whereIn('type', $types);
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * Role id → allowed org unit types (for frontend filtering).
+     */
+    protected function orgUnitTypesByRoleMap(): array
+    {
+        $map = [];
+        foreach (array_keys($this->roleHierarchyRankMap()) as $roleId) {
+            $map[(string) $roleId] = $this->orgUnitTypesForRole((int) $roleId);
+        }
+
+        return $map;
+    }
+
+    protected function assertAssignableRoleAndOrg(int $roleId, $orgUnitId): void
+    {
+        $allowedRoles = $this->creatableRoleIdsFor();
+        if (!in_array($roleId, $allowedRoles, true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'crm_role_type' => 'You cannot assign that CRM Role.',
+            ]);
+        }
+
+        if ($orgUnitId === null || $orgUnitId === '') {
+            return;
+        }
+
+        $orgUnitId = (int) $orgUnitId;
+        $allowedUnits = $this->assignableGoalOrgUnits(null, $roleId)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if (!in_array($orgUnitId, $allowedUnits, true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'goal_org_unit_id' => 'Selected Goal Org Unit is not valid for this role / your scope.',
+            ]);
+        }
     }
 
     /**
@@ -102,23 +304,8 @@ class UserController extends Controller
     protected function filterAssignableGuards(array $guards): array
     {
         $guards = array_values(array_filter(array_map('strval', $guards)));
-        $company = Company::current();
 
-        if (!$company->isWebFormsEnabled()) {
-            $guards = array_values(array_filter($guards, fn ($g) => !Permission::isWebFormsGuard($g)));
-        }
-
-        if (!$company->isSocialAdsEnabled()) {
-            $guards = array_values(array_filter($guards, fn ($g) => !Permission::isSocialAdsGuard($g)));
-        }
-
-        if ($this->isSuperAdmin()) {
-            return $guards;
-        }
-
-        $allowed = $company->adminAssignableGuards();
-
-        return array_values(array_intersect($guards, $allowed));
+        return array_values(array_intersect($guards, $this->actorAssignableGuards()));
     }
 
     /**
@@ -128,11 +315,12 @@ class UserController extends Controller
      */
     protected function roleTypeRules(?User $target = null): array
     {
-        $current = auth()->user();
-        $allowed = \App\Models\Role::pluck('id')->map(fn ($id) => (string) $id)->all();
+        $allowed = array_map('strval', $this->creatableRoleIdsFor());
 
-        if (!in_array((int) ($current->crm_role_type ?? -1), [0, 1], true)) {
-            $allowed = array_values(array_diff($allowed, ['1']));
+        // Keep current role selectable when editing (even if not creatable for peers).
+        if ($target && (int) $target->crm_role_type > 0) {
+            $allowed[] = (string) $target->crm_role_type;
+            $allowed = array_values(array_unique($allowed));
         }
 
         if ($target && (int) $target->crm_role_type === 0 && $this->isSuperAdmin()) {
@@ -143,8 +331,8 @@ class UserController extends Controller
     }
 
     /**
-     * Super Admin: everyone. Admin: everyone except Super Admin.
-     * Others: only users assigned to them as manager.
+     * Super Admin / Admin / MD / CEO: company-wide (except SA for non-SA).
+     * Others: self + reporting tree + lower-ranked staff in their org scope.
      */
     protected function ensureCanManageUser(User $target): void
     {
@@ -157,12 +345,65 @@ class UserController extends Controller
         if ((int) $target->crm_role_type === 0) {
             abort(403, 'You cannot manage Super Admin.');
         }
-        if ($role === 1) {
+        if (in_array($role, [1, 4, 5], true)) {
             return;
         }
-        if ((int) $target->assign_manager !== (int) $current->id) {
+        if (! in_array((int) $target->id, $this->manageableUserIds($current), true)) {
             abort(403, 'Unauthorized action.');
         }
+    }
+
+    /**
+     * User IDs the actor may list/manage (self + people under them).
+     */
+    protected function manageableUserIds(?User $actor = null): array
+    {
+        $actor = $actor ?: auth()->user();
+        $actorId = (int) $actor->id;
+        $ids = [$actorId];
+        $seen = [$actorId => true];
+        $frontier = [$actorId];
+
+        // Walk reporting tree (reports_to + legacy assign_manager).
+        while ($frontier !== []) {
+            $children = User::query()
+                ->where(function ($q) use ($frontier) {
+                    $q->whereIn('reports_to_user_id', $frontier)
+                        ->orWhereIn('assign_manager', $frontier);
+                })
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $frontier = [];
+            foreach ($children as $childId) {
+                if (isset($seen[$childId])) {
+                    continue;
+                }
+                $seen[$childId] = true;
+                $ids[] = $childId;
+                $frontier[] = $childId;
+            }
+        }
+
+        // Org unit scope: include lower-ranked staff in the actor's unit subtree.
+        $orgIds = $actor->goalScopedOrgUnitIds();
+        if ($orgIds !== []) {
+            $actorRank = $this->roleHierarchyRankMap()[(int) ($actor->crm_role_type ?? -1)] ?? 999;
+            $orgUsers = User::query()
+                ->whereIn('goal_org_unit_id', $orgIds)
+                ->where('crm_role_type', '!=', 0)
+                ->get(['id', 'crm_role_type']);
+
+            foreach ($orgUsers as $orgUser) {
+                $rank = $this->roleHierarchyRankMap()[(int) $orgUser->crm_role_type] ?? 999;
+                if ($rank > $actorRank) {
+                    $ids[] = (int) $orgUser->id;
+                }
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     protected function assertCanCreateUser()
@@ -268,14 +509,19 @@ class UserController extends Controller
         $format = strtolower((string) $request->get('format', 'csv'));
         [$query] = $this->applyUserListFilters($this->manageableUsersQuery(), $request);
         $rows = $query->get();
-        $roles = \App\Models\Role::pluck('name', 'id');
+        $roles = $this->crmRolesByHierarchy()->pluck('name', 'id');
+        $includeSalesTarget = !$this->usesGoalTargets();
 
-        $lines = [['#', 'Name', 'Email', 'Mobile', 'CRM Role', 'Status', '2FA', 'Sales Target']];
+        $header = ['#', 'Name', 'Email', 'Mobile', 'CRM Role', 'Status', '2FA'];
+        if ($includeSalesTarget) {
+            $header[] = 'Sales Target';
+        }
+        $lines = [$header];
         foreach ($rows as $i => $u) {
             $role = ((int) $u->crm_role_type === 0)
                 ? 'Super Admin'
                 : ($roles[$u->crm_role_type] ?? 'Unknown');
-            $lines[] = [
+            $line = [
                 $i + 1,
                 $u->name,
                 $u->email,
@@ -283,8 +529,11 @@ class UserController extends Controller
                 $role,
                 (int) $u->status === 1 ? 'Active' : 'Inactive',
                 $u->{"2fa_enabled"} ? 'Enabled' : 'Disabled',
-                number_format((float) ($u->sales_target ?? 0), 2, '.', ''),
             ];
+            if ($includeSalesTarget) {
+                $line[] = number_format((float) ($u->sales_target ?? 0), 2, '.', '');
+            }
+            $lines[] = $line;
         }
 
         if ($format === 'pdf') {
@@ -323,24 +572,29 @@ class UserController extends Controller
 
     /**
      * Base query for users the current actor may manage/list.
+     * Filters (search / role / status / 2FA) are applied on top of this scope.
      */
     protected function manageableUsersQuery(?User $currentUser = null)
     {
         $currentUser = $currentUser ?: auth()->user();
-        $isSuperAdmin = $this->isSuperAdmin($currentUser);
+        $role = (int) ($currentUser->crm_role_type ?? -1);
         $query = User::query();
 
-        if ($isSuperAdmin) {
+        // Company-wide viewers
+        if ($this->isSuperAdmin($currentUser)) {
             return $query;
         }
-        if ((int) $currentUser->crm_role_type === 1) {
+        if (in_array($role, [1, 4, 5], true)) {
             return $query->where('crm_role_type', '!=', 0);
         }
-        if ((int) $currentUser->crm_role_type === 2) {
-            return $query->where('assign_manager', $currentUser->id);
+
+        // Everyone else: only self + people under them (reporting / org scope)
+        $ids = $this->manageableUserIds($currentUser);
+        if ($ids === []) {
+            return $query->whereRaw('1 = 0');
         }
 
-        return $query->where('status', 1);
+        return $query->whereIn('id', $ids);
     }
 
     protected function applyUserListFilters($query, Request $request)
@@ -401,7 +655,7 @@ class UserController extends Controller
             'two_fa' => (clone $kpiBase)->where('2fa_enabled', 1)->count(),
         ];
 
-        $roles = \App\Models\Role::pluck('name', 'id');
+        $roles = $this->crmRolesByHierarchy()->pluck('name', 'id');
         $allPermissions = \App\Models\Permission::orderBy('name')->pluck('name')->toArray();
         $company = Company::current();
         $userCount = User::countNonSuperAdmins();
@@ -425,8 +679,11 @@ class UserController extends Controller
             ->whereIn('crm_role_type', $goalHierarchyRoles)
             ->where('status', 1)
             ->orderBy('name');
-        if (!$isSuperAdmin && (int) $currentUser->crm_role_type === 2) {
-            $hierarchyQuery->where('assign_manager', $currentUser->id);
+        // Same people-scope as List View (except company-wide SA/Admin/MD/CEO).
+        if (! $isSuperAdmin && ! in_array((int) ($currentUser->crm_role_type ?? -1), [1, 4, 5], true)) {
+            $hierarchyQuery->whereIn('id', $this->manageableUserIds($currentUser));
+        } elseif (! $isSuperAdmin) {
+            $hierarchyQuery->where('crm_role_type', '!=', 0);
         }
         $hierarchyUsers = $hierarchyQuery->get();
         $hierarchyRoles = \App\Models\Role::query()
@@ -507,20 +764,40 @@ class UserController extends Controller
             return $redirect;
         }
 
-        $crmRoles = \App\Models\Role::orderBy('name')->get();
+        $actor = auth()->user();
+        $creatableRoleIds = $this->creatableRoleIdsFor($actor);
+        $crmRoles = $this->crmRolesByHierarchy($creatableRoleIds);
         $permissions = $this->assignablePermissions();
         $rolePermissionsMap = $this->buildRolePermissionsMap($crmRoles, $permissions);
-        $selectedRoleId = old('crm_role_type', $crmRoles[0]->id ?? null);
-        $defaultPermissions = isset($rolePermissionsMap[$selectedRoleId]) ? $rolePermissionsMap[$selectedRoleId] : [];
+        $selectedRoleId = old('crm_role_type');
+        $defaultPermissions = ($selectedRoleId !== null && isset($rolePermissionsMap[$selectedRoleId]))
+            ? $rolePermissionsMap[$selectedRoleId]
+            : [];
         $groupedPermissions = $permissions->groupBy(function ($item) {
             return $item->parentPermission ? $item->parentPermission->name : 'No Parent';
         });
         $managers = $this->reportingUsersQuery()->get();
+        if (!$this->isSuperAdmin($actor) && !in_array((int) ($actor->crm_role_type ?? -1), [1, 4, 5], true)) {
+            $scopeIds = $actor->goalScopedOrgUnitIds();
+            $managers = $managers->filter(function ($m) use ($scopeIds, $actor) {
+                return (int) $m->id === (int) $actor->id
+                    || ($m->goal_org_unit_id && in_array((int) $m->goal_org_unit_id, $scopeIds, true));
+            })->values();
+            if ($managers->where('id', $actor->id)->isEmpty()) {
+                $managers = $managers->prepend($actor);
+            }
+        }
         $company = Company::current();
         $userCount = User::countNonSuperAdmins();
         $maxUsers = $company->maxUsersLimit();
-        $goalOrgUnits = \App\Models\GoalOrgUnit::query()->active()->orderBy('type')->orderBy('name')->get();
-        $jobRoles = ['md','ceo','rd','cluster','bm','vrm','jsm','sm','ssm','pms','accounts'];
+        $goalOrgUnits = $this->assignableGoalOrgUnits($actor);
+        $orgUnitTypesByRole = $this->orgUnitTypesByRoleMap();
+        $defaultOrgUnitId = null;
+        $orgUnitLocked = false;
+        if (!$this->isSuperAdmin($actor) && in_array((int) ($actor->crm_role_type ?? -1), [8, 9, 10, 11, 12], true) && $actor->goal_org_unit_id) {
+            $defaultOrgUnitId = (int) $actor->goal_org_unit_id;
+            $orgUnitLocked = $goalOrgUnits->count() <= 1;
+        }
 
         return view('users.create', compact(
             'crmRoles',
@@ -532,7 +809,9 @@ class UserController extends Controller
             'userCount',
             'maxUsers',
             'goalOrgUnits',
-            'jobRoles'
+            'orgUnitTypesByRole',
+            'defaultOrgUnitId',
+            'orgUnitLocked'
         ));
     }
 
@@ -560,7 +839,7 @@ class UserController extends Controller
                 'unique:users,email',
                 'regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/',
             ],
-            'mobile' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]{7,20}$/'],
+            'mobile' => PhoneNumber::mobileRules(true),
             'password' => 'required|string|min:8|confirmed',
             'password_confirmation' => 'required_with:password|same:password',
             'crm_role_type' => $this->roleTypeRules(),
@@ -575,15 +854,19 @@ class UserController extends Controller
             'reports_to_user_id' => 'nullable|exists:users,id',
             'job_role' => 'nullable|string|max:30',
             'avatar' => ['nullable', 'image', 'max:2048', 'mimes:jpg,jpeg,png,gif'],
-        ], [
+        ], array_merge([
             'name.regex' => 'Name must start with a letter and may only contain letters, spaces, dots, apostrophes, and hyphens.',
             'email.regex' => 'Please enter a valid email address.',
-            'mobile.regex' => 'Please enter a valid mobile / phone number.',
             'assign_manager' => 'Assign Manager is required when the role is Employee.',
             'avatar.image' => 'The avatar must be an image file.',
             'avatar.max' => 'The avatar size may not exceed 2MB.',
             'avatar.mimes' => 'The avatar must be a file of type: jpg, jpeg, png, gif.',
-        ]);
+        ], PhoneNumber::messages('mobile')));
+
+        $this->assertAssignableRoleAndOrg(
+            (int) $validated['crm_role_type'],
+            $validated['goal_org_unit_id'] ?? null
+        );
 
         $plainPassword = $validated['password'];
         $pageRights = $this->filterAssignableGuards($validated['crm_page_right'] ?? []);
@@ -601,8 +884,18 @@ class UserController extends Controller
         $user->crm_page_right = json_encode($pageRights);
         $user->assign_manager = $validated['assign_manager'] ?? null;
         $user->goal_org_unit_id = $validated['goal_org_unit_id'] ?? null;
-        $user->reports_to_user_id = $validated['reports_to_user_id'] ?? ($validated['assign_manager'] ?? null);
-        $user->job_role = $validated['job_role'] ?? $this->jobRoleFromCrmRole((int) $validated['crm_role_type']);
+        // Reports To is not on the form — auto-set to creator for hierarchy users, else Assign Manager.
+        $actor = auth()->user();
+        $actorRole = (int) ($actor->crm_role_type ?? -1);
+        if (!empty($validated['assign_manager'])) {
+            $user->reports_to_user_id = $validated['assign_manager'];
+        } elseif (!$this->isSuperAdmin($actor) && !in_array($actorRole, [1], true)) {
+            $user->reports_to_user_id = $actor->id;
+        } else {
+            $user->reports_to_user_id = null;
+        }
+        // Job role is derived from CRM Role (single role field in UI).
+        $user->job_role = $this->jobRoleFromCrmRole((int) $validated['crm_role_type']);
         $user->status = $validated['status'] ?? 1;
         $user->created_by = auth()->id();
         $user->save();
@@ -654,7 +947,14 @@ class UserController extends Controller
         }
         $this->ensureCanManageUser($user);
 
-        $crmRoles = \App\Models\Role::orderBy('name')->get();
+        $actor = auth()->user();
+        $creatableRoleIds = $this->creatableRoleIdsFor($actor);
+        // Ensure the user's current role remains listed while editing.
+        if ((int) $user->crm_role_type > 0) {
+            $creatableRoleIds[] = (int) $user->crm_role_type;
+            $creatableRoleIds = array_values(array_unique($creatableRoleIds));
+        }
+        $crmRoles = $this->crmRolesByHierarchy($creatableRoleIds);
         $permissions = $this->assignablePermissions();
         $rolePermissionsMap = $this->buildRolePermissionsMap($crmRoles, $permissions);
         $selectedRoleId = old('crm_role_type', $user->crm_role_type);
@@ -663,8 +963,21 @@ class UserController extends Controller
             return $item->parentPermission ? $item->parentPermission->name : 'No Parent';
         });
         $managers = $this->reportingUsersQuery($user->id)->get();
-        $goalOrgUnits = \App\Models\GoalOrgUnit::query()->active()->orderBy('type')->orderBy('name')->get();
-        $jobRoles = ['md','ceo','rd','cluster','bm','vrm','jsm','sm','ssm','pms','accounts'];
+        if (!$this->isSuperAdmin($actor) && !in_array((int) ($actor->crm_role_type ?? -1), [1, 4, 5], true)) {
+            $scopeIds = $actor->goalScopedOrgUnitIds();
+            $managers = $managers->filter(function ($m) use ($scopeIds, $actor) {
+                return (int) $m->id === (int) $actor->id
+                    || ($m->goal_org_unit_id && in_array((int) $m->goal_org_unit_id, $scopeIds, true));
+            })->values();
+        }
+        $goalOrgUnits = $this->assignableGoalOrgUnits($actor);
+        $orgUnitTypesByRole = $this->orgUnitTypesByRoleMap();
+        $defaultOrgUnitId = (int) ($user->goal_org_unit_id ?: 0) ?: null;
+        $orgUnitLocked = false;
+        if (!$this->isSuperAdmin($actor) && in_array((int) ($actor->crm_role_type ?? -1), [8, 9, 10, 11, 12], true) && $actor->goal_org_unit_id) {
+            $orgUnitLocked = $goalOrgUnits->count() <= 1;
+            $defaultOrgUnitId = $defaultOrgUnitId ?: (int) $actor->goal_org_unit_id;
+        }
 
         return view('users.edit', compact(
             'user',
@@ -675,7 +988,9 @@ class UserController extends Controller
             'groupedPermissions',
             'managers',
             'goalOrgUnits',
-            'jobRoles'
+            'orgUnitTypesByRole',
+            'defaultOrgUnitId',
+            'orgUnitLocked'
         ));
     }
 
@@ -705,7 +1020,7 @@ class UserController extends Controller
                 'unique:users,email,' . $user->id,
                 'regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/',
             ],
-            'mobile' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]{7,20}$/'],
+            'mobile' => PhoneNumber::mobileRules(true),
             'password' => 'nullable|string|min:8|confirmed',
             'crm_role_type' => $this->roleTypeRules($user),
             'crm_page_right' => 'array',
@@ -719,22 +1034,29 @@ class UserController extends Controller
             'reports_to_user_id' => 'nullable|exists:users,id',
             'job_role' => 'nullable|string|max:30',
             'avatar' => ['nullable', 'image', 'max:2048', 'mimes:jpg,jpeg,png,gif'],
-        ], [
+        ], array_merge([
             'name.regex' => 'Name must start with a letter and may only contain letters, spaces, dots, apostrophes, and hyphens.',
             'email.regex' => 'Please enter a valid email address.',
-            'mobile.regex' => 'Please enter a valid mobile / phone number.',
             'assign_manager' => 'Assign Manager is required when the role is Employee.',
             'avatar.image' => 'The avatar must be an image file.',
             'avatar.max' => 'The avatar size may not exceed 2MB.',
             'avatar.mimes' => 'The avatar must be a file of type: jpg, jpeg, png, gif.',
-        ]);
+        ], PhoneNumber::messages('mobile')));
+
+        $this->assertAssignableRoleAndOrg(
+            (int) $validated['crm_role_type'],
+            $validated['goal_org_unit_id'] ?? null
+        );
 
         $pageRights = $this->filterAssignableGuards($validated['crm_page_right'] ?? []);
-        // Preserve existing rights Admin is not allowed to touch
+        // Preserve target rights the actor cannot assign (outside their permission set)
         if (!$this->isSuperAdmin()) {
             $existing = json_decode($user->crm_page_right ?? '[]', true) ?: [];
-            $allowed = Company::current()->adminAssignableGuards();
-            $untouchable = array_values(array_diff($existing, $allowed));
+            if (!is_array($existing)) {
+                $existing = [];
+            }
+            $actorCanAssign = $this->actorAssignableGuards();
+            $untouchable = array_values(array_diff($existing, $actorCanAssign));
             $pageRights = array_values(array_unique(array_merge($untouchable, $pageRights)));
         }
 
@@ -764,8 +1086,12 @@ class UserController extends Controller
             $user->assign_manager = null;
         }
         $user->goal_org_unit_id = $validated['goal_org_unit_id'] ?? null;
-        $user->reports_to_user_id = $validated['reports_to_user_id'] ?? ($validated['assign_manager'] ?? $user->reports_to_user_id);
-        $user->job_role = $validated['job_role'] ?? $this->jobRoleFromCrmRole((int) $validated['crm_role_type']);
+        // Keep existing Reports To (field removed from form); Employee still uses Assign Manager.
+        if (!empty($validated['assign_manager'])) {
+            $user->reports_to_user_id = $validated['assign_manager'];
+        }
+        // Job role is derived from CRM Role (single role field in UI).
+        $user->job_role = $this->jobRoleFromCrmRole((int) $validated['crm_role_type']);
         $user->status = $validated['status'] ?? $user->status;
         $user->updated_by = auth()->id();
 

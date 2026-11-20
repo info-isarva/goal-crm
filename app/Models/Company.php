@@ -103,6 +103,14 @@ class Company extends Model
 
         $list = array_values(array_filter(array_map('strval', $guards)));
 
+        // Keep Admin assignable list aligned with product (Goal vs classic).
+        $actor = auth()->user();
+        if ($actor && \App\Services\Goal\GoalDashboardService::userUsesGoalDashboard($actor)) {
+            $list = array_values(array_filter($list, fn ($g) => \App\Models\Permission::isGoalGuard($g)));
+        } else {
+            $list = array_values(array_filter($list, fn ($g) => !\App\Models\Permission::isGoalGuard($g)));
+        }
+
         if (!$this->isWebFormsEnabled()) {
             $list = array_values(array_filter($list, fn ($g) => !\App\Models\Permission::isWebFormsGuard($g)));
         }

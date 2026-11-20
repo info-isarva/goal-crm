@@ -1,6 +1,15 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $u = auth()->user();
+    $canGoalMasters = (int) ($u->crm_role_type ?? -1) === 0
+        || $u->hasCrmPermission('manage_products_guard')
+        || $u->hasCrmPermission('manage_crm_product_guard');
+    $canCreateProduct = $u->hasCrmPermission('create_crm_product_guard') || $canGoalMasters;
+    $canEditProduct = $u->hasCrmPermission('edit_crm_product_guard') || $canGoalMasters;
+    $canDeleteProduct = $u->hasCrmPermission('delete_crm_product_guard') || $canGoalMasters;
+@endphp
 <link rel="stylesheet" href="{{asset('css/leads.css') }}">
 <div class="container-fluid p-4 hub-page-wrap hub-page-wrap--crm">
     @include('partials.skeletons.crm_list', [
@@ -15,7 +24,7 @@
             <div class="card mt-0">
                 <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-center">
                     <h4 class="mb-2 mb-md-0">Products</h4>
-                    <a href="{{ route('products.create') }}" class="btn btn-custom btn-sm @if(!auth()->user()->hasCrmPermission('create_crm_product_guard')) disabled @endif"><i class="bi bi-plus"></i> Add product</a>
+                    <a href="{{ route('products.create') }}" class="btn btn-custom btn-sm @if(!$canCreateProduct) disabled @endif"><i class="bi bi-plus"></i> Add product</a>
                 </div>
                 <div class="card-body">
                    
@@ -54,11 +63,11 @@
                                         <td>{{ $product->tax_status ? 'Yes' : 'No' }}</td>
                                         <td>{{ $product->product_status ? 'Active' : 'Inactive' }}</td>
                                         <td>
-                                            <a href="{{ route('products.edit', $product->id) }}" class="btn btn-outline-secondary btn-sm @if(!auth()->user()->hasCrmPermission('edit_crm_product_guard')) disabled @endif"><i class="bi bi-pencil"></i></a>
+                                            <a href="{{ route('products.edit', $product->id) }}" class="btn btn-outline-secondary btn-sm @if(!$canEditProduct) disabled @endif"><i class="bi bi-pencil"></i></a>
                                             <form action="{{ route('products.destroy', $product->id) }}" method="POST" style="display:inline;">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="btn btn-outline-danger btn-sm @if(!auth()->user()->hasCrmPermission('delete_crm_product_guard')) disabled @endif" ><i class="bi bi-trash"></i></button>
+                                                <button type="submit" class="btn btn-outline-danger btn-sm @if(!$canDeleteProduct) disabled @endif" ><i class="bi bi-trash"></i></button>
                                             </form>
                                         </td>
                                     </tr>

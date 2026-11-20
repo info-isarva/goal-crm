@@ -21,7 +21,13 @@ class AccessSettingController extends Controller
         $this->ensureSuperAdmin();
 
         $company = Company::query()->first() ?? new Company();
-        $permissions = Permission::with('parentPermission')->orderBy('name')->get();
+        $isGoal = \App\Services\Goal\GoalDashboardService::userUsesGoalDashboard(auth()->user());
+        $permissions = Permission::with('parentPermission')->orderBy('name')->get()
+            ->filter(function ($p) use ($isGoal) {
+                return $isGoal
+                    ? Permission::isGoalGuard((string) $p->guard_name)
+                    : ! Permission::isGoalGuard((string) $p->guard_name);
+            });
         $groupedPermissions = $permissions->groupBy(function ($item) {
             return $item->parentPermission ? $item->parentPermission->name : 'Other';
         });
@@ -30,6 +36,12 @@ class AccessSettingController extends Controller
             'admin_assignable_permissions',
             $company->adminAssignableGuards() ?? []
         );
+        if ($isGoal) {
+            $selectedGuards = array_values(array_filter(
+                array_map('strval', (array) $selectedGuards),
+                fn ($g) => Permission::isGoalGuard($g)
+            ));
+        }
 
         $userCount = User::countNonSuperAdmins();
         $maxUsers = $company->max_users;
@@ -38,7 +50,7 @@ class AccessSettingController extends Controller
         $webFormsEnabled = old('web_forms_enabled', $company->isWebFormsEnabled());
         $socialAdsEnabled = old('social_ads_enabled', $company->isSocialAdsEnabled());
 
-        $sendPermissionGuards = [
+        $sendPermissionGuards = $isGoal ? [] : [
             'send_email_crm_quotations_guard',
             'send_whatsapp_crm_quotations_guard',
         ];
@@ -53,7 +65,8 @@ class AccessSettingController extends Controller
             'whatsappSendEnabled',
             'webFormsEnabled',
             'socialAdsEnabled',
-            'sendPermissionGuards'
+            'sendPermissionGuards',
+            'isGoal'
         ));
     }
 
@@ -90,21 +103,27 @@ class AccessSettingController extends Controller
         $company->social_ads_enabled = $socialAdsEnabled;
 
         $assignable = $validated['admin_assignable_permissions'] ?? [];
-        if (!$webFormsEnabled) {
-            $assignable = array_values(array_filter($assignable, fn ($g) => !Permission::isWebFormsGuard($g)));
+        $isGoal = \App\Services\Goal\GoalDashboardService::userUsesGoalDashboard(auth()->user());
+        if ($isGoal) {
+            $assignable = array_values(array_filter($assignable, fn ($g) => Permission::isGoalGuard((string) $g)));
         } else {
-            $hasWf = array_filter($assignable, fn ($g) => Permission::isWebFormsGuard($g));
-            if (empty($hasWf)) {
-                $assignable = array_merge($assignable, Permission::webFormsGuards());
+            $assignable = array_values(array_filter($assignable, fn ($g) => !Permission::isGoalGuard((string) $g)));
+            if (!$webFormsEnabled) {
+                $assignable = array_values(array_filter($assignable, fn ($g) => !Permission::isWebFormsGuard($g)));
+            } else {
+                $hasWf = array_filter($assignable, fn ($g) => Permission::isWebFormsGuard($g));
+                if (empty($hasWf)) {
+                    $assignable = array_merge($assignable, Permission::webFormsGuards());
+                }
             }
-        }
 
-        if (!$socialAdsEnabled) {
-            $assignable = array_values(array_filter($assignable, fn ($g) => !Permission::isSocialAdsGuard($g)));
-        } else {
-            $hasSa = array_filter($assignable, fn ($g) => Permission::isSocialAdsGuard($g));
-            if (empty($hasSa)) {
-                $assignable = array_merge($assignable, Permission::socialAdsGuards());
+            if (!$socialAdsEnabled) {
+                $assignable = array_values(array_filter($assignable, fn ($g) => !Permission::isSocialAdsGuard($g)));
+            } else {
+                $hasSa = array_filter($assignable, fn ($g) => Permission::isSocialAdsGuard($g));
+                if (empty($hasSa)) {
+                    $assignable = array_merge($assignable, Permission::socialAdsGuards());
+                }
             }
         }
 

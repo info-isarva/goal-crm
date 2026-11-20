@@ -190,7 +190,7 @@
                         <label class="cw-label-inline">SM Contact Number</label>
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
-                            <input class="cw-input js-mobile" name="bm_reco[contacts][sm_mobile]" value="{{ data_get($br, 'contacts.sm_mobile', $case->owner?->mobile) }}" maxlength="10" inputmode="numeric" placeholder="Enter SM contact number" {{ $ro }}>
+                            <input class="cw-input js-mobile" name="bm_reco[contacts][sm_mobile]" value="{{ data_get($br, 'contacts.sm_mobile', $case->owner?->mobile) }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
                         </div>
                     </div>
                     <div class="cw-field-row">
@@ -207,14 +207,14 @@
                         <label class="cw-label-inline">ASM Contact Number</label>
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
-                            <input class="cw-input js-mobile" name="bm_reco[contacts][asm_mobile]" value="{{ data_get($br, 'contacts.asm_mobile') }}" maxlength="10" inputmode="numeric" placeholder="Enter ASM contact number" {{ $ro }}>
+                            <input class="cw-input js-mobile" name="bm_reco[contacts][asm_mobile]" value="{{ data_get($br, 'contacts.asm_mobile') }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
                         </div>
                     </div>
                     <div class="cw-field-row">
                         <label class="cw-label-inline">BM Contact Number</label>
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
-                            <input class="cw-input js-mobile" name="bm_reco[contacts][bm_mobile]" value="{{ data_get($br, 'contacts.bm_mobile', $branchManager?->mobile) }}" maxlength="10" inputmode="numeric" placeholder="Enter BM contact number" {{ $ro }}>
+                            <input class="cw-input js-mobile" name="bm_reco[contacts][bm_mobile]" value="{{ data_get($br, 'contacts.bm_mobile', $branchManager?->mobile) }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
                         </div>
                     </div>
                 </div>
@@ -227,7 +227,7 @@
                         <label class="cw-label-inline">RSM Contact Number</label>
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
-                            <input class="cw-input js-mobile" name="bm_reco[contacts][rsm_mobile]" value="{{ data_get($br, 'contacts.rsm_mobile') }}" maxlength="10" inputmode="numeric" placeholder="Enter RSM contact number" {{ $ro }}>
+                            <input class="cw-input js-mobile" name="bm_reco[contacts][rsm_mobile]" value="{{ data_get($br, 'contacts.rsm_mobile') }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
                         </div>
                     </div>
                 </div>

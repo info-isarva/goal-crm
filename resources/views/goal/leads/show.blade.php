@@ -1309,10 +1309,10 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Mobile</label>
+                        <label class="form-label">Mobile <span class="req">*</span></label>
                         <div class="ld-input-ico">
                             <i class="bi bi-telephone"></i>
-                            <input name="mobile" class="form-control" value="{{ old('mobile', $lead->mobile) }}">
+                            <input name="mobile" class="form-control" value="{{ old('mobile', $lead->mobile) }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" required>
                         </div>
                     </div>
                     <div class="col-md-6">

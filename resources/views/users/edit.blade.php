@@ -25,9 +25,9 @@
     justify-content: space-between;
     gap: 16px;
     background:
-        radial-gradient(ellipse 280px 200px at 92% 18%, rgba(167,139,250,.28), transparent 70%),
-        radial-gradient(ellipse 220px 160px at 78% 70%, rgba(147,197,253,.22), transparent 70%),
-        linear-gradient(105deg, #eef2ff 0%, #f5f3ff 40%, #e8eef8 100%);
+        radial-gradient(ellipse 280px 200px at 92% 18%, rgba(153,246,228,.35), transparent 70%),
+        radial-gradient(ellipse 220px 160px at 78% 70%, rgba(110,231,183,.22), transparent 70%),
+        linear-gradient(105deg, #ecfdf5 0%, #f0fdf4 40%, #e8f5f1 100%);
 }
 .user-create-page .page-hero .hero-art {
     position: absolute;
@@ -53,9 +53,9 @@
 }
 .user-create-page .hero-icon {
     width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
-    background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 55%, #9333ea 100%);
+    background: linear-gradient(135deg, #34d399 0%, #009B80 55%, #0f766e 100%);
     color: #fff; display: inline-flex; align-items: center; justify-content: center;
-    font-size: 1.2rem; box-shadow: 0 8px 16px rgba(109,40,217,.25);
+    font-size: 1.2rem; box-shadow: 0 8px 16px rgba(0,155,128,.28);
 }
 .user-create-page .hero-title {
     margin: 0; font-size: 1.4rem; font-weight: 800; color: #1e3a5f; line-height: 1.2;
@@ -114,10 +114,10 @@
     .user-create-page .main-top { grid-template-columns: 1fr; }
 }
 
-/* Profile upload — exact mockup */
+/* Profile upload — empty + filled states */
 .user-create-page .profile-card {
-    background: linear-gradient(180deg, #e0e7ff 0%, #eef2ff 35%, #f5f3ff 100%);
-    border: 1px solid #ddd6fe;
+    background: linear-gradient(180deg, #ecfdf5 0%, #f0fdf4 40%, #f8fafc 100%);
+    border: 1px solid #d1fae5;
     border-radius: 14px;
     padding: 32px 14px 24px;
     text-align: center;
@@ -135,47 +135,64 @@
 }
 .user-create-page .avatar-preview {
     width: 118px; height: 118px; border-radius: 50%;
-    border: 2.5px dashed #c4b5fd;
-    background: #e2e8f0;
+    border: 2.5px dashed #99f6e4;
+    background: #f0fdfa;
     box-shadow: inset 0 0 0 4px #fff;
     display: flex; align-items: center; justify-content: center;
-    color: #8b5cf6; font-size: 2.6rem; overflow: hidden;
+    color: #0f766e; font-size: 1.6rem; font-weight: 800; overflow: hidden;
+    position: relative;
+}
+.user-create-page .avatar-preview .avatar-placeholder {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%;
+    color: #0f766e; font-size: 1.6rem; font-weight: 800; line-height: 1;
+    letter-spacing: .02em; z-index: 1;
 }
 .user-create-page .avatar-preview.has-image {
     border-style: solid;
     border-color: #fff;
-    box-shadow: 0 8px 20px rgba(124,58,237,.14);
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(0, 155, 128, .16);
 }
-.user-create-page .avatar-preview img {
-    width: 100%; height: 100%; object-fit: cover; display: block;
+.user-create-page .avatar-preview.has-image .avatar-placeholder {
+    display: none !important;
+}
+.user-create-page .avatar-preview img.avatar-img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%; object-fit: cover;
+    display: none; border-radius: 50%;
+    z-index: 2; background: #fff;
+}
+.user-create-page .avatar-preview.has-image img.avatar-img {
+    display: block !important;
 }
 .user-create-page .avatar-camera {
-    position: absolute; right: 0; bottom: 2px;
+    position: absolute; right: 0; bottom: 2px; z-index: 3;
     width: 34px; height: 34px; border-radius: 50%;
     border: 2.5px solid #fff;
-    background: #7c3aed; color: #fff;
+    background: #009B80; color: #fff;
     display: inline-flex; align-items: center; justify-content: center;
     cursor: pointer;
-    box-shadow: 0 6px 14px rgba(124,58,237,.35);
+    box-shadow: 0 6px 14px rgba(0, 155, 128, .35);
 }
-.user-create-page .avatar-camera:hover { background: #6d28d9; }
+.user-create-page .avatar-camera:hover { background: #007F68; color: #fff; }
 .user-create-page .profile-title {
-    margin: 6px 0 0; font-size: .95rem; font-weight: 800; color: #5b21b6;
+    margin: 6px 0 0; font-size: .95rem; font-weight: 800; color: #0f766e;
 }
 .user-create-page .profile-hint {
-    margin: 0; font-size: .78rem; color: #64748b; line-height: 1.35; max-width: 150px;
+    margin: 0; font-size: .78rem; color: #64748b; line-height: 1.35; max-width: 160px;
 }
 
 /* User details */
 .user-create-page .details-block { min-width: 0; }
 .user-create-page .section-title {
     display: flex; align-items: center; gap: 8px;
-    font-size: 1rem; font-weight: 800; color: #4c1d95; margin: 2px 0 14px;
+    font-size: 1rem; font-weight: 800; color: #0f766e; margin: 2px 0 14px;
 }
-.user-create-page .section-title i { color: #7c3aed; }
+.user-create-page .section-title i { color: #009B80; }
 .user-create-page .section-kicker {
     font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
-    color: #7c3aed; margin: 0 0 12px;
+    color: #009B80; margin: 0 0 12px;
 }
 
 .user-create-page .field-grid-2 {
@@ -195,7 +212,7 @@
 .user-create-page .input-icon { position: relative; width: 100%; }
 .user-create-page .input-icon > i.field-icn {
     position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-    color: #a78bfa; font-size: .95rem; z-index: 2; pointer-events: none;
+    color: #5eead4; font-size: .95rem; z-index: 2; pointer-events: none;
 }
 .user-create-page .input-icon .form-control {
     width: 100%; min-height: 42px; height: 42px; border-radius: 10px; border: 1px solid #e2e8f0;
@@ -203,7 +220,7 @@
     font-size: .9rem; line-height: 1.4;
 }
 .user-create-page .input-icon .form-control:focus {
-    border-color: #c4b5fd; box-shadow: 0 0 0 3px rgba(124,58,237,.12); outline: none;
+    border-color: #99f6e4; box-shadow: 0 0 0 3px rgba(0,155,128,.14); outline: none;
 }
 
 /* Hide native select — custom menu replaces OS/global dropdown */
@@ -229,14 +246,14 @@
 .user-create-page .uc-dd-toggle.is-placeholder { color: #94a3b8; }
 .user-create-page .uc-dd-toggle:focus,
 .user-create-page .uc-dd.is-open .uc-dd-toggle {
-    border-color: #c4b5fd; box-shadow: 0 0 0 3px rgba(124,58,237,.12); outline: none;
+    border-color: #99f6e4; box-shadow: 0 0 0 3px rgba(0,155,128,.14); outline: none;
 }
 .user-create-page .uc-dd-caret {
     position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
     color: #94a3b8; font-size: .75rem; pointer-events: none; z-index: 2;
     transition: transform .15s ease;
 }
-.user-create-page .uc-dd.is-open .uc-dd-caret { transform: translateY(-50%) rotate(180deg); color: #7c3aed; }
+.user-create-page .uc-dd.is-open .uc-dd-caret { transform: translateY(-50%) rotate(180deg); color: #009B80; }
 .user-create-page .org-card,
 .user-create-page .main-card,
 .user-create-page .details-block {
@@ -245,11 +262,14 @@
 .user-create-page .uc-dd-menu {
     position: absolute; left: 0; right: 0; top: calc(100% + 6px);
     z-index: 1080; display: none;
-    max-height: 260px; overflow-y: auto;
-    background: #fff; border: 1px solid #e9d5ff; border-radius: 12px;
-    box-shadow: 0 12px 28px rgba(109, 40, 217, 0.12);
+    max-height: 280px; overflow-y: auto;
+    background: #fff; border: 1px solid #d1fae5; border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
     padding: 6px;
+    scrollbar-width: thin; scrollbar-color: #99f6e4 transparent;
 }
+.user-create-page .uc-dd-menu::-webkit-scrollbar { width: 6px; }
+.user-create-page .uc-dd-menu::-webkit-scrollbar-thumb { background: #99f6e4; border-radius: 999px; }
 .user-create-page .uc-dd.is-open .uc-dd-menu { display: block; }
 .user-create-page .uc-dd-option {
     display: block; width: 100%; border: 0; background: transparent;
@@ -257,10 +277,10 @@
     color: #334155; font-size: .88rem; cursor: pointer;
 }
 .user-create-page .uc-dd-option:hover {
-    background: #f5f3ff; color: #5b21b6;
+    background: #ecfdf5; color: #0f766e;
 }
 .user-create-page .uc-dd-option.is-selected {
-    background: #ede9fe; color: #5b21b6; font-weight: 700;
+    background: #d1fae5; color: #0f766e; font-weight: 700;
 }
 .user-create-page .uc-dd-option.is-placeholder-opt {
     color: #94a3b8; font-weight: 500;
@@ -271,7 +291,7 @@
     border: none; background: transparent; color: #94a3b8; width: 32px; height: 32px;
     display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;
 }
-.user-create-page .toggle-password:hover { color: #7c3aed; background: #f5f3ff; }
+.user-create-page .toggle-password:hover { color: #009B80; background: #f0fdf4; }
 .user-create-page .field-error-text { color: #dc2626; font-size: .75rem; margin-top: 4px; }
 
 /* Organization — full width under profile + details */
@@ -282,17 +302,17 @@
     background: #f8fafc;
     padding: 14px 14px 12px;
 }
-.user-create-page .field-grid-4 {
+.user-create-page .field-grid-3 {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px 14px;
     align-items: end;
 }
-@media (max-width: 1199.98px) {
-    .user-create-page .field-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 991.98px) {
+    .user-create-page .field-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 767.98px) {
-    .user-create-page .field-grid-4 { grid-template-columns: 1fr; }
+    .user-create-page .field-grid-3 { grid-template-columns: 1fr; }
 }
 
 .user-create-page .status-box {
@@ -331,7 +351,7 @@
     margin: 0; font-size: 1.05rem; font-weight: 800; color: #1e3a5f;
     display: inline-flex; align-items: center; gap: 8px;
 }
-.user-create-page .panel-head-left h5 i { color: #7c3aed; }
+.user-create-page .panel-head-left h5 i { color: #009B80; }
 .user-create-page .panel-head-left .panel-sub {
     margin: 4px 0 0 28px; font-size: .82rem; color: #64748b;
 }
@@ -347,9 +367,9 @@
 .user-create-page .btn-perm-clear { border: 1px solid #cbd5e1; color: #475569; }
 .user-create-page .btn-perm-clear:hover { background: #f8fafc; color: #0f172a; }
 .user-create-page .btn-perm-defaults {
-    border: 1px solid #c4b5fd; color: #6d28d9; background: #fff;
+    border: 1px solid #99f6e4; color: #007F68; background: #fff;
 }
-.user-create-page .btn-perm-defaults:hover { background: #f5f3ff; color: #5b21b6; }
+.user-create-page .btn-perm-defaults:hover { background: #f0fdf4; color: #0f766e; }
 
 .user-create-page .permission-grid {
     display: grid;
@@ -380,7 +400,7 @@
     font-size: .95rem;
 }
 .user-create-page .permission-card .icon.tone-blue { background: #dbeafe; color: #2563eb; }
-.user-create-page .permission-card .icon.tone-violet { background: #ede9fe; color: #7c3aed; }
+.user-create-page .permission-card .icon.tone-violet { background: #d1fae5; color: #009B80; }
 .user-create-page .permission-card .icon.tone-pink { background: #fce7f3; color: #db2777; }
 .user-create-page .permission-card .icon.tone-green { background: #dcfce7; color: #16a34a; }
 .user-create-page .permission-card .icon.tone-orange { background: #ffedd5; color: #ea580c; }
@@ -407,13 +427,13 @@
     border: 1.5px solid #cbd5e1; border-radius: 4px;
 }
 .user-create-page .permission-card .form-check-input:checked {
-    background-color: #7c3aed; border-color: #7c3aed;
+    background-color: #009B80; border-color: #009B80;
 }
 .user-create-page .permission-card .form-check-label {
     font-size: .84rem; color: #475569; line-height: 1.35;
 }
 .user-create-page #permission-message {
-    border: 1px dashed #ddd6fe; background: #faf5ff; color: #6d28d9;
+    border: 1px dashed #d1fae5; background: #ecfdf5; color: #007F68;
     border-radius: 10px; padding: 10px 12px; font-size: .875rem; margin-bottom: 14px;
 }
 
@@ -443,17 +463,17 @@
 }
 .user-create-page .btn-create {
     height: 44px; border: none; border-radius: 10px; padding: 0 18px; font-weight: 800;
-    color: #fff; background: linear-gradient(90deg, #7c3aed, #6d28d9);
+    color: #fff; background: linear-gradient(90deg, #009B80, #007F68);
     display: inline-flex; align-items: center; gap: 8px;
-    box-shadow: 0 10px 18px rgba(109,40,217,.25);
+    box-shadow: 0 10px 18px rgba(0,155,128,.28);
 }
 .user-create-page .btn-create:hover { filter: brightness(1.05); color: #fff; }
 .user-create-page .btn-cancel {
-    height: 44px; border-radius: 10px; border: 1px solid #c4b5fd; background: #fff; color: #6d28d9;
+    height: 44px; border-radius: 10px; border: 1px solid #99f6e4; background: #fff; color: #007F68;
     padding: 0 16px; font-weight: 700; text-decoration: none;
     display: inline-flex; align-items: center; gap: 6px;
 }
-.user-create-page .btn-cancel:hover { background: #f5f3ff; color: #5b21b6; }
+.user-create-page .btn-cancel:hover { background: #f0fdf4; color: #0f766e; }
 </style>
 @endpush
 
@@ -461,40 +481,47 @@
 @php
     $isGoalTenant = \App\Services\Goal\GoalDashboardService::userUsesGoalDashboard(auth()->user());
     $permMeta = [
+        'Goal Dashboard' => ['icon' => 'bi-bar-chart-fill', 'tone' => 'tone-blue'],
+        'Goal Leads & Calling' => ['icon' => 'bi-telephone-outbound', 'tone' => 'tone-cyan'],
+        'Goal Allocation & Cases' => ['icon' => 'bi-briefcase', 'tone' => 'tone-green'],
         'Goal PMS & Accounts' => ['icon' => 'bi-database', 'tone' => 'tone-blue'],
+        'Goal Organisation' => ['icon' => 'bi-diagram-2', 'tone' => 'tone-indigo'],
+        'Goal MIS & Targets' => ['icon' => 'bi-bullseye', 'tone' => 'tone-orange'],
         'Settings' => ['icon' => 'bi-gear', 'tone' => 'tone-violet'],
         'No Parent' => ['icon' => 'bi-grid-3x3-gap', 'tone' => 'tone-pink'],
-        'Goal Allocation & Cases' => ['icon' => 'bi-briefcase', 'tone' => 'tone-green'],
-        'Goal MIS & Targets' => ['icon' => 'bi-bullseye', 'tone' => 'tone-orange'],
-        'Goal Leads & Calling' => ['icon' => 'bi-telephone-outbound', 'tone' => 'tone-cyan'],
-        'Goal Organisation' => ['icon' => 'bi-diagram-2', 'tone' => 'tone-indigo'],
         'Reports' => ['icon' => 'bi-graph-up', 'tone' => 'tone-violet'],
         'Social Ads Management' => ['icon' => 'bi-share', 'tone' => 'tone-pink'],
         'Quotation' => ['icon' => 'bi-file-earmark-text', 'tone' => 'tone-blue'],
         'Web Forms Management' => ['icon' => 'bi-ui-checks', 'tone' => 'tone-green'],
     ];
-    $permOrder = [
-        'Goal PMS & Accounts',
-        'Settings',
-        'No Parent',
-        'Goal Allocation & Cases',
-        'Goal MIS & Targets',
-        'Goal Leads & Calling',
-        'Goal Organisation',
-        'Reports',
-        'Social Ads Management',
-        'Quotation',
-        'Web Forms Management',
-    ];
+    $permOrder = $isGoalTenant
+        ? [
+            'Goal Dashboard',
+            'Goal Leads & Calling',
+            'Goal Allocation & Cases',
+            'Goal PMS & Accounts',
+            'Goal MIS & Targets',
+            'Goal Organisation',
+        ]
+        : [
+            'Settings',
+            'No Parent',
+            'Reports',
+            'Social Ads Management',
+            'Quotation',
+            'Web Forms Management',
+        ];
     $orderedPermissions = collect();
     foreach ($permOrder as $name) {
         if (isset($groupedPermissions[$name])) {
             $orderedPermissions[$name] = $groupedPermissions[$name];
         }
     }
-    foreach ($groupedPermissions as $name => $group) {
-        if (!$orderedPermissions->has($name)) {
-            $orderedPermissions[$name] = $group;
+    if (!$isGoalTenant) {
+        foreach ($groupedPermissions as $name => $group) {
+            if (!$orderedPermissions->has($name)) {
+                $orderedPermissions[$name] = $group;
+            }
         }
     }
 @endphp
@@ -509,17 +536,17 @@
                 <path d="M82 102c0-22.1 16.1-40 36-40s36 17.9 36 40" fill="url(#uGradB)"/>
                 <circle cx="148" cy="40" r="16" fill="url(#uGradC)" opacity="0.75"/>
                 <path d="M124 98c0-15.5 10.7-28 24-28s24 12.5 24 28" fill="url(#uGradC)" opacity="0.7"/>
-                <circle cx="138" cy="78" r="16" fill="#7c3aed"/>
+                <circle cx="138" cy="78" r="16" fill="#009B80"/>
                 <path d="M130.5 78h15M138 70.5v15" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
                 <defs>
                     <linearGradient id="uGradA" x1="48" y1="20" x2="108" y2="98" gradientUnits="userSpaceOnUse">
-                        <stop stop-color="#c4b5fd"/><stop offset="1" stop-color="#e9d5ff" stop-opacity="0.55"/>
+                        <stop stop-color="#99f6e4"/><stop offset="1" stop-color="#d1fae5" stop-opacity="0.55"/>
                     </linearGradient>
                     <linearGradient id="uGradB" x1="82" y1="10" x2="154" y2="102" gradientUnits="userSpaceOnUse">
-                        <stop stop-color="#a78bfa"/><stop offset="1" stop-color="#ddd6fe" stop-opacity="0.65"/>
+                        <stop stop-color="#5eead4"/><stop offset="1" stop-color="#d1fae5" stop-opacity="0.65"/>
                     </linearGradient>
                     <linearGradient id="uGradC" x1="124" y1="24" x2="172" y2="98" gradientUnits="userSpaceOnUse">
-                        <stop stop-color="#bfdbfe"/><stop offset="1" stop-color="#e0e7ff" stop-opacity="0.5"/>
+                        <stop stop-color="#6ee7b7"/><stop offset="1" stop-color="#ecfdf5" stop-opacity="0.5"/>
                     </linearGradient>
                 </defs>
             </svg>
@@ -567,9 +594,13 @@
             <div class="main-top">
                 <aside class="profile-card">
                     <div class="avatar-wrap">
-                        <div class="avatar-preview {{ $hasAvatar ? 'has-image' : '' }}" id="avatarPreview" @unless($hasAvatar) style="background:#e0e7ff;color:#4338ca;font-weight:800;font-size:1.6rem;border-style:solid;border-color:#fff;" @endunless>
-                            <span id="avatarPlaceholder" class="{{ $hasAvatar ? 'd-none' : '' }}">{{ $editInitials }}</span>
-                            <img src="{{ $avatarUrl }}" alt="Profile preview" id="avatarImage" class="{{ $hasAvatar ? '' : 'd-none' }}">
+                        <div class="avatar-preview {{ $hasAvatar ? 'has-image' : '' }}" id="avatarPreview">
+                            <span class="avatar-placeholder" id="avatarPlaceholder">{{ $editInitials }}</span>
+                            @if($hasAvatar)
+                                <img src="{{ $avatarUrl }}" alt="Profile preview" id="avatarImage" class="avatar-img">
+                            @else
+                                <img id="avatarImage" class="avatar-img" alt="">
+                            @endif
                         </div>
                         <label class="avatar-camera" for="avatar" title="Upload profile picture">
                             <i class="bi bi-camera-fill"></i>
@@ -604,11 +635,12 @@
                             @error('email')<div class="field-error-text">{{ $message }}</div>@enderror
                         </div>
                         <div>
-                            <label for="mobile" class="form-label">Mobile / Phone</label>
+                            <label for="mobile" class="form-label">Mobile / Phone <span class="req">*</span></label>
                             <div class="input-icon">
                                 <i class="bi bi-telephone field-icn"></i>
                                 <input type="text" class="form-control @error('mobile') is-invalid @enderror" id="mobile" name="mobile"
-                                       value="{{ old('mobile', $user->mobile) }}" maxlength="20" placeholder="Enter mobile number" autocomplete="tel">
+                                       value="{{ old('mobile', $user->mobile) }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}"
+                                       placeholder="10-digit mobile" autocomplete="tel" required>
                             </div>
                             @error('mobile')<div class="field-error-text">{{ $message }}</div>@enderror
                         </div>
@@ -676,46 +708,31 @@
             {{-- Full-width Organization Details (spans under profile + details) --}}
             <div class="org-card">
                 <div class="section-kicker">Organization Details</div>
-                <div class="field-grid-4">
+                <div class="field-grid-2">
                     <div>
                         <label for="goal_org_unit_id" class="form-label">Goal Org Unit</label>
                         <div class="input-icon">
                             <i class="bi bi-diagram-3 field-icn"></i>
-                            <select class="uc-dropdown" id="goal_org_unit_id" name="goal_org_unit_id" data-select2-skip="1">
+                            @php
+                                $selectedOrgUnit = old('goal_org_unit_id', $user->goal_org_unit_id ?? ($defaultOrgUnitId ?? null));
+                            @endphp
+                            <select class="uc-dropdown" id="goal_org_unit_id" name="goal_org_unit_id" data-select2-skip="1"
+                                    @if(!empty($orgUnitLocked) && $selectedOrgUnit) disabled @endif>
                                 <option value="">Select Org Unit</option>
                                 @foreach(($goalOrgUnits ?? []) as $unit)
-                                    <option value="{{ $unit->id }}" @selected(old('goal_org_unit_id', $user->goal_org_unit_id)==$unit->id)>{{ $unit->name }} ({{ $unit->type }})</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label for="job_role" class="form-label">Job Role</label>
-                        <div class="input-icon">
-                            <i class="bi bi-briefcase field-icn"></i>
-                            <select class="uc-dropdown" id="job_role" name="job_role" data-select2-skip="1">
-                                <option value="">Auto from CRM Role</option>
-                                @foreach(($jobRoles ?? []) as $jr)
-                                    <option value="{{ $jr }}" @selected(old('job_role', $user->job_role)===$jr)>{{ strtoupper($jr) }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label for="reports_to_user_id" class="form-label">Reports To</label>
-                        <div class="input-icon">
-                            <i class="bi bi-people field-icn"></i>
-                            <select class="uc-dropdown" id="reports_to_user_id" name="reports_to_user_id" data-select2-skip="1">
-                                <option value="">Select Reporting User</option>
-                                @foreach($managers as $manager)
-                                    @php
-                                        $mgrRole = optional($crmRoles->firstWhere('id', (int) $manager->crm_role_type))->name;
-                                    @endphp
-                                    <option value="{{ $manager->id }}" @selected(old('reports_to_user_id', $user->reports_to_user_id)==$manager->id)>
-                                        {{ $manager->name }}{{ $mgrRole ? ' ('.$mgrRole.')' : '' }}
+                                    <option value="{{ $unit->id }}"
+                                            data-type="{{ $unit->type }}"
+                                            @selected((string) $selectedOrgUnit === (string) $unit->id)>
+                                        {{ $unit->name }} ({{ $unit->type }})
                                     </option>
                                 @endforeach
                             </select>
+                            @if(!empty($orgUnitLocked) && $selectedOrgUnit)
+                                <input type="hidden" name="goal_org_unit_id" value="{{ $selectedOrgUnit }}">
+                            @endif
+                        </div>
+                        <div class="form-text text-muted mt-1" id="orgUnitHint" style="font-size:.72rem;">
+                            Org units filter by CRM Role (e.g. BM → branches only).
                         </div>
                     </div>
                     <div>
@@ -797,7 +814,6 @@
     const crmRoleSelect = document.getElementById('crm_role_type');
     const permissionsList = document.getElementById('permissions-list');
     const permissionMessage = document.getElementById('permission-message');
-    const jobRoleSelect = document.getElementById('job_role');
     const statusSwitch = document.getElementById('status');
     const statusLabel = document.getElementById('statusLabel');
     const statusBox = document.getElementById('statusBox');
@@ -811,11 +827,6 @@
         });
     }
     if (!crmRoleSelect || !permissionsList) return;
-
-    const jobRoleMap = {
-        '4': 'md', '5': 'ceo', '6': 'rd', '7': 'cluster', '8': 'bm',
-        '9': 'vrm', '10': 'jsm', '11': 'sm', '12': 'ssm', '13': 'pms', '14': 'accounts'
-    };
 
     let rolePermissions = {};
     let assignedPermissions = [];
@@ -846,39 +857,62 @@
         if (permissionMessage) permissionMessage.classList.toggle('d-none', !!selectedRoleId);
     }
 
-    function syncJobRoleFromCrmRole(force) {
-        if (!jobRoleSelect) return;
-        const mapped = jobRoleMap[String(crmRoleSelect.value)] || '';
-        if (!mapped) return;
-        if (force || !jobRoleSelect.dataset.userOverride) {
-            jobRoleSelect.value = mapped;
-            jobRoleSelect.dispatchEvent(new Event('change', { bubbles: true }));
-            if (typeof jobRoleSelect._ucRefresh === 'function') jobRoleSelect._ucRefresh();
-        }
-    }
-
     function syncAssignManager() {
         if (!assignManagerContainer) return;
         assignManagerContainer.style.display = parseInt(crmRoleSelect.value, 10) === 3 ? 'block' : 'none';
     }
 
+    const orgUnitSelect = document.getElementById('goal_org_unit_id');
+    const orgUnitTypesByRole = @json($orgUnitTypesByRole ?? []);
+    const orgUnitHint = document.getElementById('orgUnitHint');
+
+    function filterOrgUnitsByRole() {
+        if (!orgUnitSelect) return;
+        const roleId = String(crmRoleSelect.value || '');
+        const allowedTypes = orgUnitTypesByRole[roleId] || null;
+        const prev = orgUnitSelect.value;
+        let keep = false;
+
+        Array.prototype.forEach.call(orgUnitSelect.options, function (opt) {
+            if (!opt.value) {
+                opt.hidden = false;
+                return;
+            }
+            const type = opt.getAttribute('data-type') || '';
+            const ok = !allowedTypes || allowedTypes.indexOf(type) !== -1;
+            opt.hidden = !ok;
+            if (ok && String(opt.value) === String(prev)) keep = true;
+        });
+
+        if (!keep) {
+            orgUnitSelect.value = '';
+        }
+
+        if (typeof orgUnitSelect._ucRefresh === 'function') {
+            orgUnitSelect._ucRefresh();
+        }
+
+        if (orgUnitHint) {
+            if (!roleId) {
+                orgUnitHint.textContent = 'Select a CRM Role to see matching org units.';
+            } else if (allowedTypes && allowedTypes.length === 1) {
+                orgUnitHint.textContent = 'Showing ' + allowedTypes[0] + ' units for this role.';
+            } else if (allowedTypes) {
+                orgUnitHint.textContent = 'Showing: ' + allowedTypes.join(', ') + '.';
+            }
+        }
+    }
+
     crmRoleSelect.addEventListener('change', function () {
-        if (jobRoleSelect) delete jobRoleSelect.dataset.userOverride;
-        syncJobRoleFromCrmRole(true);
         if (String(crmRoleSelect.value) === String(originalRoleId)) {
             setCheckedPermissions(assignedPermissions);
         } else {
             applyRoleDefaults();
         }
         syncAssignManager();
+        filterOrgUnitsByRole();
     });
-
-    if (jobRoleSelect) {
-        if (jobRoleSelect.value) jobRoleSelect.dataset.userOverride = '1';
-        jobRoleSelect.addEventListener('change', function () {
-            jobRoleSelect.dataset.userOverride = '1';
-        });
-    }
+    filterOrgUnitsByRole();
 
     const statusValue = document.getElementById('statusValue');
     if (statusSwitch && statusLabel && statusValue) {
@@ -959,6 +993,7 @@
         function rebuildOptions() {
             menu.innerHTML = '';
             Array.prototype.forEach.call(sel.options, function (opt) {
+                if (opt.hidden) return;
                 const item = document.createElement('button');
                 item.type = 'button';
                 item.className = 'uc-dd-option' + (!opt.value ? ' is-placeholder-opt' : '');
@@ -1015,20 +1050,17 @@
     avatarInput?.addEventListener('change', function () {
         const file = avatarInput.files && avatarInput.files[0];
         if (!file || !avatarImage) return;
-        avatarImage.src = URL.createObjectURL(file);
-        avatarImage.classList.remove('d-none');
-        avatarPlaceholder?.classList.add('d-none');
-        avatarPreview?.classList.add('has-image');
-        if (avatarPreview) {
-            avatarPreview.style.background = '';
-            avatarPreview.style.color = '';
-            avatarPreview.style.fontWeight = '';
-            avatarPreview.style.fontSize = '';
+        if (avatarImage.dataset.objectUrl) {
+            URL.revokeObjectURL(avatarImage.dataset.objectUrl);
         }
+        const objectUrl = URL.createObjectURL(file);
+        avatarImage.dataset.objectUrl = objectUrl;
+        avatarImage.src = objectUrl;
+        avatarImage.alt = 'Profile preview';
+        avatarPreview?.classList.add('has-image');
     });
 
     if (crmRoleSelect.value) {
-        if (jobRoleSelect && !jobRoleSelect.value) syncJobRoleFromCrmRole(true);
         if (permissionMessage) permissionMessage.classList.add('d-none');
     }
     syncAssignManager();
@@ -1037,7 +1069,7 @@
         if (typeof showFlashSwal === 'function') {
             showFlashSwal('error', @json($errors->first()));
         } else if (window.Swal) {
-            Swal.fire({ icon: 'error', title: 'Error', text: @json($errors->first()), confirmButtonColor: '#7c3aed' });
+            Swal.fire({ icon: 'error', title: 'Error', text: @json($errors->first()), confirmButtonColor: '#009B80' });
         }
     @endif
 })();

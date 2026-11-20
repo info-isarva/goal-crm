@@ -23,17 +23,7 @@ class RoleController extends Controller
          if (!auth()->user()->hasCrmPermission('create_crm_role_guard')) {
             abort(403, 'Unauthorized action.');
         }
-        $company = \App\Models\Company::current();
-        $permissions = Permission::with('parentPermission')->orderBy('name')->get();
-        if (!$company->isWebFormsEnabled()) {
-            $permissions = $permissions->reject(fn ($p) => Permission::isWebFormsGuard($p->guard_name));
-        }
-        if (!$company->isSocialAdsEnabled()) {
-            $permissions = $permissions->reject(fn ($p) => Permission::isSocialAdsGuard($p->guard_name));
-        }
-        $groupedPermissions = $permissions->groupBy(function($item) {
-            return $item->parentPermission ? $item->parentPermission->name : 'Other';
-        });
+        $groupedPermissions = $this->groupedAssignablePermissions();
         return view('roles.create', compact('groupedPermissions'));
     }
 
@@ -86,17 +76,7 @@ class RoleController extends Controller
             abort(403, 'Unauthorized action.');
         }
         $role = Role::findOrFail($id);
-        $company = \App\Models\Company::current();
-        $permissions = Permission::with('parentPermission')->orderBy('name')->get();
-        if (!$company->isWebFormsEnabled()) {
-            $permissions = $permissions->reject(fn ($p) => Permission::isWebFormsGuard($p->guard_name));
-        }
-        if (!$company->isSocialAdsEnabled()) {
-            $permissions = $permissions->reject(fn ($p) => Permission::isSocialAdsGuard($p->guard_name));
-        }
-        $groupedPermissions = $permissions->groupBy(function($item) {
-            return $item->parentPermission ? $item->parentPermission->name : 'Other';
-        });
+        $groupedPermissions = $this->groupedAssignablePermissions();
         $rolePermissions = DB::table('role_has_permission')->where('role_id', $role->id)->pluck('permission_id')->toArray();
         return view('roles.edit', compact('role', 'groupedPermissions', 'rolePermissions'));
     }
@@ -155,5 +135,32 @@ class RoleController extends Controller
         DB::table('role_has_permission')->where('role_id', $role->id)->delete();
         $role->delete();
         return redirect()->route('roles.index')->with('success', 'Role deleted successfully!');
+    }
+
+    /**
+     * Permissions shown on role create/edit, scoped to Goal vs classic CRM.
+     */
+    protected function groupedAssignablePermissions()
+    {
+        $company = \App\Models\Company::current();
+        $isGoal = \App\Services\Goal\GoalDashboardService::userUsesGoalDashboard(auth()->user());
+        $permissions = Permission::with('parentPermission')->orderBy('name')->get();
+
+        $permissions = $permissions->filter(function ($p) use ($isGoal) {
+            return $isGoal
+                ? Permission::isGoalGuard((string) $p->guard_name)
+                : ! Permission::isGoalGuard((string) $p->guard_name);
+        });
+
+        if (! $company->isWebFormsEnabled()) {
+            $permissions = $permissions->reject(fn ($p) => Permission::isWebFormsGuard($p->guard_name));
+        }
+        if (! $company->isSocialAdsEnabled()) {
+            $permissions = $permissions->reject(fn ($p) => Permission::isSocialAdsGuard($p->guard_name));
+        }
+
+        return $permissions->groupBy(function ($item) {
+            return $item->parentPermission ? $item->parentPermission->name : 'Other';
+        });
     }
 }

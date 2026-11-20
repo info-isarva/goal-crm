@@ -108,6 +108,8 @@
 .pd-page .pd-pill.bad{background:#fee2e2;color:#b91c1c}
 .pd-page .pd-pill.info{background:var(--theme-100);color:var(--theme-primary-hover)}
 .pd-page .pd-pill.slate{background:#e2e8f0;color:#334155}
+.pd-page .pd-pill.eligible{background:#dcfce7;color:#15803d}
+.pd-page .pd-pill.processing{background:#dbeafe;color:#1d4ed8}
 
 .pd-page .pd-action-form{
     display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0;

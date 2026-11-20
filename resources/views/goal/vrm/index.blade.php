@@ -1086,8 +1086,8 @@
                 <select name="disposition" id="disposition_filter" class="form-select js-select2"
                         data-placeholder="All dispositions" data-allow-clear="true">
                     <option value="">All</option>
-                    @foreach(['Interested','Not Interested','No Answer','Busy','Callback','Invalid Number'] as $d)
-                        <option value="{{ $d }}" @selected($dispositionValue===$d)>{{ $d }}</option>
+                    @foreach(($dispositions ?? []) as $d)
+                        <option value="{{ $d->name }}" @selected($dispositionValue===$d->name)>{{ $d->name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -1408,12 +1408,13 @@
                                 <div class="field-error {{ $errors->has('customer_name') ? 'show' : '' }}" data-error-for="customer_name">{{ $errors->first('customer_name') }}</div>
                             </div>
                             <div class="field {{ $errors->has('mobile') ? 'is-invalid' : '' }}">
-                                <label class="form-label" for="mobile">Mobile</label>
+                                <label class="form-label" for="mobile">Mobile <span class="req">*</span></label>
                                 <div class="input-icon">
                                     <i class="bi bi-telephone"></i>
                                     <input type="text" name="mobile" id="mobile"
                                            class="form-control {{ $errors->has('mobile') ? 'is-invalid' : '' }}"
-                                           placeholder="Enter mobile number" value="{{ old('mobile') }}">
+                                           placeholder="10-digit mobile" value="{{ old('mobile') }}"
+                                           maxlength="10" inputmode="numeric" pattern="[0-9]{10}" required>
                                 </div>
                                 <div class="field-error {{ $errors->has('mobile') ? 'show' : '' }}" data-error-for="mobile">{{ $errors->first('mobile') }}</div>
                             </div>
@@ -1425,14 +1426,24 @@
                         <div class="field-grid">
                             <div class="field {{ $errors->has('disposition') ? 'is-invalid' : '' }}">
                                 <label class="form-label" for="disposition">Disposition <span class="req">*</span></label>
-                                <select name="disposition" id="disposition"
-                                        class="form-select js-select2 {{ $errors->has('disposition') ? 'is-invalid' : '' }}"
-                                        data-placeholder="Select disposition" required
-                                        data-required-message="Please select disposition.">
-                                    @foreach(['Interested','Not Interested','No Answer','Busy','Callback','Invalid Number'] as $d)
-                                        <option value="{{ $d }}" @selected(old('disposition', 'Interested') === $d)>{{ $d }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="goal-disposition-with-add product-with-add">
+                                    <select name="disposition" id="disposition"
+                                            class="form-select js-select2 {{ $errors->has('disposition') ? 'is-invalid' : '' }}"
+                                            data-placeholder="Select disposition" required
+                                            data-required-message="Please select disposition.">
+                                        @foreach(($dispositions ?? []) as $d)
+                                            <option value="{{ $d->name }}"
+                                                    data-creates-lead="{{ $d->creates_lead ? '1' : '0' }}"
+                                                    data-maps-to-lead-type="{{ $d->maps_to_lead_type }}"
+                                                    @selected(old('disposition', 'Interested') === $d->name)>{{ $d->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn-quick-add-disposition" data-bs-toggle="modal"
+                                            data-bs-target="#quickAddDispositionModal" data-disposition-select="#disposition"
+                                            title="Quick add disposition" aria-label="Quick add disposition">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                </div>
                                 <div class="field-error {{ $errors->has('disposition') ? 'show' : '' }}" data-error-for="disposition">{{ $errors->first('disposition') }}</div>
                             </div>
                             <div class="field {{ $errors->has('callback_at') ? 'is-invalid' : '' }}">
@@ -1464,7 +1475,7 @@
                             <div class="field check-align">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" name="create_lead" value="1" id="create_lead" @checked(old('create_lead'))>
-                                    <label class="form-check-label" for="create_lead">Create lead if Interested/Callback</label>
+                                    <label class="form-check-label" for="create_lead" id="create_lead_label">Create lead when disposition allows</label>
                                 </div>
                             </div>
                         </div>
@@ -1473,20 +1484,6 @@
                     <div class="form-section">
                         <div class="section-bar"><i class="bi bi-bullseye"></i> Lead Information</div>
                         <div class="field-grid">
-                            <div class="field {{ $errors->has('lead_type') ? 'is-invalid' : '' }}">
-                                <label class="form-label" for="lead_type">Lead Type <span class="req">*</span></label>
-                                <div class="input-icon">
-                                    <i class="bi bi-layers"></i>
-                                    <select name="lead_type" id="lead_type"
-                                            class="form-select js-select2 {{ $errors->has('lead_type') ? 'is-invalid' : '' }}"
-                                            data-placeholder="Select lead type" required
-                                            data-required-message="Please select lead type.">
-                                        <option value="immediate" @selected(old('lead_type', 'immediate')==='immediate')>Immediate</option>
-                                        <option value="future" @selected(old('lead_type')==='future')>Future</option>
-                                    </select>
-                                </div>
-                                <div class="field-error {{ $errors->has('lead_type') ? 'show' : '' }}" data-error-for="lead_type">{{ $errors->first('lead_type') }}</div>
-                            </div>
                             <div class="field {{ $errors->has('product') ? 'is-invalid' : '' }}">
                                 <label class="form-label" for="product">Product</label>
                                 <div class="product-with-add">
@@ -1586,6 +1583,20 @@
 
 @include('goal.vrm.partials.call-detail-modal')
 @include('goal.vrm.partials.call-edit-modal')
+@include('goal.partials.quick-add-disposition')
+@php
+    $dispositionMeta = collect($dispositions ?? [])->mapWithKeys(function ($d) {
+        return [
+            $d->name => [
+                'creates_lead' => (bool) $d->creates_lead,
+                'maps_to_lead_type' => $d->maps_to_lead_type,
+            ],
+        ];
+    });
+@endphp
+<script>
+window.__vrmDispositionMeta = @json($dispositionMeta);
+</script>
 @endsection
 
 @push('scripts')
@@ -1751,9 +1762,10 @@
         form.reset();
         clearAllErrors();
         const disp = document.getElementById('disposition');
-        if (disp) disp.value = 'Interested';
-        const leadType = document.getElementById('lead_type');
-        if (leadType) leadType.value = 'immediate';
+        if (disp) {
+            const preferred = Array.from(disp.options).find(function (o) { return o.value === 'Interested'; });
+            disp.value = preferred ? 'Interested' : (disp.options[0]?.value || '');
+        }
         const createLead = document.getElementById('create_lead');
         if (createLead) createLead.checked = false;
         form.querySelectorAll('input.js-datepicker, input.js-datetimepicker').forEach(function (el) {
@@ -1786,6 +1798,33 @@
 
     document.getElementById('btnClearForm')?.addEventListener('click', resetFormDefaults);
 
+    function syncCreateLeadAvailability() {
+        const disp = document.getElementById('disposition');
+        const createLead = document.getElementById('create_lead');
+        const label = document.getElementById('create_lead_label');
+        if (!disp || !createLead) return;
+        const name = disp.value || '';
+        const meta = (window.__vrmDispositionMeta || {})[name];
+        const opt = disp.selectedOptions && disp.selectedOptions[0];
+        const allows = meta
+            ? !!meta.creates_lead
+            : (opt && opt.dataset.createsLead === '1');
+        createLead.disabled = !allows;
+        if (!allows) createLead.checked = false;
+        if (label) {
+            label.textContent = allows
+                ? 'Create lead from this disposition'
+                : 'Create lead (not available for this disposition)';
+        }
+    }
+
+    document.getElementById('disposition')?.addEventListener('change', syncCreateLeadAvailability);
+    if (window.jQuery) {
+        window.jQuery('#disposition').on('select2:select select2:clear change', syncCreateLeadAvailability);
+    }
+    modalEl.addEventListener('shown.bs.modal', syncCreateLeadAvailability);
+    syncCreateLeadAvailability();
+
     @if($openModal)
         modal.show();
     @endif
@@ -1793,6 +1832,7 @@
     @if(session('reopen_log_call'))
         modalEl.addEventListener('shown.bs.modal', function once() {
             resetFormDefaults();
+            syncCreateLeadAvailability();
             modalEl.removeEventListener('shown.bs.modal', once);
         });
     @endif

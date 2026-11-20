@@ -87,7 +87,7 @@
                         <label class="cw-label-inline">Mobile Number <span class="text-red-500">*</span></label>
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
-                            <input class="cw-input js-mobile" name="customer_details[applicant][mobile]" value="{{ $app['mobile'] ?? $case->mobile }}" maxlength="10" inputmode="numeric" placeholder="10-digit mobile" {{ $ro }}>
+                            <input class="cw-input js-mobile" name="customer_details[applicant][mobile]" value="{{ $app['mobile'] ?? $case->mobile }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
                         </div>
                     </div>
                     <div class="cw-field-row">
@@ -149,7 +149,7 @@
                         <label class="cw-label-inline">Mobile Number</label>
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
-                            <input class="cw-input js-mobile" name="customer_details[co_applicant][mobile]" value="{{ $co['mobile'] ?? '' }}" maxlength="10" inputmode="numeric" placeholder="10-digit mobile" {{ $ro }}>
+                            <input class="cw-input js-mobile" name="customer_details[co_applicant][mobile]" value="{{ $co['mobile'] ?? '' }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
                         </div>
                     </div>
                     <div class="cw-field-row">
@@ -404,7 +404,7 @@
                             <label class="cw-label-inline">Mobile Number</label>
                             <div class="cw-input-group">
                                 <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
-                                <input class="cw-input js-mobile" name="customer_details[references][ref1_mobile]" value="{{ $refs['ref1_mobile'] ?? '' }}" maxlength="10" placeholder="Enter mobile number" {{ $ro }}>
+                                <input class="cw-input js-mobile" name="customer_details[references][ref1_mobile]" value="{{ $refs['ref1_mobile'] ?? '' }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
                             </div>
                         </div>
                         <div class="cw-field-row">
@@ -427,7 +427,7 @@
                             <label class="cw-label-inline">Mobile Number</label>
                             <div class="cw-input-group">
                                 <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
-                                <input class="cw-input js-mobile" name="customer_details[references][ref2_mobile]" value="{{ $refs['ref2_mobile'] ?? '' }}" maxlength="10" placeholder="Enter mobile number" {{ $ro }}>
+                                <input class="cw-input js-mobile" name="customer_details[references][ref2_mobile]" value="{{ $refs['ref2_mobile'] ?? '' }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
                             </div>
                         </div>
                         <div class="cw-field-row">

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Goal\GoalAccountsController;
 use App\Http\Controllers\Goal\GoalAllocationController;
 use App\Http\Controllers\Goal\GoalAnalyticsController;
+use App\Http\Controllers\Goal\GoalScheduledReportController;
 use App\Http\Controllers\Goal\GoalCaseWorkspaceController;
 use App\Http\Controllers\Goal\GoalBankProcessingController;
 use App\Http\Controllers\Goal\GoalDocumentsController;
@@ -10,16 +11,30 @@ use App\Http\Controllers\Goal\GoalSanctionDisbursementController;
 use App\Http\Controllers\Goal\GoalLoanCaseController;
 use App\Http\Controllers\Goal\GoalLoanLeadController;
 use App\Http\Controllers\Goal\GoalMisController;
+use App\Http\Controllers\Goal\GoalMisReportController;
 use App\Http\Controllers\Goal\GoalOrgUnitController;
 use App\Http\Controllers\Goal\GoalPayoutController;
 use App\Http\Controllers\Goal\GoalPmsController;
 use App\Http\Controllers\Goal\GoalTargetController;
 use App\Http\Controllers\Goal\GoalVisitsController;
 use App\Http\Controllers\Goal\GoalVrmController;
+use App\Http\Controllers\Goal\GoalVrmDispositionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('goal')->name('goal.')->group(function () {
     Route::get('analytics', [GoalAnalyticsController::class, 'index'])->name('analytics');
+    Route::get('analytics/export', [GoalAnalyticsController::class, 'export'])->name('analytics.export');
+    Route::get('mis-reports', [GoalAnalyticsController::class, 'misReports'])->name('mis-reports');
+    Route::get('mis-reports/{report}', [GoalMisReportController::class, 'show'])->name('mis-reports.show');
+    Route::get('mis-reports/{report}/export', [GoalMisReportController::class, 'export'])->name('mis-reports.export');
+
+    Route::get('scheduled-reports', [GoalScheduledReportController::class, 'index'])->name('scheduled-reports.index');
+    Route::post('scheduled-reports', [GoalScheduledReportController::class, 'store'])->name('scheduled-reports.store');
+    Route::put('scheduled-reports/{scheduled_report}', [GoalScheduledReportController::class, 'update'])->name('scheduled-reports.update');
+    Route::post('scheduled-reports/{scheduled_report}/pause', [GoalScheduledReportController::class, 'pause'])->name('scheduled-reports.pause');
+    Route::post('scheduled-reports/{scheduled_report}/resume', [GoalScheduledReportController::class, 'resume'])->name('scheduled-reports.resume');
+    Route::post('scheduled-reports/{scheduled_report}/run', [GoalScheduledReportController::class, 'runNow'])->name('scheduled-reports.run');
+    Route::delete('scheduled-reports/{scheduled_report}', [GoalScheduledReportController::class, 'destroy'])->name('scheduled-reports.destroy');
 
     Route::get('org-units', [GoalOrgUnitController::class, 'index'])->name('org-units.index');
     Route::get('org-units/export', [GoalOrgUnitController::class, 'export'])->name('org-units.export');
@@ -31,6 +46,12 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::get('vrm', [GoalVrmController::class, 'index'])->name('vrm.index');
     Route::post('vrm', [GoalVrmController::class, 'store'])->name('vrm.store');
     Route::post('vrm/products/quick', [GoalVrmController::class, 'storeQuickProduct'])->name('vrm.products.quick');
+    Route::post('vrm/dispositions/quick', [GoalVrmController::class, 'storeQuickDisposition'])->name('vrm.dispositions.quick');
+    Route::put('vrm/dispositions/{disposition}', [GoalVrmController::class, 'updateDisposition'])->name('vrm.dispositions.update');
+
+    Route::get('masters/dispositions', [GoalVrmDispositionController::class, 'index'])->name('masters.dispositions.index');
+    Route::post('masters/dispositions', [GoalVrmDispositionController::class, 'store'])->name('masters.dispositions.store');
+    Route::put('masters/dispositions/{disposition}', [GoalVrmDispositionController::class, 'update'])->name('masters.dispositions.update');
     Route::get('vrm/calls', [GoalVrmController::class, 'calls'])->name('vrm.calls');
     Route::get('vrm/calls/export', [GoalVrmController::class, 'exportCalls'])->name('vrm.calls.export');
     Route::get('vrm/calls/import', [GoalVrmController::class, 'importForm'])->name('vrm.calls.import');
@@ -106,17 +127,29 @@ Route::prefix('goal')->name('goal.')->group(function () {
 
     Route::get('pms', [GoalPmsController::class, 'index'])->name('pms.index');
     Route::get('pms/export', [GoalPmsController::class, 'export'])->name('pms.export');
+    Route::get('pms/{item}', [GoalPmsController::class, 'show'])->name('pms.show');
+    Route::post('pms/{item}/start', [GoalPmsController::class, 'start'])->name('pms.start');
     Route::post('pms/{item}/verify', [GoalPmsController::class, 'verify'])->name('pms.verify');
+    Route::post('pms/{item}/reassign', [GoalPmsController::class, 'reassign'])->name('pms.reassign');
+    Route::post('pms/{item}/followups', [GoalPmsController::class, 'storeFollowup'])->name('pms.followups.store');
+    Route::post('pms/followups/{followup}/complete', [GoalPmsController::class, 'completeFollowup'])->name('pms.followups.complete');
+    Route::post('pms/followups/{followup}/cancel', [GoalPmsController::class, 'cancelFollowup'])->name('pms.followups.cancel');
+    Route::post('pms/followups/{followup}/reschedule', [GoalPmsController::class, 'rescheduleFollowup'])->name('pms.followups.reschedule');
 
     Route::get('accounts', [GoalAccountsController::class, 'index'])->name('accounts.index');
     Route::get('accounts/export', [GoalAccountsController::class, 'export'])->name('accounts.export');
+    Route::get('accounts/{item}', [GoalAccountsController::class, 'show'])->name('accounts.show');
     Route::post('accounts/{item}/report', [GoalAccountsController::class, 'updateReport'])->name('accounts.report');
+    Route::post('accounts/{item}/submit', [GoalAccountsController::class, 'submit'])->name('accounts.submit');
     Route::post('accounts/{item}/approve', [GoalAccountsController::class, 'approve'])->name('accounts.approve');
+    Route::post('accounts/{item}/receipts', [GoalAccountsController::class, 'storeReceipt'])->name('accounts.receipts.store');
 
     Route::get('payouts', [GoalPayoutController::class, 'index'])->name('payouts.index');
     Route::get('payouts/export', [GoalPayoutController::class, 'export'])->name('payouts.export');
+    Route::get('payouts/{payout}', [GoalPayoutController::class, 'show'])->name('payouts.show');
     Route::post('payouts/{payout}/receipt', [GoalPayoutController::class, 'recordReceipt'])->name('payouts.receipt');
     Route::post('payouts/{payout}/exception', [GoalPayoutController::class, 'markException'])->name('payouts.exception');
+    Route::post('payouts/{payout}/release-hold', [GoalPayoutController::class, 'releaseHold'])->name('payouts.release-hold');
 
     Route::get('targets', [GoalTargetController::class, 'index'])->name('targets.index');
     Route::get('targets/export', [GoalTargetController::class, 'export'])->name('targets.export');

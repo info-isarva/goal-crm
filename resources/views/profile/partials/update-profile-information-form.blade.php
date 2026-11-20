@@ -43,8 +43,8 @@
             @error('address')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
         </div>
         <div class="mb-3">
-            <label for="mobile" class="form-label">Mobile</label>
-            <input id="mobile" name="mobile" type="text" class="form-control" value="{{ old('mobile', optional($user->userDetail)->mobile) }}" autocomplete="mobile">
+            <label for="mobile" class="form-label">Mobile <span class="text-danger">*</span></label>
+            <input id="mobile" name="mobile" type="text" class="form-control" value="{{ old('mobile', optional($user->userDetail)->mobile) }}" autocomplete="mobile" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" required>
             @error('mobile')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
         </div>
         <div class="mb-3">

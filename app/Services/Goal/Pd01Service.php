@@ -7,10 +7,12 @@ use App\Models\GoalDisbursement;
 use App\Models\GoalLoanCase;
 use App\Models\GoalOrgUnit;
 use App\Models\GoalPayout;
+use App\Models\GoalPmsActivityLog;
 use App\Models\GoalPmsItem;
 use App\Models\GoalRevenueEntry;
 use App\Models\GoalTarget;
 use App\Models\User;
+use App\Services\Goal\GoalPayoutReceiptService;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -105,12 +107,16 @@ class Pd01Service
                 ]);
             }
 
-            if (! $disbursement->pmsItem) {
-                GoalPmsItem::create([
+            $pmsCreated = false;
+            $pmsItem = $disbursement->pmsItem;
+            if (! $pmsItem) {
+                $pmsItem = GoalPmsItem::create([
                     'goal_loan_case_id' => $case->id,
                     'goal_disbursement_id' => $disbursement->id,
-                    'status' => 'Pending',
+                    'status' => 'Pending Verification',
+                    'assigned_to' => $this->defaultPmsAssigneeId($case),
                 ]);
+                $pmsCreated = true;
             }
 
             if (! $disbursement->accountsItem) {
@@ -121,23 +127,31 @@ class Pd01Service
                 ]);
             }
 
-            if (! $disbursement->payout) {
-                GoalPayout::create([
-                    'goal_loan_case_id' => $case->id,
-                    'goal_disbursement_id' => $disbursement->id,
-                    'expected_amount' => round(((float) $disbursement->amount) * $payoutRate, 2),
-                    'received_amount' => 0,
-                    'status' => 'On Hold',
-                    'reconciliation_status' => 'Pending',
-                ]);
-            }
-
             if ($case->status === 'Sanctioned') {
                 $case->status = 'Disbursed';
             }
             // Keep Branch MIS disb + commercial amounts in sync with verified PD-01.
             $case->branch_mis = (new GoalBranchMisService)->apply($case, is_array($case->branch_mis) ? $case->branch_mis : []);
             $case->save();
+
+            if (! $disbursement->payout) {
+                $expectedPayout = GoalPayoutReceiptService::expectedFromCase(
+                    (float) $disbursement->amount,
+                    is_array($case->branch_mis) ? $case->branch_mis : []
+                );
+                // Fallback keeps prior rate behaviour if MIS has no payout_amount.
+                if ($expectedPayout <= 0) {
+                    $expectedPayout = round(((float) $disbursement->amount) * $payoutRate, 2);
+                }
+                GoalPayout::create([
+                    'goal_loan_case_id' => $case->id,
+                    'goal_disbursement_id' => $disbursement->id,
+                    'expected_amount' => $expectedPayout,
+                    'received_amount' => 0,
+                    'status' => 'On Hold',
+                    'reconciliation_status' => 'Pending',
+                ]);
+            }
 
             $this->syncTargetActuals(
                 $case,
@@ -152,8 +166,55 @@ class Pd01Service
                 'related_id' => $disbursement->id,
             ]);
 
+            if ($pmsCreated && $pmsItem) {
+                GoalPmsActivityLog::create([
+                    'goal_pms_item_id' => $pmsItem->id,
+                    'goal_loan_case_id' => $case->id,
+                    'user_id' => $actor->id,
+                    'activity_type' => 'queue_created',
+                    'description' => 'PMS Queue created from verified disbursement (PD-01)',
+                    'new_value' => 'Pending Verification',
+                    'ip_address' => request()?->ip(),
+                    'created_at' => now(),
+                ]);
+
+                if ($pmsItem->assigned_to) {
+                    GoalNotify::send(
+                        User::find($pmsItem->assigned_to),
+                        'New PMS Queue assignment',
+                        ($case->case_no ?: 'Case').' awaiting PMS verification',
+                        route('goal.pms.show', $pmsItem),
+                        'pms-created-'.$pmsItem->id,
+                        'pd01',
+                        $case->case_no
+                    );
+                }
+            }
+
             return $disbursement->fresh();
         });
+    }
+
+    /**
+     * Prefer an active PMS role user in the same org tree; otherwise leave unassigned.
+     */
+    protected function defaultPmsAssigneeId(GoalLoanCase $case): ?int
+    {
+        $query = User::query()
+            ->where('crm_role_type', 13)
+            ->where('status', 1);
+
+        if ($case->goal_org_unit_id) {
+            $org = GoalOrgUnit::find((int) $case->goal_org_unit_id);
+            $orgIds = $org ? $org->descendantIds() : [(int) $case->goal_org_unit_id];
+            if ($orgIds !== []) {
+                $query->whereIn('goal_org_unit_id', $orgIds);
+            }
+        }
+
+        $id = $query->orderBy('id')->value('id');
+
+        return $id ? (int) $id : null;
     }
 
     /**
@@ -176,7 +237,10 @@ class Pd01Service
             }
             $pmsOk = GoalPmsItem::query()
                 ->where('goal_disbursement_id', $payout->goal_disbursement_id)
-                ->where('status', 'Verified')
+                ->where(function ($q) {
+                    $q->where('status', 'Verified')
+                        ->orWhereNotNull('verified_at');
+                })
                 ->exists();
             // Accounts must enter report AND approve before payout leaves On Hold.
             $accountsOk = GoalAccountsItem::query()

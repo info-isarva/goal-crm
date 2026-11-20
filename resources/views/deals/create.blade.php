@@ -347,7 +347,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="person_phone" class="form-label">Mobile <span class="text-danger">*</span></label>
-                            <input type="text" placeholder="+91 9457834901" class="form-control" id="person_mobile" name="person_phone" >
+                            <input type="text" placeholder="10-digit mobile" class="form-control" id="person_mobile" name="person_phone" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" required>
                             <div id="person_phone_error" class="text-danger small mt-1" style="display:none;"></div>
                         </div>
                         <div class="mb-3">
@@ -1380,7 +1380,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var selectedOpt = createStage.options[createStage.selectedIndex];
                     var prob = selectedOpt ? selectedOpt.getAttribute('data-probability') : null;
                     if (prob !== null && prob !== '') {
-                        // only update if not manually edited by user recently – but for now set value
+                        // only update if not manually edited by user recently ? but for now set value
                         probabilityInput.value = prob;
                     }
                 }

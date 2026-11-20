@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Person;
+use App\Support\PhoneNumber;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\PeopleExport;
 
@@ -257,19 +258,8 @@ class PersonController extends Controller
                 'unique:people,email',
                 'regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/',
             ],
-            'phone' => [
-                'nullable',
-                'string',
-                'max:20',
-                'regex:/^\+?[0-9\-\s]{10,20}$/',
-            ],
-            'mobile' => [
-                'required',
-                'string',
-                'max:20',
-                'regex:/^\+?[0-9\-\s]{10,20}$/',
-                'unique:people,mobile',
-            ],
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9\-\s]{7,20}$/'],
+            'mobile' => array_merge(PhoneNumber::mobileRules(true), ['unique:people,mobile']),
             'job_title' => 'nullable|string|max:255',
             'lead_source' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:255',
@@ -277,13 +267,13 @@ class PersonController extends Controller
             'owner_id' => 'required|integer|exists:users,id',
             'organization_ids' => 'nullable|array',
             'organization_ids.*' => 'integer|exists:organizations,id',
-        ], [
+        ], array_merge([
             'first_name.regex' => 'First name must be a single word.',
             'last_name.regex' => 'Last name may only contain letters, spaces, dots, apostrophes, and hyphens.',
             'email.regex' => 'Please enter a valid email address.',
-            'phone.regex' => 'Please enter a valid phone number.',
-            'mobile.regex' => 'Please enter a valid mobile number.',
-        ]);
+            'mobile.unique' => 'This mobile number is already used by another contact.',
+            'phone.regex' => 'Please enter a valid landline number.',
+        ], PhoneNumber::messages('mobile')));
         $orgIds = array_values(array_unique(array_map('intval', $validated['organization_ids'] ?? [])));
         unset($validated['organization_ids'], $validated['owner_id']);
         $person = Person::create($validated + [
@@ -310,10 +300,12 @@ class PersonController extends Controller
             $validated = $request->validate([
                 'first_name' => 'required|string|max:255|regex:/^\w+$/',
                 'last_name' => 'nullable|string|max:255|regex:/^[A-Za-z .\'-]*$/',
-                'mobile' => ['required', 'string', 'max:20', 'regex:/^\+?[0-9\-\s]{10,20}$/', 'unique:people,mobile'],
+                'mobile' => array_merge(PhoneNumber::mobileRules(true), ['unique:people,mobile']),
                 'email' => 'nullable|email|max:255|unique:people,email',
                 'organization_id' => 'required|integer|exists:organizations,id',
-            ]);
+            ], array_merge(PhoneNumber::messages('mobile'), [
+                'mobile.unique' => 'This mobile number is already used by another contact.',
+            ]));
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
         }
@@ -613,19 +605,8 @@ class PersonController extends Controller
                 'unique:people,email,' . $id,
                 'regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/',
             ],
-            'phone' => [
-                'nullable',
-                'string',
-                'max:20',
-                'regex:/^\+?[0-9\-\s]{10,20}$/',
-            ],
-            'mobile' => [
-                'required',
-                'string',
-                'max:20',
-                'regex:/^\+?[0-9\-\s]{10,20}$/',
-                'unique:people,mobile,' . $id,
-            ],
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9\-\s]{7,20}$/'],
+            'mobile' => array_merge(PhoneNumber::mobileRules(true), ['unique:people,mobile,'.$id]),
             'job_title' => 'nullable|string|max:255',
             'lead_source' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:255',
@@ -633,13 +614,13 @@ class PersonController extends Controller
             'owner_id' => 'required|integer|exists:users,id',
             'organization_ids' => 'nullable|array',
             'organization_ids.*' => 'integer|exists:organizations,id',
-        ], [
+        ], array_merge([
             'first_name.regex' => 'First name may only contain letters, spaces, dots, apostrophes, and hyphens.',
             'last_name.regex' => 'Last name may only contain letters, spaces, dots, apostrophes, and hyphens.',
             'email.regex' => 'Please enter a valid email address.',
-            'phone.regex' => 'Please enter a valid phone number.',
-            'mobile.regex' => 'Please enter a valid mobile number.',
-        ]);
+            'mobile.unique' => 'This mobile number is already used by another contact.',
+            'phone.regex' => 'Please enter a valid landline number.',
+        ], PhoneNumber::messages('mobile')));
         $person = \App\Models\Person::findOrFail($id);
         $orgIds = array_values(array_unique(array_map('intval', $validated['organization_ids'] ?? [])));
         $person->update([
@@ -685,9 +666,6 @@ class PersonController extends Controller
                 'person_email.max' => 'Email may not exceed 255 characters.',
                 'person_email.regex' => 'Please enter a valid email address.',
 
-                'person_phone.required' => 'Please enter a mobile number for the contact.',
-                'person_phone.regex' => 'Please enter a valid mobile number.',
-                'person_phone.max' => 'Mobile number may not exceed 20 characters.',
                 'person_phone.unique' => 'This mobile number is already used by another contact.',
                 'person_designation.max' => 'Designation may not exceed 100 characters.',
                 'person_land_number.regex' => 'Please enter a valid land number.',
@@ -700,9 +678,9 @@ class PersonController extends Controller
                 'person_org_id' => 'required|integer|exists:organizations,id',
                 'person_designation' => 'nullable|string|max:100',
                 'person_email' => 'nullable|email|max:255|regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/',
-                'person_phone' => ['required', 'string', 'max:20', 'regex:/^\+?[0-9\-\s]{10,20}$/', 'unique:people,mobile'],
+                'person_phone' => array_merge(PhoneNumber::mobileRules(true), ['unique:people,mobile']),
                 'person_land_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9\-\s]{6,20}$/'],
-            ], $messages);
+            ], array_merge($messages, PhoneNumber::messages('person_phone')));
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
         }

@@ -144,8 +144,8 @@
                             @error('customer_name')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label" for="mobile">Mobile</label>
-                            <input id="mobile" name="mobile" class="form-control" value="{{ old('mobile') }}" placeholder="10-digit mobile">
+                            <label class="form-label" for="mobile">Mobile <span class="req">*</span></label>
+                            <input id="mobile" name="mobile" class="form-control" value="{{ old('mobile') }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" required>
                             @error('mobile')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4">

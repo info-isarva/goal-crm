@@ -29,8 +29,29 @@ class GoalPayout extends Model
         return $this->hasMany(GoalPayoutReceipt::class, 'goal_payout_id');
     }
 
+    public function adjustments()
+    {
+        return $this->hasMany(GoalPayoutAdjustment::class, 'goal_payout_id');
+    }
+
     public function disbursement()
     {
         return $this->belongsTo(GoalDisbursement::class, 'goal_disbursement_id');
+    }
+
+    public function accountsItem()
+    {
+        return $this->hasOne(GoalAccountsItem::class, 'goal_disbursement_id', 'goal_disbursement_id');
+    }
+
+    public function outstandingAmount(): float
+    {
+        $expected = (float) $this->expected_amount;
+        $received = (float) $this->received_amount;
+        $adjustments = (float) ($this->relationLoaded('adjustments')
+            ? $this->adjustments->sum('amount')
+            : $this->adjustments()->sum('amount'));
+
+        return round(max(0, $expected - $received - $adjustments), 2);
     }
 }

@@ -213,7 +213,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                     <div class="col-12 col-md-6 col-xl-3" id="leadSelectWrap">
                         <label class="form-label" for="lead_select">Lead Reference <span class="text-muted fw-semibold">(optional)</span></label>
                         <select id="lead_select" class="form-select" data-select2-skip="1"></select>
-                        <div class="lead-hint" id="lookupMsg">Optional â€” pick a Qualified lead without a case, or leave blank to create a new customer.</div>
+                        <div class="lead-hint" id="lookupMsg">Optional — pick a Qualified lead without a case, or leave blank to create a new customer.</div>
                         @error('goal_loan_lead_id')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                         @error('case_origin')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
@@ -234,7 +234,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                             <i class="bi bi-telephone"></i>
                             <input type="text" name="mobile" id="mobile" class="form-control js-mobile"
                                    value="{{ old('mobile', $prefill['mobile'] ?? '') }}" required maxlength="10" inputmode="numeric"
-                                   pattern="[6-9][0-9]{9}" placeholder="10-digit mobile">
+                                   pattern="[0-9]{10}" placeholder="10-digit mobile">
                         </div>
                         @error('mobile')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
@@ -244,7 +244,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                             <i class="bi bi-telephone"></i>
                             <input type="text" name="alt_mobile" id="alt_mobile" class="form-control js-mobile"
                                    value="{{ old('alt_mobile') }}" maxlength="10" inputmode="numeric"
-                                   pattern="[6-9][0-9]{9}" placeholder="Optional">
+                                   pattern="[0-9]{10}" placeholder="Optional">
                         </div>
                         @error('alt_mobile')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
@@ -274,7 +274,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                                        class="form-control js-timepicker" value="{{ $pctFrom }}"
                                        placeholder="From" autocomplete="off" data-minute-increment="15">
                             </div>
-                            <span class="text-muted small fw-semibold">â€”</span>
+                            <span class="text-muted small fw-semibold">—</span>
                             <div class="ld-input-ico flex-grow-1">
                                 <i class="bi bi-clock"></i>
                                 <input type="text" name="preferred_contact_to" id="preferred_contact_to"
@@ -485,19 +485,19 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                 <div class="bm-reco-grid">
                     <div class="bm-reco-cell">
                         <div class="k">Recommended Amount</div>
-                        <div class="v" id="bmRecoAmount">â€”</div>
+                        <div class="v" id="bmRecoAmount">—</div>
                     </div>
                     <div class="bm-reco-cell">
                         <div class="k">Recommended By</div>
-                        <div class="v" id="bmRecoBy">â€”</div>
+                        <div class="v" id="bmRecoBy">—</div>
                     </div>
                     <div class="bm-reco-cell">
                         <div class="k">Recommendation Date</div>
-                        <div class="v" id="bmRecoDate">â€”</div>
+                        <div class="v" id="bmRecoDate">—</div>
                     </div>
                     <div class="bm-reco-cell">
                         <div class="k">Remarks / Status</div>
-                        <div class="v muted" id="bmRecoRemarks">â€”</div>
+                        <div class="v muted" id="bmRecoRemarks">—</div>
                     </div>
                 </div>
             </div>
@@ -510,7 +510,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                 <h6>Documents</h6>
             </div>
             <div class="sec-body">
-                <p class="lead-hint mb-3">Document types load from product configuration. Uploads are stored privately. Verification is completed in Case Details â€” uploads stay <strong>Pending</strong> until reviewed.</p>
+                <p class="lead-hint mb-3">Document types load from product configuration. Uploads are stored privately. Verification is completed in Case Details — uploads stay <strong>Pending</strong> until reviewed.</p>
                 @error('documents')<div class="alert alert-danger py-2 small">{{ $message }}</div>@enderror
                 <div class="table-responsive">
                     <table class="doc-table">
@@ -583,7 +583,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         form.querySelectorAll('button[type="submit"]').forEach(function (b) { b.disabled = true; });
     });
 
-    setMsg('Optional â€” pick a Qualified lead without a case, or leave blank to create a new customer.', null);
+    setMsg('Optional — pick a Qualified lead without a case, or leave blank to create a new customer.', null);
 
     // Cascade: Branch ? Branch Manager ? Assigned To (reports to BM).
     // Keep Select2 design: destroy ? rebuild options ? re-init.
@@ -858,10 +858,10 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
     }
 
     function formatInr(v) {
-        if (v == null || v === '') return 'â€”';
+        if (v == null || v === '') return '—';
         var n = Number(v);
         if (isNaN(n)) return String(v);
-        return 'â‚¹ ' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+        return '? ' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
     }
 
     function showBmReco(reco) {
@@ -873,9 +873,9 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         }
         card.classList.remove('d-none');
         document.getElementById('bmRecoAmount').textContent = formatInr(reco.amount);
-        document.getElementById('bmRecoBy').textContent = reco.by || 'â€”';
-        document.getElementById('bmRecoDate').textContent = reco.date || 'â€”';
-        document.getElementById('bmRecoRemarks').textContent = reco.remarks || reco.status || 'â€”';
+        document.getElementById('bmRecoBy').textContent = reco.by || '—';
+        document.getElementById('bmRecoDate').textContent = reco.date || '—';
+        document.getElementById('bmRecoRemarks').textContent = reco.remarks || reco.status || '—';
     }
 
     function syncNetIncome() {
@@ -912,7 +912,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         if (lead.can_create === false) {
             setMsg(lead.eligibility_message || ('Lead loaded, but status ' + (lead.status || '') + ' cannot create a case yet.'), false);
         } else {
-            setMsg('Lead ' + (lead.ref_no || '') + ' loaded â€” ' + (lead.status || '') + '.', true);
+            setMsg('Lead ' + (lead.ref_no || '') + ' loaded — ' + (lead.status || '') + '.', true);
         }
         loadProductDocs(lead.product);
     }
@@ -944,7 +944,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
 
     function loadLeadById(id) {
         if (!id) return;
-        setMsg('Loading leadâ€”', true);
+        setMsg('Loading lead—', true);
         fetch(lookupUrl + '?lead_id=' + encodeURIComponent(id), {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         }).then(function (r) {
@@ -991,7 +991,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         });
 
         if (prefill && prefill.id) {
-            var option = new Option(prefill.ref_no + ' â€” ' + prefill.customer_name + ' â€” ' + (prefill.mobile || 'â€”'), prefill.id, true, true);
+            var option = new Option(prefill.ref_no + ' — ' + prefill.customer_name + ' — ' + (prefill.mobile || '—'), prefill.id, true, true);
             $lead.append(option).trigger('change');
             applyLead(prefill);
         } else if (leadIdEl.value) {

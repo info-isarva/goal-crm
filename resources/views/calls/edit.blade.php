@@ -14,7 +14,7 @@
                 <input type="text" name="company_name" class="form-control" value="{{ old('company_name', $call->company_name) }}" placeholder="Company Name">
             </div>
             <div class="col-md-4">
-                <input type="text" name="mobile_number" class="form-control" value="{{ old('mobile_number', $call->mobile_number) }}" placeholder="Mobile Number" required>
+                <input type="text" name="mobile_number" class="form-control" value="{{ old('mobile_number', $call->mobile_number) }}" placeholder="10-digit mobile" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" required>
             </div>
         </div>
         <div class="row mb-2">

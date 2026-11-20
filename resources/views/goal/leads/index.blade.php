@@ -536,8 +536,8 @@
                             @error('customer_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Mobile</label>
-                            <input name="mobile" id="create_mobile" class="form-control" value="{{ old('mobile') }}" maxlength="20" placeholder="10-digit mobile" autocomplete="off">
+                            <label class="form-label">Mobile <span class="req">*</span></label>
+                            <input name="mobile" id="create_mobile" class="form-control" value="{{ old('mobile') }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" autocomplete="off" required>
                             <div id="create_party_matches" class="small mt-1" style="display:none;color:#b45309"></div>
                         </div>
                         <div class="col-md-3">

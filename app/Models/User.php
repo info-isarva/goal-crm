@@ -6,6 +6,9 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
@@ -13,6 +16,51 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens, HasFactory, Notifiable, TwoFactorAuthenticatable;
+
+    protected static function booted(): void
+    {
+        // Any password change logs the user out on other devices/sessions.
+        static::updated(function (User $user) {
+            if (! $user->wasChanged('password')) {
+                return;
+            }
+
+            $exceptSessionId = null;
+            try {
+                if (auth()->check() && (int) auth()->id() === (int) $user->id) {
+                    $exceptSessionId = session()->getId();
+                }
+            } catch (\Throwable) {
+                // No HTTP session (CLI / queue).
+            }
+
+            $user->invalidateOtherSessions($exceptSessionId);
+        });
+    }
+
+    /**
+     * Drop other browser sessions (and API tokens) so the user must log in again.
+     * Keeps the current session when $exceptSessionId is provided (self password change).
+     */
+    public function invalidateOtherSessions(?string $exceptSessionId = null): void
+    {
+        $this->forceFill([
+            'remember_token' => Str::random(60),
+        ])->saveQuietly();
+
+        $table = config('session.table', 'sessions');
+        if (Schema::hasTable($table)) {
+            $query = DB::table($table)->where('user_id', $this->id);
+            if ($exceptSessionId) {
+                $query->where('id', '!=', $exceptSessionId);
+            }
+            $query->delete();
+        }
+
+        if (method_exists($this, 'tokens')) {
+            $this->tokens()->delete();
+        }
+    }
 
     public function userDetail()
     {
@@ -52,7 +100,8 @@ class User extends Authenticatable implements MustVerifyEmail
             return [(int) $this->goal_org_unit_id];
         }
 
-        // RD / Cluster Head / BM see subtree; branch staff see own branch.
+        // RD / Cluster Head / BM (and anyone assigned to a region/cluster unit, e.g. PMS) see subtree.
+        // Branch-assigned staff see own branch only.
         if (in_array($unit->type, [GoalOrgUnit::TYPE_REGION, GoalOrgUnit::TYPE_CLUSTER], true)
             || in_array($this->job_role, ['rd', 'cluster', 'bm'], true)
             || in_array((int) $this->crm_role_type, [6, 7, 8], true)
@@ -158,7 +207,21 @@ class User extends Authenticatable implements MustVerifyEmail
             'edit_crm_permission_guard' => ['manage_permissions_guard'],
             'manage_permissions_guard' => ['manage_crm_permission_guard'],
             // Audit logs — Goal managers with user/role admin may open audit
-            'view_crm_activity_log_guard' => ['manage_users_guard', 'manage_roles_guard'],
+            'view_crm_activity_log_guard' => ['manage_users_guard', 'manage_roles_guard', 'view_audit_logs_guard'],
+            'view_audit_logs_guard' => ['view_crm_activity_log_guard', 'manage_users_guard', 'manage_roles_guard'],
+            // Company / Branches
+            'manage_crm_organization_guard' => ['manage_company_guard'],
+            'view_crm_organization_guard' => ['manage_company_guard'],
+            'manage_company_guard' => ['manage_crm_organization_guard', 'view_crm_organization_guard'],
+            // Case ops hubs (legacy edit_case_workspace still grants sub-modules)
+            'customer_visits_guard' => ['edit_case_workspace_guard'],
+            'case_documents_guard' => ['edit_case_workspace_guard'],
+            'bank_processing_guard' => ['edit_case_workspace_guard'],
+            'sanction_disbursement_guard' => ['edit_case_workspace_guard', 'record_disbursement_guard'],
+            // Dashboard
+            'goal_analytics_guard' => ['view_targets_guard', 'branch_mis_guard', 'revenue_ledger_guard'],
+            'mis_reports_guard' => ['view_targets_guard', 'branch_mis_guard', 'revenue_ledger_guard'],
+            'scheduled_reports_guard' => ['view_targets_guard', 'branch_mis_guard', 'revenue_ledger_guard'],
         ];
 
         return $map[$permission] ?? [];

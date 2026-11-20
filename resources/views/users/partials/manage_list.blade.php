@@ -1,6 +1,7 @@
 @php
     $filters = $filters ?? ['q' => '', 'crm_role_type' => '', 'status' => '', 'two_fa' => '', 'per_page' => 10, 'sort' => 'name', 'dir' => 'asc'];
     $listStats = $listStats ?? ['total' => 0, 'active' => 0, 'inactive' => 0, 'two_fa' => 0];
+    $isGoalTenant = $isGoalTenant ?? \App\Services\Goal\GoalDashboardService::userUsesGoalDashboard(auth()->user());
     $canEdit = auth()->user()->hasCrmPermission('edit_crm_user_guard');
     $canDelete = auth()->user()->hasCrmPermission('delete_crm_user_guard');
     $canCreate = auth()->user()->hasCrmPermission('create_crm_user_guard')
@@ -84,7 +85,7 @@
     @endphp
 
     <div class="us-kpis">
-        <a href="{{ $kpiUrl([]) }}" class="us-kpi us-kpi--violet">
+        <a href="{{ $kpiUrl([]) }}" class="us-kpi us-kpi--teal">
             <div class="us-kpi-icon"><i class="bi bi-people-fill"></i></div>
             <div class="us-kpi-body">
                 <div class="us-kpi-label">Total Users</div>
@@ -92,8 +93,8 @@
             </div>
             <span class="us-kpi-wave" aria-hidden="true">
                 <svg viewBox="0 0 120 70" preserveAspectRatio="none"><defs>
-                    <linearGradient id="usWViolet" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c4b5fd"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient>
-                </defs><path fill="url(#usWViolet)" d="{{ $wavePath }}"/></svg>
+                    <linearGradient id="usWTeal" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#99f6e4"/><stop offset="100%" stop-color="#009B80"/></linearGradient>
+                </defs><path fill="url(#usWTeal)" d="{{ $wavePath }}"/></svg>
             </span>
         </a>
         <a href="{{ $kpiUrl(['status' => 1]) }}" class="us-kpi us-kpi--green">
@@ -153,59 +154,82 @@
         <form method="GET" action="{{ route('users.index') }}" class="us-filters" id="usersFilterForm">
             <input type="hidden" name="sort" value="{{ $filters['sort'] }}">
             <input type="hidden" name="dir" value="{{ $filters['dir'] }}">
-            <div class="us-filter-search">
-                <i class="bi bi-search"></i>
-                <input type="text" name="q" value="{{ $filters['q'] }}" placeholder="Search by name, email or mobile..." autocomplete="off">
-            </div>
-            <select name="crm_role_type" class="form-select js-select2 us-filter-select"
-                    data-placeholder="CRM Role: All" data-allow-clear="true">
-                <option value="">CRM Role: All</option>
-                @foreach($roles as $id => $name)
-                    <option value="{{ $id }}" @selected((string) $filters['crm_role_type'] === (string) $id)>{{ $name }}</option>
-                @endforeach
-            </select>
-            <select name="status" class="form-select js-select2 us-filter-select"
-                    data-placeholder="Status: All" data-allow-clear="true" data-search="false">
-                <option value="">Status: All</option>
-                <option value="1" @selected((string) $filters['status'] === '1')>Active</option>
-                <option value="0" @selected((string) $filters['status'] === '0')>Inactive</option>
-            </select>
-            <select name="two_fa" class="form-select js-select2 us-filter-select"
-                    data-placeholder="2FA: All" data-allow-clear="true" data-search="false">
-                <option value="">2FA: All</option>
-                <option value="1" @selected((string) $filters['two_fa'] === '1')>Enabled</option>
-                <option value="0" @selected((string) $filters['two_fa'] === '0')>Disabled</option>
-            </select>
             <input type="hidden" name="per_page" value="{{ $filters['per_page'] }}">
-            <button type="submit" class="us-btn us-btn--primary">
-                <i class="bi bi-funnel-fill"></i> Apply
-            </button>
-            <a href="{{ route('users.index') }}" class="us-btn us-btn--outline">
-                <i class="bi bi-arrow-clockwise"></i> Reset
-            </a>
-            <div class="dropdown">
-                <button type="button" class="us-btn us-btn--outline dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-download"></i> Export
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow">
-                    <li>
-                        <a class="dropdown-item" href="{{ route('users.export', array_merge(request()->query(), ['format' => 'csv'])) }}">
-                            <i class="bi bi-file-earmark-spreadsheet me-2"></i> Export Excel (CSV)
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item" href="{{ route('users.export', array_merge(request()->query(), ['format' => 'pdf'])) }}">
-                            <i class="bi bi-file-earmark-pdf me-2"></i> Export PDF
-                        </a>
-                    </li>
-                </ul>
+
+            <div class="us-filters-row">
+                <div class="us-filter-field us-filter-field--search">
+                    <label class="us-filter-label" for="usFilterQ">Search</label>
+                    <div class="us-filter-search">
+                        <i class="bi bi-search"></i>
+                        <input type="text" id="usFilterQ" name="q" value="{{ $filters['q'] }}" placeholder="Name, email or mobile..." autocomplete="off">
+                    </div>
+                </div>
+                <div class="us-filter-field">
+                    <label class="us-filter-label" for="usFilterRole">CRM Role</label>
+                    <select id="usFilterRole" name="crm_role_type" class="form-select js-select2 us-filter-select"
+                            data-placeholder="All roles" data-allow-clear="true" data-width="100%">
+                        <option value="">All roles</option>
+                        @foreach($roles as $id => $name)
+                            <option value="{{ $id }}" @selected((string) $filters['crm_role_type'] === (string) $id)>{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="us-filter-field">
+                    <label class="us-filter-label" for="usFilterStatus">Status</label>
+                    <select id="usFilterStatus" name="status" class="form-select js-select2 us-filter-select"
+                            data-placeholder="All" data-allow-clear="true" data-search="false" data-width="100%">
+                        <option value="">All</option>
+                        <option value="1" @selected((string) $filters['status'] === '1')>Active</option>
+                        <option value="0" @selected((string) $filters['status'] === '0')>Inactive</option>
+                    </select>
+                </div>
+                <div class="us-filter-field">
+                    <label class="us-filter-label" for="usFilter2fa">2FA</label>
+                    <select id="usFilter2fa" name="two_fa" class="form-select js-select2 us-filter-select"
+                            data-placeholder="All" data-allow-clear="true" data-search="false" data-width="100%">
+                        <option value="">All</option>
+                        <option value="1" @selected((string) $filters['two_fa'] === '1')>Enabled</option>
+                        <option value="0" @selected((string) $filters['two_fa'] === '0')>Disabled</option>
+                    </select>
+                </div>
+                <div class="us-filter-actions">
+                    <button type="submit" class="us-btn us-btn--primary">
+                        <i class="bi bi-funnel-fill"></i> Apply
+                    </button>
+                    <a href="{{ route('users.index') }}" class="us-btn us-btn--outline">
+                        <i class="bi bi-arrow-clockwise"></i> Reset
+                    </a>
+                    <div class="dropdown">
+                        <button type="button" class="us-btn us-btn--outline dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-download"></i> Export
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow">
+                            <li>
+                                <a class="dropdown-item" href="{{ route('users.export', array_merge(request()->query(), ['format' => 'csv'])) }}">
+                                    <i class="bi bi-file-earmark-spreadsheet me-2"></i> Export Excel (CSV)
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ route('users.export', array_merge(request()->query(), ['format' => 'pdf'])) }}">
+                                    <i class="bi bi-file-earmark-pdf me-2"></i> Export PDF
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </form>
     </div>
 
     <div class="us-table-card">
         <div class="us-table-head">
-            <h3 class="us-table-title"><i class="bi bi-list-ul"></i> Users List ({{ $users->total() }})</h3>
+            <div class="us-table-head-left">
+                <span class="us-table-ico" aria-hidden="true"><i class="bi bi-table"></i></span>
+                <h3 class="us-table-title">
+                    Users List
+                    <span class="us-table-count">({{ $users->total() }})</span>
+                </h3>
+            </div>
             @if(!empty($maxUsers))
                 <span class="us-seats">Seats: {{ $userCount ?? 0 }} / {{ $maxUsers }}</span>
             @endif
@@ -219,28 +243,30 @@
                             <input type="checkbox" class="form-check-input" id="usSelectAll" title="Select page">
                         </th>
                         <th class="col-num">#</th>
-                        <th>
+                        <th class="col-name">
                             <a class="us-sort" href="{{ $sortUrl('name') }}">Name
                                 @if($filters['sort']==='name')<i class="bi bi-caret-{{ $filters['dir']==='asc' ? 'up' : 'down' }}-fill"></i>@endif
                             </a>
                         </th>
-                        <th>
+                        <th class="col-email">
                             <a class="us-sort" href="{{ $sortUrl('email') }}">Email
                                 @if($filters['sort']==='email')<i class="bi bi-caret-{{ $filters['dir']==='asc' ? 'up' : 'down' }}-fill"></i>@endif
                             </a>
                         </th>
-                        <th>
+                        <th class="col-role">
                             <a class="us-sort" href="{{ $sortUrl('crm_role_type') }}">CRM Role
                                 @if($filters['sort']==='crm_role_type')<i class="bi bi-caret-{{ $filters['dir']==='asc' ? 'up' : 'down' }}-fill"></i>@endif
                             </a>
                         </th>
+                        @unless($isGoalTenant)
                         <th class="col-target">
                             <a class="us-sort" href="{{ $sortUrl('sales_target') }}">Sales Target (₹)
                                 @if($filters['sort']==='sales_target')<i class="bi bi-caret-{{ $filters['dir']==='asc' ? 'up' : 'down' }}-fill"></i>@endif
                             </a>
                         </th>
-                        <th>2FA</th>
-                        <th>
+                        @endunless
+                        <th class="col-2fa">2FA</th>
+                        <th class="col-status">
                             <a class="us-sort" href="{{ $sortUrl('status') }}">Status
                                 @if($filters['sort']==='status')<i class="bi bi-caret-{{ $filters['dir']==='asc' ? 'up' : 'down' }}-fill"></i>@endif
                             </a>
@@ -265,7 +291,7 @@
                                 'role_class' => $roleClass,
                                 'status' => $isActive ? 'Active' : 'Inactive',
                                 'two_fa' => $twoFaOn ? 'Enabled' : 'Disabled',
-                                'sales_target' => number_format((float) ($user->sales_target ?? 0), 2),
+                                'sales_target' => $isGoalTenant ? null : number_format((float) ($user->sales_target ?? 0), 2),
                                 'job_role' => $user->job_role,
                                 'org' => optional($user->orgUnit)->name,
                                 'initials' => $ini,
@@ -278,7 +304,7 @@
                                 <input type="checkbox" class="form-check-input us-row-check" value="{{ $user->id }}">
                             </td>
                             <td class="col-num" data-label="#">{{ $users->firstItem() + $loop->index }}</td>
-                            <td data-label="Name">
+                            <td class="col-name" data-label="Name">
                                 <div class="us-name-cell">
                                     <span class="us-avatar" style="background:{{ $avatar['bg'] }};color:{{ $avatar['fg'] }}">{{ $ini }}</span>
                                     @if ((int) $user->crm_role_type !== 0 && $canEdit)
@@ -288,14 +314,16 @@
                                     @endif
                                 </div>
                             </td>
-                            <td data-label="Email">{{ $user->email }}</td>
-                            <td data-label="CRM Role">
+                            <td class="col-email" data-label="Email">{{ $user->email }}</td>
+                            <td class="col-role" data-label="CRM Role">
                                 <span class="us-role {{ $roleClass }}">{{ $roleName }}</span>
                             </td>
+                            @unless($isGoalTenant)
                             <td class="col-target" data-label="Sales Target">
                                 {{ number_format((float) ($user->sales_target ?? 0), 2) }}
                             </td>
-                            <td data-label="2FA">
+                            @endunless
+                            <td class="col-2fa" data-label="2FA">
                                 <form method="POST" action="{{ route('users.2fa.update', $user->id) }}" class="us-2fa-form" data-user-name="{{ $user->name }}" data-enabled="{{ $twoFaOn ? '1' : '0' }}">
                                     @csrf
                                     <div class="form-check form-switch us-2fa-switch mb-0">
@@ -306,7 +334,7 @@
                                     </div>
                                 </form>
                             </td>
-                            <td data-label="Status">
+                            <td class="col-status" data-label="Status">
                                 @if($isActive)
                                     <span class="us-status us-status--active">Active</span>
                                 @else
@@ -315,16 +343,16 @@
                             </td>
                             <td class="col-actions" data-label="Actions">
                                 <div class="us-actions">
-                                    <button type="button" class="us-action-btn us-view-btn" title="View Details" data-user="{{ $userPayload }}">
+                                    <button type="button" class="us-abtn us-abtn--view us-view-btn" title="View Details" data-user="{{ $userPayload }}">
                                         <i class="bi bi-eye"></i>
                                     </button>
                                     @if ((int) $user->crm_role_type !== 0)
                                         <a href="{{ route('users.edit', $user->id) }}"
-                                           class="us-action-btn {{ $canEdit ? '' : 'disabled' }}" title="Edit">
+                                           class="us-abtn us-abtn--edit {{ $canEdit ? '' : 'disabled' }}" title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         <div class="dropdown">
-                                            <button class="us-action-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More">
+                                            <button class="us-abtn us-abtn--more" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More">
                                                 <i class="bi bi-three-dots-vertical"></i>
                                             </button>
                                             <ul class="dropdown-menu dropdown-menu-end">

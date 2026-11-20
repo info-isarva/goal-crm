@@ -31,11 +31,12 @@
                                 </div>
                             </div>
                             <div class="field">
-                                <label class="form-label" for="edit_mobile">Mobile</label>
+                                <label class="form-label" for="edit_mobile">Mobile <span class="req">*</span></label>
                                 <div class="input-icon">
                                     <i class="bi bi-telephone"></i>
                                     <input type="text" name="mobile" id="edit_mobile"
-                                           class="form-control" placeholder="Enter mobile number" maxlength="20">
+                                           class="form-control" placeholder="10-digit mobile" maxlength="10"
+                                           inputmode="numeric" pattern="[0-9]{10}" required>
                                 </div>
                             </div>
                         </div>
@@ -46,14 +47,23 @@
                         <div class="field-grid">
                             <div class="field">
                                 <label class="form-label" for="edit_disposition">Disposition <span class="req">*</span></label>
-                                <select name="disposition" id="edit_disposition"
-                                        class="form-select js-select2"
-                                        data-placeholder="Select disposition" required
-                                        data-required-message="Please select disposition.">
-                                    @foreach(['Interested','Not Interested','No Answer','Busy','Callback','Invalid Number'] as $d)
-                                        <option value="{{ $d }}">{{ $d }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="goal-disposition-with-add product-with-add">
+                                    <select name="disposition" id="edit_disposition"
+                                            class="form-select js-select2"
+                                            data-placeholder="Select disposition" required
+                                            data-required-message="Please select disposition.">
+                                        @foreach(($dispositions ?? []) as $d)
+                                            <option value="{{ $d->name }}"
+                                                    data-creates-lead="{{ $d->creates_lead ? '1' : '0' }}"
+                                                    data-maps-to-lead-type="{{ $d->maps_to_lead_type }}">{{ $d->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn-quick-add-disposition" data-bs-toggle="modal"
+                                            data-bs-target="#quickAddDispositionModal" data-disposition-select="#edit_disposition"
+                                            title="Quick add disposition" aria-label="Quick add disposition">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="field">
                                 <label class="form-label" for="edit_callback_at">Callback</label>
@@ -90,19 +100,6 @@
                     <div class="form-section">
                         <div class="section-bar"><i class="bi bi-bullseye"></i> Lead Information</div>
                         <div class="field-grid">
-                            <div class="field">
-                                <label class="form-label" for="edit_lead_type">Lead Type</label>
-                                <div class="input-icon">
-                                    <i class="bi bi-layers"></i>
-                                    <select name="lead_type" id="edit_lead_type"
-                                            class="form-select js-select2"
-                                            data-placeholder="Select lead type" data-allow-clear="true">
-                                        <option value=""></option>
-                                        <option value="immediate">Immediate</option>
-                                        <option value="future">Future</option>
-                                    </select>
-                                </div>
-                            </div>
                             <div class="field">
                                 <label class="form-label" for="edit_product">Product</label>
                                 <div class="input-icon">
@@ -167,6 +164,9 @@
         var el = document.getElementById(id);
         if (!el) return;
         var v = value == null ? '' : String(value);
+        if (v && !Array.from(el.options).some(function (o) { return o.value === v; })) {
+            el.add(new Option(v, v, true, true));
+        }
         el.value = v;
         if (window.jQuery && jQuery.fn.select2 && jQuery(el).hasClass('js-select2')) {
             jQuery(el).val(v || null).trigger('change');
@@ -182,7 +182,6 @@
         setSelectValue('edit_disposition', data.disposition || 'Interested');
         document.getElementById('edit_callback_at').value = data.callback_at || data.callback_display || '';
         setSelectValue('edit_goal_org_unit_id', data.goal_org_unit_id || '');
-        setSelectValue('edit_lead_type', data.lead_type || '');
         setSelectValue('edit_product', data.product || '');
         document.getElementById('edit_loan_amount').value = data.loan_amount || '';
         document.getElementById('edit_notes').value = data.notes || '';
@@ -206,7 +205,6 @@
             notes: btn.getAttribute('data-notes') || '',
             callback_at: btn.getAttribute('data-callback') || '',
             goal_org_unit_id: btn.getAttribute('data-branch-id') || '',
-            lead_type: btn.getAttribute('data-lead-type') || '',
             product: btn.getAttribute('data-product') || '',
             loan_amount: btn.getAttribute('data-loan-amount') || '',
             has_lead: btn.getAttribute('data-has-lead') === '1',

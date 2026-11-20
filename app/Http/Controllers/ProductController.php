@@ -12,18 +12,14 @@ class ProductController extends Controller
 {
     public function index()
     {
-        if (!auth()->user()->hasCrmPermission('manage_crm_product_guard')) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeProductAccess('manage_crm_product_guard');
         $products = Product::with(['category', 'owner', 'taxRate'])->orderBy('product_name')->get();
         return view('products.index', compact('products'));
     }
 
     public function create()
     {
-        if (!auth()->user()->hasCrmPermission('create_crm_product_guard')) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeProductAccess('create_crm_product_guard');
         $categories = ProductCategory::orderBy('category_name')->get();
         $taxRates = TaxRate::orderBy('name')->get();
         $users = User::orderBy('name')->get();
@@ -33,9 +29,7 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
-        if (!auth()->user()->hasCrmPermission('create_crm_product_guard')) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeProductAccess('create_crm_product_guard');
         $validated = $request->validate([
             'product_name' => 'required|string|max:150',
             'product_code' => 'required|string|max:150|unique:products,product_code',
@@ -70,9 +64,7 @@ class ProductController extends Controller
 
     public function edit($id)
     {
-        if (!auth()->user()->hasCrmPermission('edit_crm_product_guard')) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeProductAccess('edit_crm_product_guard');
         $product = Product::findOrFail($id);
         $categories = ProductCategory::orderBy('category_name')->get();
         $taxRates = TaxRate::orderBy('name')->get();
@@ -85,9 +77,7 @@ class ProductController extends Controller
 
     public function update(Request $request, $id)
     {
-        if (!auth()->user()->hasCrmPermission('edit_crm_product_guard')) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeProductAccess('edit_crm_product_guard');
         $product = Product::findOrFail($id);
         $validated = $request->validate([
             'product_name' => 'required|string|max:150',
@@ -124,9 +114,7 @@ class ProductController extends Controller
 
     public function destroy($id)
     {
-        if (!auth()->user()->hasCrmPermission('delete_crm_product_guard')) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeProductAccess('delete_crm_product_guard');
         $product = Product::findOrFail($id);
         $product->deleted_by = auth()->id();
         $product->deleted_at = now();
@@ -137,9 +125,11 @@ class ProductController extends Controller
 
     public function uploadEditorImage(Request $request)
     {
+        $user = auth()->user();
         if (
-            !auth()->user()->hasCrmPermission('create_crm_product_guard')
-            && !auth()->user()->hasCrmPermission('edit_crm_product_guard')
+            !$user->hasCrmPermission('create_crm_product_guard')
+            && !$user->hasCrmPermission('edit_crm_product_guard')
+            && !$this->canManageGoalMasters($user)
         ) {
             abort(403, 'Unauthorized action.');
         }
@@ -155,5 +145,24 @@ class ProductController extends Controller
         return response()->json([
             'location' => asset('storage/' . $path),
         ]);
+    }
+
+    protected function authorizeProductAccess(string $permission): void
+    {
+        $user = auth()->user();
+        if ($user->hasCrmPermission($permission) || $this->canManageGoalMasters($user)) {
+            return;
+        }
+        abort(403, 'Unauthorized action.');
+    }
+
+    protected function canManageGoalMasters($user): bool
+    {
+        if ((int) ($user->crm_role_type ?? -1) === 0) {
+            return true;
+        }
+
+        return $user->hasCrmPermission('manage_products_guard')
+            || $user->hasCrmPermission('manage_crm_product_guard');
     }
 }

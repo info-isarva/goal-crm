@@ -17,12 +17,12 @@ class SuperAdminSeeder extends Seeder
      * Role IDs are fixed because the app treats:
      * - 0 = Super Admin (user.crm_role_type only; not a roles row)
      * - 1 = Admin
-     * - 2 = Manager
-     * - 3 = Employee
+     * Legacy Manager (2) / Employee (3) are removed — Goal hierarchy uses IDs 4–14.
      */
     public function run(): void
     {
         $this->ensureDefaultRoles();
+        $this->removeLegacyManagerEmployeeRoles();
         $this->attachAllPermissionsToAdmin();
         $this->seedSuperAdmin();
     }
@@ -31,8 +31,6 @@ class SuperAdminSeeder extends Seeder
     {
         $defaults = [
             1 => ['name' => 'Admin', 'description' => 'Full company admin (except Super Admin–only settings)'],
-            2 => ['name' => 'Manager', 'description' => 'Team manager with reporting scope'],
-            3 => ['name' => 'Employee', 'description' => 'Standard CRM user'],
         ];
 
         foreach ($defaults as $id => $data) {
@@ -81,6 +79,18 @@ class SuperAdminSeeder extends Seeder
                 'Expected role ids missing after seed: ' . $missing->implode(', ')
             );
         }
+    }
+
+    protected function removeLegacyManagerEmployeeRoles(): void
+    {
+        $legacyIds = [2, 3]; // Manager, Employee
+
+        DB::table('role_has_permission')->whereIn('role_id', $legacyIds)->delete();
+
+        Role::withTrashed()->whereIn('id', $legacyIds)->forceDelete();
+        Role::withTrashed()->whereIn('name', ['Manager', 'Employee'])->forceDelete();
+
+        $this->command?->info('Removed legacy Manager / Employee roles from database.');
     }
 
     protected function attachAllPermissionsToAdmin(): void

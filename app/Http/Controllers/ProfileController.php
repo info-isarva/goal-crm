@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -34,12 +35,10 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         // Ensure validation messages are passed to the view and displayed under each field
-        $messages = [
+        $messages = array_merge([
             'name.required' => 'Please enter your name.',
             'name.regex' => 'The name must start with a letter.',
             'name.max' => 'The name may not exceed 255 characters.',
-            'mobile.max' => 'The phone number may not exceed 20 characters.',
-            'mobile.regex' => 'Please enter a valid mobile number (with country code if applicable).',
             'email.email' => 'Please enter a valid email address.',
             'email.max' => 'The email address may not exceed 255 characters.',
             'email.unique' => 'This email address is already in use.',
@@ -49,7 +48,7 @@ class ProfileController extends Controller
             'avatar.image' => 'The avatar must be an image file.',
             'avatar.max' => 'The avatar size may not exceed 2MB.',
             'avatar.mimes' => 'The avatar must be a file of type: jpg, jpeg, png, gif.',
-        ];
+        ], PhoneNumber::messages('mobile'));
 
         $validated = $request->validate(
             [
@@ -59,12 +58,7 @@ class ProfileController extends Controller
                     'regex:/^[A-Za-z].*/',
                     'max:255'
                 ],
-                'mobile' => [
-                    'nullable',
-                    'string',
-                    'max:20',
-                    'regex:/^\+?[0-9\-\s]{10,20}$/',
-                ],
+                'mobile' => PhoneNumber::mobileRules(true),
                 'email' => [
                     'nullable',
                     'email',

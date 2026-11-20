@@ -123,8 +123,6 @@ class CustomerController extends Controller
             'organization_id.exists' => 'Selected Company does not exist',
             'owner_id.required' => 'Please select an account owner',
             'owner_id.exists' => 'Selected account owner does not exist',
-            'phone.max' => 'Phone number may not exceed 20 characters',
-            'phone.regex' => 'Please enter a valid phone number (with country code if applicable)',
             'email.email' => 'Please enter a valid email address',
             'email.max' => 'Email address may not exceed 255 characters',
             'email.regex' => 'Please enter a valid email address',
@@ -139,19 +137,14 @@ class CustomerController extends Controller
             ],
             'organization_id' => 'required|integer|exists:organizations,id',
             'owner_id' => 'required|integer|exists:users,id',
-            'phone' => [
-                'nullable',
-                'string',
-                'max:20',
-                'regex:/^\+?[0-9\-\s]{10,20}$/',
-            ],
+            'phone' => \App\Support\PhoneNumber::mobileRules(false),
             'email' => [
                 'nullable',
                 'email',
                 'max:255',
                 'regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/',
             ],
-        ], $messages);
+        ], array_merge($messages, \App\Support\PhoneNumber::messages('phone')));
         $orgId = $request->input('organization_id');
         if ($orgId) {
             $org = \App\Models\Organization::find($orgId);
@@ -219,8 +212,6 @@ class CustomerController extends Controller
             'organization_id.exists' => 'Selected Company does not exist',
             'owner_id.required' => 'Please select an account owner',
             'owner_id.exists' => 'Selected account owner does not exist',
-            'phone.max' => 'Phone number may not exceed 20 characters',
-            'phone.regex' => 'Please enter a valid phone number (with country code if applicable)',
             'email.email' => 'Please enter a valid email address',
             'email.max' => 'Email address may not exceed 255 characters',
             'email.regex' => 'Please enter a valid email address',
@@ -234,19 +225,14 @@ class CustomerController extends Controller
             ],
             'organization_id' => 'required|integer|exists:organizations,id',
             'owner_id' => 'required|integer|exists:users,id',
-            'phone' => [
-                'nullable',
-                'string',
-                'max:20',
-                'regex:/^\+?[0-9\-\s]{10,20}$/',
-            ],
+            'phone' => \App\Support\PhoneNumber::mobileRules(false),
             'email' => [
                 'nullable',
                 'email',
                 'max:255',
                 'regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/',
             ],
-        ], $messages);
+        ], array_merge($messages, \App\Support\PhoneNumber::messages('phone')));
         $org = \App\Models\Organization::find($validated['organization_id']);
         $customer = \App\Models\Customer::findOrFail($id);
         $customer->update([
@@ -287,9 +273,6 @@ class CustomerController extends Controller
 
                 'cust_org_id.required' => 'Please select or enter the Company name',
 
-                'phone.max' => 'Phone may not exceed 20 characters.',
-                'phone.regex' => 'Please enter a valid phone number.',
-
                 'email.email' => 'Please enter a valid email address.',
                 'email.max' => 'Email may not exceed 255 characters.',
             ];
@@ -297,9 +280,9 @@ class CustomerController extends Controller
             $validated = $request->validate([
                 'cust_name' => 'required|string|max:255',
                 'cust_org_id' => 'required',
-                'phone' => 'nullable|string|max:20',
+                'phone' => \App\Support\PhoneNumber::mobileRules(false),
                 'email' => 'nullable|email|max:255',
-            ], $messages);
+            ], array_merge($messages, \App\Support\PhoneNumber::messages('phone')));
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
         }

@@ -20,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'webforms/*',
             'social-ads/webhook/*',
         ]);
+        // Log out other devices when the password hash stored in the session no longer matches.
+        $middleware->authenticateSessions();
         // Audit trail: log authenticated mutating requests (and export/download GETs)
         $middleware->appendToGroup('web', \App\Http\Middleware\LogUserActions::class);
         $middleware->appendToGroup('api', \App\Http\Middleware\LogUserActions::class);

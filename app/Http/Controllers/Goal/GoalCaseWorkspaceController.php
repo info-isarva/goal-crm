@@ -583,7 +583,9 @@ class GoalCaseWorkspaceController extends Controller
             return back()->withErrors(['pms' => 'Verified disbursement required before PMS transfer.'])->with('cw_tab', 'overview');
         }
 
-        $pending = $case->pmsItems()->where('status', 'Pending')->first();
+        $pending = $case->pmsItems()
+            ->whereIn('status', ['Pending', 'Pending Verification', 'In Progress'])
+            ->first();
         if ($pending) {
             $pending->status = 'Verified';
             $pending->verified_by = auth()->id();

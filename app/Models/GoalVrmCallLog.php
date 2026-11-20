@@ -22,6 +22,7 @@ class GoalVrmCallLog extends Model
         'deleted_at' => 'datetime',
     ];
 
+    /** @deprecated Prefer GoalVrmDisposition::activeNames() — kept as seed/fallback list */
     public const DISPOSITIONS = [
         'Interested',
         'Not Interested',
@@ -30,6 +31,19 @@ class GoalVrmCallLog extends Model
         'Callback',
         'Invalid Number',
     ];
+
+    /**
+     * @return list<string>
+     */
+    public static function allowedDispositionNames(): array
+    {
+        $fromMaster = GoalVrmDisposition::activeNames();
+        if ($fromMaster !== []) {
+            return $fromMaster;
+        }
+
+        return self::DISPOSITIONS;
+    }
 
     public function user()
     {

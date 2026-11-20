@@ -59,7 +59,7 @@
                         @endif
                     </div>
                     <div class="col-md-4">
-                        <input type="text" name="logs[{{ $i }}][mobile_number]" class="form-control" placeholder="Mobile Number" value="{{ old('logs.'.$i.'.mobile_number', ($row['mobile_number'] ?? '')) }}">
+                        <input type="text" name="logs[{{ $i }}][mobile_number]" class="form-control" placeholder="10-digit mobile" value="{{ old('logs.'.$i.'.mobile_number', ($row['mobile_number'] ?? '')) }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" required>
                         @if($errors->has('logs.'.$i.'.mobile_number'))
                             <div class="text-danger small mt-1">{{ $errors->first('logs.'.$i.'.mobile_number') }}</div>
                         @endif
@@ -215,7 +215,7 @@
                             @endif
                     </div>
                     <div class="mb-2">
-                        <input type="text" name="mobile_number" id="editMobileNumber" class="form-control" placeholder="Mobile Number">
+                        <input type="text" name="mobile_number" id="editMobileNumber" class="form-control" placeholder="10-digit mobile" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" required>
                             @if($errors->has('mobile_number'))
                                 <div class="text-danger small mt-1">{{ $errors->first('mobile_number') }}</div>
                             @endif

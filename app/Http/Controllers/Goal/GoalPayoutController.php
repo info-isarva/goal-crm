@@ -4,61 +4,154 @@ namespace App\Http\Controllers\Goal;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Goal\Concerns\AuthorizesGoal;
+use App\Models\GoalOrgUnit;
 use App\Models\GoalPayout;
-use App\Models\GoalPayoutReceipt;
 use App\Services\Goal\GoalAuditService;
-use Illuminate\Database\Eloquent\Builder;
+use App\Services\Goal\GoalPayoutQueueService;
+use App\Services\Goal\GoalPayoutReceiptService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GoalPayoutController extends Controller
 {
     use AuthorizesGoal;
 
+    public function __construct(protected GoalPayoutQueueService $board) {}
+
     public function index(Request $request)
     {
         $this->requireGoalPermission('payout_processing_guard');
 
-        $filters = $this->validatedFilters($request);
+        $filters = $this->board->validatedFilters($request);
         $base = $this->scopeByLoanCase(GoalPayout::query());
-        $kpis = [
-            'total' => (clone $base)->count(),
-            'on_hold' => (clone $base)->where('status', 'On Hold')->count(),
-            'eligible' => (clone $base)->whereIn('status', ['Eligible', 'Processing'])->count(),
-            'paid' => (clone $base)->where('status', 'Paid')->count(),
-            'exception' => (clone $base)->where('status', 'Exception')->count(),
-        ];
+        $kpis = $this->board->kpis(clone $base);
+        $tabCounts = $this->board->tabCounts(clone $base);
 
-        $payouts = $this->filteredQuery($filters)
-            ->with(['loanCase'])
-            ->latest()
-            ->paginate(25)
+        $payouts = $this->board->applyFilters(clone $base, $filters)
+            ->with([
+                'loanCase.orgUnit',
+                'disbursement.accountsItem',
+                'receipts',
+                'adjustments',
+            ])
+            ->paginate(20)
             ->withQueryString();
 
-        return view('goal.payouts.index', compact('payouts', 'kpis', 'filters'));
+        $selectedId = (int) ($filters['selected'] ?? ($payouts->first()?->id ?? 0));
+        $selected = null;
+        $confirmations = [];
+        $reconciliation = $this->board->reconciliationSummary(null);
+        $activity = [];
+        $accountsItem = null;
+        $ageingDays = null;
+
+        if ($selectedId > 0) {
+            $selected = (clone $base)->with([
+                'loanCase.orgUnit',
+                'disbursement.accountsItem',
+                'receipts',
+                'adjustments',
+            ])->find($selectedId);
+            if ($selected) {
+                $confirmations = $this->board->confirmations($selected);
+                $reconciliation = $this->board->reconciliationSummary($selected);
+                $activity = $this->board->recentActivity($selected);
+                $accountsItem = $this->board->accountsItem($selected);
+                $ageingDays = $this->board->ageingDays($selected);
+            }
+        }
+
+        $branches = $this->scopedBranches();
+        $lenders = $this->scopeByLoanCase(GoalPayout::query())
+            ->join('goal_loan_cases', 'goal_loan_cases.id', '=', 'goal_payouts.goal_loan_case_id')
+            ->whereNotNull('goal_loan_cases.lender_name')
+            ->where('goal_loan_cases.lender_name', '!=', '')
+            ->distinct()
+            ->orderBy('goal_loan_cases.lender_name')
+            ->pluck('goal_loan_cases.lender_name');
+        $missingOrgScope = $this->scopedOrgIds() === [];
+        $canReceipt = auth()->user()?->hasCrmPermission('record_receipt_guard') ?? false;
+        $canApprove = auth()->user()?->hasCrmPermission('accounts_approve_guard') ?? false;
+
+        $payload = compact(
+            'payouts', 'kpis', 'tabCounts', 'filters', 'branches', 'lenders',
+            'selected', 'confirmations', 'reconciliation', 'activity', 'accountsItem',
+            'ageingDays', 'missingOrgScope', 'canReceipt', 'canApprove'
+        );
+
+        if ($request->boolean('partial') || $request->ajax()) {
+            return response()
+                ->view('goal.payouts.partials.board_results', $payload)
+                ->header('Cache-Control', 'no-store');
+        }
+
+        return view('goal.payouts.index', $payload);
+    }
+
+    public function show(GoalPayout $payout)
+    {
+        $this->requireGoalPermission('payout_processing_guard');
+        $this->assertPayoutInScope($payout);
+
+        $payout->load([
+            'loanCase.orgUnit',
+            'loanCase.owner',
+            'disbursement.verifier',
+            'disbursement.accountsItem',
+            'receipts',
+            'adjustments',
+        ]);
+
+        $confirmations = $this->board->confirmations($payout);
+        $reconciliation = $this->board->reconciliationSummary($payout);
+        $activity = $this->board->recentActivity($payout, 12);
+        $accountsItem = $this->board->accountsItem($payout);
+        $ageingDays = $this->board->ageingDays($payout);
+        $canReceipt = auth()->user()?->hasCrmPermission('record_receipt_guard') ?? false;
+        $canApprove = auth()->user()?->hasCrmPermission('accounts_approve_guard') ?? false;
+
+        return view('goal.payouts.show', compact(
+            'payout', 'confirmations', 'reconciliation', 'activity', 'accountsItem',
+            'ageingDays', 'canReceipt', 'canApprove'
+        ));
     }
 
     public function export(Request $request): StreamedResponse
     {
         $this->requireGoalPermission('payout_processing_guard');
 
-        $filters = $this->validatedFilters($request);
-        $rows = $this->filteredQuery($filters)->with(['loanCase'])->latest()->limit(5000)->get();
+        $filters = $this->board->validatedFilters($request);
+        $rows = $this->board->applyFilters($this->scopeByLoanCase(GoalPayout::query()), $filters)
+            ->with(['loanCase.orgUnit', 'disbursement.accountsItem', 'receipts', 'adjustments'])
+            ->limit(5000)
+            ->get();
         $filename = 'payouts-'.now()->format('Ymd-His').'.csv';
 
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Case', 'Customer', 'Status', 'Reconciliation', 'Expected', 'Received', 'Difference Reason', 'Exception Reason']);
+            fputcsv($out, [
+                'Case', 'Customer', 'Branch', 'Lender', 'Report Number',
+                'Expected', 'Received', 'Outstanding', 'Reconciliation', 'Payout Status',
+                'Ageing Days', 'Last Updated', 'Exception Reason',
+            ]);
             foreach ($rows as $payout) {
+                $recon = $this->board->reconciliationSummary($payout);
+                $accounts = $this->board->accountsItem($payout);
                 fputcsv($out, [
                     $payout->loanCase?->case_no,
                     $payout->loanCase?->customer_name,
-                    $payout->status,
+                    $payout->loanCase?->orgUnit?->name,
+                    $payout->loanCase?->lender_name,
+                    $accounts?->report_number,
+                    $recon['expected'],
+                    $recon['received'],
+                    $recon['outstanding'],
                     $payout->reconciliation_status,
-                    $payout->expected_amount,
-                    $payout->received_amount,
-                    $payout->difference_reason,
+                    $payout->status,
+                    $this->board->ageingDays($payout),
+                    optional($payout->updated_at)->format('Y-m-d H:i'),
                     $payout->exception_reason,
                 ]);
             }
@@ -66,69 +159,41 @@ class GoalPayoutController extends Controller
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    public function recordReceipt(Request $request, GoalPayout $payout)
+    public function recordReceipt(Request $request, GoalPayout $payout, GoalPayoutReceiptService $receipts)
     {
         $this->requireGoalPermission('record_receipt_guard');
         $this->assertPayoutInScope($payout);
 
-        if (! in_array($payout->status, ['Eligible', 'Processing'], true)) {
-            return back()->withErrors(['amount' => 'Payout must be Eligible/Processing to record receipts.']);
-        }
         $data = $request->validate([
             'amount' => 'required|numeric|min:0.01',
             'received_on' => 'required|date',
             'reference' => 'nullable|string|max:100',
             'difference_reason' => 'nullable|string|max:255',
+            'remarks' => 'nullable|string|max:2000',
         ]);
 
-        $expected = (float) $payout->expected_amount;
-        $projected = (float) $payout->received_amount + (float) $data['amount'];
-        $isPartial = $projected + 0.01 < $expected;
-        if ($isPartial && ! filled($data['difference_reason'] ?? null) && ! filled($payout->difference_reason)) {
-            return back()->withErrors([
-                'difference_reason' => 'Difference reason is required for partial receipts (ACC reconciliation).',
-            ])->withInput();
+        if (! empty($data['remarks']) && empty($data['difference_reason'])) {
+            $data['difference_reason'] = $data['remarks'];
+        }
+        unset($data['remarks']);
+
+        try {
+            $receipts->record($payout, $data, auth()->user());
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
         }
 
-        GoalPayoutReceipt::create([
-            'goal_payout_id' => $payout->id,
-            'amount' => $data['amount'],
-            'received_on' => $data['received_on'],
-            'reference' => $data['reference'] ?? null,
-            'recorded_by' => auth()->id(),
-        ]);
-
-        $payout->received_amount = $projected;
-        if (! $isPartial) {
-            $payout->status = 'Paid';
-            $payout->reconciliation_status = 'Matched';
-            $payout->difference_reason = null;
-        } else {
-            $payout->status = 'Processing';
-            $payout->reconciliation_status = 'Partial';
-            if (! empty($data['difference_reason'])) {
-                $payout->difference_reason = $data['difference_reason'];
-            }
-        }
-        $payout->save();
-        if ($payout->loanCase) {
-            GoalAuditService::recordFinancial(
-                $payout->loanCase,
-                GoalAuditService::TYPE_PAYOUT,
-                'Payout receipt recorded',
-                $payout->fresh(),
-                auth()->user(),
-                ['to' => $payout->status, 'body' => 'Received '.$data['amount']]
-            );
-        }
-
-        return back()->with('success', 'Receipt recorded.');
+        return back()->with('success', 'Receipt recorded. Outstanding recalculated.');
     }
 
     public function markException(Request $request, GoalPayout $payout)
     {
         $this->requireGoalPermission('payout_processing_guard');
         $this->assertPayoutInScope($payout);
+
+        if ($payout->status === 'Paid') {
+            return back()->withErrors(['exception_reason' => 'Paid payouts cannot be marked Exception.']);
+        }
 
         $data = $request->validate(['exception_reason' => 'required|string|max:255']);
         $payout->update([
@@ -150,29 +215,37 @@ class GoalPayoutController extends Controller
         return back()->with('success', 'Payout marked Exception.');
     }
 
-    private function validatedFilters(Request $request): array
+    public function releaseHold(Request $request, GoalPayout $payout)
     {
-        return $request->validate([
-            'q' => 'nullable|string|max:100',
-            'status' => 'nullable|in:on_hold,eligible,Paid,Exception',
+        $this->requireGoalPermission('accounts_approve_guard');
+        $this->assertPayoutInScope($payout);
+
+        $request->validate([
+            'confirm' => 'accepted',
+        ], [
+            'confirm.accepted' => 'Confirm approval before releasing hold.',
         ]);
+
+        try {
+            $this->board->releaseHold($payout, auth()->user());
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('success', 'Hold released. Payout is Eligible for receipt processing.');
     }
 
-    private function filteredQuery(array $filters): Builder
+    private function scopedBranches()
     {
-        $q = trim((string) ($filters['q'] ?? ''));
-        $status = $filters['status'] ?? null;
+        $ids = $this->scopedOrgIds();
+        if ($ids === []) {
+            return collect();
+        }
 
-        return $this->scopeByLoanCase(GoalPayout::query())
-            ->when($q !== '', function (Builder $query) use ($q) {
-                $query->whereHas('loanCase', function (Builder $c) use ($q) {
-                    $c->where('case_no', 'like', "%{$q}%")
-                        ->orWhere('customer_name', 'like', "%{$q}%");
-                });
-            })
-            ->when($status === 'on_hold', fn (Builder $query) => $query->where('status', 'On Hold'))
-            ->when($status === 'eligible', fn (Builder $query) => $query->whereIn('status', ['Eligible', 'Processing']))
-            ->when(in_array($status, ['Paid', 'Exception'], true), fn (Builder $query) => $query->where('status', $status));
+        return GoalOrgUnit::query()
+            ->whereIn('id', $ids)
+            ->orderBy('name')
+            ->get(['id', 'name']);
     }
 
     private function assertPayoutInScope(GoalPayout $payout): void

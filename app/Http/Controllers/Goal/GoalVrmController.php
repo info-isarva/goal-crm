@@ -9,7 +9,9 @@ use App\Library\MpdfDocument;
 use App\Models\GoalLoanLead;
 use App\Models\GoalOrgUnit;
 use App\Models\GoalVrmCallLog;
+use App\Models\GoalVrmDisposition;
 use App\Models\Product;
+use App\Support\PhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -24,10 +26,11 @@ class GoalVrmController extends Controller
     {
         $this->requireGoalPermission('vrm_calling_guard');
 
+        $dispositionNames = GoalVrmCallLog::allowedDispositionNames();
         $validated = $request->validate([
             'q' => 'nullable|string|max:150',
-            'disposition' => 'nullable|in:Interested,Not Interested,No Answer,Busy,Callback,Invalid Number',
-            'disposition_filter' => 'nullable|in:Interested,Not Interested,No Answer,Busy,Callback,Invalid Number',
+            'disposition' => ['nullable', Rule::in($dispositionNames)],
+            'disposition_filter' => ['nullable', Rule::in($dispositionNames)],
             'lead_status' => 'nullable|in:all,yes,no',
             'callbacks_due' => 'nullable|in:1,0',
             'from_date' => 'nullable|date',
@@ -73,6 +76,7 @@ class GoalVrmController extends Controller
 
         $branches = GoalOrgUnit::query()->ofType('branch')->active()->orderBy('name')->get();
         $products = $this->activeProducts();
+        $dispositions = $this->activeDispositions();
 
         return view('goal.vrm.index', compact(
             'todayCount',
@@ -86,7 +90,8 @@ class GoalVrmController extends Controller
             'logs',
             'perPage',
             'branches',
-            'products'
+            'products',
+            'dispositions'
         ));
     }
 
@@ -173,17 +178,21 @@ class GoalVrmController extends Controller
         $this->requireGoalPermission('vrm_calling_guard');
         abort_unless((int) $log->user_id === (int) auth()->id(), 403);
 
+        $allowedDispositions = GoalVrmCallLog::allowedDispositionNames();
+        if ($log->disposition && !in_array($log->disposition, $allowedDispositions, true)) {
+            $allowedDispositions[] = $log->disposition;
+        }
+
         $data = $request->validate([
             'customer_name' => 'required|string|max:150',
-            'mobile' => 'nullable|string|max:20',
-            'disposition' => ['required', Rule::in(GoalVrmCallLog::DISPOSITIONS)],
+            'mobile' => PhoneNumber::mobileRules(true),
+            'disposition' => ['required', Rule::in($allowedDispositions)],
             'callback_at' => 'nullable|date',
             'notes' => 'nullable|string',
-            'lead_type' => 'nullable|in:immediate,future',
             'product' => 'nullable|string|max:100',
             'loan_amount' => 'nullable|numeric|min:0',
             'goal_org_unit_id' => 'nullable|exists:goal_org_units,id',
-        ]);
+        ], PhoneNumber::messages('mobile'));
 
         $log->update([
             'customer_name' => $data['customer_name'],
@@ -196,17 +205,18 @@ class GoalVrmController extends Controller
         if ($log->goal_loan_lead_id) {
             $lead = GoalLoanLead::query()->find($log->goal_loan_lead_id);
             if ($lead) {
+                $master = GoalVrmDisposition::findByName($data['disposition']);
                 $leadUpdates = [
                     'customer_name' => $data['customer_name'],
                     'mobile' => $data['mobile'] ?? null,
                     'disposition' => $data['disposition'],
                     'notes' => $data['notes'] ?? $lead->notes,
                 ];
+                if ($master) {
+                    $leadUpdates['lead_type'] = $master->resolveLeadType();
+                }
                 if (array_key_exists('callback_at', $data) && $data['callback_at']) {
                     $leadUpdates['follow_up_at'] = $data['callback_at'];
-                }
-                if (!empty($data['lead_type'])) {
-                    $leadUpdates['lead_type'] = $data['lead_type'];
                 }
                 if (array_key_exists('product', $data)) {
                     $leadUpdates['product'] = $data['product'] ?: null;
@@ -341,7 +351,7 @@ class GoalVrmController extends Controller
             }
 
             $disposition = null;
-            foreach (GoalVrmCallLog::DISPOSITIONS as $allowedDisp) {
+            foreach (GoalVrmCallLog::allowedDispositionNames() as $allowedDisp) {
                 if (strcasecmp($allowedDisp, $dispositionRaw) === 0) {
                     $disposition = $allowedDisp;
                     break;
@@ -393,11 +403,12 @@ class GoalVrmController extends Controller
     {
         $this->requireGoalPermission('vrm_calling_guard');
 
+        $dispositionNames = GoalVrmCallLog::allowedDispositionNames();
         $request->validate([
             'format' => 'nullable|in:excel,csv,pdf',
             'q' => 'nullable|string|max:150',
-            'disposition' => 'nullable|in:Interested,Not Interested,No Answer,Busy,Callback,Invalid Number',
-            'disposition_filter' => 'nullable|in:Interested,Not Interested,No Answer,Busy,Callback,Invalid Number',
+            'disposition' => ['nullable', Rule::in($dispositionNames)],
+            'disposition_filter' => ['nullable', Rule::in($dispositionNames)],
             'lead_status' => 'nullable|in:all,yes,no',
             'from_date' => 'nullable|date',
             'to_date' => 'nullable|date|after_or_equal:from_date',
@@ -496,12 +507,11 @@ class GoalVrmController extends Controller
         $this->requireGoalPermission('vrm_calling_guard');
         $data = $request->validate([
             'customer_name' => 'required|string|max:150',
-            'mobile' => 'nullable|string|max:20',
-            'disposition' => 'required|in:Interested,Not Interested,No Answer,Busy,Callback,Invalid Number',
+            'mobile' => PhoneNumber::mobileRules(true),
+            'disposition' => ['required', Rule::in(GoalVrmCallLog::allowedDispositionNames())],
             'callback_at' => 'nullable|date',
             'notes' => 'nullable|string',
             'create_lead' => 'nullable|boolean',
-            'lead_type' => 'nullable|in:immediate,future',
             'product' => [
                 'nullable',
                 'string',
@@ -511,10 +521,15 @@ class GoalVrmController extends Controller
             'loan_amount' => 'nullable|numeric|min:0',
             'goal_org_unit_id' => 'nullable|exists:goal_org_units,id,is_active,1',
             'save_and_new' => 'nullable|boolean',
-        ]);
+        ], PhoneNumber::messages('mobile'));
+
+        $dispositionMaster = GoalVrmDisposition::findByName($data['disposition']);
+        $canCreateLeadFromDisposition = $dispositionMaster
+            ? (bool) $dispositionMaster->creates_lead
+            : in_array($data['disposition'], ['Interested', 'Callback'], true);
 
         $leadId = null;
-        if ($request->boolean('create_lead') && in_array($data['disposition'], ['Interested', 'Callback'], true)) {
+        if ($request->boolean('create_lead') && $canCreateLeadFromDisposition) {
             $this->requireGoalPermission('create_lead_guard');
 
             $mobile = trim((string) ($data['mobile'] ?? ''));
@@ -533,7 +548,9 @@ class GoalVrmController extends Controller
                 ])->with('reopen_log_call', true);
             }
 
-            $leadType = $data['lead_type'] ?? ($data['disposition'] === 'Callback' ? 'future' : 'immediate');
+            $leadType = $dispositionMaster
+                ? $dispositionMaster->resolveLeadType()
+                : ($data['disposition'] === 'Callback' ? 'future' : 'immediate');
             $lead = GoalLoanLead::create([
                 'ref_no' => 'LD-' . now()->format('ymd') . '-' . Str::upper(Str::random(4)),
                 'customer_name' => $data['customer_name'],
@@ -574,6 +591,102 @@ class GoalVrmController extends Controller
         }
 
         return redirect()->route('goal.vrm.index')->with('success', $message);
+    }
+
+    public function storeQuickDisposition(Request $request)
+    {
+        $this->requireGoalPermission('vrm_calling_guard');
+
+        $data = $request->validate([
+            'name' => 'required|string|max:100',
+            'creates_lead' => 'nullable|boolean',
+            'maps_to_lead_type' => 'nullable|in:immediate,future',
+        ]);
+
+        $name = trim($data['name']);
+        $existing = GoalVrmDisposition::withTrashed()
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+            ->first();
+
+        if ($existing) {
+            if ($existing->trashed()) {
+                $existing->restore();
+            }
+            $existing->is_active = true;
+            if (array_key_exists('creates_lead', $data)) {
+                $existing->creates_lead = (bool) $data['creates_lead'];
+            }
+            if (array_key_exists('maps_to_lead_type', $data)) {
+                $existing->maps_to_lead_type = $data['maps_to_lead_type'] ?: null;
+            }
+            $existing->save();
+
+            return response()->json([
+                'id' => $existing->id,
+                'name' => $existing->name,
+                'creates_lead' => (bool) $existing->creates_lead,
+                'maps_to_lead_type' => $existing->maps_to_lead_type,
+                'reused' => true,
+            ]);
+        }
+
+        $maxSort = (int) GoalVrmDisposition::query()->max('sort_order');
+        $disposition = GoalVrmDisposition::create([
+            'name' => $name,
+            'creates_lead' => (bool) ($data['creates_lead'] ?? false),
+            'maps_to_lead_type' => $data['maps_to_lead_type'] ?? null,
+            'sort_order' => $maxSort + 10,
+            'is_active' => true,
+        ]);
+
+        return response()->json([
+            'id' => $disposition->id,
+            'name' => $disposition->name,
+            'creates_lead' => (bool) $disposition->creates_lead,
+            'maps_to_lead_type' => $disposition->maps_to_lead_type,
+            'reused' => false,
+        ], 201);
+    }
+
+    public function updateDisposition(Request $request, GoalVrmDisposition $disposition)
+    {
+        $this->requireGoalPermission('vrm_calling_guard');
+
+        $data = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('goal_vrm_dispositions', 'name')->ignore($disposition->id),
+            ],
+            'creates_lead' => 'nullable|boolean',
+            'maps_to_lead_type' => 'nullable|in:immediate,future',
+            'is_active' => 'nullable|boolean',
+            'sort_order' => 'nullable|integer|min:0|max:9999',
+        ]);
+
+        $disposition->fill([
+            'name' => trim($data['name']),
+            'creates_lead' => array_key_exists('creates_lead', $data)
+                ? (bool) $data['creates_lead']
+                : $disposition->creates_lead,
+            'maps_to_lead_type' => array_key_exists('maps_to_lead_type', $data)
+                ? ($data['maps_to_lead_type'] ?: null)
+                : $disposition->maps_to_lead_type,
+            'is_active' => array_key_exists('is_active', $data)
+                ? (bool) $data['is_active']
+                : $disposition->is_active,
+            'sort_order' => $data['sort_order'] ?? $disposition->sort_order,
+        ])->save();
+
+        return response()->json([
+            'id' => $disposition->id,
+            'name' => $disposition->name,
+            'creates_lead' => (bool) $disposition->creates_lead,
+            'maps_to_lead_type' => $disposition->maps_to_lead_type,
+            'is_active' => (bool) $disposition->is_active,
+            'sort_order' => (int) $disposition->sort_order,
+        ]);
     }
 
     public function storeQuickProduct(Request $request)
@@ -642,5 +755,12 @@ class GoalVrmController extends Controller
             ->where('product_status', 1)
             ->orderBy('product_name')
             ->get(['id', 'product_name']);
+    }
+
+    protected function activeDispositions()
+    {
+        return GoalVrmDisposition::query()
+            ->active()
+            ->get(['id', 'name', 'creates_lead', 'maps_to_lead_type', 'sort_order']);
     }
 }

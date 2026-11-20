@@ -59,7 +59,7 @@
     </div>
 
     <div class="uh-stats">
-        <div class="uh-stat uh-stat--violet">
+        <div class="uh-stat uh-stat--teal">
             <div class="uh-stat-icon"><i class="bi bi-people-fill"></i></div>
             <div class="uh-stat-text">
                 <div class="uh-stat-label">Total Users</div>

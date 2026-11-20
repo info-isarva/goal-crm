@@ -4,68 +4,164 @@ namespace App\Http\Controllers\Goal;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Goal\Concerns\AuthorizesGoal;
+use App\Library\MpdfDocument;
 use App\Models\GoalOrgUnit;
+use App\Models\GoalPmsFollowup;
 use App\Models\GoalPmsItem;
-use App\Services\Goal\GoalAuditService;
+use App\Models\User;
+use App\Services\Goal\GoalPmsQueueService;
 use App\Services\Goal\Pd01Service;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class GoalPmsController extends Controller
 {
     use AuthorizesGoal;
 
+    public function __construct(protected GoalPmsQueueService $pms) {}
+
     public function index(Request $request)
     {
         $this->requireGoalPermission('pms_verification_guard');
 
-        $filters = $this->validatedFilters($request);
+        $filters = $this->pms->validatedFilters($request);
         $base = $this->scopeByLoanCase(GoalPmsItem::query());
-        $kpis = [
-            'total' => (clone $base)->count(),
-            'pending' => (clone $base)->whereNotIn('status', ['Verified', 'Closed'])->count(),
-            'verified' => (clone $base)->where('status', 'Verified')->count(),
-            'follow_up' => (clone $base)->where('status', 'Follow-up Due')->count(),
-        ];
+        $kpis = $this->pms->kpis(clone $base);
+        $tabCounts = $this->pms->tabCounts(clone $base);
 
-        $items = $this->filteredQuery($filters)
-            ->with(['loanCase', 'referralOrgUnit'])
-            ->latest()
-            ->paginate(25)
+        $items = $this->pms->applyFilters(clone $base, $filters)
+            ->with([
+                'loanCase.orgUnit',
+                'disbursement',
+                'assignee',
+                'followups' => fn ($q) => $q->whereNotIn('status', ['Completed', 'Cancelled'])->orderBy('scheduled_date'),
+            ])
+            ->paginate(20)
             ->withQueryString();
 
-        $branches = GoalOrgUnit::query()->ofType('branch')->active()->orderBy('name')->get(['id', 'name']);
+        $selectedId = (int) ($filters['selected'] ?? ($items->first()?->id ?? 0));
+        $selected = null;
+        if ($selectedId > 0) {
+            $selected = (clone $base)->with([
+                'loanCase.orgUnit',
+                'disbursement',
+                'assignee',
+                'followups' => fn ($q) => $q->with('assignee')->orderBy('scheduled_date')->orderBy('id'),
+                'activityLogs' => fn ($q) => $q->with('user')->latest('created_at')->limit(8),
+            ])->find($selectedId);
+        }
 
-        return view('goal.pms.index', compact('items', 'kpis', 'filters', 'branches'));
+        $workflow = $selected ? $this->pms->workflowEvents($selected) : [];
+        $branches = $this->scopedBranches();
+        $pmsUsers = $this->pmsUsers();
+        $missingOrgScope = $this->scopedOrgIds() === [];
+
+        $payload = compact(
+            'items', 'kpis', 'tabCounts', 'filters', 'branches', 'pmsUsers', 'selected', 'workflow', 'missingOrgScope'
+        );
+
+        if ($request->boolean('partial') || $request->ajax()) {
+            return response()
+                ->view('goal.pms.partials.queue_results', $payload)
+                ->header('Cache-Control', 'no-store');
+        }
+
+        return view('goal.pms.index', $payload);
     }
 
-    public function export(Request $request): StreamedResponse
+    public function show(GoalPmsItem $item)
+    {
+        $this->requireGoalPermission('pms_verification_guard');
+        $this->assertItemInScope($item);
+
+        $item->load([
+            'loanCase.orgUnit',
+            'loanCase.owner',
+            'disbursement.verifier',
+            'assignee',
+            'verifier',
+            'verifications.verifier',
+            'followups.assignee',
+            'followups.completer',
+            'assignmentHistory.newUser',
+            'assignmentHistory.previousUser',
+            'assignmentHistory.assigner',
+            'activityLogs.user',
+        ]);
+
+        $workflow = $this->pms->workflowEvents($item);
+        $pmsUsers = $this->pmsUsersForItem($item);
+        $branches = $this->scopedBranches();
+        $missingOrgScope = false;
+
+        return view('goal.pms.show', compact('item', 'workflow', 'pmsUsers', 'branches', 'missingOrgScope'));
+    }
+
+    public function export(Request $request): StreamedResponse|\Illuminate\Http\Response
     {
         $this->requireGoalPermission('pms_verification_guard');
 
-        $filters = $this->validatedFilters($request);
-        $rows = $this->filteredQuery($filters)->with(['loanCase', 'referralOrgUnit'])->latest()->limit(5000)->get();
-        $filename = 'pms-queue-'.now()->format('Ymd-His').'.csv';
+        $filters = $this->pms->validatedFilters($request);
+        $format = $filters['format'] ?? 'csv';
+        $rows = $this->pms->applyFilters($this->scopeByLoanCase(GoalPmsItem::query()), $filters)
+            ->with(['loanCase.orgUnit', 'disbursement', 'assignee'])
+            ->limit(5000)
+            ->get();
 
-        return response()->streamDownload(function () use ($rows) {
+        if ($format === 'pdf') {
+            $html = view('goal.pms.export-pdf', [
+                'rows' => $rows,
+                'generatedAt' => now(),
+            ])->render();
+
+            return response(MpdfDocument::binary($html), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="pms-queue-'.now()->format('Ymd-His').'.pdf"',
+            ]);
+        }
+
+        $filename = 'pms-queue-'.now()->format('Ymd-His').'.'.$format;
+        $delimiter = $format === 'xlsx' ? ',' : ',';
+
+        return response()->streamDownload(function () use ($rows, $delimiter) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Case', 'Customer', 'Status', 'Activity', 'Follow-up', 'Referral Branch', 'Notes', 'Verified At']);
+            fputcsv($out, [
+                'Case Reference', 'Customer', 'Product', 'Branch', 'Disbursement Date',
+                'Disbursed Amount', 'PMS Status', 'Assigned PMS User', 'Next Follow-up',
+            ], $delimiter);
             foreach ($rows as $item) {
                 fputcsv($out, [
                     $item->loanCase?->case_no,
                     $item->loanCase?->customer_name,
-                    $item->status,
-                    $item->activity_type,
+                    $item->loanCase?->product,
+                    $item->loanCase?->orgUnit?->name,
+                    optional($item->disbursement?->disbursed_on)->format('Y-m-d'),
+                    $item->disbursement?->amount,
+                    $item->statusLabel(),
+                    $item->assignee?->name,
                     optional($item->follow_up_at)->format('Y-m-d H:i'),
-                    $item->referralOrgUnit?->name,
-                    $item->notes,
-                    optional($item->verified_at)->format('Y-m-d H:i'),
-                ]);
+                ], $delimiter);
             }
             fclose($out);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function start(GoalPmsItem $item)
+    {
+        $this->requireGoalPermission('pms_verification_guard');
+        $this->assertItemInScope($item);
+
+        try {
+            $this->pms->startVerification($item, auth()->user());
+        } catch (Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'Verification started.');
     }
 
     public function verify(Request $request, GoalPmsItem $item, Pd01Service $pd01)
@@ -74,80 +170,220 @@ class GoalPmsController extends Controller
         $this->assertItemInScope($item);
 
         $data = $request->validate([
-            'notes' => 'nullable|string',
-            'status' => 'required|in:Verified,Follow-up Due,Closed',
+            'verification_result' => 'required|in:Verified,Rejected,On Hold',
+            'verification_remarks' => 'nullable|required_if:verification_result,Rejected,On Hold|string|max:2000',
+            'notes' => 'nullable|string|max:2000',
             'follow_up_at' => 'nullable|date',
             'activity_type' => 'nullable|in:portfolio,follow_up,repeat_opportunity,branch_referral',
-            'referral_org_unit_id' => 'nullable|exists:goal_org_units,id',
+            'referral_org_unit_id' => [
+                'nullable',
+                'required_if:activity_type,branch_referral',
+                Rule::in($this->scopedBranchIds()),
+            ],
+        ], [
+            'verification_remarks.required_if' => 'Remarks are required when result is Rejected or On Hold.',
+            'referral_org_unit_id.required_if' => 'Select a referral branch for branch referral activity.',
+            'referral_org_unit_id.in' => 'Selected referral branch is outside your organizational scope.',
         ]);
 
-        if ($data['status'] === 'Follow-up Due' && empty($data['follow_up_at'])) {
-            return back()->withErrors(['follow_up_at' => 'Follow-up date is required when status is Follow-up Due.']);
-        }
-        if (($data['activity_type'] ?? null) === 'branch_referral' && empty($data['referral_org_unit_id'])) {
-            return back()->withErrors(['referral_org_unit_id' => 'Select a referral branch for branch referral activity.']);
-        }
-
-        $updates = [
-            'status' => $data['status'],
-            'notes' => $data['notes'] ?? $item->notes,
-            'follow_up_at' => $data['follow_up_at'] ?? null,
-            'activity_type' => $data['activity_type'] ?? $item->activity_type,
-            'referral_org_unit_id' => $data['referral_org_unit_id'] ?? null,
-        ];
-        if ($data['status'] === 'Verified') {
-            $updates['verified_by'] = auth()->id();
-            $updates['verified_at'] = now();
-        }
-        $item->update($updates);
-        $case = $item->loanCase;
-        $pd01->refreshPayoutEligibility($case);
-        if ($case) {
-            GoalAuditService::recordFinancial(
-                $case,
-                GoalAuditService::TYPE_PMS,
-                'PMS '.$data['status'],
-                $item->fresh(),
-                auth()->user(),
-                ['to' => $data['status'], 'body' => $data['notes'] ?? null]
-            );
+        try {
+            $this->pms->completeVerification($item, auth()->user(), $data, $pd01);
+        } catch (Throwable $e) {
+            return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'PMS item updated.');
+        return back()->with('success', 'PMS verification saved.');
     }
 
-    private function validatedFilters(Request $request): array
+    public function reassign(Request $request, GoalPmsItem $item)
     {
-        return $request->validate([
-            'q' => 'nullable|string|max:100',
-            'status' => 'nullable|in:pending,Verified,Follow-up Due,Closed',
+        $this->requireGoalPermission('pms_verification_guard');
+        $this->assertItemInScope($item);
+
+        $allowedIds = $this->pmsUserIdsForItem($item);
+        $data = $request->validate([
+            'assigned_to' => ['required', 'integer', Rule::in($allowedIds)],
+            'reassignment_reason' => 'nullable|string|max:500',
+        ], [
+            'assigned_to.in' => 'Assignee must be a PMS user within your organizational scope.',
         ]);
+
+        $this->pms->reassign($item, auth()->user(), (int) $data['assigned_to'], $data['reassignment_reason'] ?? null);
+
+        return back()->with('success', 'Case reassigned.');
     }
 
-    private function filteredQuery(array $filters): Builder
+    public function storeFollowup(Request $request, GoalPmsItem $item)
     {
-        $q = trim((string) ($filters['q'] ?? ''));
-        $status = $filters['status'] ?? null;
+        $this->requireGoalPermission('pms_verification_guard');
+        $this->assertItemInScope($item);
 
-        $query = $this->scopeByLoanCase(GoalPmsItem::query())
-            ->when($q !== '', function (Builder $query) use ($q) {
-                $query->whereHas('loanCase', function (Builder $c) use ($q) {
-                    $c->where('case_no', 'like', "%{$q}%")
-                        ->orWhere('customer_name', 'like', "%{$q}%");
-                });
-            })
-            ->when($status === 'pending', fn (Builder $query) => $query->whereNotIn('status', ['Verified', 'Closed']))
-            ->when(in_array($status, ['Verified', 'Follow-up Due', 'Closed'], true), fn (Builder $query) => $query->where('status', $status));
+        $allowedIds = $this->pmsUserIdsForItem($item);
+        $data = $request->validate([
+            'followup_type' => 'required|in:'.implode(',', array_keys(GoalPmsFollowup::TYPES)),
+            'subject' => 'required|string|max:180',
+            'description' => 'nullable|string|max:2000',
+            'scheduled_date' => 'required|date|after_or_equal:today',
+            'scheduled_time' => 'nullable|date_format:H:i',
+            'assigned_to' => ['nullable', 'integer', Rule::in($allowedIds)],
+            'priority' => 'nullable|in:Low,Medium,High',
+        ], [
+            'subject.required' => 'Follow-up subject is required.',
+            'scheduled_date.required' => 'Follow-up date is required.',
+            'scheduled_date.after_or_equal' => 'Follow-up date cannot be in the past.',
+            'assigned_to.in' => 'Follow-up owner must be a PMS user within your organizational scope.',
+        ]);
 
-        return $query;
+        $this->pms->createFollowup($item, auth()->user(), $data);
+
+        return back()->with('success', 'Follow-up scheduled.');
     }
 
-    private function assertItemInScope(GoalPmsItem $item): void
+    public function completeFollowup(Request $request, GoalPmsFollowup $followup)
     {
+        $this->requireGoalPermission('pms_verification_guard');
+        $followup->loadMissing('pmsItem.loanCase');
+        $this->assertItemInScope($followup->pmsItem);
+
+        $data = $request->validate([
+            'completion_remarks' => 'nullable|string|max:2000',
+        ]);
+
+        $this->pms->completeFollowup($followup, auth()->user(), $data['completion_remarks'] ?? null);
+
+        return back()->with('success', 'Follow-up completed.');
+    }
+
+    public function cancelFollowup(Request $request, GoalPmsFollowup $followup)
+    {
+        $this->requireGoalPermission('pms_verification_guard');
+        $followup->loadMissing('pmsItem.loanCase');
+        $this->assertItemInScope($followup->pmsItem);
+
+        $data = $request->validate([
+            'completion_remarks' => 'nullable|string|max:2000',
+        ]);
+
+        $this->pms->cancelFollowup($followup, auth()->user(), $data['completion_remarks'] ?? null);
+
+        return back()->with('success', 'Follow-up cancelled.');
+    }
+
+    public function rescheduleFollowup(Request $request, GoalPmsFollowup $followup)
+    {
+        $this->requireGoalPermission('pms_verification_guard');
+        $followup->loadMissing('pmsItem.loanCase');
+        $this->assertItemInScope($followup->pmsItem);
+
+        $data = $request->validate([
+            'scheduled_date' => 'required|date|after_or_equal:today',
+            'scheduled_time' => 'nullable|date_format:H:i',
+        ], [
+            'scheduled_date.after_or_equal' => 'Reschedule date cannot be in the past.',
+        ]);
+
+        $this->pms->rescheduleFollowup(
+            $followup,
+            auth()->user(),
+            $data['scheduled_date'],
+            $data['scheduled_time'] ?? null
+        );
+
+        return back()->with('success', 'Follow-up rescheduled.');
+    }
+
+    /**
+     * Active PMS-role users visible within the actor's org scope.
+     * Super Admin / MD / CEO see all PMS users; others only overlapping org units.
+     */
+    protected function pmsUsers(): Collection
+    {
+        $query = User::query()
+            ->where('crm_role_type', 13)
+            ->where('status', 1)
+            ->orderBy('name')
+            ->limit(200);
+
+        if (! $this->isGlobalOrgViewer()) {
+            $scope = array_map('intval', $this->scopedOrgIds());
+            if ($scope === []) {
+                return collect();
+            }
+            $query->whereIn('goal_org_unit_id', $scope);
+        }
+
+        return $query->get(['id', 'name', 'goal_org_unit_id']);
+    }
+
+    /**
+     * Assignees for a specific PMS item: scoped PMS users + current assignee (if any).
+     */
+    protected function pmsUsersForItem(GoalPmsItem $item): Collection
+    {
+        $users = $this->pmsUsers();
+        $currentId = (int) ($item->assigned_to ?? 0);
+        if ($currentId > 0 && ! $users->contains(fn ($u) => (int) $u->id === $currentId)) {
+            $current = User::query()
+                ->where('id', $currentId)
+                ->where('crm_role_type', 13)
+                ->first(['id', 'name', 'goal_org_unit_id']);
+            if ($current) {
+                $users = $users->prepend($current)->unique('id')->values();
+            }
+        }
+
+        return $users;
+    }
+
+    protected function pmsUserIds(): array
+    {
+        return $this->pmsUsers()->pluck('id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    protected function pmsUserIdsForItem(GoalPmsItem $item): array
+    {
+        return $this->pmsUsersForItem($item)->pluck('id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    protected function scopedBranches(): Collection
+    {
+        $query = GoalOrgUnit::query()->ofType('branch')->active()->orderBy('name');
+
+        if (! $this->isGlobalOrgViewer()) {
+            $scope = array_map('intval', $this->scopedOrgIds());
+            if ($scope === []) {
+                return collect();
+            }
+            $query->whereIn('id', $scope);
+        }
+
+        return $query->get(['id', 'name']);
+    }
+
+    protected function scopedBranchIds(): array
+    {
+        return $this->scopedBranches()->pluck('id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    protected function isGlobalOrgViewer(): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        return $user->isSuperAdmin() || in_array((int) ($user->crm_role_type ?? -1), [1, 4, 5], true);
+    }
+
+    private function assertItemInScope(?GoalPmsItem $item): void
+    {
+        if (! $item) {
+            abort(404);
+        }
         $item->loadMissing('loanCase');
-        $scope = $this->scopedOrgIds();
+        $scope = array_map('intval', $this->scopedOrgIds());
         $orgId = (int) ($item->loanCase?->goal_org_unit_id ?? 0);
-        if ($scope === [] || ! $orgId || ! in_array($orgId, array_map('intval', $scope), true)) {
+        if ($scope === [] || ! $orgId || ! in_array($orgId, $scope, true)) {
             abort(403, 'Unauthorized action.');
         }
     }

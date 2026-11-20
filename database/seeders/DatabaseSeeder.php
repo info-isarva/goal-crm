@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             CompanySeeder::class,
             SuperAdminSeeder::class,
             GoalRolesPermissionsSeeder::class,
+            GoalVrmDispositionSeeder::class,
             GoalOrgUnitSeeder::class,
             GoalHierarchyUsersSeeder::class,
         ]);

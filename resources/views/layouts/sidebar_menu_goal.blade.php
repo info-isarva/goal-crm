@@ -11,18 +11,25 @@
     $canLeadMgmt = $can('vrm_calling_guard') || $can('view_leads_guard') || $can('create_lead_guard')
         || $can('channel_lead_guard') || $can('bm_allocation_guard');
     $canLoanProc = $can('view_loan_cases_guard');
-    // Case-ops sub-modules — not for view-only oversight / Accounts (SOW role scope)
+    // Case-ops sub-modules — dedicated guards, with edit_case_workspace as legacy fallback
     $canCaseOps = $can('edit_case_workspace_guard');
-    $canDocsHub = $canCaseOps || $can('bm_allocation_guard') || $can('pms_verification_guard');
-    $canSanctionHub = $canCaseOps || $can('record_disbursement_guard');
+    $canVisitsHub = $can('customer_visits_guard') || $canCaseOps;
+    $canDocsHub = $can('case_documents_guard') || $canCaseOps || $can('bm_allocation_guard') || $can('pms_verification_guard');
+    $canBankHub = $can('bank_processing_guard') || $canCaseOps;
+    $canSanctionHub = $can('sanction_disbursement_guard') || $canCaseOps || $can('record_disbursement_guard');
     $canPostDisb = $can('pms_verification_guard') || $can('accounts_queue_guard') || $can('payout_processing_guard');
     $canPerfFin = $can('view_targets_guard') || $can('manage_targets_guard') || $can('branch_mis_guard') || $can('revenue_ledger_guard');
     $canOrg = $can('manage_org_units_guard') || $can('manage_users_guard') || $can('manage_roles_guard')
-        || $can('manage_permissions_guard')
+        || $can('manage_permissions_guard') || $can('manage_company_guard')
         || $can('manage_crm_organization_guard') || $can('view_crm_organization_guard')
         || $can('manage_crm_user_guard') || $can('view_crm_user_guard') || $isSuper;
-    $canAuditLogs = $isSuper || $can('view_crm_activity_log_guard') || $can('manage_users_guard') || $can('manage_roles_guard');
-    $canAnalytics = $isSuper || $canPerfFin;
+    $canProducts = $can('manage_products_guard') || $isSuper;
+    $canDispositions = $can('manage_dispositions_guard') || $isSuper;
+    $canMasters = $canProducts || $canDispositions;
+    $canAuditLogs = $isSuper || $can('view_audit_logs_guard') || $can('view_crm_activity_log_guard')
+        || $can('manage_users_guard') || $can('manage_roles_guard');
+    $canAnalytics = $isSuper || $can('goal_analytics_guard') || $can('mis_reports_guard')
+        || $can('scheduled_reports_guard') || $canPerfFin;
     $hasAnyGoalModule = $canLeadMgmt || $canLoanProc || $canPostDisb || $canPerfFin || $can('manage_org_units_guard');
 
     $cwCase = request()->route('case');
@@ -81,10 +88,24 @@
         <i class="bi bi-house-door"></i> <span class="nav-label">Home</span>
     </a>
 </li>
-@if($canAnalytics)
+@if($can('goal_analytics_guard') || $isSuper || $canPerfFin)
 <li class="nav-item">
     <a class="nav-link {{ request()->routeIs('goal.analytics') ? 'active' : '' }}" href="{{ route('goal.analytics') }}">
-        <i class="bi bi-bar-chart-fill"></i> <span class="nav-label">Analytics / MIS Reports</span>
+        <i class="bi bi-bar-chart-fill"></i> <span class="nav-label">Analytics Dashboard</span>
+    </a>
+</li>
+@endif
+@if($can('mis_reports_guard') || $isSuper || $canPerfFin)
+<li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('goal.mis-reports') ? 'active' : '' }}" href="{{ route('goal.mis-reports') }}">
+        <i class="bi bi-file-earmark-bar-graph"></i> <span class="nav-label">MIS Reports</span>
+    </a>
+</li>
+@endif
+@if($can('scheduled_reports_guard') || $isSuper || $canPerfFin)
+<li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('goal.scheduled-reports.*') ? 'active' : '' }}" href="{{ route('goal.scheduled-reports.index') }}">
+        <i class="bi bi-calendar2-check"></i> <span class="nav-label">Scheduled Reports</span>
     </a>
 </li>
 @endif
@@ -130,7 +151,7 @@
     </a>
 </li>
 @if($isFullGoalNav)
-@if($canCaseOps)
+@if($canVisitsHub)
 <li class="nav-item">
     <a class="nav-link {{ $cwTabActive('visits') || request()->routeIs('goal.visits.*') || request()->routeIs('tasks.*') ? 'active' : '' }}"
        href="{{ route('goal.visits.index') }}">
@@ -145,7 +166,7 @@
     </a>
 </li>
 @endif
-@if($canCaseOps)
+@if($canBankHub)
 <li class="nav-item">
     <a class="nav-link {{ request()->routeIs('goal.bank-processing.*') ? 'active' : '' }}" href="{{ route('goal.bank-processing.index') }}">
         <i class="bi bi-bank"></i> <span class="nav-label">Bank Processing</span>
@@ -221,7 +242,32 @@
 @endif
 @endif
 
-{{-- 6. Organization --}}
+{{-- 6. Masters --}}
+@if($isFullGoalNav && $canMasters)
+<li class="nav-item sidebar-section"><span class="sidebar-section-label">Masters</span></li>
+@if($canProducts)
+<li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}" href="{{ route('products.index') }}">
+        <i class="bi bi-box-seam"></i> <span class="nav-label">Products</span>
+    </a>
+</li>
+@endif
+@if($canDispositions)
+<li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('goal.masters.dispositions.*') ? 'active' : '' }}" href="{{ route('goal.masters.dispositions.index') }}">
+        <i class="bi bi-list-check"></i> <span class="nav-label">Dispositions</span>
+    </a>
+</li>
+@endif
+@elseif(!$isFullGoalNav && $canDispositions)
+<li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('goal.masters.dispositions.*') ? 'active' : '' }}" href="{{ route('goal.masters.dispositions.index') }}">
+        <i class="bi bi-list-check"></i> <span class="nav-label">Dispositions</span>
+    </a>
+</li>
+@endif
+
+{{-- 7. Organization --}}
 @if($isFullGoalNav && $canOrg)
 <li class="nav-item sidebar-section"><span class="sidebar-section-label">Organization</span></li>
 
@@ -233,7 +279,7 @@
 </li>
 @endif
 
-@if($can('manage_crm_organization_guard') || $can('view_crm_organization_guard') || $isSuper)
+@if($can('manage_company_guard') || $can('manage_crm_organization_guard') || $can('view_crm_organization_guard') || $isSuper)
 <li class="nav-item">
     <a class="nav-link {{ request()->routeIs('organizations.*') || request()->routeIs('company.edit') ? 'active' : '' }}"
        href="{{ route('organizations.index') }}">
@@ -261,7 +307,7 @@
 @endif
 
 @if($isFullGoalNav)
-{{-- 7. System --}}
+{{-- 8. System --}}
 <li class="nav-item sidebar-section"><span class="sidebar-section-label">System</span></li>
 <li class="nav-item">
     <a class="nav-link {{ request()->routeIs('notifications.*') ? 'active' : '' }}" href="{{ route('notifications.index') }}">

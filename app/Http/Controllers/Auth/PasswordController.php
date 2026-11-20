@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -32,11 +31,12 @@ class PasswordController extends Controller
         ]);
 
         $user = $request->user();
+        // Plain value — User model casts password as hashed; other sessions cleared in User::booted.
         $user->update([
-            'password' => Hash::make($validated['password']),
+            'password' => $validated['password'],
         ]);
 
-        // Log out the user after password change
+        // End this session too — must log in with the new password.
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
