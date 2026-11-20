@@ -51,6 +51,7 @@
     <link href="{{ asset('css/select2-theme.css') }}?v={{ @filemtime(public_path('css/select2-theme.css')) }}" rel="stylesheet" />
     <!-- Flatpickr (global date / datetime) -->
     <link href="{{ asset('css/flatpickr.min.css') }}" rel="stylesheet" />
+    <link href="{{ asset('css/flatpickr-monthSelect.css') }}?v={{ @filemtime(public_path('css/flatpickr-monthSelect.css')) }}" rel="stylesheet" />
     <link href="{{ asset('css/flatpickr-theme.css') }}?v={{ @filemtime(public_path('css/flatpickr-theme.css')) }}" rel="stylesheet" />
     <!-- Global toastr-style flash notifications -->
     <link href="{{ asset('css/app-toastr.css') }}?v={{ @filemtime(public_path('css/app-toastr.css')) }}" rel="stylesheet" />
@@ -662,6 +663,7 @@
         <script src="{{ asset('js/select2.min.js') }}"></script>
         <script src="{{ asset('js/select2-init.js') }}?v={{ @filemtime(public_path('js/select2-init.js')) }}"></script>
         <script src="{{ asset('js/flatpickr.min.js') }}"></script>
+        <script src="{{ asset('js/flatpickr-monthSelect.js') }}"></script>
         <script src="{{ asset('js/flatpickr-init.js') }}?v={{ @filemtime(public_path('js/flatpickr-init.js')) }}"></script>
         <script src="{{ asset('js/decimal-input.js') }}?v={{ @filemtime(public_path('js/decimal-input.js')) }}"></script>
         @yield('scripts')

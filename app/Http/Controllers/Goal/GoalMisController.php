@@ -2,14 +2,20 @@
 
 namespace App\Http\Controllers\Goal;
 
+use App\Exports\GoalSheetExport;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Goal\Concerns\AuthorizesGoal;
+use App\Library\MpdfDocument;
 use App\Models\GoalLoanCase;
 use App\Models\GoalOrgUnit;
 use App\Models\GoalRevenueEntry;
 use App\Services\Goal\Pd01Service;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Excel as ExcelWriter;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GoalMisController extends Controller
@@ -67,94 +73,104 @@ class GoalMisController extends Controller
         ));
     }
 
-    public function exportBranchMis(Request $request): StreamedResponse
+    public function showBranchMis(GoalLoanCase $case)
+    {
+        $this->requireGoalPermission('branch_mis_guard');
+
+        $scope = $this->scopedOrgIds();
+        $orgId = (int) ($case->goal_org_unit_id ?? 0);
+        if ($scope === [] || ! $orgId || ! in_array($orgId, array_map('intval', $scope), true)) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $case->load(['owner', 'orgUnit', 'disbursements', 'bankApplications', 'lead']);
+        $misSvc = app(\App\Services\Goal\GoalBranchMisService::class);
+        $mis = $misSvc->apply($case, is_array($case->branch_mis) ? $case->branch_mis : []);
+
+        return view('goal.mis.branch_show', compact('case', 'mis'));
+    }
+
+    public function exportBranchMis(Request $request): StreamedResponse|BinaryFileResponse|\Illuminate\Http\Response
     {
         $this->requireGoalPermission('branch_mis_guard');
 
         $filters = $this->validatedBranchFilters($request);
-        $rows = $this->branchMisQuery($filters)->limit(5000)->get();
-        $filename = 'branch-mis-'.now()->format('Ymd-His').'.csv';
+        $format = strtolower((string) $request->input('format', 'csv'));
+        if (! in_array($format, ['csv', 'xlsx', 'excel', 'pdf'], true)) {
+            $format = 'csv';
+        }
+        if ($format === 'excel') {
+            $format = 'xlsx';
+        }
 
-        return response()->streamDownload(function () use ($rows) {
+        $cases = $this->branchMisQuery($filters)->limit(5000)->get();
+        $fullHeadings = [
+            'Ref Number', 'LAN Number', 'Customer Name', 'Customer Contact', 'Month',
+            'Login Date', 'Login Amount', 'Sanction Dt', 'Sanc Amt', 'Disb Date', 'Disb amt',
+            'Code', 'Product', 'Sub Product', 'Status', 'OTC/PDD Status', 'Location',
+            'Source', 'Source Name', 'GSM Name', 'Bank Name', 'Banker Name', 'Banker Contact', 'Banker Mail ID',
+            'PayIn%', 'Payin Amt', 'Payout %', 'Payout Amount', 'Net Revenue',
+            'SM Remark', 'Payout Month',
+            'Ref - 1 Name', 'Ref - 1 Contact', 'Ref - 2 Name', 'Ref - 2 Contact',
+            'DOB Applicant', 'Co-Applicant', 'Owner', 'Branch',
+        ];
+        [$sheetRows, $pdfRows] = $this->buildBranchMisExportRows($cases);
+        $stamp = now()->format('Ymd-His');
+
+        if ($format === 'pdf') {
+            $branchLabel = null;
+            if (! empty($filters['branch'])) {
+                $branchLabel = GoalOrgUnit::query()->whereKey((int) $filters['branch'])->value('name')
+                    ?: ('Branch #'.$filters['branch']);
+            }
+            $filterLabels = array_values(array_filter([
+                $filters['q'] !== '' ? 'Search: '.$filters['q'] : null,
+                $filters['status'] !== '' ? 'Status: '.$filters['status'] : null,
+                $filters['product'] !== '' ? 'Product: '.$filters['product'] : null,
+                $filters['month'] !== '' ? 'Month: '.$filters['month'] : null,
+                $filters['bank'] !== '' ? 'Bank: '.$filters['bank'] : null,
+                $filters['otc_pdd'] !== '' ? 'OTC/PDD: '.$filters['otc_pdd'] : null,
+                $branchLabel ? 'Branch: '.$branchLabel : null,
+            ]));
+            $summary = [
+                'cases' => count($pdfRows),
+                'disb' => (float) collect($pdfRows)->sum('disb_raw'),
+                'payin' => (float) collect($pdfRows)->sum('payin_raw'),
+                'payout' => (float) collect($pdfRows)->sum('payout_raw'),
+                'net' => (float) collect($pdfRows)->sum('net_raw'),
+            ];
+
+            return MpdfDocument::fromView(
+                'goal.mis.exports.branch-pdf',
+                [
+                    'rows' => $pdfRows,
+                    'summary' => $summary,
+                    'filterLabels' => $filterLabels,
+                    'generatedAt' => now(),
+                ],
+                'branch-mis-'.$stamp.'.pdf',
+                true,
+                'A4-L'
+            );
+        }
+
+        if ($format === 'xlsx') {
+            return Excel::download(
+                new GoalSheetExport($sheetRows, $fullHeadings, 'Branch MIS'),
+                'branch-mis-'.$stamp.'.xlsx',
+                ExcelWriter::XLSX
+            );
+        }
+
+        return response()->streamDownload(function () use ($sheetRows, $fullHeadings) {
             $out = fopen('php://output', 'w');
-            // UTF-8 BOM for Excel
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, [
-                'Ref Number', 'LAN Number', 'Customer Name', 'Customer Contact', 'Month',
-                'Login Date', 'Login Amount', 'Sanction Dt', 'Sanc Amt', 'Disb Date', 'Disb amt',
-                'Code', 'Product', 'Sub Product', 'Status', 'OTC/PDD Status', 'Location',
-                'Source', 'Source Name', 'GSM Name', 'Bank Name', 'Banker Name', 'Banker Contact', 'Banker Mail ID',
-                'PayIn%', 'Payin Amt', 'Payout %', 'Payout Amount', 'Net Revenue',
-                'SM Remark', 'Payout Month',
-                'Ref - 1 Name', 'Ref - 1 Contact', 'Ref - 2 Name', 'Ref - 2 Contact',
-                'DOB Applicant', 'Co-Applicant', 'Owner', 'Branch',
-            ]);
-
-            foreach ($rows as $case) {
-                $m = is_array($case->branch_mis) ? $case->branch_mis : [];
-                $verifiedDisb = $case->disbursements
-                    ->where('status', 'Verified')
-                    ->sortByDesc('disbursed_on')
-                    ->first()
-                    ?? $case->disbursements->sortByDesc('disbursed_on')->first();
-                $disbAmt = $verifiedDisb?->amount
-                    ?? $this->misVal($m, ['disb_amt', 'disb_amount', 'disbursement_amount']);
-                $disbDate = optional($verifiedDisb?->disbursed_on)->format('d-M-Y')
-                    ?: $this->misVal($m, ['disb_date', 'disbursement_date']);
-
-                // Prefer auto-calc when disb + % present (keeps export consistent with workspace).
-                $m = app(\App\Services\Goal\GoalBranchMisService::class)->apply($case, $m);
-
-                fputcsv($out, [
-                    $case->case_no,
-                    $this->misVal($m, ['lan_number', 'lan', 'lan_no']),
-                    $case->customer_name,
-                    $case->mobile,
-                    $this->misVal($m, ['month']),
-                    $this->misVal($m, ['login_date']),
-                    $this->misVal($m, ['login_amount', 'login_amt']),
-                    optional($case->sanction_date)->format('d-M-Y') ?: $this->misVal($m, ['sanction_dt', 'sanction_date']),
-                    $case->sanction_amount !== null
-                        ? number_format((float) $case->sanction_amount, 2, '.', '')
-                        : $this->misVal($m, ['sanc_amt', 'sanction_amount']),
-                    $disbDate ?: $this->misVal($m, ['disb_date']),
-                    isset($m['disb_amount']) && $m['disb_amount'] !== ''
-                        ? number_format((float) $m['disb_amount'], 2, '.', '')
-                        : ($disbAmt !== null && $disbAmt !== ''
-                            ? (is_numeric($disbAmt) ? number_format((float) $disbAmt, 2, '.', '') : $disbAmt)
-                            : ''),
-                    $this->misVal($m, ['code']),
-                    $case->product,
-                    $this->misVal($m, ['sub_product']),
-                    $case->status,
-                    $this->misVal($m, ['otc_pdd_status', 'otc_pdd']),
-                    $case->orgUnit?->name ?: $this->misVal($m, ['location']),
-                    $this->misVal($m, ['source']),
-                    $this->misVal($m, ['source_name']),
-                    $this->misVal($m, ['gsm_name']),
-                    $this->misVal($m, ['bank_name']) ?: $case->lender_name,
-                    $this->misVal($m, ['banker_name']),
-                    $this->misVal($m, ['banker_contact']),
-                    $this->misVal($m, ['banker_mail', 'banker_email']),
-                    $this->misVal($m, ['payin_pct', 'pay_in_pct']),
-                    $this->misVal($m, ['payin_amt', 'pay_in_amt']),
-                    $this->misVal($m, ['payout_pct']),
-                    $this->misVal($m, ['payout_amount', 'payout_amt']),
-                    $this->misVal($m, ['net_revenue']),
-                    $this->misVal($m, ['sm_remark']),
-                    $this->misVal($m, ['payout_month']),
-                    $this->misVal($m, ['ref1_name']),
-                    $this->misVal($m, ['ref1_contact']),
-                    $this->misVal($m, ['ref2_name']),
-                    $this->misVal($m, ['ref2_contact']),
-                    $this->misVal($m, ['dob_applicant']),
-                    $this->misVal($m, ['co_applicant']),
-                    $case->owner?->name,
-                    $case->orgUnit?->name,
-                ]);
+            fputcsv($out, $fullHeadings);
+            foreach ($sheetRows as $row) {
+                fputcsv($out, $row);
             }
             fclose($out);
-        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'branch-mis-'.$stamp.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function revenueLedger(Request $request)
@@ -162,49 +178,274 @@ class GoalMisController extends Controller
         $this->requireGoalPermission('revenue_ledger_guard');
 
         $q = trim((string) $request->input('q', ''));
-        $query = $this->ledgerQuery($q);
+        $entryType = trim((string) $request->input('entry_type', ''));
+        $baseQuery = $this->ledgerQuery($q);
+        $query = clone $baseQuery;
+        if (in_array($entryType, ['recognized', 'adjustment', 'reversal'], true)) {
+            if ($entryType === 'recognized') {
+                $query->where(function (Builder $b) {
+                    $b->where('entry_type', 'recognized')->orWhereNull('entry_type')->orWhere('entry_type', '');
+                });
+            } else {
+                $query->where('entry_type', $entryType);
+            }
+        }
+
+        $recognizedAmt = (float) (clone $baseQuery)->where(function (Builder $b) {
+            $b->where('entry_type', 'recognized')->orWhereNull('entry_type')->orWhere('entry_type', '');
+        })->sum('amount');
+        $adjustmentAmt = (float) (clone $baseQuery)->where('entry_type', 'adjustment')->sum('amount');
+        $reversalAmt = (float) (clone $baseQuery)->where('entry_type', 'reversal')->sum('amount');
+        $netAmt = (float) (clone $baseQuery)->sum('amount');
 
         $kpis = [
-            'total' => (clone $query)->count(),
-            'amount' => (float) (clone $query)->sum('amount'),
+            'total' => (clone $baseQuery)->count(),
+            'amount' => $netAmt,
+            'recognized' => $recognizedAmt,
+            'adjustments' => $adjustmentAmt,
+            'reversals' => $reversalAmt,
+            'recognized_count' => (clone $baseQuery)->where(function (Builder $b) {
+                $b->where('entry_type', 'recognized')->orWhereNull('entry_type')->orWhere('entry_type', '');
+            })->count(),
+            'adjustment_count' => (clone $baseQuery)->where('entry_type', 'adjustment')->count(),
+            'reversal_count' => (clone $baseQuery)->where('entry_type', 'reversal')->count(),
         ];
         $entries = (clone $query)->paginate(50)->withQueryString();
-        $filters = ['q' => $q];
+        $filters = ['q' => $q, 'entry_type' => $entryType];
         $rollups = $this->orgRollups();
         $cases = GoalLoanCase::query()
             ->tap(fn (Builder $b) => $this->scopeByOrgColumn($b))
             ->orderByDesc('id')
             ->limit(200)
             ->get(['id', 'case_no', 'customer_name']);
+        $canAdjust = auth()->user()?->hasCrmPermission('manage_targets_guard') ?? false;
+        $revenueRatePct = round(((float) config('goal.revenue_rate', 0.0035)) * 100, 4);
 
-        return view('goal.mis.revenue', compact('entries', 'kpis', 'filters', 'rollups', 'cases'));
+        return view('goal.mis.revenue', compact(
+            'entries',
+            'kpis',
+            'filters',
+            'rollups',
+            'cases',
+            'canAdjust',
+            'revenueRatePct'
+        ));
     }
 
-    public function exportRevenueLedger(Request $request): StreamedResponse
+    public function exportRevenueLedger(Request $request): StreamedResponse|BinaryFileResponse|\Illuminate\Http\Response
     {
         $this->requireGoalPermission('revenue_ledger_guard');
 
         $q = trim((string) $request->input('q', ''));
-        $rows = $this->ledgerQuery($q)->limit(5000)->get();
-        $filename = 'revenue-ledger-'.now()->format('Ymd-His').'.csv';
+        $entryType = trim((string) $request->input('entry_type', ''));
+        $format = strtolower((string) $request->input('format', 'csv'));
+        if (! in_array($format, ['csv', 'xlsx', 'excel', 'pdf'], true)) {
+            $format = 'csv';
+        }
+        if ($format === 'excel') {
+            $format = 'xlsx';
+        }
 
-        return response()->streamDownload(function () use ($rows) {
+        $query = $this->ledgerQuery($q);
+        if (in_array($entryType, ['recognized', 'adjustment', 'reversal'], true)) {
+            if ($entryType === 'recognized') {
+                $query->where(function (Builder $b) {
+                    $b->where('entry_type', 'recognized')->orWhereNull('entry_type')->orWhere('entry_type', '');
+                });
+            } else {
+                $query->where('entry_type', $entryType);
+            }
+        }
+        $entries = $query->limit(5000)->get();
+        $stamp = now()->format('Ymd-His');
+        $headings = ['When', 'Case', 'Customer', 'Amount', 'Type', 'Org Unit', 'Note'];
+        $sheetRows = [];
+        $pdfRows = [];
+        foreach ($entries as $e) {
+            $type = $e->entry_type ?: 'recognized';
+            $amt = (float) $e->amount;
+            $sheetRows[] = [
+                optional($e->created_at)->format('Y-m-d H:i'),
+                $e->loanCase?->case_no,
+                $e->loanCase?->customer_name,
+                number_format($amt, 2, '.', ''),
+                $type,
+                $e->orgUnit?->name,
+                $e->note,
+            ];
+            $pdfRows[] = [
+                'when' => optional($e->created_at)->format('d M Y H:i') ?: '—',
+                'case_no' => $e->loanCase?->case_no ?: '—',
+                'customer' => $e->loanCase?->customer_name ?: '—',
+                'type' => ucfirst($type),
+                'org' => $e->orgUnit?->name ?: '—',
+                'amount' => '₹ '.number_format($amt, 2),
+                'amount_raw' => $amt,
+                'note' => $e->note ?: '—',
+            ];
+        }
+
+        if ($format === 'pdf') {
+            $recognized = 0.0;
+            $adjustments = 0.0;
+            $reversals = 0.0;
+            foreach ($pdfRows as $row) {
+                $amt = (float) ($row['amount_raw'] ?? 0);
+                $type = strtolower((string) ($row['type'] ?? 'recognized'));
+                if ($type === 'adjustment') {
+                    $adjustments += $amt;
+                } elseif ($type === 'reversal') {
+                    $reversals += $amt;
+                } else {
+                    $recognized += $amt;
+                }
+            }
+            $summary = [
+                'total' => count($pdfRows),
+                'recognized' => $recognized,
+                'adjustments' => $adjustments,
+                'reversals' => $reversals,
+                'net' => $recognized + $adjustments + $reversals,
+            ];
+            $filterLabels = array_values(array_filter([
+                $q !== '' ? 'Search: '.$q : null,
+                $entryType !== '' ? 'Type: '.ucfirst($entryType) : null,
+            ]));
+
+            return MpdfDocument::fromView(
+                'goal.mis.exports.revenue-pdf',
+                [
+                    'rows' => $pdfRows,
+                    'summary' => $summary,
+                    'filterLabels' => $filterLabels,
+                    'generatedAt' => now(),
+                ],
+                'revenue-ledger-'.$stamp.'.pdf',
+                true,
+                'A4-L'
+            );
+        }
+
+        if ($format === 'xlsx') {
+            return Excel::download(
+                new GoalSheetExport($sheetRows, $headings, 'Revenue Ledger'),
+                'revenue-ledger-'.$stamp.'.xlsx',
+                ExcelWriter::XLSX
+            );
+        }
+
+        return response()->streamDownload(function () use ($sheetRows, $headings) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['When', 'Case', 'Customer', 'Amount', 'Type', 'Org Unit', 'Note']);
-            foreach ($rows as $e) {
-                fputcsv($out, [
-                    optional($e->created_at)->format('Y-m-d H:i'),
-                    $e->loanCase?->case_no,
-                    $e->loanCase?->customer_name,
-                    number_format((float) $e->amount, 2, '.', ''),
-                    $e->entry_type ?: 'recognized',
-                    $e->orgUnit?->name,
-                    $e->note,
-                ]);
+            fputcsv($out, $headings);
+            foreach ($sheetRows as $row) {
+                fputcsv($out, $row);
             }
             fclose($out);
-        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'revenue-ledger-'.$stamp.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * @return array{0: list<array<int, mixed>>, 1: list<array<string, mixed>>}
+     */
+    protected function buildBranchMisExportRows(Collection $cases): array
+    {
+        $svc = app(\App\Services\Goal\GoalBranchMisService::class);
+        $sheetRows = [];
+        $pdfRows = [];
+
+        foreach ($cases as $case) {
+            $m = is_array($case->branch_mis) ? $case->branch_mis : [];
+            $verifiedDisb = $case->disbursements
+                ->where('status', 'Verified')
+                ->sortByDesc('disbursed_on')
+                ->first()
+                ?? $case->disbursements->sortByDesc('disbursed_on')->first();
+            $disbAmt = $verifiedDisb?->amount
+                ?? $this->misVal($m, ['disb_amt', 'disb_amount', 'disbursement_amount']);
+            $disbDate = optional($verifiedDisb?->disbursed_on)->format('d-M-Y')
+                ?: $this->misVal($m, ['disb_date', 'disbursement_date']);
+            $m = $svc->apply($case, $m);
+
+            $disbOut = isset($m['disb_amount']) && $m['disb_amount'] !== ''
+                ? number_format((float) $m['disb_amount'], 2, '.', '')
+                : ($disbAmt !== null && $disbAmt !== ''
+                    ? (is_numeric($disbAmt) ? number_format((float) $disbAmt, 2, '.', '') : $disbAmt)
+                    : '');
+
+            $sheetRows[] = [
+                $case->case_no,
+                $this->misVal($m, ['lan_number', 'lan', 'lan_no']),
+                $case->customer_name,
+                $case->mobile,
+                $this->misVal($m, ['month']),
+                $this->misVal($m, ['login_date']),
+                $this->misVal($m, ['login_amount', 'login_amt']),
+                optional($case->sanction_date)->format('d-M-Y') ?: $this->misVal($m, ['sanction_dt', 'sanction_date']),
+                $case->sanction_amount !== null
+                    ? number_format((float) $case->sanction_amount, 2, '.', '')
+                    : $this->misVal($m, ['sanc_amt', 'sanction_amount']),
+                $disbDate ?: $this->misVal($m, ['disb_date']),
+                $disbOut,
+                $this->misVal($m, ['code']),
+                $case->product,
+                $this->misVal($m, ['sub_product']),
+                $case->status,
+                $this->misVal($m, ['otc_pdd_status', 'otc_pdd']),
+                $case->orgUnit?->name ?: $this->misVal($m, ['location']),
+                $this->misVal($m, ['source']),
+                $this->misVal($m, ['source_name']),
+                $this->misVal($m, ['gsm_name']),
+                $this->misVal($m, ['bank_name']) ?: $case->lender_name,
+                $this->misVal($m, ['banker_name']),
+                $this->misVal($m, ['banker_contact']),
+                $this->misVal($m, ['banker_mail', 'banker_email']),
+                $this->misVal($m, ['payin_pct', 'pay_in_pct']),
+                $this->misVal($m, ['payin_amt', 'pay_in_amt']),
+                $this->misVal($m, ['payout_pct']),
+                $this->misVal($m, ['payout_amount', 'payout_amt']),
+                $this->misVal($m, ['net_revenue']),
+                $this->misVal($m, ['sm_remark']),
+                $this->misVal($m, ['payout_month']),
+                $this->misVal($m, ['ref1_name']),
+                $this->misVal($m, ['ref1_contact']),
+                $this->misVal($m, ['ref2_name']),
+                $this->misVal($m, ['ref2_contact']),
+                $this->misVal($m, ['dob_applicant']),
+                $this->misVal($m, ['co_applicant']),
+                $case->owner?->name,
+                $case->orgUnit?->name,
+            ];
+
+            $payinStr = $this->misVal($m, ['payin_amt', 'pay_in_amt']);
+            $payoutStr = $this->misVal($m, ['payout_amount', 'payout_amt']);
+            $netStr = $this->misVal($m, ['net_revenue']);
+            $payinRaw = $this->misMoney($m, ['payin_amt', 'pay_in_amt']);
+            $payoutRaw = $this->misMoney($m, ['payout_amount', 'payout_amt']);
+            $netRaw = $this->misMoney($m, ['net_revenue']);
+            $disbClean = str_replace([',', '₹', ' '], '', (string) $disbOut);
+            $disbRaw = ($disbOut !== '' && is_numeric($disbClean)) ? (float) $disbClean : 0.0;
+
+            $pdfRows[] = [
+                'case_no' => $case->case_no ?: '—',
+                'customer' => $case->customer_name ?: '—',
+                'month' => $this->misVal($m, ['month']) ?: '—',
+                'location' => $case->orgUnit?->name ?: ($this->misVal($m, ['location']) ?: '—'),
+                'bank' => ($this->misVal($m, ['bank_name']) ?: $case->lender_name) ?: '—',
+                'status' => $case->status ?: '—',
+                'otc' => $this->misVal($m, ['otc_pdd_status', 'otc_pdd']) ?: '—',
+                'disb_amt' => $disbOut !== '' ? ('₹ '.$disbOut) : '—',
+                'payin_amt' => $payinStr !== '' ? ('₹ '.$payinStr) : '—',
+                'payout_amt' => $payoutStr !== '' ? ('₹ '.$payoutStr) : '—',
+                'net_revenue' => $netStr !== '' ? ('₹ '.$netStr) : '—',
+                'disb_raw' => $disbRaw,
+                'payin_raw' => $payinRaw,
+                'payout_raw' => $payoutRaw,
+                'net_raw' => $netRaw,
+            ];
+        }
+
+        return [$sheetRows, $pdfRows];
     }
 
     public function adjustRevenue(Request $request, Pd01Service $pd01)
@@ -316,6 +557,7 @@ class GoalMisController extends Controller
             'month' => 'nullable|string|max:20',
             'bank' => 'nullable|string|max:120',
             'otc_pdd' => 'nullable|string|max:40',
+            'format' => 'nullable|in:csv,xlsx,excel,pdf',
         ]);
 
         return [

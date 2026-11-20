@@ -4,8 +4,9 @@
  *   .js-datepicker  → date only (display d-m-Y, value Y-m-d)
  *   .js-datetimepicker → date+time (display d-m-Y H:i, value Y-m-d H:i)
  *   .js-timepicker → time only (display h:i K, value H:i)
+ *   .js-monthpicker → month only (display F Y, value Y-m)
  *
- * Note: altInput must NOT keep .js-datepicker / .js-datetimepicker / .js-timepicker
+ * Note: altInput must NOT keep .js-datepicker / .js-datetimepicker / .js-timepicker / .js-monthpicker
  * or modal re-init will attach Flatpickr to the visible alt and leave the named
  * original input empty (Laravel then reports the field as required).
  */
@@ -16,7 +17,7 @@
         return;
     }
 
-    var PICKER_CLASSES = ['js-datepicker', 'js-datetimepicker', 'js-timepicker'];
+    var PICKER_CLASSES = ['js-datepicker', 'js-datetimepicker', 'js-timepicker', 'js-monthpicker'];
 
     function resolveMinDate(el) {
         var raw = (el.getAttribute('data-min-date') || '').trim().toLowerCase();
@@ -115,6 +116,27 @@
         }));
     }
 
+    function initMonth(el) {
+        if (!el || el._flatpickr) return el._flatpickr;
+        if (typeof monthSelectPlugin === 'undefined') {
+            console.warn('monthSelectPlugin missing — cannot init .js-monthpicker');
+            return null;
+        }
+        var shorthand = el.getAttribute('data-month-shorthand') === '1';
+        return flatpickr(el, Object.assign(baseOptions(el), {
+            dateFormat: 'Y-m',
+            altFormat: shorthand ? 'M Y' : 'F Y',
+            defaultDate: el.value || null,
+            plugins: [
+                new monthSelectPlugin({
+                    shorthand: shorthand,
+                    dateFormat: 'Y-m',
+                    altFormat: shorthand ? 'M Y' : 'F Y'
+                })
+            ]
+        }));
+    }
+
     function shouldSkip(el) {
         if (!el || el._flatpickr) return true;
         if (el.classList.contains('flatpickr-alt')) return true;
@@ -124,7 +146,9 @@
 
     function initOne(el) {
         if (shouldSkip(el)) return;
-        if (el.classList.contains('js-timepicker')) {
+        if (el.classList.contains('js-monthpicker')) {
+            initMonth(el);
+        } else if (el.classList.contains('js-timepicker')) {
             initTime(el);
         } else if (el.classList.contains('js-datetimepicker')) {
             initDateTime(el);
@@ -135,7 +159,9 @@
 
     function initAll(root) {
         var scope = root || document;
-        scope.querySelectorAll('input.js-datepicker, input.js-datetimepicker, input.js-timepicker').forEach(initOne);
+        scope.querySelectorAll(
+            'input.js-datepicker, input.js-datetimepicker, input.js-timepicker, input.js-monthpicker'
+        ).forEach(initOne);
     }
 
     window.IsarvaDatepicker = {
@@ -143,7 +169,8 @@
         initOne: initOne,
         initDate: initDate,
         initDateTime: initDateTime,
-        initTime: initTime
+        initTime: initTime,
+        initMonth: initMonth
     };
 
     document.addEventListener('DOMContentLoaded', function () {

@@ -252,3 +252,39 @@ input.flatpickr-input.form-control:focus {
 .modal .flatpickr-calendar {
     z-index: 1205 !important;
 }
+
+/* Month select plugin — Goal theme */
+.flatpickr-monthSelect-months {
+    margin: 8px 4px 4px;
+}
+.flatpickr-monthSelect-month {
+    border-radius: 8px;
+    font-weight: 600;
+    color: var(--fp-text, #0f172a);
+}
+.flatpickr-monthSelect-month:hover,
+.flatpickr-monthSelect-month:focus {
+    background: var(--theme-50, #f0fdfa) !important;
+    border-color: var(--theme-200, #99f6e4);
+}
+.flatpickr-monthSelect-month.selected,
+.flatpickr-monthSelect-month.startRange,
+.flatpickr-monthSelect-month.endRange {
+    background: var(--theme-primary, #0d9488) !important;
+    border-color: var(--theme-primary, #0d9488) !important;
+    color: #fff !important;
+    box-shadow: none;
+}
+.flatpickr-monthSelect-month.today:not(.selected) {
+    border-color: var(--theme-primary, #0d9488);
+    color: var(--theme-primary-hover, #0f766e);
+}
+
+/* Match control height with Select2 in forms */
+.gt-modal .flatpickr-input,
+.gt-modal input.flatpickr-alt {
+    min-height: 42px !important;
+    height: 42px !important;
+    border-radius: 10px !important;
+    font-size: .9rem !important;
+}
