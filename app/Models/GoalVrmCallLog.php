@@ -12,7 +12,7 @@ class GoalVrmCallLog extends Model
     protected $table = 'goal_vrm_call_logs';
 
     protected $fillable = [
-        'user_id', 'goal_loan_lead_id', 'customer_name', 'mobile',
+        'user_id', 'goal_loan_lead_id', 'goal_org_unit_id', 'customer_name', 'mobile',
         'disposition', 'called_at', 'callback_at', 'notes',
     ];
 
@@ -53,5 +53,17 @@ class GoalVrmCallLog extends Model
     public function lead()
     {
         return $this->belongsTo(GoalLoanLead::class, 'goal_loan_lead_id');
+    }
+
+    public function orgUnit()
+    {
+        return $this->belongsTo(GoalOrgUnit::class, 'goal_org_unit_id');
+    }
+
+    public function resolvedBranchName(): ?string
+    {
+        return optional($this->orgUnit)->name
+            ?: optional(optional($this->lead)->orgUnit)->name
+            ?: optional(optional($this->user)->orgUnit)->name;
     }
 }

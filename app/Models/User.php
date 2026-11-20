@@ -72,6 +72,20 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->belongsTo(GoalOrgUnit::class, 'goal_org_unit_id');
     }
 
+    public function crmRole()
+    {
+        return $this->belongsTo(Role::class, 'crm_role_type');
+    }
+
+    public function goalCrmRoleLabel(): string
+    {
+        if ($this->isSuperAdmin()) {
+            return 'Super Admin';
+        }
+
+        return optional($this->crmRole)->name ?: 'Staff';
+    }
+
     public function manager()
     {
         return $this->belongsTo(self::class, 'reports_to_user_id');
@@ -110,6 +124,85 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         return [(int) $this->goal_org_unit_id];
+    }
+
+    /**
+     * User IDs whose VRM call logs this actor may view (self + reporting tree + org team).
+     * Super Admin / Admin / MD / CEO: all non–Super Admin users.
+     * VRM / sales staff: self only (unless they have direct reports).
+     *
+     * @return list<int>
+     */
+    public function goalTeamUserIds(): array
+    {
+        $selfId = (int) $this->id;
+        $role = (int) ($this->crm_role_type ?? -1);
+
+        if ($this->isSuperAdmin() || in_array($role, [1, 4, 5], true)) {
+            $ids = User::query()
+                ->where('crm_role_type', '!=', 0)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+            $ids[] = $selfId;
+
+            return array_values(array_unique($ids));
+        }
+
+        $ids = [$selfId];
+        $seen = [$selfId => true];
+        $frontier = [$selfId];
+
+        while ($frontier !== []) {
+            $children = User::query()
+                ->where(function ($q) use ($frontier) {
+                    $q->whereIn('reports_to_user_id', $frontier)
+                        ->orWhereIn('assign_manager', $frontier);
+                })
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $frontier = [];
+            foreach ($children as $childId) {
+                if (isset($seen[$childId])) {
+                    continue;
+                }
+                $seen[$childId] = true;
+                $ids[] = $childId;
+                $frontier[] = $childId;
+            }
+        }
+
+        // Managers (RD / Cluster / BM): also include staff in their org subtree.
+        if (in_array($role, [6, 7, 8], true)) {
+            $orgIds = $this->goalScopedOrgUnitIds();
+            if ($orgIds !== []) {
+                $rankMap = [
+                    4 => 10, 5 => 20, 6 => 30, 7 => 40, 8 => 50,
+                    9 => 60, 10 => 70, 11 => 70, 12 => 70, 13 => 80, 14 => 80,
+                ];
+                $actorRank = $rankMap[$role] ?? 999;
+                $orgUsers = User::query()
+                    ->whereIn('goal_org_unit_id', $orgIds)
+                    ->where('crm_role_type', '!=', 0)
+                    ->get(['id', 'crm_role_type']);
+
+                foreach ($orgUsers as $orgUser) {
+                    $r = $rankMap[(int) $orgUser->crm_role_type] ?? 999;
+                    if ($r > $actorRank) {
+                        $ids[] = (int) $orgUser->id;
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    public function canViewGoalUserCallLogs(int $userId): bool
+    {
+        return in_array($userId, $this->goalTeamUserIds(), true);
     }
 
     /**

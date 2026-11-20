@@ -46,23 +46,12 @@
                         <div class="section-bar"><i class="bi bi-telephone"></i> Call Details</div>
                         <div class="field-grid">
                             <div class="field">
-                                <label class="form-label" for="edit_disposition">Disposition <span class="req">*</span></label>
-                                <div class="goal-disposition-with-add product-with-add">
-                                    <select name="disposition" id="edit_disposition"
-                                            class="form-select js-select2"
-                                            data-placeholder="Select disposition" required
-                                            data-required-message="Please select disposition.">
-                                        @foreach(($dispositions ?? []) as $d)
-                                            <option value="{{ $d->name }}"
-                                                    data-creates-lead="{{ $d->creates_lead ? '1' : '0' }}"
-                                                    data-maps-to-lead-type="{{ $d->maps_to_lead_type }}">{{ $d->name }}</option>
-                                        @endforeach
-                                    </select>
-                                    <button type="button" class="btn-quick-add-disposition" data-bs-toggle="modal"
-                                            data-bs-target="#quickAddDispositionModal" data-disposition-select="#edit_disposition"
-                                            title="Quick add disposition" aria-label="Quick add disposition">
-                                        <i class="bi bi-plus-lg"></i>
-                                    </button>
+                                <label class="form-label" for="edit_disposition_label">Disposition</label>
+                                <input type="hidden" name="disposition" id="edit_disposition" value="">
+                                <div class="input-icon">
+                                    <i class="bi bi-tag"></i>
+                                    <input type="text" id="edit_disposition_label" class="form-control"
+                                           value="" readonly disabled>
                                 </div>
                             </div>
                             <div class="field">
@@ -76,17 +65,28 @@
                             </div>
                             <div class="field">
                                 <label class="form-label" for="edit_goal_org_unit_id">Branch</label>
-                                <div class="input-icon">
-                                    <i class="bi bi-building"></i>
-                                    <select name="goal_org_unit_id" id="edit_goal_org_unit_id"
-                                            class="form-select js-select2"
-                                            data-placeholder="Select branch" data-allow-clear="true">
-                                        <option value="">Select branch</option>
-                                        @foreach($branches ?? [] as $b)
-                                            <option value="{{ $b->id }}">{{ $b->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
+                                @php $branchLocked = !empty($branchLocked); @endphp
+                                @if($branchLocked)
+                                    <input type="hidden" name="goal_org_unit_id" id="edit_goal_org_unit_id" value="{{ auth()->user()->goal_org_unit_id }}">
+                                    <div class="input-icon">
+                                        <i class="bi bi-building"></i>
+                                        <input type="text" id="edit_goal_org_unit_label" class="form-control"
+                                               value="{{ optional(($branches ?? collect())->firstWhere('id', (int) auth()->user()->goal_org_unit_id))->name ?? optional(auth()->user()->orgUnit)->name ?? 'Your branch' }}"
+                                               readonly disabled>
+                                    </div>
+                                @else
+                                    <div class="input-icon">
+                                        <i class="bi bi-building"></i>
+                                        <select name="goal_org_unit_id" id="edit_goal_org_unit_id"
+                                                class="form-select js-select2"
+                                                data-placeholder="Select branch" data-allow-clear="true">
+                                            <option value="">Select branch</option>
+                                            @foreach($branches ?? [] as $b)
+                                                <option value="{{ $b->id }}">{{ $b->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endif
                             </div>
                             <div class="field check-align">
                                 <div class="form-check">
@@ -179,9 +179,17 @@
         form.action = data.update_url || '';
         document.getElementById('edit_customer_name').value = data.customer_name || '';
         document.getElementById('edit_mobile').value = data.mobile || '';
-        setSelectValue('edit_disposition', data.disposition || 'Interested');
+        var disposition = data.disposition || '';
+        var dispositionHidden = document.getElementById('edit_disposition');
+        var dispositionLabel = document.getElementById('edit_disposition_label');
+        if (dispositionHidden) dispositionHidden.value = disposition;
+        if (dispositionLabel) dispositionLabel.value = disposition || '—';
         document.getElementById('edit_callback_at').value = data.callback_at || data.callback_display || '';
         setSelectValue('edit_goal_org_unit_id', data.goal_org_unit_id || '');
+        var branchLabel = document.getElementById('edit_goal_org_unit_label');
+        if (branchLabel && data.branch_name) {
+            branchLabel.value = data.branch_name;
+        }
         setSelectValue('edit_product', data.product || '');
         document.getElementById('edit_loan_amount').value = data.loan_amount || '';
         document.getElementById('edit_notes').value = data.notes || '';
@@ -201,10 +209,11 @@
             update_url: btn.getAttribute('data-update-url') || '',
             customer_name: btn.getAttribute('data-customer') || '',
             mobile: btn.getAttribute('data-mobile') || '',
-            disposition: btn.getAttribute('data-disposition') || 'Interested',
+            disposition: btn.getAttribute('data-disposition') || '',
             notes: btn.getAttribute('data-notes') || '',
             callback_at: btn.getAttribute('data-callback') || '',
             goal_org_unit_id: btn.getAttribute('data-branch-id') || '',
+            branch_name: btn.getAttribute('data-branch-name') || '',
             product: btn.getAttribute('data-product') || '',
             loan_amount: btn.getAttribute('data-loan-amount') || '',
             has_lead: btn.getAttribute('data-has-lead') === '1',

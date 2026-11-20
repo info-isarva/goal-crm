@@ -1038,6 +1038,8 @@
     $dailyTone = $todayCount >= $dailyTarget ? 'is-done' : ($dailyPct >= 50 ? 'is-mid' : 'is-low');
     $dailyRemain = max(0, $dailyTarget - $todayCount);
     $openModal = $errors->any() || request()->boolean('log_call') || session('reopen_log_call');
+    $seesTeamLogs = (bool) ($seesTeamLogs ?? false);
+    $tableColCount = $seesTeamLogs ? 11 : 10;
     $dispClass = function ($d) {
         return [
             'Interested' => 'interested',
@@ -1228,9 +1230,13 @@
                             <th>Customer</th>
                             <th>Mobile</th>
                             <th>Disposition</th>
+                            <th>Callback</th>
                             <th>Lead</th>
                             <th>Notes</th>
                             <th>Branch</th>
+                            @if($seesTeamLogs)
+                                <th>Called by</th>
+                            @endif
                             <th class="col-actions">Actions</th>
                         </tr>
                     </thead>
@@ -1240,7 +1246,15 @@
                             $when = $log->called_at;
                             $whenLabel = $when ? ($when->isToday() ? 'Today, '.$when->format('g:i A') : $when->format('d M, g:i A')) : '—';
                             $whenExact = $when ? $when->format('d-m-Y H:i') : '';
-                            $branch = optional(optional($log->lead)->orgUnit)->name;
+                            $branch = $log->resolvedBranchName();
+                            $cb = $log->callback_at;
+                            $cbDue = $cb && $cb->lte(now());
+                            $cbLabel = $cb
+                                ? ($cb->isToday() ? 'Today, '.$cb->format('g:i A') : ($cb->isTomorrow() ? 'Tomorrow, '.$cb->format('g:i A') : $cb->format('d M, g:i A')))
+                                : null;
+                            $isOwnLog = (int) $log->user_id === (int) auth()->id();
+                            $calledByName = optional($log->user)->name;
+                            $calledByRole = optional($log->user)->goalCrmRoleLabel();
                         @endphp
                         <tr>
                             <td class="col-num" data-label="#">{{ $logs->firstItem() + $loop->index }}</td>
@@ -1256,6 +1270,19 @@
                             <td data-label="Customer"><div class="cust-name">{{ $log->customer_name ?: '—' }}</div></td>
                             <td data-label="Mobile"><span class="cust-mobile">{{ $log->mobile ?: '—' }}</span></td>
                             <td data-label="Disposition"><span class="disp-pill {{ $dispClass($log->disposition) }}">{{ $log->disposition }}</span></td>
+                            <td data-label="Callback">
+                                @if($cbLabel)
+                                    <div class="when-cell">
+                                        <span class="when-icon {{ $cbDue ? 'text-danger' : '' }}"><i class="bi bi-alarm"></i></span>
+                                        <div class="when-text">
+                                            <div class="when-main {{ $cbDue ? 'text-danger fw-semibold' : '' }}">{{ $cbLabel }}</div>
+                                            <div class="when-sub">{{ $cb->format('d-m-Y H:i') }}{{ $cbDue ? ' · due' : '' }}</div>
+                                        </div>
+                                    </div>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td data-label="Lead">
                                 @if($log->goal_loan_lead_id)
                                     <span class="lead-badge yes">Yes</span>
@@ -1265,6 +1292,18 @@
                             </td>
                             <td data-label="Notes"><div class="notes-cell" title="{{ $log->notes }}">{{ $log->notes ?: '—' }}</div></td>
                             <td data-label="Branch">{{ $branch ?: '—' }}</td>
+                            @if($seesTeamLogs)
+                                <td data-label="Called by">
+                                    @if($calledByName)
+                                        <div class="cust-name">{{ $calledByName }}</div>
+                                        @if($calledByRole)
+                                            <div class="when-sub">{{ $calledByRole }}</div>
+                                        @endif
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                            @endif
                             <td class="actions-cell col-actions" data-label="Actions">
                                 <div class="action-group">
                                     <a href="tel:{{ $log->mobile }}"
@@ -1282,6 +1321,7 @@
                                             data-url="{{ route('goal.vrm.calls.show', $log) }}">
                                         <i class="bi bi-eye"></i>
                                     </button>
+                                    @if($isOwnLog)
                                     <button type="button"
                                             class="action-btn edit btn-edit-call"
                                             data-bs-toggle="tooltip"
@@ -1294,7 +1334,8 @@
                                             data-disposition="{{ $log->disposition }}"
                                             data-notes="{{ $log->notes }}"
                                             data-callback="{{ optional($log->callback_at)->format('d-m-Y H:i') }}"
-                                            data-branch-id="{{ $log->lead?->goal_org_unit_id }}"
+                                            data-branch-id="{{ $log->goal_org_unit_id ?: $log->lead?->goal_org_unit_id }}"
+                                            data-branch-name="{{ $branch ?: '' }}"
                                             data-lead-type="{{ $log->lead?->lead_type }}"
                                             data-product="{{ $log->lead?->product }}"
                                             data-loan-amount="{{ $log->lead?->loan_amount }}"
@@ -1314,6 +1355,7 @@
                                             <i class="bi bi-trash3-fill"></i>
                                         </button>
                                     </form>
+                                    @endif
                                     @if($log->goal_loan_lead_id)
                                         <a href="{{ route('goal.leads.show', $log->goal_loan_lead_id) }}"
                                            class="action-btn lead"
@@ -1328,7 +1370,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="col-empty" data-label="">
+                            <td colspan="{{ $tableColCount }}" class="col-empty" data-label="">
                                 <div class="empty-state">
                                     <i class="bi bi-inbox"></i>
                                     <div>No call logs found. Click <strong>Log Call</strong> to get started.</div>
@@ -1439,11 +1481,13 @@
                                                     @selected(old('disposition', 'Interested') === $d->name)>{{ $d->name }}</option>
                                         @endforeach
                                     </select>
+                                    @if(!empty($canQuickAddDisposition))
                                     <button type="button" class="btn-quick-add-disposition" data-bs-toggle="modal"
                                             data-bs-target="#quickAddDispositionModal" data-disposition-select="#disposition"
                                             title="Quick add disposition" aria-label="Quick add disposition">
                                         <i class="bi bi-plus-lg"></i>
                                     </button>
+                                    @endif
                                 </div>
                                 <div class="field-error {{ $errors->has('disposition') ? 'show' : '' }}" data-error-for="disposition">{{ $errors->first('disposition') }}</div>
                             </div>
@@ -1460,17 +1504,30 @@
                             </div>
                             <div class="field {{ $errors->has('goal_org_unit_id') ? 'is-invalid' : '' }}">
                                 <label class="form-label" for="goal_org_unit_id">Branch</label>
-                                <div class="input-icon">
-                                    <i class="bi bi-building"></i>
-                                    <select name="goal_org_unit_id" id="goal_org_unit_id"
-                                            class="form-select js-select2 {{ $errors->has('goal_org_unit_id') ? 'is-invalid' : '' }}"
-                                            data-placeholder="Select branch" data-allow-clear="true">
-                                        <option value="">Select branch</option>
-                                        @foreach($branches as $b)
-                                            <option value="{{ $b->id }}" @selected(old('goal_org_unit_id', auth()->user()->goal_org_unit_id)==$b->id)>{{ $b->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
+                                @php
+                                    $branchLocked = !empty($branchLocked);
+                                    $defaultBranchId = old('goal_org_unit_id', auth()->user()->goal_org_unit_id);
+                                @endphp
+                                @if($branchLocked)
+                                    <input type="hidden" name="goal_org_unit_id" value="{{ $defaultBranchId }}">
+                                    <div class="input-icon">
+                                        <i class="bi bi-building"></i>
+                                        <input type="text" class="form-control" value="{{ optional($branches->firstWhere('id', (int) $defaultBranchId))->name ?? optional(auth()->user()->orgUnit)->name ?? 'Your branch' }}" readonly disabled>
+                                    </div>
+                                    <div class="form-text" style="font-size:.72rem;color:#64748b;">VRM can log calls for their assigned branch only.</div>
+                                @else
+                                    <div class="input-icon">
+                                        <i class="bi bi-building"></i>
+                                        <select name="goal_org_unit_id" id="goal_org_unit_id"
+                                                class="form-select js-select2 {{ $errors->has('goal_org_unit_id') ? 'is-invalid' : '' }}"
+                                                data-placeholder="Select branch" data-allow-clear="true">
+                                            <option value="">Select branch</option>
+                                            @foreach($branches as $b)
+                                                <option value="{{ $b->id }}" @selected($defaultBranchId==$b->id)>{{ $b->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endif
                                 <div class="field-error {{ $errors->has('goal_org_unit_id') ? 'show' : '' }}" data-error-for="goal_org_unit_id">{{ $errors->first('goal_org_unit_id') }}</div>
                             </div>
                             <div class="field check-align">
@@ -1486,13 +1543,14 @@
                         <div class="section-bar"><i class="bi bi-bullseye"></i> Lead Information</div>
                         <div class="field-grid">
                             <div class="field {{ $errors->has('product') ? 'is-invalid' : '' }}">
-                                <label class="form-label" for="product">Product</label>
+                                <label class="form-label" for="product">Product <span class="req lead-required-mark" hidden>*</span></label>
                                 <div class="product-with-add">
                                     <div class="input-icon">
                                         <i class="bi bi-layers"></i>
                                         <select name="product" id="product"
                                                 class="form-select js-select2 {{ $errors->has('product') ? 'is-invalid' : '' }}"
-                                                data-placeholder="Select product" data-allow-clear="true">
+                                                data-placeholder="Select product" data-allow-clear="true"
+                                                data-required-message="Please select a product when creating a lead.">
                                             <option value=""></option>
                                             @foreach($products as $product)
                                                 <option value="{{ $product->product_name }}" @selected(old('product') === $product->product_name)>
@@ -1501,10 +1559,12 @@
                                             @endforeach
                                         </select>
                                     </div>
+                                    @if(!empty($canQuickAddProduct))
                                     <button type="button" class="btn-quick-add-product" id="btnQuickAddProduct"
                                             title="Quick add product" aria-label="Quick add product">
                                         <i class="bi bi-plus-lg"></i>
                                     </button>
+                                    @endif
                                 </div>
                                 <div class="field-error {{ $errors->has('product') ? 'show' : '' }}" data-error-for="product">{{ $errors->first('product') }}</div>
                             </div>
@@ -1515,12 +1575,13 @@
                         <div class="section-bar"><i class="bi bi-cash-coin"></i> Loan Details</div>
                         <div class="field-grid">
                             <div class="field {{ $errors->has('loan_amount') ? 'is-invalid' : '' }}">
-                                <label class="form-label" for="loan_amount">Loan Amount</label>
+                                <label class="form-label" for="loan_amount">Loan Amount <span class="req lead-required-mark" hidden>*</span></label>
                                 <div class="input-icon">
                                     <span class="rupee">₹</span>
                                     <input type="text" inputmode="decimal" data-decimals="2" name="loan_amount" id="loan_amount"
                                            class="form-control js-decimal {{ $errors->has('loan_amount') ? 'is-invalid' : '' }}"
-                                           placeholder="Enter loan amount" value="{{ old('loan_amount') }}">
+                                           placeholder="Enter loan amount" value="{{ old('loan_amount') }}"
+                                           data-required-message="Please enter loan amount when creating a lead.">
                                 </div>
                                 <div class="field-error {{ $errors->has('loan_amount') ? 'show' : '' }}" data-error-for="loan_amount">{{ $errors->first('loan_amount') }}</div>
                             </div>
@@ -1557,6 +1618,7 @@
     </div>
 </div>
 
+@if(!empty($canQuickAddProduct))
 {{-- Quick Add Product (nested over Log Call; opened via JS so Log Call stays open) --}}
 <div class="modal fade" id="quickAddProductModal" tabindex="-1" aria-labelledby="quickAddProductModalLabel" aria-hidden="true"
      data-bs-backdrop="static" data-bs-keyboard="false">
@@ -1581,10 +1643,13 @@
         </div>
     </div>
 </div>
+@endif
 
 @include('goal.vrm.partials.call-detail-modal')
 @include('goal.vrm.partials.call-edit-modal')
+@if(!empty($canQuickAddDisposition))
 @include('goal.partials.quick-add-disposition')
+@endif
 @php
     $dispositionMeta = collect($dispositions ?? [])->mapWithKeys(function ($d) {
         return [
@@ -1635,6 +1700,9 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
             });
         }
 
+        const seesTeamLogs = @json($seesTeamLogs);
+        const actionsCol = seesTeamLogs ? 10 : 9;
+
         if (tableHasRows && $.fn.DataTable && !isMobileTable) {
             dt = $('#vrmCallsTable').DataTable({
                 paging: false,
@@ -1644,7 +1712,7 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
                 autoWidth: false,
                 scrollX: true,
                 order: [],
-                columnDefs: [{ orderable: false, targets: [8] }],
+                columnDefs: [{ orderable: false, targets: [actionsCol] }],
                 dom: 't',
                 language: { emptyTable: 'No call logs found.' }
             });
@@ -1654,8 +1722,12 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
             });
 
             $('#btnColVis').on('click', function () {
-                const menu = ['When', 'Customer', 'Mobile', 'Disposition', 'Lead', 'Notes', 'Branch'];
-                const map = { When: 1, Customer: 2, Mobile: 3, Disposition: 4, Lead: 5, Notes: 6, Branch: 7 };
+                const menu = ['When', 'Customer', 'Mobile', 'Disposition', 'Callback', 'Lead', 'Notes', 'Branch'];
+                const map = { When: 1, Customer: 2, Mobile: 3, Disposition: 4, Callback: 5, Lead: 6, Notes: 7, Branch: 8 };
+                if (seesTeamLogs) {
+                    menu.push('Called by');
+                    map['Called by'] = 9;
+                }
                 let html = '<div class="p-2">';
                 menu.forEach(function (label) {
                     const idx = map[label];
@@ -1737,8 +1809,23 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
         });
     }
 
+    function syncLeadRequiredFields() {
+        const createLead = document.getElementById('create_lead');
+        const required = !!(createLead && createLead.checked && !createLead.disabled);
+        form.querySelectorAll('.lead-required-mark').forEach(function (mark) {
+            mark.hidden = !required;
+        });
+        ['product', 'loan_amount'].forEach(function (id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (required) el.setAttribute('required', 'required');
+            else el.removeAttribute('required');
+        });
+    }
+
     function validateForm() {
         clearAllErrors();
+        syncLeadRequiredFields();
         let firstInvalid = null;
         form.querySelectorAll('[required]').forEach((el) => {
             const value = (el.value || '').trim();
@@ -1777,6 +1864,8 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
                 window.jQuery(this).val(this.value).trigger('change');
             });
         }
+        syncCreateLeadAvailability();
+        syncLeadRequiredFields();
     }
 
     form.addEventListener('submit', function (e) {
@@ -1817,7 +1906,10 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
                 ? 'Create lead from this disposition'
                 : 'Create lead (not available for this disposition)';
         }
+        syncLeadRequiredFields();
     }
+
+    document.getElementById('create_lead')?.addEventListener('change', syncLeadRequiredFields);
 
     document.getElementById('disposition')?.addEventListener('change', syncCreateLeadAvailability);
     if (window.jQuery) {

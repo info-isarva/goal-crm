@@ -283,6 +283,7 @@
                 +       '<div class="cd-meta-item"><i class="bi bi-building"></i>' + escapeHtml(dash(data.branch)) + '</div>'
                 +       '<div class="cd-meta-item"><i class="bi bi-box"></i>' + escapeHtml(dash(data.product)) + '</div>'
                 +       '<div class="cd-meta-item"><i class="bi bi-calendar3"></i>Called on: ' + escapeHtml(dash(data.called_at)) + '</div>'
+                +       (data.logged_by ? '<div class="cd-meta-item"><i class="bi bi-person-badge"></i>Called by: ' + escapeHtml(dash(data.logged_by)) + (data.logged_by_role ? ' <span class="text-muted">(' + escapeHtml(data.logged_by_role) + ')</span>' : '') + '</div>' : '')
                 +     '</div>'
                 +   '</div>'
                 +   '<div>'
@@ -367,10 +368,11 @@
                         update_url: lastCallPayload.update_url || '',
                         customer_name: lastCallPayload.customer_name || '',
                         mobile: lastCallPayload.mobile || '',
-                        disposition: lastCallPayload.disposition || 'Interested',
+                        disposition: lastCallPayload.disposition || '',
                         notes: lastCallPayload.notes || '',
                         callback_at: lastCallPayload.callback_at_input || '',
                         goal_org_unit_id: lastCallPayload.goal_org_unit_id || '',
+                        branch_name: lastCallPayload.branch || '',
                         lead_type: lastCallPayload.lead_type_raw || '',
                         product: lastCallPayload.product_raw || '',
                         loan_amount: lastCallPayload.loan_amount_raw || '',

@@ -40,9 +40,11 @@ class GoalVrmController extends Controller
             'log_call' => 'nullable',
         ]);
 
-        $userId = auth()->id();
+        $visibleUserIds = $this->visibleCallLogUserIds();
+        $seesTeamLogs = count($visibleUserIds) > 1;
+
         $todayCount = GoalVrmCallLog::query()
-            ->where('user_id', $userId)
+            ->whereIn('user_id', $visibleUserIds)
             ->whereDate('called_at', today())
             ->count();
 
@@ -50,7 +52,7 @@ class GoalVrmController extends Controller
         $isWorkingDay = now()->isWeekday();
 
         $callbacksDueCount = GoalVrmCallLog::query()
-            ->where('user_id', $userId)
+            ->whereIn('user_id', $visibleUserIds)
             ->whereNotNull('callback_at')
             ->where('callback_at', '<=', now())
             ->where(function ($q) {
@@ -69,14 +71,17 @@ class GoalVrmController extends Controller
 
         $perPage = (int) ($validated['per_page'] ?? 25);
         $logs = (clone $baseQuery)
-            ->with(['lead.orgUnit'])
+            ->with(['orgUnit', 'lead.orgUnit', 'user:id,name,crm_role_type,goal_org_unit_id', 'user.crmRole:id,name', 'user.orgUnit:id,name'])
             ->latest('called_at')
             ->paginate($perPage)
             ->withQueryString();
 
-        $branches = GoalOrgUnit::query()->ofType('branch')->active()->orderBy('name')->get();
+        $branches = $this->selectableBranches();
+        $branchLocked = $this->isBranchLockedToOwn();
         $products = $this->activeProducts();
         $dispositions = $this->activeDispositions();
+        $canQuickAddProduct = $this->canManageProductMaster();
+        $canQuickAddDisposition = $this->canManageDispositionMaster();
 
         return view('goal.vrm.index', compact(
             'todayCount',
@@ -90,8 +95,12 @@ class GoalVrmController extends Controller
             'logs',
             'perPage',
             'branches',
+            'branchLocked',
             'products',
-            'dispositions'
+            'dispositions',
+            'canQuickAddProduct',
+            'canQuickAddDisposition',
+            'seesTeamLogs'
         ));
     }
 
@@ -104,13 +113,18 @@ class GoalVrmController extends Controller
     public function showCall(GoalVrmCallLog $log)
     {
         $this->requireGoalPermission('vrm_calling_guard');
-        abort_unless((int) $log->user_id === (int) auth()->id(), 403);
+        $this->assertCanViewCallLog($log);
 
-        $log->load(['lead.orgUnit', 'user']);
+        $log->load(['orgUnit', 'lead.orgUnit', 'user.crmRole', 'user.orgUnit']);
         $lead = $log->lead;
+        $isOwner = (int) $log->user_id === (int) auth()->id();
+        $branchName = $log->resolvedBranchName();
+        $branchId = $log->goal_org_unit_id
+            ?: ($lead?->goal_org_unit_id)
+            ?: optional($log->user)->goal_org_unit_id;
 
         $historyQuery = GoalVrmCallLog::query()
-            ->where('user_id', auth()->id())
+            ->whereIn('user_id', $this->visibleCallLogUserIds())
             ->with('lead:id,ref_no,lead_type,product,loan_amount,goal_org_unit_id');
 
         if (filled($log->mobile)) {
@@ -157,14 +171,15 @@ class GoalVrmController extends Controller
             'lead_type' => $lead?->lead_type ? ucfirst($lead->lead_type) : null,
             'product' => $lead?->product,
             'loan_amount' => $loanAmountFormatted,
-            'branch' => optional($lead?->orgUnit)->name,
+            'branch' => $branchName,
             'logged_by' => optional($log->user)->name,
-            'can_edit' => true,
-            'can_delete' => true,
-            'update_url' => route('goal.vrm.calls.update', $log),
-            'delete_url' => route('goal.vrm.calls.destroy', $log),
+            'logged_by_role' => optional($log->user)->goalCrmRoleLabel(),
+            'can_edit' => $isOwner,
+            'can_delete' => $isOwner,
+            'update_url' => $isOwner ? route('goal.vrm.calls.update', $log) : null,
+            'delete_url' => $isOwner ? route('goal.vrm.calls.destroy', $log) : null,
             'callback_at_input' => optional($log->callback_at)->format('d-m-Y H:i'),
-            'goal_org_unit_id' => $lead?->goal_org_unit_id,
+            'goal_org_unit_id' => $branchId,
             'lead_type_raw' => $lead?->lead_type,
             'product_raw' => $lead?->product,
             'loan_amount_raw' => $lead?->loan_amount,
@@ -186,35 +201,34 @@ class GoalVrmController extends Controller
         $data = $request->validate([
             'customer_name' => 'required|string|max:150',
             'mobile' => PhoneNumber::mobileRules(true),
-            'disposition' => ['required', Rule::in($allowedDispositions)],
+            'disposition' => ['nullable', Rule::in($allowedDispositions)],
             'callback_at' => 'nullable|date',
             'notes' => 'nullable|string',
             'product' => 'nullable|string|max:100',
             'loan_amount' => 'nullable|numeric|min:0',
-            'goal_org_unit_id' => 'nullable|exists:goal_org_units,id',
+            'goal_org_unit_id' => ['nullable', Rule::in($this->allowedBranchIds())],
         ], PhoneNumber::messages('mobile'));
+
+        // Disposition is locked after create — keep the original value.
+        $data['disposition'] = $log->disposition;
+        $data['goal_org_unit_id'] = $this->resolveBranchId($data['goal_org_unit_id'] ?? null);
 
         $log->update([
             'customer_name' => $data['customer_name'],
             'mobile' => $data['mobile'] ?? null,
-            'disposition' => $data['disposition'],
             'callback_at' => $data['callback_at'] ?? null,
             'notes' => $data['notes'] ?? null,
+            'goal_org_unit_id' => $data['goal_org_unit_id'] ?: $log->goal_org_unit_id,
         ]);
 
         if ($log->goal_loan_lead_id) {
             $lead = GoalLoanLead::query()->find($log->goal_loan_lead_id);
             if ($lead) {
-                $master = GoalVrmDisposition::findByName($data['disposition']);
                 $leadUpdates = [
                     'customer_name' => $data['customer_name'],
                     'mobile' => $data['mobile'] ?? null,
-                    'disposition' => $data['disposition'],
                     'notes' => $data['notes'] ?? $lead->notes,
                 ];
-                if ($master) {
-                    $leadUpdates['lead_type'] = $master->resolveLeadType();
-                }
                 if (array_key_exists('callback_at', $data) && $data['callback_at']) {
                     $leadUpdates['follow_up_at'] = $data['callback_at'];
                 }
@@ -384,6 +398,7 @@ class GoalVrmController extends Controller
 
             GoalVrmCallLog::create([
                 'user_id' => auth()->id(),
+                'goal_org_unit_id' => auth()->user()->goal_org_unit_id,
                 'customer_name' => $customer,
                 'mobile' => $mobile ?: null,
                 'disposition' => $disposition,
@@ -416,17 +431,21 @@ class GoalVrmController extends Controller
         ]);
 
         $format = $request->input('format', 'excel');
+        $includeCalledBy = count($this->visibleCallLogUserIds()) > 1;
         $headings = ['#', 'When', 'Customer', 'Mobile', 'Disposition', 'Lead', 'Notes', 'Branch', 'Callback At'];
+        if ($includeCalledBy) {
+            $headings[] = 'Called by';
+        }
 
         $logs = $this->filteredCallLogsQuery($request)
-            ->with(['lead.orgUnit'])
+            ->with(['orgUnit', 'lead.orgUnit', 'user:id,name,crm_role_type,goal_org_unit_id', 'user.crmRole:id,name', 'user.orgUnit:id,name'])
             ->latest('called_at')
             ->limit(5000)
             ->get();
 
         $rows = [];
         foreach ($logs as $i => $log) {
-            $rows[] = [
+            $row = [
                 $i + 1,
                 optional($log->called_at)->format('d-m-Y H:i'),
                 $log->customer_name,
@@ -434,9 +453,15 @@ class GoalVrmController extends Controller
                 $log->disposition,
                 $log->goal_loan_lead_id ? 'Yes' : 'No',
                 $log->notes,
-                optional(optional($log->lead)->orgUnit)->name,
+                $log->resolvedBranchName(),
                 optional($log->callback_at)->format('d-m-Y H:i'),
             ];
+            if ($includeCalledBy) {
+                $caller = optional($log->user)->name;
+                $role = optional($log->user)->goalCrmRoleLabel();
+                $row[] = $caller ? ($role ? "{$caller} ({$role})" : $caller) : null;
+            }
+            $rows[] = $row;
         }
 
         $stamp = now()->format('Ymd_His');
@@ -455,12 +480,12 @@ class GoalVrmController extends Controller
         $ext = $format === 'csv' ? 'csv' : 'xlsx';
         $fileName = 'vrm_recent_calls_' . $stamp . '.' . $ext;
 
-        return Excel::download(new GoalVrmCallLogsExport($rows), $fileName, $writerType);
+        return Excel::download(new GoalVrmCallLogsExport($rows, $headings), $fileName, $writerType);
     }
 
     protected function filteredCallLogsQuery(Request $request)
     {
-        $query = GoalVrmCallLog::query()->where('user_id', auth()->id());
+        $query = GoalVrmCallLog::query()->whereIn('user_id', $this->visibleCallLogUserIds());
 
         if ($request->filled('q')) {
             $q = trim((string) $request->input('q'));
@@ -513,15 +538,26 @@ class GoalVrmController extends Controller
             'notes' => 'nullable|string',
             'create_lead' => 'nullable|boolean',
             'product' => [
+                Rule::requiredIf(fn () => $request->boolean('create_lead')),
                 'nullable',
                 'string',
                 'max:100',
                 Rule::in($this->activeProducts()->pluck('product_name')->all()),
             ],
-            'loan_amount' => 'nullable|numeric|min:0',
-            'goal_org_unit_id' => 'nullable|exists:goal_org_units,id,is_active,1',
+            'loan_amount' => [
+                Rule::requiredIf(fn () => $request->boolean('create_lead')),
+                'nullable',
+                'numeric',
+                'min:0',
+            ],
+            'goal_org_unit_id' => ['nullable', Rule::in($this->allowedBranchIds())],
             'save_and_new' => 'nullable|boolean',
-        ], PhoneNumber::messages('mobile'));
+        ], array_merge(PhoneNumber::messages('mobile'), [
+            'product.required' => 'Please select a product when creating a lead.',
+            'loan_amount.required' => 'Please enter loan amount when creating a lead.',
+        ]));
+
+        $data['goal_org_unit_id'] = $this->resolveBranchId($data['goal_org_unit_id'] ?? null);
 
         $dispositionMaster = GoalVrmDisposition::findByName($data['disposition']);
         $canCreateLeadFromDisposition = $dispositionMaster
@@ -573,6 +609,7 @@ class GoalVrmController extends Controller
         GoalVrmCallLog::create([
             'user_id' => auth()->id(),
             'goal_loan_lead_id' => $leadId,
+            'goal_org_unit_id' => $data['goal_org_unit_id'] ?? auth()->user()->goal_org_unit_id,
             'customer_name' => $data['customer_name'],
             'mobile' => $data['mobile'] ?? null,
             'disposition' => $data['disposition'],
@@ -596,6 +633,7 @@ class GoalVrmController extends Controller
     public function storeQuickDisposition(Request $request)
     {
         $this->requireGoalPermission('vrm_calling_guard');
+        abort_unless($this->canManageDispositionMaster(), 403, 'Only admins can add dispositions.');
 
         $data = $request->validate([
             'name' => 'required|string|max:100',
@@ -651,6 +689,7 @@ class GoalVrmController extends Controller
     public function updateDisposition(Request $request, GoalVrmDisposition $disposition)
     {
         $this->requireGoalPermission('vrm_calling_guard');
+        abort_unless($this->canManageDispositionMaster(), 403, 'Only admins can update dispositions.');
 
         $data = $request->validate([
             'name' => [
@@ -692,6 +731,7 @@ class GoalVrmController extends Controller
     public function storeQuickProduct(Request $request)
     {
         $this->requireGoalPermission('vrm_calling_guard');
+        abort_unless($this->canManageProductMaster(), 403, 'Only admins can add products.');
 
         $data = $request->validate([
             'product_name' => 'required|string|max:150',
@@ -762,5 +802,115 @@ class GoalVrmController extends Controller
         return GoalVrmDisposition::query()
             ->active()
             ->get(['id', 'name', 'creates_lead', 'maps_to_lead_type', 'sort_order']);
+    }
+
+    /**
+     * @return list<int>
+     */
+    protected function visibleCallLogUserIds(): array
+    {
+        $ids = auth()->user()->goalTeamUserIds();
+        if ($ids === []) {
+            return [(int) auth()->id()];
+        }
+
+        return $ids;
+    }
+
+    protected function assertCanViewCallLog(GoalVrmCallLog $log): void
+    {
+        abort_unless(
+            auth()->user()->canViewGoalUserCallLogs((int) $log->user_id),
+            403,
+            'You cannot view this call log.'
+        );
+    }
+
+    /** VRM role (type 9) may only use their assigned branch. */
+    protected function isBranchLockedToOwn(): bool
+    {
+        return (int) (auth()->user()->crm_role_type ?? -1) === 9;
+    }
+
+    /** Quick-add / Masters: Super Admin, Admin, or Manage Products permission. */
+    protected function canManageProductMaster(): bool
+    {
+        $user = auth()->user();
+        if ($user->isSuperAdmin() || in_array((int) ($user->crm_role_type ?? -1), [1, 4, 5], true)) {
+            return true;
+        }
+
+        return $user->hasCrmPermission('manage_products_guard')
+            || $user->hasCrmPermission('manage_crm_product_guard');
+    }
+
+    /** Quick-add / Masters: Super Admin, Admin, or Manage Dispositions permission. */
+    protected function canManageDispositionMaster(): bool
+    {
+        $user = auth()->user();
+        if ($user->isSuperAdmin() || in_array((int) ($user->crm_role_type ?? -1), [1, 4, 5], true)) {
+            return true;
+        }
+
+        return $user->hasCrmPermission('manage_dispositions_guard');
+    }
+
+    /**
+     * Branch options for Log Call: VRM = own branch only;
+     * others = active branches within their org scope (or all for company-wide roles).
+     */
+    protected function selectableBranches()
+    {
+        $query = GoalOrgUnit::query()->ofType('branch')->active()->orderBy('name');
+        $allowed = $this->allowedBranchIds();
+        if ($allowed === []) {
+            return $query->whereRaw('1 = 0')->get();
+        }
+
+        return $query->whereIn('id', $allowed)->get();
+    }
+
+    /**
+     * @return list<int|string>
+     */
+    protected function allowedBranchIds(): array
+    {
+        $user = auth()->user();
+        $scoped = array_map('intval', $user->goalScopedOrgUnitIds());
+
+        if ($this->isBranchLockedToOwn()) {
+            $own = (int) ($user->goal_org_unit_id ?? 0);
+            return $own > 0 ? [$own] : [];
+        }
+
+        if ($scoped === []) {
+            // Super/Admin/MD/CEO already return all IDs from goalScopedOrgUnitIds
+            return GoalOrgUnit::query()->ofType('branch')->active()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        }
+
+        return GoalOrgUnit::query()
+            ->ofType('branch')
+            ->active()
+            ->whereIn('id', $scoped)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    protected function resolveBranchId(mixed $requested): ?int
+    {
+        $allowed = $this->allowedBranchIds();
+        $own = (int) (auth()->user()->goal_org_unit_id ?? 0);
+
+        if ($this->isBranchLockedToOwn()) {
+            return $own > 0 ? $own : null;
+        }
+
+        $id = $requested !== null && $requested !== '' ? (int) $requested : null;
+        if ($id && in_array($id, $allowed, true)) {
+            return $id;
+        }
+
+        return $own > 0 && in_array($own, $allowed, true) ? $own : ($allowed[0] ?? null);
     }
 }

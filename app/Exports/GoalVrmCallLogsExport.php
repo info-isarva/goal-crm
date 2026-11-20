@@ -11,18 +11,9 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class GoalVrmCallLogsExport implements FromArray, WithHeadings, WithTitle, WithStyles, WithColumnWidths
 {
-    public function __construct(protected array $rows)
-    {
-    }
-
-    public function array(): array
-    {
-        return $this->rows;
-    }
-
-    public function headings(): array
-    {
-        return [
+    public function __construct(
+        protected array $rows,
+        protected array $headingRow = [
             '#',
             'When',
             'Customer',
@@ -32,7 +23,18 @@ class GoalVrmCallLogsExport implements FromArray, WithHeadings, WithTitle, WithS
             'Notes',
             'Branch',
             'Callback At',
-        ];
+        ]
+    ) {
+    }
+
+    public function array(): array
+    {
+        return $this->rows;
+    }
+
+    public function headings(): array
+    {
+        return $this->headingRow;
     }
 
     public function title(): string
@@ -42,14 +44,15 @@ class GoalVrmCallLogsExport implements FromArray, WithHeadings, WithTitle, WithS
 
     public function styles(Worksheet $sheet)
     {
-        $sheet->getStyle('A1:I1')->getFont()->setBold(true);
+        $lastCol = chr(ord('A') + max(0, count($this->headingRow) - 1));
+        $sheet->getStyle('A1:' . $lastCol . '1')->getFont()->setBold(true);
 
         return [];
     }
 
     public function columnWidths(): array
     {
-        return [
+        $widths = [
             'A' => 6,
             'B' => 20,
             'C' => 22,
@@ -59,6 +62,9 @@ class GoalVrmCallLogsExport implements FromArray, WithHeadings, WithTitle, WithS
             'G' => 36,
             'H' => 20,
             'I' => 20,
+            'J' => 22,
         ];
+
+        return array_slice($widths, 0, count($this->headingRow), true);
     }
 }
