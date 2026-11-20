@@ -1888,19 +1888,29 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
 
     document.getElementById('btnClearForm')?.addEventListener('click', resetFormDefaults);
 
-    function syncCreateLeadAvailability() {
+    function dispositionAllowsCreateLead() {
         const disp = document.getElementById('disposition');
-        const createLead = document.getElementById('create_lead');
-        const label = document.getElementById('create_lead_label');
-        if (!disp || !createLead) return;
+        if (!disp) return false;
         const name = disp.value || '';
         const meta = (window.__vrmDispositionMeta || {})[name];
+        if (meta) return !!meta.creates_lead;
         const opt = disp.selectedOptions && disp.selectedOptions[0];
-        const allows = meta
-            ? !!meta.creates_lead
-            : (opt && opt.dataset.createsLead === '1');
+        return !!(opt && opt.dataset.createsLead === '1');
+    }
+
+    function syncCreateLeadAvailability(opts) {
+        const options = opts || {};
+        const createLead = document.getElementById('create_lead');
+        const label = document.getElementById('create_lead_label');
+        if (!createLead) return;
+        const allows = dispositionAllowsCreateLead();
         createLead.disabled = !allows;
-        if (!allows) createLead.checked = false;
+        if (!allows) {
+            createLead.checked = false;
+        } else if (options.autoCheck) {
+            // Selecting a "Can create lead" disposition turns the box on; user may still uncheck.
+            createLead.checked = true;
+        }
         if (label) {
             label.textContent = allows
                 ? 'Create lead from this disposition'
@@ -1911,12 +1921,18 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
 
     document.getElementById('create_lead')?.addEventListener('change', syncLeadRequiredFields);
 
-    document.getElementById('disposition')?.addEventListener('change', syncCreateLeadAvailability);
+    document.getElementById('disposition')?.addEventListener('change', function () {
+        syncCreateLeadAvailability({ autoCheck: true });
+    });
     if (window.jQuery) {
-        window.jQuery('#disposition').on('select2:select select2:clear change', syncCreateLeadAvailability);
+        window.jQuery('#disposition').on('select2:select select2:clear change', function () {
+            syncCreateLeadAvailability({ autoCheck: true });
+        });
     }
-    modalEl.addEventListener('shown.bs.modal', syncCreateLeadAvailability);
-    syncCreateLeadAvailability();
+    modalEl.addEventListener('shown.bs.modal', function () {
+        syncCreateLeadAvailability({ autoCheck: false });
+    });
+    syncCreateLeadAvailability({ autoCheck: false });
 
     @if($openModal)
         modal.show();
