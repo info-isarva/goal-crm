@@ -47,22 +47,31 @@
 
 .pd-page.mis-page .amt{font-variant-numeric:tabular-nums;font-weight:700;color:#0f172a;white-space:nowrap}
 .pd-page.mis-page .net-pos{color:#15803d;font-weight:800}
-.pd-page.mis-page .mis-case-cell .pd-cust{margin-top:2px}
-.pd-page.mis-page .mis-sub{font-size:.75rem;color:#94a3b8;margin-top:2px}
-.pd-page.mis-page .mis-actions{display:inline-flex;gap:6px;flex-wrap:wrap}
-.pd-page.mis-page .mis-btn{
-    display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 10px;
-    border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#334155;
-    font-size:.75rem;font-weight:650;text-decoration:none;white-space:nowrap;
+.pd-page.mis-page .pd-card-sub{font-size:.78rem;color:#94a3b8;font-weight:600}
+.pd-page.mis-page .mis-scroll{overflow:auto;max-height:calc(100vh - 340px);-webkit-overflow-scrolling:touch}
+.pd-page.mis-page .pd-table{font-size:.78rem}
+.pd-page.mis-page .pd-table thead th{
+    position:sticky;top:0;z-index:2;background:#f8fafc;white-space:nowrap;
+    text-transform:uppercase;letter-spacing:.03em;font-size:.68rem;color:#64748b;
 }
-.pd-page.mis-page .mis-btn:hover{background:#f8fafc;color:#0f172a}
-.pd-page.mis-page .mis-btn.primary{
+.pd-page.mis-page .pd-table tbody td{white-space:nowrap;vertical-align:middle}
+.pd-page.mis-page .pd-table .sticky-col{
+    position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(15,23,42,.04);
+}
+.pd-page.mis-page .pd-table thead .sticky-col{z-index:3;background:#f8fafc}
+.pd-page.mis-page .pd-table tbody tr:hover .sticky-col{background:#f8fbff}
+.pd-page.mis-page .mis-ws-btn{
+    display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 10px;
+    border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#334155;
+    font-size:.74rem;font-weight:650;text-decoration:none;white-space:nowrap;
+}
+.pd-page.mis-page .mis-ws-btn:hover{background:#f8fafc;color:#0f172a}
+.pd-page.mis-page .mis-ws-btn.primary{
     border-color:var(--theme-primary);background:var(--theme-100,#f0fdfa);color:var(--theme-primary-hover,#0f766e);
 }
-.pd-page.mis-page .mis-btn.primary:hover{filter:brightness(.98)}
-.pd-page.mis-page .pd-card-sub{font-size:.78rem;color:#94a3b8;font-weight:600}
-.pd-page.mis-page .pd-table thead th{white-space:nowrap}
-.pd-page.mis-page .pd-table tbody td{vertical-align:middle}
+@media (max-width:767.98px){
+    .pd-page.mis-page .pd-table .sticky-col{position:static;box-shadow:none}
+}
 .pd-page.mis-page .pd-hero-actions .dropdown > .pd-link-btn{
     border:0;cursor:pointer;appearance:none;-webkit-appearance:none;
 }
@@ -94,7 +103,7 @@
     $fmtInr = function ($n) {
         if ($n === null || $n === '' || $n === '—') return '—';
         if (!is_numeric(str_replace([',', '₹', ' '], '', (string) $n))) return $n;
-        return '₹ '.number_format((float) str_replace([',', '₹', ' '], '', (string) $n), 0);
+        return '₹ '.number_format((float) str_replace([',', '₹', ' '], '', (string) $n), 2);
     };
     $fmtDate = function ($v) {
         if ($v === null || $v === '' || $v === '—') return '—';
@@ -140,17 +149,17 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li>
-                        <a class="dropdown-item" href="{{ route('goal.branch-mis.export', array_merge(request()->query(), ['format' => 'csv'])) }}">
+                        <a class="dropdown-item" data-no-loader href="{{ route('goal.branch-mis.export', array_merge(request()->query(), ['format' => 'csv'])) }}">
                             <i class="bi bi-filetype-csv text-csv"></i> CSV
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" href="{{ route('goal.branch-mis.export', array_merge(request()->query(), ['format' => 'xlsx'])) }}">
+                        <a class="dropdown-item" data-no-loader href="{{ route('goal.branch-mis.export', array_merge(request()->query(), ['format' => 'xlsx'])) }}">
                             <i class="bi bi-file-earmark-excel text-xlsx"></i> Excel
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" href="{{ route('goal.branch-mis.export', array_merge(request()->query(), ['format' => 'pdf'])) }}">
+                        <a class="dropdown-item" data-no-loader href="{{ route('goal.branch-mis.export', array_merge(request()->query(), ['format' => 'pdf'])) }}">
                             <i class="bi bi-file-earmark-pdf text-pdf"></i> PDF
                         </a>
                     </li>
@@ -268,25 +277,52 @@
     <div class="pd-card">
         <div class="pd-card-head">
             <div>
-                <h5>Branch cases ({{ number_format($cases->total()) }})</h5>
-                <div class="pd-card-sub">Readable summary · open detail for full sheet · Export as CSV / Excel / PDF</div>
+                <h5>Branch case updation ({{ number_format($cases->total()) }})</h5>
+                <div class="pd-card-sub">Full commercial sheet · matches Branch-wise updation Excel · Export CSV / Excel / PDF</div>
             </div>
         </div>
-        <div class="pd-table-wrap">
+        <div class="mis-scroll pd-table-wrap">
             <table class="pd-table align-middle">
                 <thead>
                     <tr>
-                        <th>Case / customer</th>
+                        <th class="sticky-col">Ref Number</th>
+                        <th>LAN Number</th>
+                        <th>Customer Name</th>
+                        <th>Customer Contact</th>
                         <th>Month</th>
-                        <th>Location</th>
-                        <th>Bank</th>
+                        <th>Login Date</th>
+                        <th>Login Amount</th>
+                        <th>Sanction Dt</th>
+                        <th>Sanc Amt</th>
+                        <th>Disb Date</th>
+                        <th>Disb amt</th>
+                        <th>Code</th>
+                        <th>Product</th>
+                        <th>Sub Product</th>
                         <th>Status</th>
-                        <th>OTC/PDD</th>
-                        <th class="text-end">Disb amt</th>
-                        <th class="text-end">Payin</th>
-                        <th class="text-end">Payout</th>
-                        <th class="text-end">Net revenue</th>
-                        <th></th>
+                        <th>OTC/PDD Status</th>
+                        <th>Location</th>
+                        <th>Source</th>
+                        <th>Source Name</th>
+                        <th>GSM Name</th>
+                        <th>Bank Name</th>
+                        <th>Banker Name</th>
+                        <th>Banker Contact</th>
+                        <th>Banker Mail ID</th>
+                        <th>PayIn%</th>
+                        <th>Payin Amt</th>
+                        <th>Payout %</th>
+                        <th>Payout Amount</th>
+                        <th>Net Revenue</th>
+                        <th>SM Remark</th>
+                        <th>Payout Month</th>
+                        <th>Ref - 1 Name</th>
+                        <th>Ref - 1 Contact</th>
+                        <th>Ref - 2 Name</th>
+                        <th>Ref - 2 Contact</th>
+                        <th>DOB Applicant</th>
+                        <th>Co-Applicant</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -298,52 +334,74 @@
                         $netNum = is_numeric(str_replace([',','₹',' '], '', (string) $net))
                             ? (float) str_replace([',','₹',' '], '', (string) $net)
                             : null;
-                        $lan = $mis($m, ['lan_number', 'lan', 'lan_no']);
+                        $payinPct = $mis($m, ['payin_pct', 'pay_in_pct']);
+                        $payoutPct = $mis($m, ['payout_pct']);
+                        $fmtPct = function ($v) {
+                            if ($v === null || $v === '' || $v === '—') return '—';
+                            if (!is_numeric($v)) return $v;
+                            return rtrim(rtrim(number_format((float) $v, 4), '0'), '.').'%';
+                        };
                     @endphp
                     <tr>
-                        <td data-label="Case" class="mis-case-cell">
+                        <td class="sticky-col" data-label="Ref">
                             <a class="pd-case" href="{{ route('goal.branch-mis.show', $case) }}">{{ $case->case_no }}</a>
-                            <div class="pd-cust">{{ $case->customer_name ?: '—' }}</div>
-                            <div class="mis-sub">
-                                {{ $case->product ?: '—' }}
-                                @if($lan !== '—') · LAN {{ $lan }}@endif
-                            </div>
                         </td>
-                        <td data-label="Month">{{ $mis($m, ['month']) }}</td>
-                        <td data-label="Location">{{ $case->orgUnit?->name ?: $mis($m, ['location']) }}</td>
-                        <td data-label="Bank">
-                            {{ $mis($m, ['bank_name']) !== '—' ? $mis($m, ['bank_name']) : ($case->lender_name ?: '—') }}
+                        <td>{{ $mis($m, ['lan_number', 'lan', 'lan_no']) }}</td>
+                        <td><span class="pd-cust">{{ $case->customer_name ?: '—' }}</span></td>
+                        <td>{{ $case->mobile ?: '—' }}</td>
+                        <td>{{ $mis($m, ['month']) }}</td>
+                        <td>{{ $fmtDate($mis($m, ['login_date'])) }}</td>
+                        <td class="amt">{{ $fmtInr($mis($m, ['login_amount', 'login_amt'])) }}</td>
+                        <td>{{ $case->sanction_date ? $case->sanction_date->format('d-M-Y') : $fmtDate($mis($m, ['sanction_dt', 'sanction_date'])) }}</td>
+                        <td class="amt">
+                            {{ $case->sanction_amount !== null ? $fmtInr($case->sanction_amount) : $fmtInr($mis($m, ['sanc_amt', 'sanction_amount'])) }}
                         </td>
-                        <td data-label="Status"><span class="pd-pill {{ $statusPill($case->status) }}">{{ $case->status }}</span></td>
-                        <td data-label="OTC/PDD">
+                        <td>{{ $fmtDate($mis($m, ['disb_date'])) }}</td>
+                        <td class="amt">{{ $fmtInr($mis($m, ['disb_amount', 'disb_amt'])) }}</td>
+                        <td>{{ $mis($m, ['code']) }}</td>
+                        <td>{{ $case->product ?: '—' }}</td>
+                        <td>{{ $mis($m, ['sub_product']) }}</td>
+                        <td><span class="pd-pill {{ $statusPill($case->status) }}">{{ $case->status }}</span></td>
+                        <td>
                             @if($otc !== '—')
                                 <span class="pd-pill {{ $otcPill($otc) }}">{{ $otc }}</span>
                             @else
-                                <span class="mis-sub">—</span>
+                                —
                             @endif
                         </td>
-                        <td data-label="Disb" class="amt text-end">{{ $fmtInr($mis($m, ['disb_amount', 'disb_amt'])) }}</td>
-                        <td data-label="Payin" class="amt text-end">{{ $fmtInr($mis($m, ['payin_amt', 'pay_in_amt'])) }}</td>
-                        <td data-label="Payout" class="amt text-end">{{ $fmtInr($mis($m, ['payout_amount', 'payout_amt'])) }}</td>
-                        <td data-label="Net" class="amt text-end {{ ($netNum !== null && $netNum > 0) ? 'net-pos' : '' }}">{{ $fmtInr($net) }}</td>
-                        <td data-label="Actions">
-                            <div class="mis-actions">
-                                <a class="mis-btn primary" href="{{ route('goal.branch-mis.show', $case) }}">
-                                    <i class="bi bi-eye"></i> View
-                                </a>
-                                <a class="mis-btn" href="{{ route('goal.cases.show', ['case' => $case, 'tab' => 'mis']) }}">
-                                    <i class="bi bi-pencil"></i> Edit
-                                </a>
-                            </div>
+                        <td>{{ $case->orgUnit?->name ?: $mis($m, ['location']) }}</td>
+                        <td>{{ $mis($m, ['source']) }}</td>
+                        <td>{{ $mis($m, ['source_name']) }}</td>
+                        <td>{{ $mis($m, ['gsm_name']) !== '—' ? $mis($m, ['gsm_name']) : ($case->owner?->name ?: '—') }}</td>
+                        <td>{{ $mis($m, ['bank_name']) !== '—' ? $mis($m, ['bank_name']) : ($case->lender_name ?: '—') }}</td>
+                        <td>{{ $mis($m, ['banker_name']) }}</td>
+                        <td>{{ $mis($m, ['banker_contact']) }}</td>
+                        <td>{{ $mis($m, ['banker_mail', 'banker_email']) }}</td>
+                        <td>{{ $fmtPct($payinPct) }}</td>
+                        <td class="amt">{{ $fmtInr($mis($m, ['payin_amt', 'pay_in_amt'])) }}</td>
+                        <td>{{ $fmtPct($payoutPct) }}</td>
+                        <td class="amt">{{ $fmtInr($mis($m, ['payout_amount', 'payout_amt'])) }}</td>
+                        <td class="amt {{ ($netNum !== null && $netNum > 0) ? 'net-pos' : '' }}">{{ $fmtInr($net) }}</td>
+                        <td>{{ $mis($m, ['sm_remark']) }}</td>
+                        <td>{{ $mis($m, ['payout_month']) }}</td>
+                        <td>{{ $mis($m, ['ref1_name']) }}</td>
+                        <td>{{ $mis($m, ['ref1_contact']) }}</td>
+                        <td>{{ $mis($m, ['ref2_name']) }}</td>
+                        <td>{{ $mis($m, ['ref2_contact']) }}</td>
+                        <td>{{ $fmtDate($mis($m, ['dob_applicant'])) }}</td>
+                        <td>{{ $mis($m, ['co_applicant']) }}</td>
+                        <td>
+                            <a class="mis-ws-btn primary" href="{{ route('goal.branch-mis.show', $case) }}"><i class="bi bi-eye"></i> View</a>
+                            <a class="mis-ws-btn" href="{{ route('goal.cases.show', ['case' => $case, 'tab' => 'mis']) }}"><i class="bi bi-pencil"></i> Edit</a>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11" class="pd-col-empty">
+                        <td colspan="38" class="pd-col-empty">
                             <div class="pd-empty">
                                 <i class="bi bi-clipboard-data"></i>
                                 <div style="font-weight:700;color:#334155;margin-bottom:4px">No Branch MIS rows for this filter</div>
-                                <div>Open a loan case → Branch MIS tab to capture commercials, or clear filters.</div>
+                                <div>Create or open a loan case, fill the Branch MIS tab, then refresh this page.</div>
                             </div>
                         </td>
                     </tr>

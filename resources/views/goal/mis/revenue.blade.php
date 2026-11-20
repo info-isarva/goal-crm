@@ -155,17 +155,17 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li>
-                        <a class="dropdown-item" href="{{ route('goal.revenue-ledger.export', array_merge(request()->query(), ['format' => 'csv'])) }}">
+                        <a class="dropdown-item" data-no-loader href="{{ route('goal.revenue-ledger.export', array_merge(request()->query(), ['format' => 'csv'])) }}">
                             <i class="bi bi-filetype-csv text-csv"></i> CSV
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" href="{{ route('goal.revenue-ledger.export', array_merge(request()->query(), ['format' => 'xlsx'])) }}">
+                        <a class="dropdown-item" data-no-loader href="{{ route('goal.revenue-ledger.export', array_merge(request()->query(), ['format' => 'xlsx'])) }}">
                             <i class="bi bi-file-earmark-excel text-xlsx"></i> Excel
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" href="{{ route('goal.revenue-ledger.export', array_merge(request()->query(), ['format' => 'pdf'])) }}">
+                        <a class="dropdown-item" data-no-loader href="{{ route('goal.revenue-ledger.export', array_merge(request()->query(), ['format' => 'pdf'])) }}">
                             <i class="bi bi-file-earmark-pdf text-pdf"></i> PDF
                         </a>
                     </li>

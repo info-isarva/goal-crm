@@ -62,6 +62,20 @@
         }
     }
 
+    function isLikelyFileDownload(href) {
+        try {
+            var url = new URL(href, window.location.href);
+            var path = (url.pathname || '').toLowerCase();
+            if (path.indexOf('/export') !== -1) return true;
+            if (/\.(csv|xlsx|xls|pdf|zip|doc|docx)(\?|$)/i.test(path)) return true;
+            var format = String(url.searchParams.get('format') || '').toLowerCase();
+            if (['csv', 'xlsx', 'xls', 'excel', 'pdf'].indexOf(format) !== -1) return true;
+            return false;
+        } catch (e) {
+            return false;
+        }
+    }
+
     function shouldIgnoreLink(a, event) {
         if (!a) return true;
         if (a.hasAttribute('data-no-loader') || a.closest('[data-no-loader]')) return true;
@@ -76,6 +90,8 @@
         }
         if (href.charAt(0) === '#') return true;
         if (!sameOrigin(href)) return true;
+        // File downloads keep the current page mounted, so the loader would never clear.
+        if (isLikelyFileDownload(href)) return true;
 
         try {
             var next = new URL(href, window.location.href);

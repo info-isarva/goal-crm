@@ -112,9 +112,9 @@ class GoalMisController extends Controller
             'PayIn%', 'Payin Amt', 'Payout %', 'Payout Amount', 'Net Revenue',
             'SM Remark', 'Payout Month',
             'Ref - 1 Name', 'Ref - 1 Contact', 'Ref - 2 Name', 'Ref - 2 Contact',
-            'DOB Applicant', 'Co-Applicant', 'Owner', 'Branch',
+            'DOB Applicant', 'Co-Applicant',
         ];
-        [$sheetRows, $pdfRows] = $this->buildBranchMisExportRows($cases);
+        [$sheetRows, $totals] = $this->buildBranchMisExportRows($cases);
         $stamp = now()->format('Ymd-His');
 
         if ($format === 'pdf') {
@@ -132,25 +132,19 @@ class GoalMisController extends Controller
                 $filters['otc_pdd'] !== '' ? 'OTC/PDD: '.$filters['otc_pdd'] : null,
                 $branchLabel ? 'Branch: '.$branchLabel : null,
             ]));
-            $summary = [
-                'cases' => count($pdfRows),
-                'disb' => (float) collect($pdfRows)->sum('disb_raw'),
-                'payin' => (float) collect($pdfRows)->sum('payin_raw'),
-                'payout' => (float) collect($pdfRows)->sum('payout_raw'),
-                'net' => (float) collect($pdfRows)->sum('net_raw'),
-            ];
 
             return MpdfDocument::fromView(
                 'goal.mis.exports.branch-pdf',
                 [
-                    'rows' => $pdfRows,
-                    'summary' => $summary,
+                    'headings' => $fullHeadings,
+                    'rows' => $sheetRows,
+                    'summary' => $totals,
                     'filterLabels' => $filterLabels,
                     'generatedAt' => now(),
                 ],
                 'branch-mis-'.$stamp.'.pdf',
                 true,
-                'A4-L'
+                'A3-L'
             );
         }
 
@@ -346,32 +340,36 @@ class GoalMisController extends Controller
     }
 
     /**
-     * @return array{0: list<array<int, mixed>>, 1: list<array<string, mixed>>}
+     * @return array{0: list<array<int, mixed>>, 1: array{cases:int,disb:float,payin:float,payout:float,net:float}}
      */
     protected function buildBranchMisExportRows(Collection $cases): array
     {
         $svc = app(\App\Services\Goal\GoalBranchMisService::class);
         $sheetRows = [];
-        $pdfRows = [];
+        $totals = [
+            'cases' => 0,
+            'disb' => 0.0,
+            'payin' => 0.0,
+            'payout' => 0.0,
+            'net' => 0.0,
+        ];
 
         foreach ($cases as $case) {
-            $m = is_array($case->branch_mis) ? $case->branch_mis : [];
-            $verifiedDisb = $case->disbursements
-                ->where('status', 'Verified')
-                ->sortByDesc('disbursed_on')
-                ->first()
-                ?? $case->disbursements->sortByDesc('disbursed_on')->first();
-            $disbAmt = $verifiedDisb?->amount
-                ?? $this->misVal($m, ['disb_amt', 'disb_amount', 'disbursement_amount']);
-            $disbDate = optional($verifiedDisb?->disbursed_on)->format('d-M-Y')
-                ?: $this->misVal($m, ['disb_date', 'disbursement_date']);
-            $m = $svc->apply($case, $m);
+            $m = $svc->apply($case, is_array($case->branch_mis) ? $case->branch_mis : []);
 
-            $disbOut = isset($m['disb_amount']) && $m['disb_amount'] !== ''
-                ? number_format((float) $m['disb_amount'], 2, '.', '')
-                : ($disbAmt !== null && $disbAmt !== ''
-                    ? (is_numeric($disbAmt) ? number_format((float) $disbAmt, 2, '.', '') : $disbAmt)
-                    : '');
+            $loginAmt = $this->misVal($m, ['login_amount', 'login_amt']);
+            $sancAmt = $case->sanction_amount !== null
+                ? number_format((float) $case->sanction_amount, 2, '.', '')
+                : $this->misVal($m, ['sanc_amt', 'sanction_amount']);
+            $disbOut = $this->misVal($m, ['disb_amount', 'disb_amt']);
+            if ($disbOut !== '' && is_numeric(str_replace([',', '₹', ' '], '', $disbOut))) {
+                $disbOut = number_format((float) str_replace([',', '₹', ' '], '', $disbOut), 2, '.', '');
+            }
+            $payinAmt = $this->misVal($m, ['payin_amt', 'pay_in_amt']);
+            $payoutAmt = $this->misVal($m, ['payout_amount', 'payout_amt']);
+            $netAmt = $this->misVal($m, ['net_revenue']);
+            $payinPct = $this->misVal($m, ['payin_pct', 'pay_in_pct']);
+            $payoutPct = $this->misVal($m, ['payout_pct']);
 
             $sheetRows[] = [
                 $case->case_no,
@@ -380,12 +378,10 @@ class GoalMisController extends Controller
                 $case->mobile,
                 $this->misVal($m, ['month']),
                 $this->misVal($m, ['login_date']),
-                $this->misVal($m, ['login_amount', 'login_amt']),
+                $loginAmt,
                 optional($case->sanction_date)->format('d-M-Y') ?: $this->misVal($m, ['sanction_dt', 'sanction_date']),
-                $case->sanction_amount !== null
-                    ? number_format((float) $case->sanction_amount, 2, '.', '')
-                    : $this->misVal($m, ['sanc_amt', 'sanction_amount']),
-                $disbDate ?: $this->misVal($m, ['disb_date']),
+                $sancAmt,
+                $this->misVal($m, ['disb_date']),
                 $disbOut,
                 $this->misVal($m, ['code']),
                 $case->product,
@@ -395,16 +391,16 @@ class GoalMisController extends Controller
                 $case->orgUnit?->name ?: $this->misVal($m, ['location']),
                 $this->misVal($m, ['source']),
                 $this->misVal($m, ['source_name']),
-                $this->misVal($m, ['gsm_name']),
-                $this->misVal($m, ['bank_name']) ?: $case->lender_name,
+                $this->misVal($m, ['gsm_name']) ?: ($case->owner?->name ?? ''),
+                $this->misVal($m, ['bank_name']) ?: ($case->lender_name ?? ''),
                 $this->misVal($m, ['banker_name']),
                 $this->misVal($m, ['banker_contact']),
                 $this->misVal($m, ['banker_mail', 'banker_email']),
-                $this->misVal($m, ['payin_pct', 'pay_in_pct']),
-                $this->misVal($m, ['payin_amt', 'pay_in_amt']),
-                $this->misVal($m, ['payout_pct']),
-                $this->misVal($m, ['payout_amount', 'payout_amt']),
-                $this->misVal($m, ['net_revenue']),
+                $payinPct,
+                $payinAmt,
+                $payoutPct,
+                $payoutAmt,
+                $netAmt,
                 $this->misVal($m, ['sm_remark']),
                 $this->misVal($m, ['payout_month']),
                 $this->misVal($m, ['ref1_name']),
@@ -413,39 +409,16 @@ class GoalMisController extends Controller
                 $this->misVal($m, ['ref2_contact']),
                 $this->misVal($m, ['dob_applicant']),
                 $this->misVal($m, ['co_applicant']),
-                $case->owner?->name,
-                $case->orgUnit?->name,
             ];
 
-            $payinStr = $this->misVal($m, ['payin_amt', 'pay_in_amt']);
-            $payoutStr = $this->misVal($m, ['payout_amount', 'payout_amt']);
-            $netStr = $this->misVal($m, ['net_revenue']);
-            $payinRaw = $this->misMoney($m, ['payin_amt', 'pay_in_amt']);
-            $payoutRaw = $this->misMoney($m, ['payout_amount', 'payout_amt']);
-            $netRaw = $this->misMoney($m, ['net_revenue']);
-            $disbClean = str_replace([',', '₹', ' '], '', (string) $disbOut);
-            $disbRaw = ($disbOut !== '' && is_numeric($disbClean)) ? (float) $disbClean : 0.0;
-
-            $pdfRows[] = [
-                'case_no' => $case->case_no ?: '—',
-                'customer' => $case->customer_name ?: '—',
-                'month' => $this->misVal($m, ['month']) ?: '—',
-                'location' => $case->orgUnit?->name ?: ($this->misVal($m, ['location']) ?: '—'),
-                'bank' => ($this->misVal($m, ['bank_name']) ?: $case->lender_name) ?: '—',
-                'status' => $case->status ?: '—',
-                'otc' => $this->misVal($m, ['otc_pdd_status', 'otc_pdd']) ?: '—',
-                'disb_amt' => $disbOut !== '' ? ('₹ '.$disbOut) : '—',
-                'payin_amt' => $payinStr !== '' ? ('₹ '.$payinStr) : '—',
-                'payout_amt' => $payoutStr !== '' ? ('₹ '.$payoutStr) : '—',
-                'net_revenue' => $netStr !== '' ? ('₹ '.$netStr) : '—',
-                'disb_raw' => $disbRaw,
-                'payin_raw' => $payinRaw,
-                'payout_raw' => $payoutRaw,
-                'net_raw' => $netRaw,
-            ];
+            $totals['cases']++;
+            $totals['disb'] += $this->misMoney($m, ['disb_amount', 'disb_amt']);
+            $totals['payin'] += $this->misMoney($m, ['payin_amt', 'pay_in_amt']);
+            $totals['payout'] += $this->misMoney($m, ['payout_amount', 'payout_amt']);
+            $totals['net'] += $this->misMoney($m, ['net_revenue']);
         }
 
-        return [$sheetRows, $pdfRows];
+        return [$sheetRows, $totals];
     }
 
     public function adjustRevenue(Request $request, Pd01Service $pd01)
