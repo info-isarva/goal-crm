@@ -35,10 +35,10 @@
     ];
     $loanRowBlank = ['party' => 'applicant', 'type' => '', 'bank' => '', 'sanction' => '', 'outstanding' => '', 'emi' => '', 'paid' => '', 'pending' => '', 'bounces' => ''];
     $loanRows = $loans['rows'] ?? null;
-    if (!is_array($loanRows) || $loanRows === []) {
+    if (! is_array($loanRows) || $loanRows === []) {
+        // Start with one Applicant row; add Co-Applicant rows only when needed via Add Row.
         $loanRows = [
             array_merge($loanRowBlank, ['party' => 'applicant']),
-            array_merge($loanRowBlank, ['party' => 'co_applicant']),
         ];
     }
     $consent = $cd['consent'] ?? null;

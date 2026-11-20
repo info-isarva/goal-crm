@@ -20,7 +20,6 @@ class GoalCaseRequiredFields
             'applicant.mobile' => ['label' => 'Applicant — Mobile Number', 'group' => 'Applicant (Identity & Contact)', 'default' => true],
             'applicant.age' => ['label' => 'Applicant — Age', 'group' => 'Applicant (Identity & Contact)', 'default' => false],
             'applicant.marital_status' => ['label' => 'Applicant — Marital Status', 'group' => 'Applicant (Identity & Contact)', 'default' => false],
-            'applicant.relationship' => ['label' => 'Applicant — Relationship', 'group' => 'Applicant (Identity & Contact)', 'default' => false],
             'applicant.email' => ['label' => 'Applicant — Personal Mail ID', 'group' => 'Applicant (Identity & Contact)', 'default' => false],
             'applicant.official_email' => ['label' => 'Applicant — Official Mail ID', 'group' => 'Applicant (Identity & Contact)', 'default' => false],
 

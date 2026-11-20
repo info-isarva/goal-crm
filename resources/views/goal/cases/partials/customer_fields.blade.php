@@ -19,19 +19,10 @@
         'Sister' => 'Sister',
         'Other' => 'Other',
     ];
-    $relApp = $app['relationship'] ?? 'Self';
     $relCo = $co['relationship'] ?? '';
-    $relAppOpts = $relOptsBase;
-    if ($relApp !== '' && !array_key_exists($relApp, $relAppOpts)) {
-        $relAppOpts[$relApp] = $relApp;
-    }
-    // Always keep Other last for applicant
-    unset($relAppOpts['Other']);
-    $relAppOpts['Other'] = 'Other';
-
     $relCoOpts = ['' => 'Select'] + $relOptsBase;
     unset($relCoOpts['Self']);
-    if ($relCo !== '' && !array_key_exists($relCo, $relCoOpts)) {
+    if ($relCo !== '' && ! array_key_exists($relCo, $relCoOpts)) {
         $relCoOpts[$relCo] = $relCo;
     }
     unset($relCoOpts['Other']);
@@ -122,15 +113,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="cw-field-row">
-                        <label class="cw-label-inline">Relationship with applicant{!! $reqMark('applicant.relationship') !!}</label>
-                        <select class="cw-select js-select2 cw-rel-self" name="customer_details[applicant][relationship]"
-                                data-search="true" data-placeholder="Select relationship" {{ $dis }} {{ $reqAttr('applicant.relationship') }}>
-                            @foreach($relAppOpts as $val => $label)
-                                <option value="{{ $val }}" @selected($relApp === $val)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    <input type="hidden" name="customer_details[applicant][relationship]" value="Self">
                     <div class="cw-field-row">
                         <label class="cw-label-inline">Personal Mail ID{!! $reqMark('applicant.email') !!}</label>
                         <div class="cw-input-group">
