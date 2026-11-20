@@ -14,16 +14,25 @@ class CompanySeeder extends Seeder
      */
     public function run()
     {
-        // Create a single company record if none exists
-        if (!Company::exists()) {
-            Company::create([
-                'name' => 'Isarva',
-                'logo' => null,
-                'address' => 'Headquarters',
-                'city' => 'City',
-                'pincode' => '000000',
-                'phone' => '+0000000000',
-            ]);
+        $company = Company::query()->first();
+
+        $payload = [
+            'name' => 'Goal Corporation',
+            'address' => 'Headquarters',
+            'city' => 'Bangalore',
+            'pincode' => '560001',
+            'phone' => '+910000000000',
+        ];
+
+        if ($company) {
+            $company->fill(array_merge($payload, [
+                'logo' => $company->logo,
+            ]))->save();
+            return;
         }
+
+        Company::create(array_merge($payload, [
+            'logo' => null,
+        ]));
     }
 }

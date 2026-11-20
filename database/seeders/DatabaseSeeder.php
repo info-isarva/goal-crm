@@ -13,8 +13,9 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             CompanySeeder::class,
-            SuperAdminSeeder::class,
+            // Goal roles + Masters/dispositions permissions first so Admin attach sees them
             GoalRolesPermissionsSeeder::class,
+            SuperAdminSeeder::class,
             GoalVrmDispositionSeeder::class,
             GoalOrgUnitSeeder::class,
             GoalHierarchyUsersSeeder::class,
