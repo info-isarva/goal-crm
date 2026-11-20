@@ -124,26 +124,55 @@
     border:0;border-radius:0;overflow-x:auto;
     -webkit-overflow-scrolling:touch;background:#fff;
 }
-.ll-page .leads-table-wrap table{min-width:980px;width:100%;margin:0}
+.ll-page .leads-table-wrap table{min-width:1180px;width:100%;margin:0}
 .ll-page table thead th{
-    font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;
-    color:#64748b;font-weight:700;background:#f1f5f9;
-    border-bottom:1px solid #e2e8f0;white-space:nowrap;padding:.8rem .9rem;
+    font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;
+    color:#64748b;font-weight:700;background:#f8fafc;
+    border-bottom:1px solid #e2e8f0;white-space:nowrap;padding:.75rem .85rem;
 }
 .ll-page table tbody td{
     vertical-align:middle;font-size:.875rem;color:#334155;
-    border-color:#eef2f7;padding:.9rem .9rem;white-space:nowrap;
+    border-color:#f1f5f9;padding:.85rem .85rem;white-space:nowrap;
 }
 .ll-page table tbody tr{transition:background .15s}
-.ll-page table tbody tr:hover{background:#f8fbff}
-.ll-page .ref-cell{font-weight:800;color:#0f172a;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.82rem}
+.ll-page table tbody tr:hover{background:#f8fafc}
+.ll-page .ref-cell{font-weight:800;color:#0f172a;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.8rem}
+.ll-page .ref-sub{font-size:.72rem;color:#94a3b8;margin-top:3px;font-weight:500}
+.ll-page .cust-cell{display:flex;align-items:center;gap:10px;min-width:0}
+.ll-page .cust-avatar{
+    width:36px;height:36px;border-radius:11px;flex-shrink:0;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:linear-gradient(145deg,var(--theme-100),var(--theme-200));
+    color:var(--theme-primary-hover);font-weight:800;font-size:.78rem;
+}
 .ll-page .cust-name{font-weight:700;color:#0f172a;line-height:1.25}
-.ll-page .cust-mobile{font-size:.8rem;color:#64748b;margin-top:2px}
+.ll-page .cust-mobile{font-size:.78rem;color:#64748b;margin-top:2px}
+.ll-page .amount-cell{font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
+.ll-page .amount-cell .muted{color:#94a3b8;font-weight:500}
+.ll-page .meta-stack{display:flex;flex-direction:column;gap:6px;min-width:0;align-items:flex-start}
+.ll-page .meta-name{font-weight:650;color:#334155;font-size:.84rem;line-height:1.25}
+.ll-page .meta-sub{
+    font-size:.72rem;color:#64748b;line-height:1.35;font-weight:500;
+    white-space:normal;max-width:160px;
+}
+.ll-page .created-by{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:3px 8px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;
+    color:#64748b;font-size:.7rem;font-weight:600;line-height:1.3;max-width:170px;
+}
+.ll-page .created-by i{color:#94a3b8;font-size:.7rem;flex-shrink:0}
+.ll-page .created-by span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ll-page .amount-cell .currency{color:#64748b;font-weight:600;margin-right:2px}
 .ll-page .type-pill,
 .ll-page .source-pill,
-.ll-page .status-pill{
-    display:inline-flex;align-items:center;justify-content:center;
-    padding:.3rem .75rem;border-radius:999px;font-size:.74rem;font-weight:700;
+.ll-page .status-pill,
+.ll-page .product-pill,
+.ll-page .branch-pill,
+.ll-page .assign-pill,
+.ll-page .disp-pill{
+    display:inline-flex;align-items:center;justify-content:center;gap:4px;
+    padding:.28rem .7rem;border-radius:999px;font-size:.72rem;font-weight:700;
+    max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .ll-page .type-pill.immediate{background:var(--theme-100);color:var(--theme-primary-hover)}
 .ll-page .type-pill.future{background:#ffedd5;color:#c2410c}
@@ -151,22 +180,137 @@
 .ll-page .source-pill.vrm{background:#dcfce7;color:#15803d}
 .ll-page .source-pill.manual,
 .ll-page .source-pill.other{background:#f1f5f9;color:#475569}
-.ll-page .status-pill{background:#f1f5f9;color:#334155;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.ll-page .status-pill{background:#f1f5f9;color:#334155}
 .ll-page .status-pill.pending{background:#fef3c7;color:#b45309}
 .ll-page .status-pill.future{background:#ede9fe;color:#6d28d9}
 .ll-page .status-pill.closed{background:#fee2e2;color:#b91c1c}
 .ll-page .status-pill.active{background:#dcfce7;color:#15803d}
-.ll-page .branch-cell{color:#475569;font-weight:600}
-.ll-page .assignee-cell{color:#64748b}
+.ll-page .status-pill.assigned{background:#e0f2fe;color:#0369a1}
+.ll-page .product-pill{background:#ecfeff;color:#0e7490;border:1px solid #cffafe}
+.ll-page .product-pill.empty{background:#f8fafc;color:#94a3b8;border-color:#e2e8f0;font-weight:600}
+.ll-page .branch-pill{background:#f1f5f9;color:#475569}
+.ll-page .assign-pill{background:#eff6ff;color:#1d4ed8}
+.ll-page .assign-pill.empty{background:#fff7ed;color:#c2410c;border:1px dashed #fdba74}
+.ll-page .disp-pill{background:#faf5ff;color:#7e22ce}
 
+.ll-page .action-group{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
 .ll-page .action-btn{
-    width:34px;height:34px;border-radius:10px;border:1.5px solid var(--theme-200);
-    background:var(--theme-50);color:var(--theme-primary);
+    width:34px;height:34px;border-radius:10px;border:1.5px solid #e2e8f0;
+    background:#fff;color:#475569;
     display:inline-flex;align-items:center;justify-content:center;
-    text-decoration:none;transition:.15s ease;
+    text-decoration:none;transition:.15s ease;cursor:pointer;padding:0;
 }
-.ll-page .action-btn:hover{background:var(--theme-100);color:var(--theme-primary-hover);border-color:var(--theme-300)}
-.ll-page .action-btn.open{border-color:var(--theme-200);background:var(--theme-50);color:var(--theme-primary)}
+.ll-page .action-btn:hover{background:#f8fafc;color:#0f172a;border-color:#cbd5e1}
+.ll-page .action-btn.view{border-color:var(--theme-200);background:var(--theme-50);color:var(--theme-primary)}
+.ll-page .action-btn.edit{border-color:#bfdbfe;background:#eff6ff;color:#2563eb}
+.ll-page .action-btn.note{border-color:#fde68a;background:#fffbeb;color:#b45309}
+.ll-page .action-btn.status{border-color:#bbf7d0;background:#f0fdf4;color:#15803d}
+.ll-page .action-btn.allocate{border-color:#ddd6fe;background:#f5f3ff;color:#6d28d9}
+.ll-page .action-btn.case{border-color:#e2e8f0;background:#f8fafc;color:#64748b}
+
+.ll-lead-modal .modal-content{
+    border:none;border-radius:16px;overflow:hidden;
+    box-shadow:0 24px 48px rgba(15,23,42,.18);
+}
+.ll-lead-modal .modal-header{
+    border-bottom:1px solid #e8edf5;padding:18px 24px 16px;align-items:flex-start;background:#fff;
+}
+.ll-lead-modal .modal-title-wrap{display:flex;align-items:flex-start;gap:12px}
+.ll-lead-modal .modal-icon{
+    width:44px;height:44px;border-radius:12px;background:var(--theme-100);color:var(--theme-primary);
+    display:inline-flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;
+}
+.ll-lead-modal .modal-title{font-size:1.2rem;font-weight:800;color:#0f172a;margin:0;line-height:1.25}
+.ll-lead-modal .modal-sub{font-size:.86rem;color:#64748b;margin-top:3px;line-height:1.35}
+.ll-lead-modal .modal-close{
+    width:36px;height:36px;border:0;border-radius:10px;background:#f1f5f9;color:#64748b;
+    display:inline-flex;align-items:center;justify-content:center;margin-top:2px;
+}
+.ll-lead-modal .modal-close:hover{background:#e2e8f0;color:#0f172a}
+.ll-lead-modal .modal-body{padding:18px 24px 12px}
+.ll-lead-modal .modal-footer{
+    border-top:1px solid #e8edf5;padding:14px 24px;background:#fff;
+    display:flex;align-items:center;justify-content:flex-end;gap:10px;
+}
+.ll-lead-modal .section-bar{
+    display:flex;align-items:center;gap:8px;
+    background:var(--theme-50);color:var(--theme-primary-hover);border-radius:8px;
+    padding:10px 14px;margin:0 0 14px;font-weight:700;font-size:.9rem;
+}
+.ll-lead-modal .form-label{font-size:.8rem;font-weight:600;color:#334155;margin-bottom:6px}
+.ll-lead-modal .form-label .req{color:#dc2626}
+.ll-lead-modal .form-control,
+.ll-lead-modal .form-select{
+    min-height:42px;border-radius:10px;border:1px solid #d1d5db;font-size:.9rem;
+}
+.ll-lead-modal .form-control:focus,
+.ll-lead-modal .form-select:focus{
+    border-color:var(--theme-300);box-shadow:0 0 0 3px var(--theme-primary-ring);
+}
+.ll-lead-modal .form-section{margin-bottom:18px}
+.ll-lead-modal .form-section:last-child{margin-bottom:8px}
+.ll-lead-modal .input-icon{position:relative}
+.ll-lead-modal .input-icon > i,
+.ll-lead-modal .input-icon > .rupee{
+    position:absolute;left:12px;top:50%;transform:translateY(-50%);
+    color:#94a3b8;font-size:.95rem;pointer-events:none;z-index:2;
+}
+.ll-lead-modal .input-icon .rupee{font-weight:700;font-style:normal;color:#64748b}
+.ll-lead-modal .input-icon.textarea-icon > i{top:14px;transform:none}
+.ll-lead-modal .input-icon .form-control,
+.ll-lead-modal .input-icon .form-select{padding-left:2.2rem}
+.ll-lead-modal .input-icon textarea.form-control{min-height:88px;padding-top:10px;padding-bottom:10px}
+.ll-lead-modal .input-icon .form-control[readonly],
+.ll-lead-modal .input-icon .form-control:disabled{background:#f1f5f9;color:#475569}
+.ll-lead-modal .select2-container{width:100%!important}
+.ll-lead-modal .select2-container--default .select2-selection--single{
+    min-height:42px!important;height:42px!important;border:1px solid #d1d5db!important;
+    border-radius:10px!important;background:#fff!important;
+}
+.ll-lead-modal .select2-container--default .select2-selection--single .select2-selection__rendered{
+    line-height:40px!important;padding-left:.85rem!important;padding-right:2rem!important;font-size:.9rem!important;color:#0f172a!important;
+}
+.ll-lead-modal .input-icon .select2-container{display:block}
+.ll-lead-modal .input-icon:has(.select2-container) > i,
+.ll-lead-modal .input-icon:has(.select2-container) > .rupee{display:none}
+.ll-lead-modal .select2-container--default .select2-selection--single .select2-selection__arrow{
+    height:40px!important;
+}
+.ll-lead-modal .select2-container--default.select2-container--focus .select2-selection--single,
+.ll-lead-modal .select2-container--default.select2-container--open .select2-selection--single{
+    border-color:var(--theme-300)!important;box-shadow:0 0 0 3px var(--theme-primary-ring);
+}
+.ll-lead-modal .select2-dropdown{
+    border:1px solid #e2e8f0!important;border-radius:10px!important;overflow:hidden;
+    box-shadow:0 12px 28px rgba(15,23,42,.12);
+}
+.ll-lead-modal .select2-results__option{font-size:.9rem;padding:.55rem .85rem}
+.ll-lead-modal .select2-results__option--highlighted{background:var(--theme-primary)!important}
+.ll-lead-modal .btn-save{
+    background:var(--theme-primary);color:#fff;border:none;border-radius:10px;
+    height:42px;padding:0 16px;font-weight:700;display:inline-flex;align-items:center;gap:6px;
+}
+.ll-lead-modal .btn-save:hover{background:var(--theme-primary-hover);color:#fff}
+.ll-lead-modal .btn-cancel{
+    border:1px solid var(--theme-300);background:#fff;color:var(--theme-primary);border-radius:10px;
+    height:42px;padding:0 14px;font-weight:600;
+}
+.ll-lead-modal .current-status-box{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:12px 14px;border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc;
+}
+.ll-lead-modal .current-status-box .label{font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em}
+.ll-lead-modal .ll-status-hint{
+    display:flex;gap:8px;align-items:flex-start;padding:12px 14px;border-radius:12px;
+    background:var(--theme-50);border:1px solid var(--theme-200);color:#475569;font-size:.82rem;margin-top:4px;
+}
+.ll-lead-modal .ll-status-hint i{color:var(--theme-primary);flex-shrink:0;margin-top:2px}
+.ll-lead-modal .field-grid{
+    display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px 18px;
+}
+@media (max-width:767.98px){
+    .ll-lead-modal .field-grid{grid-template-columns:1fr}
+}
 
 .ll-page .table-footer-bar{
     display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
@@ -218,6 +362,7 @@
     padding: 10px 14px; margin: 0 0 14px; font-weight: 700; font-size: 0.9rem;
 }
 #createLeadModal .form-label { font-size: 0.8rem; font-weight: 600; color: #334155; }
+#createLeadModal .form-label .req { color: #dc2626; }
 #createLeadModal .form-control { border-radius: 8px; border-color: #d1d5db; }
 #createLeadModal .btn-save {
     background: var(--theme-primary); color: #fff; border: none; border-radius: 8px;
@@ -293,19 +438,40 @@
 @php
     $statusClass = function ($status) {
         $s = strtolower((string) $status);
-        if (str_contains($s, 'pending') || str_contains($s, 'follow')) return 'pending';
-        if (str_contains($s, 'future')) return 'future';
         if (str_contains($s, 'closed') || str_contains($s, 'reject') || str_contains($s, 'lost')) return 'closed';
-        if (str_contains($s, 'document') || str_contains($s, 'allocat') || str_contains($s, 'progress')) return 'active';
+        if (str_contains($s, 'future')) return 'future';
+        if (str_contains($s, 'assigned') || str_contains($s, 'contact') || str_contains($s, 'qualified')) return 'assigned';
+        if (str_contains($s, 'pending') || str_contains($s, 'follow')) return 'pending';
+        if (str_contains($s, 'document') || str_contains($s, 'bank') || str_contains($s, 'ready')) return 'active';
         return '';
     };
     $sourceClass = function ($source) {
-        $s = strtolower((string) $source);
-        if ($s === 'channel') return 'channel';
-        if ($s === 'vrm') return 'vrm';
+        $s = strtolower(trim((string) $source));
+        if ($s === 'channel' || str_contains($s, 'channel')) return 'channel';
+        if ($s === 'vrm' || str_contains($s, 'vrm')) return 'vrm';
         return 'manual';
     };
-    $defaultSource = request()->boolean('channel') ? 'channel' : old('source', 'manual');
+    $leadSources = $leadSources ?? collect();
+    $defaultSourceName = request()->boolean('channel')
+        ? (optional($leadSources->first(fn ($s) => stripos($s->name, 'channel') !== false))->name ?? 'Channel')
+        : (optional($leadSources->first(fn ($s) => strcasecmp($s->name, 'Manual') === 0))->name
+            ?? optional($leadSources->first())->name
+            ?? 'Manual');
+    $initials = function (?string $name) {
+        $name = trim((string) $name);
+        if ($name === '') return '?';
+        $parts = preg_split('/\s+/', $name) ?: [];
+        $first = mb_substr($parts[0] ?? '', 0, 1);
+        $second = mb_substr($parts[1] ?? '', 0, 1);
+        return strtoupper($first . $second) ?: '?';
+    };
+    $defaultSource = old('source', $defaultSourceName);
+    $canManage = !empty($canManage);
+    $canAllocate = !empty($canAllocate);
+    $branchLocked = !empty($branchLocked);
+    $leadNextById = $leadNextById ?? [];
+    $leadEditableById = $leadEditableById ?? [];
+    $tableColCount = 10;
 @endphp
 
 <div class="container-fluid p-4 ll-page">
@@ -352,9 +518,9 @@
                 <label for="source">Source</label>
                 <select name="source" id="source" class="form-select" data-search="false">
                     <option value="">All</option>
-                    <option value="manual" @selected(request('source')==='manual')>Manual</option>
-                    <option value="vrm" @selected(request('source')==='vrm')>VRM</option>
-                    <option value="channel" @selected(request('source')==='channel')>Channel</option>
+                    @foreach($leadSources as $src)
+                        <option value="{{ $src->name }}" @selected(request('source')===$src->name)>{{ $src->name }}</option>
+                    @endforeach
                 </select>
             </div>
             <div class="filter-actions">
@@ -413,7 +579,7 @@
                 <span class="section-icon"><i class="bi bi-file-earmark-text-fill"></i></span>
                 <div>
                     <h5>All Loan Leads</h5>
-                    <div class="head-sub">Browse leads with status, source and assignment details.</div>
+                    <div class="head-sub">Product, amount, status and assignment at a glance.</div>
                 </div>
             </div>
         </div>
@@ -424,6 +590,8 @@
                         <tr>
                             <th>Ref</th>
                             <th>Customer</th>
+                            <th>Product</th>
+                            <th>Amount</th>
                             <th>Type</th>
                             <th>Source</th>
                             <th>Status</th>
@@ -434,35 +602,143 @@
                     </thead>
                     <tbody>
                     @forelse($leads as $lead)
+                        @php
+                            $nextStatuses = $leadNextById[$lead->id] ?? [];
+                            $needsAllocation = !empty($canAllocate) && $lead->status === 'Pending BM Allocation';
+                            $canStatus = !empty($canManage) && $nextStatuses !== [];
+                            $canEditThis = !empty($leadEditableById[$lead->id]);
+                            $amountFormatted = $lead->loan_amount !== null
+                                ? \App\Helpers\MoneyFormatter::formatIndian((float) $lead->loan_amount, 0)
+                                : null;
+                            $assigneeRole = optional($lead->assignee)->goalCrmRoleLabel();
+                            $creatorRole = optional($lead->creator)->goalCrmRoleLabel();
+                            $creatorLabel = trim(($lead->creator->name ?? '') . ($creatorRole && ($lead->creator->name ?? '') !== $creatorRole ? ' ('.$creatorRole.')' : ''));
+                        @endphp
                         <tr>
-                            <td data-label="Ref"><span class="ref-cell">{{ $lead->ref_no }}</span></td>
+                            <td data-label="Ref">
+                                <div class="ref-cell">{{ $lead->ref_no }}</div>
+                                <div class="ref-sub">{{ optional($lead->created_at)->format('d M Y, g:i A') }}</div>
+                            </td>
                             <td data-label="Customer">
-                                <div class="cust-name">{{ $lead->customer_name }}</div>
-                                <div class="cust-mobile">{{ $lead->mobile ?: '—' }}</div>
+                                <div class="cust-cell">
+                                    <span class="cust-avatar">{{ $initials($lead->customer_name) }}</span>
+                                    <div>
+                                        <div class="cust-name">{{ $lead->customer_name }}</div>
+                                        <div class="cust-mobile">{{ $lead->mobile ?: '-' }}</div>
+                                        @if($lead->disposition)
+                                            <span class="disp-pill mt-1">{{ $lead->disposition }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Product">
+                                @if($lead->product)
+                                    <span class="product-pill" title="{{ $lead->product }}"><i class="bi bi-box-seam"></i> {{ $lead->product }}</span>
+                                @else
+                                    <span class="product-pill empty">No product</span>
+                                @endif
+                            </td>
+                            <td data-label="Amount">
+                                @if($amountFormatted)
+                                    <div class="amount-cell"><span class="currency">Rs.</span>{{ $amountFormatted }}</div>
+                                @else
+                                    <div class="amount-cell muted">-</div>
+                                @endif
                             </td>
                             <td data-label="Type">
-                                <span class="type-pill {{ $lead->lead_type }}">{{ ucfirst($lead->lead_type) }}</span>
+                                <span class="type-pill {{ $lead->lead_type }}">{{ ucfirst($lead->lead_type ?: '-') }}</span>
                             </td>
                             <td data-label="Source">
-                                <span class="source-pill {{ $sourceClass($lead->source) }}">{{ $lead->source ? ucfirst($lead->source) : '—' }}</span>
+                                <span class="source-pill {{ $sourceClass($lead->source) }}">{{ $lead->source ?: '-' }}</span>
                             </td>
                             <td data-label="Status">
                                 <span class="status-pill {{ $statusClass($lead->status) }}" title="{{ $lead->status }}">{{ $lead->status }}</span>
                             </td>
-                            <td data-label="Branch"><span class="branch-cell">{{ $lead->orgUnit?->name ?? '—' }}</span></td>
-                            <td data-label="Assignee"><span class="assignee-cell">{{ $lead->assignee?->name ?? '—' }}</span></td>
+                            <td data-label="Branch">
+                                <span class="branch-pill">{{ $lead->orgUnit?->name ?? '-' }}</span>
+                            </td>
+                            <td data-label="Assignee">
+                                <div class="meta-stack">
+                                    @if($lead->assignee)
+                                        <span class="assign-pill">{{ $lead->assignee->name }}</span>
+                                        @if($assigneeRole)
+                                            <span class="meta-sub">{{ $assigneeRole }}</span>
+                                        @endif
+                                    @else
+                                        <span class="assign-pill empty">Unassigned</span>
+                                        @if($creatorLabel !== '')
+                                            <span class="created-by" title="Created by {{ $creatorLabel }}">
+                                                <i class="bi bi-person"></i>
+                                                <span>{{ $creatorLabel }}</span>
+                                            </span>
+                                        @endif
+                                    @endif
+                                </div>
+                            </td>
                             <td class="col-actions" data-label="Actions">
-                                <a href="{{ route('goal.leads.show', $lead) }}"
-                                   class="action-btn open"
-                                   data-bs-toggle="tooltip"
-                                   data-bs-title="Open lead">
-                                    <i class="bi bi-box-arrow-up-right"></i>
-                                </a>
+                                <div class="action-group">
+                                    <a href="{{ route('goal.leads.show', $lead) }}"
+                                       class="action-btn view"
+                                       data-bs-toggle="tooltip"
+                                       data-bs-title="View details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    @if(!empty($canManage))
+                                        @if($canEditThis || $canStatus)
+                                        <button type="button"
+                                                class="action-btn edit btn-ll-edit"
+                                                data-bs-toggle="tooltip"
+                                                data-bs-title="Edit lead"
+                                                data-update-url="{{ route('goal.leads.update', $lead) }}"
+                                                data-ref="{{ $lead->ref_no }}"
+                                                data-customer="{{ $lead->customer_name }}"
+                                                data-mobile="{{ $lead->mobile }}"
+                                                data-lead-type="{{ $lead->lead_type }}"
+                                                data-product="{{ $lead->product }}"
+                                                data-loan-amount="{{ $lead->loan_amount }}"
+                                                data-source="{{ $lead->source }}"
+                                                data-branch-id="{{ $lead->goal_org_unit_id }}"
+                                                data-branch-name="{{ $lead->orgUnit?->name ?? '' }}"
+                                                data-disposition="{{ $lead->disposition }}"
+                                                data-consent="{{ $lead->consent_recorded ? '1' : '0' }}"
+                                                data-lead-id="{{ $lead->id }}"
+                                                data-current-status="{{ $lead->status }}"
+                                                data-can-edit="{{ $canEditThis ? '1' : '0' }}"
+                                                data-follow-up="{{ optional($lead->follow_up_at)->format('d-m-Y H:i') }}">
+                                            <i class="bi bi-pencil-fill"></i>
+                                        </button>
+                                        @endif
+                                        <button type="button"
+                                                class="action-btn note btn-ll-note"
+                                                data-bs-toggle="tooltip"
+                                                data-bs-title="Add note"
+                                                data-note-url="{{ route('goal.leads.notes', $lead) }}"
+                                                data-ref="{{ $lead->ref_no }}">
+                                            <i class="bi bi-journal-plus"></i>
+                                        </button>
+                                    @endif
+                                    @if($needsAllocation)
+                                        <a href="{{ route('goal.allocation.index', ['q' => $lead->ref_no]) }}"
+                                           class="action-btn allocate"
+                                           data-bs-toggle="tooltip"
+                                           data-bs-title="Allocate to sales">
+                                            <i class="bi bi-person-check"></i>
+                                        </a>
+                                    @endif
+                                    @if($lead->loanCase)
+                                        <a href="{{ route('goal.cases.show', $lead->loanCase) }}"
+                                           class="action-btn case"
+                                           data-bs-toggle="tooltip"
+                                           data-bs-title="View case {{ $lead->loanCase->case_no }}">
+                                            <i class="bi bi-folder2-open"></i>
+                                        </a>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="col-empty" data-label="">
+                            <td colspan="{{ $tableColCount }}" class="col-empty" data-label="">
                                 <div class="empty-state">
                                     <div class="illus"><i class="bi bi-inbox"></i></div>
                                     <div>No leads found.@if($canCreate) Click <strong>Create Lead</strong> to add one.@endif</div>
@@ -477,7 +753,7 @@
             <div class="table-footer-bar">
                 <div class="foot-showing">
                     @if($leads->total() > 0)
-                        Showing {{ $leads->firstItem() }}–{{ $leads->lastItem() }} of {{ $leads->total() }}
+                        Showing {{ $leads->firstItem() }}-{{ $leads->lastItem() }} of {{ $leads->total() }}
                     @else
                         Showing 0 entries
                     @endif
@@ -529,7 +805,7 @@
                     <div class="section-bar"><i class="bi bi-person-vcard"></i> Customer details</div>
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label">Customer name <span class="text-danger">*</span></label>
+                            <label class="form-label">Customer name <span class="req">*</span></label>
                             <input name="customer_name" class="form-control @error('customer_name') is-invalid @enderror"
                                    value="{{ old('customer_name') }}" required maxlength="150"
                                    placeholder="Full name">
@@ -549,21 +825,37 @@
                     <div class="section-bar"><i class="bi bi-sliders"></i> Lead details</div>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label">Lead type <span class="text-danger">*</span></label>
-                            <select name="lead_type" id="create_lead_type" class="form-select" required>
-                                <option value="immediate" @selected(old('lead_type', 'immediate')==='immediate')>Immediate</option>
-                                <option value="future" @selected(old('lead_type')==='future')>Future</option>
+                            <label class="form-label">Disposition <span class="req">*</span></label>
+                            @php
+                                $createDispositions = $dispositions ?? collect();
+                                $oldDisposition = old('disposition');
+                                $defaultDisposition = $oldDisposition
+                                    ?: optional($createDispositions->firstWhere('name', 'Interested'))->name
+                                    ?: optional($createDispositions->first())->name;
+                            @endphp
+                            <select name="disposition" id="create_disposition" class="form-select js-select2"
+                                    data-placeholder="Select disposition" data-search="false" required>
+                                <option value="">Select disposition</option>
+                                @foreach($createDispositions as $d)
+                                    <option value="{{ $d->name }}"
+                                            data-maps-to-lead-type="{{ $d->maps_to_lead_type ?: ($d->name === 'Callback' ? 'future' : 'immediate') }}"
+                                            @selected($defaultDisposition === $d->name)>{{ $d->name }}</option>
+                                @endforeach
                             </select>
+                            <input type="hidden" name="lead_type" id="create_lead_type" value="{{ old('lead_type', 'immediate') }}">
+                            @error('disposition')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Source</label>
                             <select name="source" id="create_source" class="form-select">
-                                <option value="manual" @selected($defaultSource==='manual')>Manual</option>
-                                <option value="vrm" @selected($defaultSource==='vrm')>VRM</option>
-                                <option value="channel" @selected($defaultSource==='channel')>Channel</option>
+                                @forelse($leadSources as $src)
+                                    <option value="{{ $src->name }}" @selected($defaultSource===$src->name)>{{ $src->name }}</option>
+                                @empty
+                                    <option value="Manual" @selected($defaultSource==='Manual')>Manual</option>
+                                @endforelse
                             </select>
                         </div>
-                        <div class="col-md-4" id="channelPartnerWrap" style="{{ $defaultSource==='channel' ? '' : 'display:none' }}">
+                        <div class="col-md-4" id="channelPartnerWrap" style="{{ stripos((string) $defaultSource, 'channel') !== false ? '' : 'display:none' }}">
                             <label class="form-label">Channel partner</label>
                             <input name="channel_partner" class="form-control" value="{{ old('channel_partner') }}"
                                    placeholder="Partner name">
@@ -571,7 +863,7 @@
                         <div class="col-md-4">
                             <label class="form-label">Product</label>
                             <select name="product" class="form-select">
-                                <option value="">— Select —</option>
+                                <option value="">Â— Select Â—</option>
                                 @foreach($products as $p)
                                     <option value="{{ $p->product_name }}" @selected(old('product')===$p->product_name)>{{ $p->product_name }}</option>
                                 @endforeach
@@ -584,18 +876,28 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Branch</label>
-                            <select name="goal_org_unit_id" class="form-select">
-                                <option value="">—</option>
-                                @foreach($branches as $b)
-                                    <option value="{{ $b->id }}" @selected(old('goal_org_unit_id', auth()->user()->goal_org_unit_id)==$b->id)>{{ $b->name }}</option>
-                                @endforeach
-                            </select>
+                            @php
+                                $branchLocked = !empty($branchLocked);
+                                $defaultBranchId = old('goal_org_unit_id', auth()->user()->goal_org_unit_id);
+                            @endphp
+                            @if($branchLocked)
+                                <input type="hidden" name="goal_org_unit_id" value="{{ $defaultBranchId }}">
+                                <input type="text" class="form-control" value="{{ optional($branches->firstWhere('id', (int) $defaultBranchId))->name ?? optional(auth()->user()->orgUnit)->name ?? 'Your branch' }}" readonly disabled>
+                            @else
+                                <select name="goal_org_unit_id" class="form-select js-select2" data-placeholder="Select branch">
+                                    <option value="">Select branch</option>
+                                    @foreach($branches as $b)
+                                        <option value="{{ $b->id }}" @selected(old('goal_org_unit_id', auth()->user()->goal_org_unit_id)==$b->id)>{{ $b->name }}</option>
+                                    @endforeach
+                                </select>
+                            @endif
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Follow-up (required for Future)</label>
+                            <label class="form-label" for="create_follow_up_at">Follow-up <span class="req" id="create_follow_req" style="display:none;">*</span></label>
                             <input type="text" name="follow_up_at" id="create_follow_up_at"
                                    class="form-control js-datetimepicker"
                                    value="{{ old('follow_up_at') }}" placeholder="dd-mm-yyyy hh:mm" autocomplete="off">
+                            <div class="form-text text-muted" style="font-size:.72rem;">Required when disposition maps to Future / Callback.</div>
                             @error('follow_up_at')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-6">
@@ -623,6 +925,204 @@
     </div>
 </div>
 @endif
+
+@if($canManage)
+{{-- Edit lead (call-edit style + workflow status) --}}
+<div class="modal fade ll-lead-modal" id="llEditLeadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <form method="POST" id="llEditLeadForm" class="modal-content">
+            @csrf
+            @method('PUT')
+            <input type="hidden" name="lead_type" id="ll_edit_lead_type" value="immediate">
+            <input type="hidden" name="source" id="ll_edit_source" value="">
+            <input type="hidden" name="disposition" id="ll_edit_disposition" value="">
+
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <span class="modal-icon"><i class="bi bi-pencil-square"></i></span>
+                    <div>
+                        <h5 class="modal-title">Edit Lead</h5>
+                        <div class="modal-sub" id="llEditLeadSub">Update customer, loan details and workflow status.</div>
+                    </div>
+                </div>
+                <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-section">
+                    <div class="section-bar"><i class="bi bi-person"></i> Customer Details</div>
+                    <div class="field-grid">
+                        <div class="field">
+                            <label class="form-label" for="ll_edit_customer_name">Customer <span class="req">*</span></label>
+                            <div class="input-icon">
+                                <i class="bi bi-person"></i>
+                                <input type="text" name="customer_name" id="ll_edit_customer_name"
+                                       class="form-control" placeholder="Enter customer name"
+                                       required maxlength="150" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="form-label" for="ll_edit_mobile">Mobile <span class="req">*</span></label>
+                            <div class="input-icon">
+                                <i class="bi bi-telephone"></i>
+                                <input type="text" name="mobile" id="ll_edit_mobile"
+                                       class="form-control" placeholder="10-digit mobile" maxlength="10"
+                                       inputmode="numeric" pattern="[0-9]{10}" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-bar"><i class="bi bi-telephone"></i> Call / Lead Details</div>
+                    <div class="field-grid">
+                        <div class="field">
+                            <label class="form-label" for="ll_edit_disposition_label">Disposition</label>
+                            <div class="input-icon">
+                                <i class="bi bi-tag"></i>
+                                <input type="text" id="ll_edit_disposition_label" class="form-control" value="" readonly disabled>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="form-label" for="ll_edit_branch">Branch</label>
+                            @if($branchLocked)
+                                <input type="hidden" name="goal_org_unit_id" id="ll_edit_branch" value="">
+                                <div class="input-icon">
+                                    <i class="bi bi-building"></i>
+                                    <input type="text" id="ll_edit_branch_label" class="form-control" value="" readonly disabled>
+                                </div>
+                            @else
+                                <select name="goal_org_unit_id" id="ll_edit_branch"
+                                        class="form-select js-select2"
+                                        data-placeholder="Select branch" data-allow-clear="true">
+                                    <option value="">Select branch</option>
+                                    @foreach($branches as $b)
+                                        <option value="{{ $b->id }}">{{ $b->name }}</option>
+                                    @endforeach
+                                </select>
+                            @endif
+                        </div>
+                        <div class="field">
+                            <label class="form-label">Current status</label>
+                            <div class="current-status-box" style="min-height:42px;padding:8px 12px;">
+                                <div id="ll_edit_current_wrap"></div>
+                            </div>
+                        </div>
+                        <div class="field" id="ll_edit_status_wrap">
+                            <label class="form-label" for="ll_edit_to_status">Move to</label>
+                            <select name="to_status" id="ll_edit_to_status" class="form-select js-select2 no-select2"
+                                    data-select2-skip="1" data-placeholder="Keep current status" data-search="false">
+                                <option value="">Keep current status</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-bar"><i class="bi bi-bullseye"></i> Lead Information</div>
+                    <div class="field-grid">
+                        <div class="field">
+                            <label class="form-label" for="ll_edit_product">Product</label>
+                            <select name="product" id="ll_edit_product"
+                                    class="form-select js-select2"
+                                    data-placeholder="Select product" data-allow-clear="true">
+                                <option value=""></option>
+                                @foreach($products as $p)
+                                    <option value="{{ $p->product_name }}">{{ $p->product_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="field" id="ll_edit_follow_wrap" style="display:none;">
+                            <label class="form-label" for="ll_edit_follow_up">Follow-up <span class="req">*</span></label>
+                            <div class="input-icon">
+                                <i class="bi bi-calendar3"></i>
+                                <input type="text" name="follow_up_at" id="ll_edit_follow_up"
+                                       class="form-control js-datetimepicker"
+                                       placeholder="dd-mm-yyyy --:--" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="field" id="ll_edit_closure_wrap" style="display:none;">
+                            <label class="form-label" for="ll_edit_closure">Closure reason <span class="req">*</span></label>
+                            <div class="input-icon">
+                                <i class="bi bi-x-octagon"></i>
+                                <input name="closure_reason" id="ll_edit_closure" class="form-control"
+                                       placeholder="Required when closing">
+                            </div>
+                        </div>
+                        <div class="field check-align d-flex align-items-end">
+                            <div class="form-check mb-2">
+                                <input type="checkbox" class="form-check-input" name="consent_recorded" value="1" id="ll_edit_consent">
+                                <label class="form-check-label" for="ll_edit_consent">Consent recorded</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-bar"><i class="bi bi-cash-coin"></i> Loan Details</div>
+                    <div class="field-grid">
+                        <div class="field">
+                            <label class="form-label" for="ll_edit_loan_amount">Loan Amount</label>
+                            <div class="input-icon">
+                                <span class="rupee">Rs.</span>
+                                <input type="text" inputmode="decimal" data-decimals="2" name="loan_amount"
+                                       id="ll_edit_loan_amount" class="form-control js-decimal"
+                                       placeholder="Enter loan amount">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="form-label" for="ll_edit_notes">Notes</label>
+                            <div class="input-icon textarea-icon">
+                                <i class="bi bi-file-text"></i>
+                                <textarea name="notes" id="ll_edit_notes" class="form-control" rows="3"
+                                          placeholder="Add remarks, customer response, or next steps..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ll-status-hint" id="ll_edit_status_hint">
+                    <i class="bi bi-info-circle"></i>
+                    <span>Allocation to sales is done from <strong>BM Allocation</strong>. Moving to Documents Pending creates the case automatically.</span>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn-save"><i class="bi bi-floppy"></i> Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Add note --}}
+<div class="modal fade ll-lead-modal" id="llNoteLeadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" id="llNoteLeadForm" class="modal-content">
+            @csrf
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <span class="modal-icon"><i class="bi bi-journal-plus"></i></span>
+                    <div>
+                        <h5 class="modal-title">Add Note</h5>
+                        <div class="modal-sub" id="llNoteLeadSub">Notes are saved in the lead activity log.</div>
+                    </div>
+                </div>
+                <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Note <span class="text-danger">*</span></label>
+                <textarea name="note" id="ll_note_body" class="form-control" rows="4" required maxlength="2000"
+                          placeholder="Add follow-up remarks, customer response, or next steps..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn-save"><i class="bi bi-check2"></i> Save note</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
 @endsection
 
 @push('scripts')
@@ -638,10 +1138,30 @@
     const partnerWrap = document.getElementById('channelPartnerWrap');
     function syncChannelPartner() {
         if (!sourceEl || !partnerWrap) return;
-        partnerWrap.style.display = sourceEl.value === 'channel' ? '' : 'none';
+        const v = String(sourceEl.value || '').toLowerCase();
+        partnerWrap.style.display = v.indexOf('channel') !== -1 ? '' : 'none';
     }
     sourceEl?.addEventListener('change', syncChannelPartner);
     syncChannelPartner();
+
+    const dispositionEl = document.getElementById('create_disposition');
+    const leadTypeEl = document.getElementById('create_lead_type');
+    const followUpEl = document.getElementById('create_follow_up_at');
+    const followReq = document.getElementById('create_follow_req');
+    function syncCreateDisposition() {
+        if (!dispositionEl || !leadTypeEl) return;
+        const opt = dispositionEl.options[dispositionEl.selectedIndex];
+        const mapsTo = (opt && opt.getAttribute('data-maps-to-lead-type')) || 'immediate';
+        const leadType = mapsTo === 'future' ? 'future' : 'immediate';
+        leadTypeEl.value = leadType;
+        if (followUpEl) followUpEl.required = leadType === 'future';
+        if (followReq) followReq.style.display = leadType === 'future' ? '' : 'none';
+    }
+    dispositionEl?.addEventListener('change', syncCreateDisposition);
+    if (window.jQuery) {
+        window.jQuery(document).on('change', '#create_disposition', syncCreateDisposition);
+    }
+    syncCreateDisposition();
 
     const mobileEl = document.getElementById('create_mobile');
     const matchBox = document.getElementById('create_party_matches');
@@ -657,12 +1177,12 @@
         }
         const bits = [];
         leads.slice(0, 3).forEach(function (l) {
-            bits.push('<a href="' + l.url + '" target="_blank" rel="noopener">' + (l.ref_no || 'Lead') + '</a> · ' + (l.status || ''));
+            bits.push('<a href="' + l.url + '" target="_blank" rel="noopener">' + (l.ref_no || 'Lead') + '</a> Â· ' + (l.status || ''));
         });
         cases.slice(0, 3).forEach(function (c) {
-            bits.push('<a href="' + c.url + '" target="_blank" rel="noopener">' + (c.case_no || 'Case') + '</a> · ' + (c.status || ''));
+            bits.push('<a href="' + c.url + '" target="_blank" rel="noopener">' + (c.case_no || 'Case') + '</a> Â· ' + (c.status || ''));
         });
-        matchBox.innerHTML = 'Possible duplicates: ' + bits.join(' · ');
+        matchBox.innerHTML = 'Possible duplicates: ' + bits.join(' Â· ');
         matchBox.style.display = '';
     }
     function fetchMatches() {
@@ -691,6 +1211,182 @@
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
     @endif
+
+    function setVal(id, value) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const v = value == null ? '' : String(value);
+        if (el.tagName === 'SELECT' && v && !Array.from(el.options).some(function (o) { return o.value === v; })) {
+            el.add(new Option(v, v, true, true));
+        }
+        el.value = v;
+        if (window.jQuery && window.jQuery.fn.select2 && window.jQuery(el).hasClass('select2-hidden-accessible')) {
+            window.jQuery(el).val(v || null).trigger('change');
+        }
+    }
+
+    function escapeHtml(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function statusTone(status) {
+        const s = String(status || '').toLowerCase();
+        if (s.indexOf('closed') !== -1 || s.indexOf('lost') !== -1) return 'closed';
+        if (s.indexOf('future') !== -1) return 'future';
+        if (s.indexOf('assigned') !== -1 || s.indexOf('contact') !== -1 || s.indexOf('qualified') !== -1) return 'assigned';
+        if (s.indexOf('pending') !== -1) return 'pending';
+        if (s.indexOf('document') !== -1 || s.indexOf('bank') !== -1 || s.indexOf('ready') !== -1) return 'active';
+        return '';
+    }
+
+    function syncLlEditStatusFields() {
+        const to = (document.getElementById('ll_edit_to_status')?.value || '');
+        const followWrap = document.getElementById('ll_edit_follow_wrap');
+        const closureWrap = document.getElementById('ll_edit_closure_wrap');
+        const followInput = document.getElementById('ll_edit_follow_up');
+        const closureInput = document.getElementById('ll_edit_closure');
+        if (followWrap) followWrap.style.display = to === 'Future Prospect' ? '' : 'none';
+        if (closureWrap) closureWrap.style.display = to === 'Closed / Lost' ? '' : 'none';
+        if (followInput) followInput.required = to === 'Future Prospect';
+        if (closureInput) closureInput.required = to === 'Closed / Lost';
+        if (to !== 'Future Prospect' && followInput) followInput.value = followInput.value;
+        if (to !== 'Closed / Lost' && closureInput) closureInput.value = '';
+    }
+
+    const llLeadNextById = @json($leadNextById ?? []);
+
+    function rebuildMoveToOptions(next, modalEl) {
+        const toEl = document.getElementById('ll_edit_to_status');
+        const statusWrap = document.getElementById('ll_edit_status_wrap');
+        if (!toEl) return;
+        const $ = window.jQuery;
+        const $to = $ ? $(toEl) : null;
+        if ($to && $to.hasClass('select2-hidden-accessible')) {
+            $to.select2('destroy');
+        }
+        // Allow manual Select2 init for this control (skipped on page load).
+        toEl.classList.remove('no-select2');
+        toEl.removeAttribute('data-select2-skip');
+
+        const options = Array.isArray(next) ? next.slice() : [];
+        toEl.innerHTML = '';
+        const keep = document.createElement('option');
+        keep.value = '';
+        keep.textContent = 'Keep current status';
+        toEl.appendChild(keep);
+        options.forEach(function (s) {
+            const opt = document.createElement('option');
+            opt.value = s;
+            opt.textContent = s;
+            toEl.appendChild(opt);
+        });
+        toEl.value = '';
+        if (statusWrap) statusWrap.style.display = options.length ? '' : 'none';
+
+        const parent = modalEl || document.getElementById('llEditLeadModal') || document.body;
+        if ($ && $.fn.select2) {
+            $to.select2({
+                width: '100%',
+                dropdownParent: $(parent),
+                minimumResultsForSearch: Infinity,
+                placeholder: 'Keep current status',
+                allowClear: false
+            });
+            $to.val('').trigger('change');
+        }
+        syncLlEditStatusFields();
+    }
+
+    document.addEventListener('click', function (e) {
+        const editBtn = e.target.closest('.btn-ll-edit');
+        if (editBtn) {
+            e.preventDefault();
+            const form = document.getElementById('llEditLeadForm');
+            const modal = document.getElementById('llEditLeadModal');
+            if (!form || !modal || typeof bootstrap === 'undefined') return;
+            form.action = editBtn.getAttribute('data-update-url') || '';
+            document.getElementById('llEditLeadSub').textContent =
+                'Update details and status for ' + (editBtn.getAttribute('data-ref') || 'this lead') + '.';
+
+            setVal('ll_edit_customer_name', editBtn.getAttribute('data-customer'));
+            setVal('ll_edit_mobile', editBtn.getAttribute('data-mobile'));
+            setVal('ll_edit_lead_type', editBtn.getAttribute('data-lead-type') || 'immediate');
+            setVal('ll_edit_product', editBtn.getAttribute('data-product'));
+            setVal('ll_edit_loan_amount', editBtn.getAttribute('data-loan-amount'));
+            setVal('ll_edit_source', editBtn.getAttribute('data-source') || @json($defaultSourceName));
+            setVal('ll_edit_branch', editBtn.getAttribute('data-branch-id'));
+            const branchLabel = document.getElementById('ll_edit_branch_label');
+            if (branchLabel) {
+                branchLabel.value = editBtn.getAttribute('data-branch-name')
+                    || editBtn.getAttribute('data-branch-id')
+                    || 'Your branch';
+            }
+            const disposition = editBtn.getAttribute('data-disposition') || '';
+            setVal('ll_edit_disposition', disposition);
+            const dispositionLabel = document.getElementById('ll_edit_disposition_label');
+            if (dispositionLabel) dispositionLabel.value = disposition || '-';
+            setVal('ll_edit_notes', '');
+            setVal('ll_edit_follow_up', editBtn.getAttribute('data-follow-up'));
+            setVal('ll_edit_closure', '');
+            const consent = document.getElementById('ll_edit_consent');
+            if (consent) consent.checked = editBtn.getAttribute('data-consent') === '1';
+
+            const current = editBtn.getAttribute('data-current-status') || '';
+            const currentWrap = document.getElementById('ll_edit_current_wrap');
+            if (currentWrap) {
+                currentWrap.innerHTML = '<span class="status-pill ' + statusTone(current) + '">' + escapeHtml(current || '-') + '</span>';
+            }
+            const leadId = String(editBtn.getAttribute('data-lead-id') || '');
+            const next = llLeadNextById[leadId] || llLeadNextById[Number(leadId)] || [];
+
+            const canEdit = editBtn.getAttribute('data-can-edit') === '1';
+            ['ll_edit_customer_name', 'll_edit_mobile', 'll_edit_loan_amount', 'll_edit_notes'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) el.readOnly = !canEdit;
+            });
+            const productEl = document.getElementById('ll_edit_product');
+            if (productEl) productEl.disabled = false;
+
+            const onShown = function () {
+                modal.removeEventListener('shown.bs.modal', onShown);
+                rebuildMoveToOptions(next, modal);
+                if (window.IsarvaSelect2 && typeof window.IsarvaSelect2.initOne === 'function' && productEl) {
+                    if (window.jQuery && window.jQuery(productEl).hasClass('select2-hidden-accessible')) {
+                        window.jQuery(productEl).select2('destroy');
+                    }
+                    productEl.classList.remove('no-select2');
+                    productEl.removeAttribute('data-select2-skip');
+                    window.IsarvaSelect2.initOne(productEl);
+                    if (window.jQuery) {
+                        window.jQuery(productEl).val(editBtn.getAttribute('data-product') || null).trigger('change');
+                    }
+                }
+            };
+            modal.addEventListener('shown.bs.modal', onShown);
+            bootstrap.Modal.getOrCreateInstance(modal).show();
+            return;
+        }
+
+        const noteBtn = e.target.closest('.btn-ll-note');
+        if (noteBtn) {
+            e.preventDefault();
+            const form = document.getElementById('llNoteLeadForm');
+            const modal = document.getElementById('llNoteLeadModal');
+            if (!form || !modal || typeof bootstrap === 'undefined') return;
+            form.action = noteBtn.getAttribute('data-note-url') || '';
+            document.getElementById('llNoteLeadSub').textContent =
+                'Add a note on ' + (noteBtn.getAttribute('data-ref') || 'this lead') + '. Saved in activity log.';
+            setVal('ll_note_body', '');
+            bootstrap.Modal.getOrCreateInstance(modal).show();
+        }
+    });
+
+    document.getElementById('ll_edit_to_status')?.addEventListener('change', syncLlEditStatusFields);
+    if (window.jQuery) {
+        window.jQuery(document).on('change', '#ll_edit_to_status', syncLlEditStatusFields);
+    }
 })();
 </script>
 @endpush

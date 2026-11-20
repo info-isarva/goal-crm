@@ -177,24 +177,32 @@
     box-shadow:0 6px 14px var(--theme-primary-ring);
 }
 .ba-page .ba-head-branch{
-    position:relative;display:inline-flex;align-items:center;min-width:190px;
-}
-.ba-page .ba-head-branch > i{
-    position:absolute;left:12px;z-index:2;color:#64748b;pointer-events:none;font-size:.9rem;
+    position:relative;display:inline-flex;align-items:center;min-width:200px;max-width:240px;
 }
 .ba-page .ba-head-branch select.form-select{
     min-height:36px;border-radius:10px;border:1px solid #cfdced;background:#fff;
-    padding:.35rem 2rem .35rem 34px;font-size:.85rem;font-weight:600;color:#0f2744;
+    padding:.35rem 2rem .35rem .75rem;font-size:.85rem;font-weight:600;color:#0f2744;width:100%;
 }
-.ba-page .ba-head-branch .select2-container{min-width:190px;width:190px!important}
+/* Prevent native select + icon leaking beside Select2 */
+.ba-page .ba-head-branch select.select2-hidden-accessible{
+    position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;
+    overflow:hidden!important;clip:rect(0,0,0,0)!important;border:0!important;opacity:0!important;
+}
+.ba-page .ba-head-branch .select2-container{min-width:200px;width:200px!important;max-width:240px}
 .ba-page .ba-head-branch .select2-container--default .select2-selection--single{
-    min-height:36px;height:36px;border-radius:10px;border:1px solid #cfdced;
+    min-height:36px!important;height:36px!important;border-radius:10px!important;border:1px solid #cfdced!important;
+    background:#fff!important;
 }
 .ba-page .ba-head-branch .select2-container--default .select2-selection--single .select2-selection__rendered{
-    padding-left:34px;padding-right:28px;line-height:34px;font-size:.85rem;font-weight:600;color:#0f2744;
+    padding-left:.75rem!important;padding-right:28px!important;line-height:34px!important;
+    font-size:.85rem!important;font-weight:600!important;color:#0f2744!important;
 }
 .ba-page .ba-head-branch .select2-container--default .select2-selection--single .select2-selection__arrow{
-    height:34px;
+    height:34px!important;
+}
+.ba-page .ba-filters select.select2-hidden-accessible{
+    position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;
+    overflow:hidden!important;clip:rect(0,0,0,0)!important;border:0!important;opacity:0!important;
 }
 
 .ba-page .ba-filters{
@@ -232,65 +240,141 @@
 }
 .ba-page .ba-btn-bulk:disabled{opacity:.5;cursor:not-allowed}
 
-.ba-page .ba-table-shell{
-    padding:0;
-}
-.ba-page .ba-table-shell > .ba-dt-foot{
-    margin:0 -1.15rem 0;border-radius:0 0 16px 16px;
-}
+.ba-page .ba-table-shell{padding:0}
 .ba-page .ba-table-wrap{
-    overflow-x:auto;max-height:560px;background:#fff;
-    border:0;border-radius:0;
+    overflow-x:auto;max-height:560px;background:#fff;border:0;border-radius:0;
+    -webkit-overflow-scrolling:touch;
 }
 .ba-page .ba-table-wrap > table,
 .ba-page .ba-table-wrap .dataTables_wrapper,
-.ba-page .dataTables_wrapper{
-    width:100% !important;
-}
+.ba-page .dataTables_wrapper{width:100%!important}
 .ba-page .ba-table-wrap > table,
 .ba-page table.dataTable{
-    display:table !important;width:100% !important;margin:0 !important;
-    border-collapse:separate !important;border-spacing:0 !important;
+    display:table!important;width:100%!important;min-width:1080px;margin:0!important;
+    border-collapse:separate!important;border-spacing:0!important;
 }
 .ba-page .ba-table-wrap > table thead,
-.ba-page table.dataTable thead{display:table-header-group !important;visibility:visible !important}
+.ba-page table.dataTable thead{display:table-header-group!important;visibility:visible!important}
 .ba-page .ba-table-wrap > table thead th,
 .ba-page table.dataTable thead th{
     position:sticky;top:0;z-index:2;
-    display:table-cell !important;width:auto !important;
-    background:#f1f5f9 !important;color:#64748b !important;
-    font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
-    border-bottom:1px solid #e2e8f0 !important;
-    white-space:nowrap;padding:.8rem .95rem !important;
+    display:table-cell!important;width:auto!important;vertical-align:middle!important;
+    background:#f8fafc!important;color:#64748b!important;
+    font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+    border-bottom:1px solid #e2e8f0!important;
+    white-space:nowrap;padding:.78rem .9rem!important;line-height:1.25;
+}
+.ba-page table.dataTable thead > tr > th.sorting,
+.ba-page table.dataTable thead > tr > th.sorting_asc,
+.ba-page table.dataTable thead > tr > th.sorting_desc,
+.ba-page table.dataTable thead > tr > th.sorting_asc_disabled,
+.ba-page table.dataTable thead > tr > th.sorting_desc_disabled{
+    padding-right:1.55rem!important;background-position:right .55rem center!important;
 }
 .ba-page .ba-table-wrap > table tbody,
-.ba-page table.dataTable tbody{display:table-row-group !important}
+.ba-page table.dataTable tbody{display:table-row-group!important}
 .ba-page .ba-table-wrap > table tr,
 .ba-page table.dataTable tr{
-    display:table-row !important;width:auto !important;margin:0 !important;border:0 !important;
-    background:transparent !important;box-shadow:none !important;padding:0 !important;
+    display:table-row!important;width:auto!important;margin:0!important;border:0!important;
+    background:transparent!important;box-shadow:none!important;padding:0!important;
 }
 .ba-page .ba-table-wrap > table tbody td,
 .ba-page table.dataTable tbody td{
-    display:table-cell !important;width:auto !important;vertical-align:middle !important;
-    padding:.85rem .95rem !important;border-bottom:1px solid #eef2f7 !important;
+    display:table-cell!important;width:auto!important;vertical-align:middle!important;
+    padding:.85rem .9rem!important;border-bottom:1px solid #f1f5f9!important;
     font-size:.875rem;white-space:nowrap;background:#fff;color:#334155;
 }
-.ba-page .ba-table-wrap > table tbody td::before{content:none !important;display:none !important}
+.ba-page .ba-table-wrap > table tbody td::before{content:none!important;display:none!important}
 .ba-page .ba-table-wrap > table tbody tr:hover td,
-.ba-page table.dataTable tbody tr:hover td{background:#f8fbff !important}
-.ba-page .ba-table-wrap > table tbody tr:last-child td{border-bottom:0 !important}
-.ba-page .ba-actions{
-    display:inline-flex;align-items:center;gap:8px;flex-wrap:nowrap;
+.ba-page table.dataTable tbody tr:hover td{background:#f8fafc!important}
+.ba-page .ba-table-wrap > table tbody tr:last-child td{border-bottom:0!important}
+
+/* Sticky Action column — match header (override global darker sticky) */
+.ba-page table thead th.col-actions,
+.ba-page table tbody td.col-actions{
+    position:sticky;right:0;z-index:3;
+    min-width:120px;max-width:160px;
+    box-shadow:-8px 0 14px rgba(15,23,42,.05);
+    border-left:1px solid #eef2f7;
+}
+.ba-page table thead th.col-actions{
+    z-index:5;background:#f8fafc!important;text-align:center;
+}
+.ba-page table tbody td.col-actions{
+    background:#fff!important;text-align:center;
+}
+.ba-page table tbody tr:hover td.col-actions{background:#f8fafc!important}
+.ba-page table tbody td.col-actions:has(form){min-width:120px;max-width:160px}
+
+.ba-page .ba-col-check{width:44px;text-align:center;padding-left:.7rem!important;padding-right:.4rem!important}
+.ba-page .ba-col-assign{min-width:210px}
+.ba-page .ba-actions{display:inline-flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:center}
+
+/* Empty / filtered state */
+.ba-page .ba-table-wrap .dataTables_empty,
+.ba-page table tbody td .empty{
+    padding:2.75rem 1rem!important;text-align:center;color:#94a3b8;font-size:.9rem;font-weight:500;
+    border-bottom:0!important;white-space:normal!important;
+}
+.ba-page .ba-empty{
+    display:flex;flex-direction:column;align-items:center;gap:10px;padding:2.5rem 1rem;color:#94a3b8;
+}
+.ba-page .ba-empty .illus{
+    width:52px;height:52px;border-radius:14px;background:#f1f5f9;color:#94a3b8;
+    display:inline-flex;align-items:center;justify-content:center;font-size:1.35rem;
+}
+.ba-page .ba-empty strong{display:block;color:#64748b;font-size:.92rem;font-weight:700}
+.ba-page .ba-empty span{font-size:.82rem;color:#94a3b8}
+
+/* DataTables footer */
+.ba-page .ba-dt-foot,
+.ba-page .ba-table-shell > .ba-dt-foot{
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+    gap:12px 16px;margin:0;padding:.75rem 1.15rem;
+    border-top:1px solid #eef2f7;background:#fff;border-radius:0 0 16px 16px;
+    color:#64748b;font-size:.84rem;
+}
+.ba-page .ba-dt-foot .dataTables_info{padding:0;float:none;color:#64748b;font-weight:600}
+.ba-page .ba-dt-foot .ba-dt-right{
+    display:inline-flex;flex-wrap:wrap;align-items:center;gap:12px 16px;margin-left:auto;
+}
+.ba-page .ba-dt-foot .dataTables_length{float:none;padding:0}
+.ba-page .ba-dt-foot .dataTables_length label{
+    display:inline-flex;align-items:center;gap:8px;margin:0;font-weight:500;color:#64748b;font-size:.84rem;
+}
+.ba-page .ba-dt-foot .dataTables_length select{
+    min-height:34px;height:34px;border-radius:8px;border:1px solid #d1d5db;
+    padding:.2rem .55rem;font-size:.84rem;background:#fff;color:#0f172a;
+}
+.ba-page .ba-dt-foot .dataTables_paginate{float:none;padding:0;margin:0}
+.ba-page .ba-dt-foot .paginate_button{
+    display:inline-flex!important;align-items:center;justify-content:center;
+    min-width:34px;height:34px;margin:0 2px!important;padding:0 .55rem!important;
+    border:0!important;border-radius:8px!important;background:transparent!important;
+    color:#475569!important;font-weight:600!important;box-shadow:none!important;
+}
+.ba-page .ba-dt-foot .paginate_button:hover{
+    background:#f1f5f9!important;color:#0f172a!important;border:0!important;
+}
+.ba-page .ba-dt-foot .paginate_button.current,
+.ba-page .ba-dt-foot .paginate_button.current:hover{
+    background:var(--theme-primary)!important;color:#fff!important;
+    box-shadow:0 4px 10px var(--theme-primary-ring)!important;border:0!important;
+}
+.ba-page .ba-dt-foot .paginate_button.disabled,
+.ba-page .ba-dt-foot .paginate_button.disabled:hover{
+    opacity:.4;background:transparent!important;color:#94a3b8!important;
 }
 
 .ba-page .ref-link{font-weight:600;color:var(--theme-primary);text-decoration:underline;text-underline-offset:2px}
 .ba-page .ref-link:hover{color:var(--theme-primary-hover)}
 .ba-page .cust{display:inline-flex;align-items:center;gap:8px}
 .ba-page .avatar{
-    width:28px;height:28px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
-    background:var(--theme-100);color:var(--theme-primary-hover);font-size:.72rem;font-weight:800;
+    width:34px;height:34px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;
+    background:linear-gradient(145deg,var(--theme-100),var(--theme-200));
+    color:var(--theme-primary-hover);font-size:.76rem;font-weight:800;flex-shrink:0;
 }
+.ba-page .cust span:last-child{font-weight:700;color:#0f172a}
 .ba-page .meta{display:inline-flex;align-items:center;gap:5px;color:#334155}
 .ba-page .meta i{color:#94a3b8}
 .ba-page .pill{display:inline-flex;align-items:center;padding:.2rem .55rem;border-radius:999px;font-size:.7rem;font-weight:700}
@@ -330,7 +414,6 @@
     font-size:.78rem;font-weight:700;padding:0 12px;display:inline-flex;align-items:center;gap:6px;
 }
 .ba-page .btn-reassign:hover{background:#e0e7ff;color:#312e81}
-.ba-page .empty{padding:2rem;text-align:center;color:#64748b}
 .ba-page .panel-hidden{display:none!important}
 .ba-page .row-hidden{display:none!important}
 
@@ -476,8 +559,8 @@ body > .select2-container .select2-dropdown{
                 Pending BM Allocation
             </h5>
             <div class="ba-head-branch">
-                <i class="bi bi-building"></i>
-                <select id="headerBranch" class="form-select" data-search="true" aria-label="All Branches">
+                <select id="headerBranch" class="form-select js-select2" data-search="true"
+                        data-placeholder="All Branches" aria-label="All Branches">
                     <option value="">All Branches</option>
                     @foreach($branches as $branch)
                         <option value="{{ $branch->id }}">{{ $branch->name }}</option>
@@ -521,15 +604,17 @@ body > .select2-container .select2-dropdown{
             <table class="table align-middle ba-datatable" id="pendingTable" style="width:100%">
                 <thead>
                     <tr>
-                        <th style="width:36px;"><input type="checkbox" class="form-check-input" id="selectAllPending"></th>
+                        <th class="ba-col-check sorting_disabled">
+                            <input type="checkbox" class="form-check-input" id="selectAllPending" aria-label="Select all">
+                        </th>
                         <th>Ref</th>
                         <th>Customer</th>
                         <th>Branch</th>
                         <th>Lead Type</th>
                         <th>Priority</th>
                         <th>Received On</th>
-                        <th>Assign to</th>
-                        <th class="col-actions">Action</th>
+                        <th class="ba-col-assign sorting_disabled">Assign to</th>
+                        <th class="col-actions sorting_disabled">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -548,7 +633,9 @@ body > .select2-container .select2-dropdown{
                         data-lead-type="{{ $type }}"
                         data-priority="{{ $priority }}"
                         data-search="{{ strtolower($lead->ref_no . ' ' . $lead->customer_name) }}">
-                        <td><input type="checkbox" class="form-check-input pending-cb" value="{{ $lead->id }}"></td>
+                        <td class="ba-col-check">
+                            <input type="checkbox" class="form-check-input pending-cb" value="{{ $lead->id }}" aria-label="Select {{ $lead->ref_no }}">
+                        </td>
                         <td><a class="ref-link" href="{{ route('goal.leads.show', $lead) }}">{{ $lead->ref_no }}</a></td>
                         <td>
                             <span class="cust">
@@ -574,7 +661,7 @@ body > .select2-container .select2-dropdown{
                             @endif
                         </td>
                         <td><span class="meta"><i class="bi bi-calendar3"></i>{{ optional($lead->created_at)->format('d M Y, h:i a') }}</span></td>
-                        <td>
+                        <td class="ba-col-assign">
                             <select class="form-select ba-sales" data-search="true" data-placeholder="Select Sales (JSM / SM / SSM)" data-branch-id="{{ $branchId }}" aria-label="Assign to">
                                 <option value="">Select Sales (JSM / SM / SSM)</option>
                             </select>
@@ -591,7 +678,15 @@ body > .select2-container .select2-dropdown{
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="9"><div class="empty">No leads pending BM allocation.</div></td></tr>
+                    <tr>
+                        <td colspan="9">
+                            <div class="ba-empty">
+                                <span class="illus" aria-hidden="true"><i class="bi bi-inbox"></i></span>
+                                <strong>No pending allocations</strong>
+                                <span>Leads awaiting BM assignment will appear here.</span>
+                            </div>
+                        </td>
+                    </tr>
                 @endforelse
                 </tbody>
             </table>
@@ -674,7 +769,15 @@ body > .select2-container .select2-dropdown{
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7"><div class="empty">No recently assigned leads.</div></td></tr>
+                    <tr>
+                        <td colspan="7">
+                            <div class="ba-empty">
+                                <span class="illus" aria-hidden="true"><i class="bi bi-people"></i></span>
+                                <strong>No recently assigned leads</strong>
+                                <span>Assigned and reassigned leads will show up here.</span>
+                            </div>
+                        </td>
+                    </tr>
                 @endforelse
                 </tbody>
             </table>
@@ -837,7 +940,9 @@ window.BA_SALES = @json($salesPayload);
 
     function initFilterSelect2() {
         ['#headerBranch', '#filterBranch', '#filterLeadType', '#filterPriority'].forEach(function (sel) {
-            enhanceSelect2($(sel), $(document.body));
+            var $el = $(sel);
+            // Parent the open panel to the page so it isn't clipped by the card
+            enhanceSelect2($el, $('.ba-page').length ? $('.ba-page') : $(document.body));
         });
     }
 
@@ -1118,10 +1223,11 @@ window.BA_SALES = @json($salesPayload);
                 dom: 't<"ba-dt-foot"i<"ba-dt-right"lp>>',
                 language: {
                     emptyTable: 'No records found.',
+                    zeroRecords: 'No matching records for the selected filters.',
                     info: 'Showing _START_–_END_ of _TOTAL_',
                     infoEmpty: 'Showing 0 entries',
                     infoFiltered: '(filtered from _MAX_ total)',
-                    lengthMenu: 'Rows _MENU_',
+                    lengthMenu: 'Rows per page _MENU_',
                     paginate: {
                         previous: '<i class="bi bi-chevron-left" aria-hidden="true"></i>',
                         next: '<i class="bi bi-chevron-right" aria-hidden="true"></i>'

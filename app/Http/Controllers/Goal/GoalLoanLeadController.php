@@ -8,6 +8,8 @@ use App\Models\GoalLoanCase;
 use App\Models\GoalLoanLead;
 use App\Models\GoalLoanLeadEvent;
 use App\Models\GoalOrgUnit;
+use App\Models\GoalVrmDisposition;
+use App\Models\LeadSource;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\Goal\GoalDashboardService;
@@ -17,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class GoalLoanLeadController extends Controller
 {
@@ -39,7 +42,13 @@ class GoalLoanLeadController extends Controller
             'per_page' => 'nullable|in:10,25,50,100',
         ]);
 
-        $baseQuery = GoalLoanLead::query()->with(['assignee', 'orgUnit']);
+        $baseQuery = GoalLoanLead::query()->with([
+            'assignee:id,name,crm_role_type',
+            'assignee.crmRole:id,name',
+            'creator:id,name,crm_role_type',
+            'creator.crmRole:id,name',
+            'orgUnit:id,name',
+        ]);
         $scope = $this->scopedOrgIds();
         if ($scope === []) {
             $baseQuery->whereRaw('0 = 1');
@@ -63,17 +72,27 @@ class GoalLoanLeadController extends Controller
             $baseQuery->where('status', $request->input('status'));
         }
         if ($request->filled('source')) {
-            $baseQuery->where('source', $request->input('source'));
+            $sourceFilter = LeadSource::resolveCanonicalName($request->input('source'))
+                ?: $request->input('source');
+            $baseQuery->where(function ($q) use ($sourceFilter, $request) {
+                $q->where('source', $sourceFilter)
+                    ->orWhere('source', $request->input('source'))
+                    ->orWhereRaw('LOWER(source) = ?', [strtolower((string) $sourceFilter)]);
+            });
         }
 
         $summaryQuery = clone $baseQuery;
         $totalLeads = (clone $summaryQuery)->count();
         $immediateCount = (clone $summaryQuery)->where('lead_type', 'immediate')->count();
         $futureCount = (clone $summaryQuery)->where('lead_type', 'future')->count();
-        $channelCount = (clone $summaryQuery)->where('source', 'channel')->count();
+        $channelCount = (clone $summaryQuery)->where(function ($q) {
+            $q->whereRaw('LOWER(source) = ?', ['channel'])
+                ->orWhereRaw('LOWER(source) LIKE ?', ['%channel%']);
+        })->count();
 
         $perPage = (int) ($validated['per_page'] ?? 25);
         $leads = (clone $baseQuery)
+            ->with(['loanCase:id,goal_loan_lead_id,case_no'])
             ->latest()
             ->paginate($perPage)
             ->withQueryString();
@@ -91,13 +110,33 @@ class GoalLoanLeadController extends Controller
             ->orderBy('product_name')
             ->get(['id', 'product_name']);
 
+        $leadSources = LeadSource::query()->orderBy('name')->get(['id', 'name']);
+        $dispositions = GoalVrmDisposition::query()
+            ->active()
+            ->get(['id', 'name', 'creates_lead', 'maps_to_lead_type']);
+
         $canCreate = auth()->user()->hasCrmPermission('create_lead_guard')
             || auth()->user()->hasCrmPermission('channel_lead_guard');
+        $canManage = auth()->user()->hasCrmPermission('view_leads_guard');
+        $canAllocate = auth()->user()->hasCrmPermission('bm_allocation_guard');
 
         $openCreate = $request->boolean('create')
             || $request->boolean('channel')
             || session('reopen_create_lead')
             || session()->has('errors');
+
+        $leadNextById = [];
+        $leadEditableById = [];
+        foreach ($leads as $lead) {
+            $leadNextById[$lead->id] = $this->manageableNextStatuses($lead);
+            $leadEditableById[$lead->id] = $this->canEditLeadDetails($lead);
+        }
+
+        $branchLocked = $this->isBranchLockedToOwn();
+        if ($branchLocked) {
+            $ownBranchId = (int) (auth()->user()->goal_org_unit_id ?? 0);
+            $branches = $branches->filter(fn ($b) => (int) $b->id === $ownBranchId)->values();
+        }
 
         return view('goal.leads.index', compact(
             'leads',
@@ -109,8 +148,15 @@ class GoalLoanLeadController extends Controller
             'statuses',
             'branches',
             'products',
+            'leadSources',
+            'dispositions',
             'canCreate',
-            'openCreate'
+            'canManage',
+            'canAllocate',
+            'openCreate',
+            'leadNextById',
+            'leadEditableById',
+            'branchLocked'
         ));
     }
 
@@ -125,7 +171,10 @@ class GoalLoanLeadController extends Controller
 
     public function store(Request $request)
     {
-        $channel = $request->boolean('channel') || $request->input('source') === 'channel';
+        $sourceNames = LeadSource::activeNames();
+        $resolvedSource = LeadSource::resolveCanonicalName($request->input('source'))
+            ?: ($request->boolean('channel') ? 'Channel' : 'Manual');
+        $channel = $request->boolean('channel') || LeadSource::isChannelSourceName($resolvedSource);
         $canCreate = auth()->user()->hasCrmPermission('create_lead_guard');
         $canChannel = auth()->user()->hasCrmPermission('channel_lead_guard');
 
@@ -135,32 +184,40 @@ class GoalLoanLeadController extends Controller
             abort_unless($canCreate || $canChannel, 403);
         }
 
+        $dispositionNames = GoalVrmDisposition::activeNames();
         $data = $request->validate([
             'customer_name' => 'required|string|max:150',
             'mobile' => PhoneNumber::mobileRules(true),
             'email' => 'nullable|email',
-            'source' => 'nullable|string|max:40',
+            'source' => ['nullable', 'string', 'max:80', Rule::in($sourceNames !== [] ? $sourceNames : [$resolvedSource])],
             'channel_partner' => 'nullable|string|max:150',
             'product' => 'nullable|string|max:100',
             'loan_amount' => 'nullable|numeric|min:0',
-            'lead_type' => 'required|in:immediate,future',
-            'disposition' => 'nullable|string|max:40',
+            'lead_type' => 'nullable|in:immediate,future',
+            'disposition' => ['required', 'string', 'max:40', Rule::in($dispositionNames !== [] ? $dispositionNames : array_filter([(string) $request->input('disposition')]))],
             'follow_up_at' => 'nullable|date',
             'notes' => 'nullable|string',
             'goal_org_unit_id' => 'nullable|exists:goal_org_units,id,is_active,1',
             'consent_recorded' => 'nullable|boolean',
-        ], PhoneNumber::messages('mobile'));
+        ], array_merge(PhoneNumber::messages('mobile'), [
+            'disposition.required' => 'Disposition is required.',
+        ]));
+
+        $dispositionMaster = GoalVrmDisposition::findByName($data['disposition'] ?? null);
+        $data['lead_type'] = $dispositionMaster
+            ? $dispositionMaster->resolveLeadType()
+            : (in_array(($data['lead_type'] ?? ''), ['immediate', 'future'], true) ? $data['lead_type'] : 'immediate');
 
         if (($data['lead_type'] ?? '') === 'future' && empty($data['follow_up_at'])) {
-            return back()->withInput()->withErrors(['follow_up_at' => 'Follow-up required for Future leads.'])->with('reopen_create_lead', true);
+            return back()->withInput()->withErrors(['follow_up_at' => 'Follow-up required for Future / Callback dispositions.'])->with('reopen_create_lead', true);
         }
 
         $status = ($data['lead_type'] ?? 'immediate') === 'immediate'
             ? 'Pending BM Allocation'
             : 'Future Prospect';
 
-        $source = $data['source'] ?? ($channel ? 'channel' : 'manual');
-        if (strtolower((string) $source) === 'channel' && ! filled(trim((string) ($data['channel_partner'] ?? '')))) {
+        $source = LeadSource::resolveCanonicalName($data['source'] ?? null) ?: $resolvedSource;
+        if (LeadSource::isChannelSourceName($source) && ! filled(trim((string) ($data['channel_partner'] ?? '')))) {
             return back()->withInput()->withErrors([
                 'channel_partner' => 'Channel partner name is required for channel leads.',
             ])->with('reopen_create_lead', true);
@@ -173,7 +230,7 @@ class GoalLoanLeadController extends Controller
             'status' => $status,
             'consent_recorded' => $request->boolean('consent_recorded'),
             'created_by' => auth()->id(),
-            'goal_org_unit_id' => $data['goal_org_unit_id'] ?? auth()->user()->goal_org_unit_id,
+            'goal_org_unit_id' => $this->resolveLockedBranchId($data['goal_org_unit_id'] ?? null),
         ]);
 
         app(\App\Services\Goal\GoalPartyService::class)->attachLead($lead);
@@ -182,7 +239,7 @@ class GoalLoanLeadController extends Controller
             $lead,
             'status_change',
             'Lead Created',
-            'Type: ' . ucfirst($lead->lead_type) . ' · Source: ' . ($source ?: 'manual'),
+            'Disposition: ' . ($lead->disposition ?: '-') . ' · Type: ' . ucfirst($lead->lead_type) . ' · Source: ' . ($source ?: 'manual'),
             ['from_status' => null, 'to_status' => $status]
         );
 
@@ -229,7 +286,8 @@ class GoalLoanLeadController extends Controller
 
         $this->ensureCreatedEvent($lead);
 
-        $next = GoalWorkflow::LEAD_TRANSITIONS[$lead->status] ?? [];
+        $allNext = GoalWorkflow::LEAD_TRANSITIONS[$lead->status] ?? [];
+        $next = $this->manageableNextStatuses($lead);
         $priority = $this->priorityFor($lead);
         $assigneeLabel = $this->salesLabel($lead->assignee);
         $hasVisit = $lead->events->contains(fn ($e) => $e->event_type === 'visit');
@@ -246,11 +304,19 @@ class GoalLoanLeadController extends Controller
             ->where('product_status', 1)
             ->orderBy('product_name')
             ->get(['id', 'product_name']);
+        $leadSources = LeadSource::query()->orderBy('name')->get(['id', 'name']);
 
         $canAllocate = auth()->user()->hasCrmPermission('bm_allocation_guard');
         $canConvert = !$lead->loanCase
-            && in_array('Documents Pending', $next, true);
+            && in_array('Documents Pending', $allNext, true);
         $canOpenCase = (bool) $lead->loanCase;
+        $needsAllocation = $lead->status === 'Pending BM Allocation' && $canAllocate;
+        $canEditLead = $this->canEditLeadDetails($lead);
+        $branchLocked = $this->isBranchLockedToOwn();
+        if ($branchLocked) {
+            $ownBranchId = (int) (auth()->user()->goal_org_unit_id ?? 0);
+            $branches = $branches->filter(fn ($b) => (int) $b->id === $ownBranchId)->values();
+        }
 
         $noteEntries = $this->parseNotes($lead->notes);
         $linkedMatches = app(\App\Services\Goal\GoalPartyService::class)
@@ -273,10 +339,14 @@ class GoalLoanLeadController extends Controller
             'canAllocate',
             'canConvert',
             'canOpenCase',
+            'needsAllocation',
+            'canEditLead',
             'noteEntries',
             'hasVisit',
             'linkedLeads',
-            'linkedCases'
+            'linkedCases',
+            'leadSources',
+            'branchLocked'
         ));
     }
 
@@ -285,33 +355,134 @@ class GoalLoanLeadController extends Controller
         $this->requireGoalPermission('view_leads_guard');
         $this->assertLeadInScope($lead);
 
+        $canEdit = $this->canEditLeadDetails($lead);
+        $nextStatuses = $this->manageableNextStatuses($lead);
+        $wantsTransition = filled($request->input('to_status'));
+        abort_unless(
+            $canEdit || ($wantsTransition && $nextStatuses !== []),
+            403,
+            'After BM allocation, only the assigned sales user or BM/managers can edit lead details.'
+        );
+
+        $sourceNames = LeadSource::activeNames();
+        if ($lead->source && ! in_array($lead->source, $sourceNames, true)) {
+            $sourceNames[] = $lead->source;
+        }
+
         $data = $request->validate([
-            'customer_name' => 'required|string|max:150',
-            'mobile' => PhoneNumber::mobileRules(true),
-            'email' => 'nullable|email',
+            'customer_name' => ($canEdit ? 'required' : 'nullable') . '|string|max:150',
+            'mobile' => PhoneNumber::mobileRules($canEdit),
             'product' => 'nullable|string|max:100',
             'loan_amount' => 'nullable|numeric|min:0',
-            'lead_type' => 'required|in:immediate,future',
-            'source' => 'nullable|string|max:40',
-            'channel_partner' => 'nullable|string|max:150',
+            'lead_type' => 'nullable|in:immediate,future',
+            'source' => ['nullable', 'string', 'max:80', Rule::in($sourceNames !== [] ? $sourceNames : array_filter([$lead->source]))],
             'goal_org_unit_id' => 'nullable|exists:goal_org_units,id,is_active,1',
             'disposition' => 'nullable|string|max:40',
             'consent_recorded' => 'nullable|boolean',
+            'to_status' => 'nullable|string|max:80',
+            'follow_up_at' => 'nullable|date',
+            'closure_reason' => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:2000',
         ], PhoneNumber::messages('mobile'));
 
-        $source = strtolower((string) ($data['source'] ?? $lead->source ?? ''));
-        if ($source === 'channel' && ! filled(trim((string) ($data['channel_partner'] ?? $lead->channel_partner ?? '')))) {
-            return back()->withInput()->withErrors([
-                'channel_partner' => 'Channel partner name is required for channel leads.',
-            ]);
+        $messages = [];
+
+        if ($canEdit) {
+            if (! empty($data['source'])) {
+                $data['source'] = LeadSource::resolveCanonicalName($data['source']) ?: $data['source'];
+            }
+
+            // Match call-log edit: VRM cannot change branch/source/disposition.
+            if ($this->isBranchLockedToOwn()) {
+                $data['goal_org_unit_id'] = $lead->goal_org_unit_id
+                    ?: $this->resolveLockedBranchId(null);
+                $data['source'] = $lead->source;
+                $data['disposition'] = $lead->disposition;
+            } else {
+                $data['goal_org_unit_id'] = $this->resolveLockedBranchId($data['goal_org_unit_id'] ?? null);
+                $data['disposition'] = $lead->disposition;
+                if (empty($data['source'])) {
+                    $data['source'] = $lead->source;
+                }
+            }
+            if (empty($data['lead_type'])) {
+                $data['lead_type'] = $lead->lead_type ?: 'immediate';
+            }
+
+            $tracked = [
+                'customer_name', 'mobile', 'product', 'loan_amount',
+                'lead_type', 'source', 'goal_org_unit_id', 'disposition',
+            ];
+            $before = $lead->only($tracked);
+            $before['consent_recorded'] = (bool) $lead->consent_recorded;
+
+            $lead->fill(collect($data)->only($tracked)->all());
+            if ($request->boolean('consent_recorded')) {
+                $lead->consent_recorded = true;
+            }
+            $lead->save();
+            app(\App\Services\Goal\GoalPartyService::class)->attachLead($lead);
+
+            $after = $lead->only($tracked);
+            $after['consent_recorded'] = (bool) $lead->consent_recorded;
+            $changes = [];
+            foreach ($after as $key => $value) {
+                $prev = $before[$key] ?? null;
+                if ((string) ($prev ?? '') === (string) ($value ?? '')) {
+                    continue;
+                }
+                $label = str_replace('_', ' ', $key);
+                $changes[] = ucfirst($label) . ': ' . ($prev === null || $prev === '' ? '-' : $prev) . ' -> ' . ($value === null || $value === '' ? '-' : $value);
+            }
+            if ($changes !== []) {
+                GoalLoanLeadEvent::record(
+                    $lead,
+                    'update',
+                    'Lead Details Updated',
+                    implode("\n", $changes),
+                    ['meta' => ['changes' => $changes]]
+                );
+                $messages[] = 'Lead details updated.';
+            }
+
+            $note = trim((string) ($data['notes'] ?? ''));
+            if ($note !== '') {
+                $stamp = now()->format('d M Y, h:i a');
+                $author = auth()->user()->name ?? 'User';
+                $block = '[' . $stamp . ' · ' . $author . '] ' . $note;
+                $lead->notes = trim(($lead->notes ? $lead->notes . "\n\n" : '') . $block);
+                $lead->save();
+                GoalLoanLeadEvent::record($lead, 'note', 'Note Added', $note);
+                $messages[] = 'Note added.';
+            }
+        } elseif ($request->boolean('consent_recorded') && ! $lead->consent_recorded) {
+            $lead->consent_recorded = true;
+            $lead->save();
         }
 
-        $lead->fill($data);
-        $lead->consent_recorded = $request->boolean('consent_recorded');
-        $lead->save();
-        app(\App\Services\Goal\GoalPartyService::class)->attachLead($lead);
+        if ($wantsTransition) {
+            $transitionResult = $this->applyLeadTransition($request, $lead->fresh(), [
+                'to_status' => (string) $request->input('to_status'),
+                'follow_up_at' => $data['follow_up_at'] ?? null,
+                'closure_reason' => $data['closure_reason'] ?? null,
+                'product' => $data['product'] ?? $lead->product,
+                'consent_recorded' => $request->boolean('consent_recorded'),
+            ]);
 
-        return back()->with('success', 'Lead details updated.');
+            if ($transitionResult instanceof \Illuminate\Http\RedirectResponse) {
+                return $transitionResult;
+            }
+
+            if (is_string($transitionResult) && $transitionResult !== '') {
+                $messages[] = $transitionResult;
+            }
+        }
+
+        if ($messages === []) {
+            $messages[] = 'Lead saved.';
+        }
+
+        return back()->with('success', implode(' ', $messages));
     }
 
     public function partyMatches(Request $request)
@@ -506,33 +677,63 @@ class GoalLoanLeadController extends Controller
             'follow_up_at.after_or_equal' => 'Follow-up must be today or a future date/time.',
         ]);
 
+        $result = $this->applyLeadTransition($request, $lead, $data);
+        if ($result instanceof \Illuminate\Http\RedirectResponse) {
+            return $result;
+        }
+
+        return back()
+            ->with('success', is_string($result) && $result !== '' ? $result : 'Lead status updated.')
+            ->with('ld_tab', 'overview');
+    }
+
+    /**
+     * Apply a workflow status change. Returns success message string, or RedirectResponse on error/case-create.
+     *
+     * @param  array{to_status:string,follow_up_at?:mixed,closure_reason?:mixed,product?:mixed,consent_recorded?:bool}  $data
+     */
+    protected function applyLeadTransition(Request $request, GoalLoanLead $lead, array $data): \Illuminate\Http\RedirectResponse|string
+    {
         $lead->loadMissing('loanCase');
         $ctx = [
             'follow_up' => $data['follow_up_at'] ?? $lead->follow_up_at,
             'reason' => $data['closure_reason'] ?? null,
-            'consent' => $request->boolean('consent_recorded') || $lead->consent_recorded,
+            'consent' => ! empty($data['consent_recorded']) || $request->boolean('consent_recorded') || $lead->consent_recorded,
             'product' => $data['product'] ?? $lead->product,
             'assignee' => $lead->assigned_to,
             'docsVerified' => $this->leadMandatoryDocsVerified($lead),
         ];
 
+        if (($data['to_status'] ?? '') === 'Assigned') {
+            return back()->withErrors([
+                'to_status' => 'Use BM Allocation to assign a sales user. Status becomes Assigned automatically.',
+            ]);
+        }
+
+        $allowed = $this->manageableNextStatuses($lead);
+        if (! in_array($data['to_status'], $allowed, true)) {
+            return back()->withErrors([
+                'to_status' => 'You cannot move this lead to that status from your role.',
+            ]);
+        }
+
         $gate = GoalWorkflow::validateLead($lead->status, $data['to_status'], $ctx);
-        if (!$gate['ok']) {
+        if (! $gate['ok']) {
             return back()->withErrors(['to_status' => implode(' ', $gate['errors'])]);
         }
 
         $fromStatus = $lead->status;
         $lead->status = $data['to_status'];
-        if (!empty($data['follow_up_at'])) {
+        if (! empty($data['follow_up_at'])) {
             $lead->follow_up_at = $data['follow_up_at'];
         }
-        if (!empty($data['closure_reason'])) {
+        if (! empty($data['closure_reason'])) {
             $lead->closure_reason = $data['closure_reason'];
         }
-        if ($request->boolean('consent_recorded')) {
+        if (! empty($data['consent_recorded']) || $request->boolean('consent_recorded')) {
             $lead->consent_recorded = true;
         }
-        if (!empty($data['product'])) {
+        if (! empty($data['product'])) {
             $lead->product = $data['product'];
         }
         $lead->save();
@@ -541,8 +742,8 @@ class GoalLoanLeadController extends Controller
             $lead,
             'status_change',
             'Status Changed',
-            $fromStatus . ' → ' . $data['to_status']
-                . (!empty($data['closure_reason']) ? ' · ' . $data['closure_reason'] : ''),
+            $fromStatus . ' -> ' . $data['to_status']
+                . (! empty($data['closure_reason']) ? ' · ' . $data['closure_reason'] : ''),
             [
                 'from_status' => $fromStatus,
                 'to_status' => $data['to_status'],
@@ -553,7 +754,7 @@ class GoalLoanLeadController extends Controller
             ]
         );
 
-        if (!empty($data['follow_up_at'])) {
+        if (! empty($data['follow_up_at'])) {
             GoalLoanLeadEvent::record(
                 $lead,
                 'follow_up',
@@ -563,7 +764,7 @@ class GoalLoanLeadController extends Controller
             );
         }
 
-        if ($data['to_status'] === 'Documents Pending' && !$lead->loanCase) {
+        if ($data['to_status'] === 'Documents Pending' && ! $lead->loanCase) {
             $owner = $lead->assigned_to
                 ? \App\Models\User::query()->find($lead->assigned_to)
                 : null;
@@ -608,12 +809,124 @@ class GoalLoanLeadController extends Controller
                 ['to_status' => $data['to_status'], 'meta' => ['case_id' => $case->id, 'case_no' => $case->case_no]]
             );
 
-            return redirect()
-                ->route('goal.cases.show', $case)
-                ->with('success', 'Lead converted to case ' . $case->case_no . '.');
+            return back()
+                ->with('success', 'Status updated and case ' . $case->case_no . ' created. Continue from Loan Leads or open the case when needed.')
+                ->with('ld_tab', 'overview');
         }
 
-        return back()->with('success', 'Lead status updated.')->with('ld_tab', 'overview');
+        return 'Lead status updated.';
+    }
+
+    /** VRM role (type 9) may only use their assigned branch. */
+    protected function isBranchLockedToOwn(): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        return (int) ($user->crm_role_type ?? -1) === 9
+            || strtolower((string) ($user->job_role ?? '')) === 'vrm';
+    }
+
+    /**
+     * Resolve branch for create/update. VRM always gets own branch.
+     */
+    protected function resolveLockedBranchId(mixed $requested): ?int
+    {
+        $own = (int) (auth()->user()->goal_org_unit_id ?? 0);
+
+        if ($this->isBranchLockedToOwn()) {
+            return $own > 0 ? $own : null;
+        }
+
+        if ($requested !== null && $requested !== '') {
+            return (int) $requested;
+        }
+
+        return $own > 0 ? $own : null;
+    }
+
+    /**
+     * Who may edit customer/loan fields on a lead.
+     * Before allocation: VRM/creator + managers.
+     * After allocation: assigned sales + BM/managers only (VRM view/notes only).
+     */
+    protected function canEditLeadDetails(GoalLoanLead $lead): bool
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->hasCrmPermission('view_leads_guard')) {
+            return false;
+        }
+
+        $role = (int) ($user->crm_role_type ?? -1);
+        if ($user->isSuperAdmin() || in_array($role, [1, 4, 5, 6, 7, 8], true)) {
+            return true;
+        }
+
+        $preAllocation = in_array($lead->status, ['New', 'Pending BM Allocation', 'Future Prospect'], true);
+
+        if (in_array($role, [10, 11, 12], true) || in_array(strtolower((string) ($user->job_role ?? '')), ['jsm', 'sm', 'ssm'], true)) {
+            return (int) ($lead->assigned_to ?? 0) === (int) $user->id;
+        }
+
+        if ($role === 9 || strtolower((string) ($user->job_role ?? '')) === 'vrm') {
+            if (! $preAllocation) {
+                return false;
+            }
+
+            return (int) ($lead->created_by ?? 0) === (int) $user->id;
+        }
+
+        return false;
+    }
+
+    /**
+     * Statuses the current user may pick for this lead.
+     * - Assigned is never manual (BM Allocation only).
+     * - VRM may only withdraw (Closed / Lost) before allocation; after assign, sales/BM own the workflow.
+     *
+     * @return list<string>
+     */
+    protected function manageableNextStatuses(GoalLoanLead $lead): array
+    {
+        $next = GoalWorkflow::LEAD_TRANSITIONS[$lead->status] ?? [];
+        $next = array_values(array_filter($next, fn ($status) => $status !== 'Assigned'));
+        if ($next === []) {
+            return [];
+        }
+
+        $user = auth()->user();
+        $role = (int) ($user->crm_role_type ?? -1);
+
+        // Company / regional managers + BM: full in-scope transitions.
+        if ($user->isSuperAdmin() || in_array($role, [1, 4, 5, 6, 7, 8], true)) {
+            return $next;
+        }
+
+        // Sales (JSM / SM / SSM): only leads assigned to them, after allocation.
+        if (in_array($role, [10, 11, 12], true) || in_array(strtolower((string) ($user->job_role ?? '')), ['jsm', 'sm', 'ssm'], true)) {
+            if ((int) ($lead->assigned_to ?? 0) !== (int) $user->id) {
+                return [];
+            }
+
+            return $next;
+        }
+
+        // VRM: may only close/lost while waiting for BM allocation (or future queue).
+        // After BM allocates, VRM cannot change workflow status.
+        if ($role === 9 || strtolower((string) ($user->job_role ?? '')) === 'vrm') {
+            if (! in_array($lead->status, ['Pending BM Allocation', 'Future Prospect', 'New'], true)) {
+                return [];
+            }
+            if ((int) ($lead->created_by ?? 0) !== (int) $user->id && ! $user->hasCrmPermission('bm_allocation_guard')) {
+                return [];
+            }
+
+            return array_values(array_filter($next, fn ($status) => $status === 'Closed / Lost'));
+        }
+
+        return [];
     }
 
     protected function assertLeadInScope(GoalLoanLead $lead): void

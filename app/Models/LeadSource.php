@@ -53,4 +53,66 @@ class LeadSource extends Model
 
         return $source ? static::isReferralSourceName($source->name) : false;
     }
+
+    public static function isChannelSourceName(?string $name): bool
+    {
+        $n = static::normalizeName($name);
+
+        return $n === 'channel' || str_contains($n, 'channel');
+    }
+
+    /**
+     * Active lead-source names for Goal Loan CRM dropdowns.
+     *
+     * @return list<string>
+     */
+    public static function activeNames(): array
+    {
+        return static::query()
+            ->orderBy('name')
+            ->pluck('name')
+            ->map(fn ($n) => (string) $n)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Resolve a stored/legacy value to a master name when possible.
+     */
+    public static function resolveCanonicalName(?string $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        $exact = static::query()
+            ->whereRaw('LOWER(name) = ?', [strtolower($value)])
+            ->value('name');
+        if ($exact) {
+            return (string) $exact;
+        }
+
+        $aliases = [
+            'vrm' => 'VRM',
+            'vrm calling' => 'VRM',
+            'channel' => 'Channel',
+            'channel partner' => 'Channel',
+            'manual' => 'Manual',
+            'walkin' => 'Walk-in',
+            'walk-in' => 'Walk-in',
+            'referral' => 'Referral',
+        ];
+
+        $alias = $aliases[static::normalizeName($value)] ?? null;
+        if ($alias) {
+            $found = static::query()
+                ->whereRaw('LOWER(name) = ?', [strtolower($alias)])
+                ->value('name');
+
+            return $found ? (string) $found : $alias;
+        }
+
+        return $value;
+    }
 }

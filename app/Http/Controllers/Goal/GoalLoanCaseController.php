@@ -668,8 +668,10 @@ class GoalLoanCaseController extends Controller
             'loan_amount' => $amountRule,
             'purpose' => 'nullable|string|max:100',
             'tenure_months' => ['nullable', 'string', 'max:5', 'regex:/^\d{1,3}$/'],
-            'employment_type' => 'nullable|string|max:60',
-            'monthly_income' => $money,
+            'employment_type' => $saveAction === 'next' ? 'required|string|max:60' : 'nullable|string|max:60',
+            'monthly_income' => $saveAction === 'next'
+                ? ['required', 'string', 'max:20', 'regex:/^\d{1,12}(\.\d{1,2})?$/']
+                : $money,
             'existing_obligations' => $money,
             'employer_name' => 'nullable|string|max:150',
             'work_experience_years' => ['nullable', 'string', 'max:5', 'regex:/^\d{1,2}(\.\d{1,2})?$/'],
@@ -696,6 +698,8 @@ class GoalLoanCaseController extends Controller
             'consent_recorded.accepted' => 'Customer consent must be recorded.',
             'loan_amount.required' => 'Requested amount is required to proceed.',
             'loan_amount.regex' => 'Enter a valid amount (digits, optional 2 decimals).',
+            'employment_type.required' => 'Employment type is required to proceed.',
+            'monthly_income.required' => 'Monthly income is required to proceed.',
             'monthly_income.regex' => 'Enter a valid monthly income.',
             'existing_obligations.regex' => 'Enter a valid obligations amount.',
             'net_income.regex' => 'Enter a valid net income.',

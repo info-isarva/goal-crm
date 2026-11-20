@@ -422,10 +422,6 @@
     outline: 2px solid #c4b5fd;
     outline-offset: 2px;
 }
-.vrm-page .action-btn.call {
-    border-color: #ddd6fe; background: #f5f3ff; color: #7c3aed;
-}
-.vrm-page .action-btn.call:hover { background: #ede9fe; color: #6d28d9; border-color: #c4b5fd; }
 .vrm-page .action-btn.view {
     border-color: #dbe3ee; background: #f8fafc; color: #475569;
 }
@@ -1306,13 +1302,6 @@
                             @endif
                             <td class="actions-cell col-actions" data-label="Actions">
                                 <div class="action-group">
-                                    <a href="tel:{{ $log->mobile }}"
-                                       class="action-btn call"
-                                       data-bs-toggle="tooltip"
-                                       data-bs-placement="top"
-                                       data-bs-title="Call">
-                                        <i class="bi bi-telephone-fill"></i>
-                                    </a>
                                     <button type="button"
                                             class="action-btn view btn-view-call"
                                             data-bs-toggle="tooltip"
@@ -1343,6 +1332,7 @@
                                             data-lead-id="{{ $log->goal_loan_lead_id }}">
                                         <i class="bi bi-pencil-fill"></i>
                                     </button>
+                                    @unless($log->goal_loan_lead_id)
                                     <form method="POST" action="{{ route('goal.vrm.calls.destroy', $log) }}" class="d-inline"
                                           onsubmit="return confirm('Delete this call log?');">
                                         @csrf
@@ -1355,6 +1345,7 @@
                                             <i class="bi bi-trash3-fill"></i>
                                         </button>
                                     </form>
+                                    @endunless
                                     @endif
                                     @if($log->goal_loan_lead_id)
                                         <a href="{{ route('goal.leads.show', $log->goal_loan_lead_id) }}"

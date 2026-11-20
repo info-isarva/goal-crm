@@ -84,7 +84,14 @@ class GoalOrgUnitController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
         $data['is_active'] = $request->boolean('is_active', true);
-        $this->assertValidHierarchy($data['type'], isset($data['parent_id']) ? (int) $data['parent_id'] : null);
+        $parentId = isset($data['parent_id']) ? (int) $data['parent_id'] : null;
+        $this->assertValidHierarchy($data['type'], $parentId);
+        if ($parentId) {
+            $parent = GoalOrgUnit::query()->find($parentId);
+            if ($parent && (! $parent->is_active || $parent->hasInactiveAncestor())) {
+                $data['is_active'] = false;
+            }
+        }
         GoalOrgUnit::create($data);
 
         return redirect()->route('goal.org-units.index')->with('success', 'Org unit created.');
@@ -113,11 +120,42 @@ class GoalOrgUnitController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
         $data['is_active'] = $request->boolean('is_active', true);
+        $parentId = isset($data['parent_id']) ? (int) $data['parent_id'] : null;
         $this->assertValidHierarchy(
             $data['type'],
-            isset($data['parent_id']) ? (int) $data['parent_id'] : null,
+            $parentId,
             (int) $org_unit->id
         );
+
+        if ($parentId) {
+            $parent = GoalOrgUnit::query()->find($parentId);
+            if ($parent && (! $parent->is_active || $parent->hasInactiveAncestor())) {
+                $data['is_active'] = false;
+            }
+        }
+
+        $wasActive = (bool) $org_unit->is_active;
+        $willBeInactive = ! (bool) $data['is_active'];
+
+        if ($wasActive && $willBeInactive) {
+            $activeChildren = GoalOrgUnit::query()
+                ->whereIn('id', $org_unit->childDescendantIds())
+                ->where('is_active', true)
+                ->orderBy('type')
+                ->orderBy('name')
+                ->get(['id', 'name', 'type']);
+
+            if ($activeChildren->isNotEmpty()) {
+                $names = $activeChildren
+                    ->map(fn (GoalOrgUnit $c) => $c->name.' ('.ucfirst($c->type).')')
+                    ->implode(', ');
+
+                throw ValidationException::withMessages([
+                    'is_active' => 'Cannot inactivate this unit while child units are still active: '.$names.'. Inactivate the child units first.',
+                ]);
+            }
+        }
+
         $org_unit->update($data);
 
         return redirect()->route('goal.org-units.index')->with('success', 'Org unit updated.');

@@ -164,11 +164,16 @@
         var el = document.getElementById(id);
         if (!el) return;
         var v = value == null ? '' : String(value);
+        // Locked branch is a hidden input for VRM — do not treat as <select>.
+        if (el.tagName !== 'SELECT') {
+            el.value = v;
+            return;
+        }
         if (v && !Array.from(el.options).some(function (o) { return o.value === v; })) {
             el.add(new Option(v, v, true, true));
         }
         el.value = v;
-        if (window.jQuery && jQuery.fn.select2 && jQuery(el).hasClass('js-select2')) {
+        if (window.jQuery && jQuery.fn.select2 && (jQuery(el).hasClass('js-select2') || jQuery(el).hasClass('select2-hidden-accessible'))) {
             jQuery(el).val(v || null).trigger('change');
         }
     }
@@ -177,22 +182,27 @@
         var form = document.getElementById('editVrmCallForm');
         if (!form) return;
         form.action = data.update_url || '';
-        document.getElementById('edit_customer_name').value = data.customer_name || '';
-        document.getElementById('edit_mobile').value = data.mobile || '';
+        var customerEl = document.getElementById('edit_customer_name');
+        var mobileEl = document.getElementById('edit_mobile');
+        var callbackEl = document.getElementById('edit_callback_at');
+        var loanEl = document.getElementById('edit_loan_amount');
+        var notesEl = document.getElementById('edit_notes');
+        if (customerEl) customerEl.value = data.customer_name || '';
+        if (mobileEl) mobileEl.value = data.mobile || '';
         var disposition = data.disposition || '';
         var dispositionHidden = document.getElementById('edit_disposition');
         var dispositionLabel = document.getElementById('edit_disposition_label');
         if (dispositionHidden) dispositionHidden.value = disposition;
-        if (dispositionLabel) dispositionLabel.value = disposition || '—';
-        document.getElementById('edit_callback_at').value = data.callback_at || data.callback_display || '';
+        if (dispositionLabel) dispositionLabel.value = disposition || '-';
+        if (callbackEl) callbackEl.value = data.callback_at || data.callback_display || '';
         setSelectValue('edit_goal_org_unit_id', data.goal_org_unit_id || '');
         var branchLabel = document.getElementById('edit_goal_org_unit_label');
-        if (branchLabel && data.branch_name) {
-            branchLabel.value = data.branch_name;
+        if (branchLabel) {
+            branchLabel.value = data.branch_name || branchLabel.value || 'Your branch';
         }
         setSelectValue('edit_product', data.product || '');
-        document.getElementById('edit_loan_amount').value = data.loan_amount || '';
-        document.getElementById('edit_notes').value = data.notes || '';
+        if (loanEl) loanEl.value = data.loan_amount || '';
+        if (notesEl) notesEl.value = data.notes || '';
         var hasLead = document.getElementById('edit_has_lead');
         if (hasLead) hasLead.checked = !!(data.has_lead || data.lead_id);
     }
@@ -201,6 +211,7 @@
         var btn = e.target.closest('.btn-edit-call');
         if (!btn) return;
         e.preventDefault();
+        e.stopPropagation();
 
         var editModalEl = document.getElementById('editVrmCallModal');
         if (!editModalEl || typeof bootstrap === 'undefined') return;

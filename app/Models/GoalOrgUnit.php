@@ -77,6 +77,64 @@ class GoalOrgUnit extends Model
     }
 
     /**
+     * Child/grandchild ids only (excludes self).
+     *
+     * @return list<int>
+     */
+    public function childDescendantIds(): array
+    {
+        return array_values(array_filter(
+            array_map('intval', $this->descendantIds()),
+            fn (int $id) => $id !== (int) $this->id
+        ));
+    }
+
+    /**
+     * When a parent is inactive, all descendants must be inactive too.
+     */
+    public function deactivateDescendants(): int
+    {
+        $ids = $this->childDescendantIds();
+        if ($ids === []) {
+            return 0;
+        }
+
+        return self::query()
+            ->whereIn('id', $ids)
+            ->where('is_active', true)
+            ->update(['is_active' => false]);
+    }
+
+    /**
+     * True when any ancestor in the chain is inactive.
+     */
+    public function hasInactiveAncestor(): bool
+    {
+        foreach ($this->ancestorIds() as $ancestorId) {
+            $active = self::query()->whereKey($ancestorId)->value('is_active');
+            if ($active === false || $active === 0 || $active === '0') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Repair tree: any unit under an inactive parent becomes inactive.
+     */
+    public static function syncInactiveDescendants(): int
+    {
+        $updated = 0;
+        $inactiveParents = self::query()->where('is_active', false)->orderBy('id')->get();
+        foreach ($inactiveParents as $parent) {
+            $updated += $parent->deactivateDescendants();
+        }
+
+        return $updated;
+    }
+
+    /**
      * Ancestor chain (parent → … → region), excluding self.
      */
     public function ancestorIds(): array

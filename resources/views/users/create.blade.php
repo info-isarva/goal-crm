@@ -687,14 +687,16 @@
                 <div class="section-kicker">Organization Details</div>
                 <div class="field-grid-2">
                     <div>
-                        <label for="goal_org_unit_id" class="form-label">Goal Org Unit</label>
+                        <label for="goal_org_unit_id" class="form-label">Goal Org Unit <span class="req">*</span></label>
                         <div class="input-icon">
                             <i class="bi bi-diagram-3 field-icn"></i>
                             @php
                                 $selectedOrgUnit = old('goal_org_unit_id', $defaultOrgUnitId ?? null);
+                                $orgUnitIsLocked = !empty($orgUnitLocked) && $selectedOrgUnit;
                             @endphp
-                            <select class="uc-dropdown" id="goal_org_unit_id" name="goal_org_unit_id" data-select2-skip="1"
-                                    @if(!empty($orgUnitLocked) && $selectedOrgUnit) disabled @endif>
+                            <select class="uc-dropdown @error('goal_org_unit_id') is-invalid @enderror"
+                                    id="goal_org_unit_id" name="goal_org_unit_id" data-select2-skip="1"
+                                    @if($orgUnitIsLocked) disabled @else required @endif>
                                 <option value="">Select Org Unit</option>
                                 @foreach(($goalOrgUnits ?? []) as $unit)
                                     <option value="{{ $unit->id }}"
@@ -704,13 +706,14 @@
                                     </option>
                                 @endforeach
                             </select>
-                            @if(!empty($orgUnitLocked) && $selectedOrgUnit)
+                            @if($orgUnitIsLocked)
                                 <input type="hidden" name="goal_org_unit_id" value="{{ $selectedOrgUnit }}">
                             @endif
                         </div>
                         <div class="form-text text-muted mt-1" id="orgUnitHint" style="font-size:.72rem;">
                             Org units filter by CRM Role (e.g. BM → branches only).
                         </div>
+                        @error('goal_org_unit_id')<div class="field-error-text">{{ $message }}</div>@enderror
                     </div>
                     <div>
                         <label class="form-label d-block">Status</label>
@@ -792,6 +795,22 @@
     const statusBox = document.getElementById('statusBox');
     const assignManagerContainer = document.getElementById('assign-manager-container');
     const createForm = document.getElementById('createUserForm');
+    if (createForm) {
+        createForm.addEventListener('submit', function (e) {
+            const sel = document.getElementById('goal_org_unit_id');
+            const hidden = createForm.querySelector('input[type="hidden"][name="goal_org_unit_id"]');
+            const value = (sel && !sel.disabled ? sel.value : (hidden ? hidden.value : '')) || '';
+            if (!String(value).trim()) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                const msg = 'Goal Org Unit is required.';
+                if (typeof showFlashSwal === 'function') showFlashSwal('error', msg);
+                else if (window.Swal) Swal.fire({ icon: 'error', title: 'Required', text: msg, confirmButtonColor: '#009B80' });
+                else alert(msg);
+                if (sel && !sel.disabled) sel.focus();
+            }
+        }, true);
+    }
     if (typeof confirmFormSubmit === 'function' && createForm) {
         confirmFormSubmit(createForm, {
             title: 'Create user?',

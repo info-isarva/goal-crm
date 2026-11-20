@@ -29,6 +29,9 @@
             <span class="pd-pill {{ $unit->is_active ? 'ok' : 'slate' }}">{{ $unit->is_active ? 'Active' : 'Inactive' }}</span>
         </div>
         <div class="p-3 p-md-4">
+            @if($errors->any())
+                <div class="alert alert-danger py-2">{{ $errors->first() }}</div>
+            @endif
             <form method="POST" action="{{ route('goal.org-units.update', $unit) }}">
                 @csrf
                 @method('PUT')

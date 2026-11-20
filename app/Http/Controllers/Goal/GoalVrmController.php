@@ -175,9 +175,11 @@ class GoalVrmController extends Controller
             'logged_by' => optional($log->user)->name,
             'logged_by_role' => optional($log->user)->goalCrmRoleLabel(),
             'can_edit' => $isOwner,
-            'can_delete' => $isOwner,
+            'can_delete' => $isOwner && ! $log->goal_loan_lead_id,
             'update_url' => $isOwner ? route('goal.vrm.calls.update', $log) : null,
-            'delete_url' => $isOwner ? route('goal.vrm.calls.destroy', $log) : null,
+            'delete_url' => ($isOwner && ! $log->goal_loan_lead_id)
+                ? route('goal.vrm.calls.destroy', $log)
+                : null,
             'callback_at_input' => optional($log->callback_at)->format('d-m-Y H:i'),
             'goal_org_unit_id' => $branchId,
             'lead_type_raw' => $lead?->lead_type,
@@ -258,6 +260,17 @@ class GoalVrmController extends Controller
     {
         $this->requireGoalPermission('vrm_calling_guard');
         abort_unless((int) $log->user_id === (int) auth()->id(), 403);
+
+        if ($log->goal_loan_lead_id) {
+            $message = 'Call logs linked to a lead cannot be deleted.';
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => $message], 422);
+            }
+
+            return redirect()
+                ->route('goal.vrm.index')
+                ->with('error', $message);
+        }
 
         $log->delete();
 
@@ -591,7 +604,7 @@ class GoalVrmController extends Controller
                 'ref_no' => 'LD-' . now()->format('ymd') . '-' . Str::upper(Str::random(4)),
                 'customer_name' => $data['customer_name'],
                 'mobile' => $data['mobile'] ?? null,
-                'source' => 'vrm',
+                'source' => \App\Models\LeadSource::resolveCanonicalName('VRM') ?: 'VRM',
                 'product' => $data['product'] ?? null,
                 'loan_amount' => $data['loan_amount'] ?? null,
                 'lead_type' => $leadType,

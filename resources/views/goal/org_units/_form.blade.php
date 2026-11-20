@@ -38,7 +38,8 @@
             <input type="checkbox" class="form-check-input" name="is_active" value="1" id="is_active"
                 @checked((string) old('is_active', ($unit->is_active ?? true) ? '1' : '0') === '1')>
             <label class="form-check-label fw-semibold" for="is_active">Active</label>
-            <div class="form-text">Inactive units stay in history but drop out of pickers.</div>
+            <div class="form-text">Inactive units stay in history but drop out of pickers. Inactivate all child units before inactivating a parent.</div>
+            @error('is_active')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
         </div>
     </div>
 </div>

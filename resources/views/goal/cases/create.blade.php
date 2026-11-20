@@ -3,62 +3,70 @@
 @push('styles')
 <style>
 .lc-create{
-    --lc-primary:#245BEB;--lc-purple:#7542F5;--lc-green:#16B978;--lc-border:#E3EAF5;
-    --lc-text:#0f172a;--lc-muted:#64748b;--lc-bg:#EAF2FF;
-    color:var(--lc-text);padding-bottom:88px;
+    --lc-border:#e8edf5;--lc-text:#0f172a;--lc-muted:#64748b;
+    color:var(--lc-text);padding-bottom:96px;
 }
-.lc-create .wiz-top{display:flex;align-items:flex-start;gap:14px;margin-bottom:1.25rem}
+.lc-create .wiz-top{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+    margin-bottom:1.1rem;flex-wrap:wrap;
+}
+.lc-create .wiz-top-main{display:flex;align-items:flex-start;gap:14px;min-width:0}
 .lc-create .wiz-back{
-    width:42px;height:42px;border-radius:999px;border:1px solid var(--lc-border);background:#fff;
-    color:#1e3a8a;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;flex-shrink:0;
-    box-shadow:0 4px 12px rgba(148,163,184,.12);
+    width:42px;height:42px;border-radius:12px;border:1px solid var(--lc-border);background:#fff;
+    color:var(--theme-primary);display:inline-flex;align-items:center;justify-content:center;text-decoration:none;flex-shrink:0;
+    box-shadow:0 4px 12px rgba(148,163,184,.10);
 }
-.lc-create .wiz-back:hover{background:#f8fafc;color:var(--lc-primary)}
-.lc-create .wiz-title{margin:0;font-size:1.55rem;font-weight:800;color:var(--lc-text);letter-spacing:-.02em}
-.lc-create .wiz-sub{margin:4px 0 0;font-size:.9rem;color:var(--lc-muted)}
-.lc-create .wiz-crumb{margin-top:8px;font-size:.8rem;color:#94a3b8}
-.lc-create .wiz-crumb a{color:var(--theme-primary-deep);text-decoration:none;font-weight:600}
-.lc-create .wiz-crumb a:hover{text-decoration:underline}
-.lc-create .wiz-crumb .current{color:#94a3b8}
+.lc-create .wiz-back:hover{background:var(--theme-50);color:var(--theme-primary-hover)}
+.lc-create .wiz-crumbs{
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+    margin:0 0 6px;padding:0;list-style:none;font-size:.78rem;color:#94a3b8;
+}
+.lc-create .wiz-crumbs a{color:var(--theme-primary);text-decoration:none;font-weight:600}
+.lc-create .wiz-crumbs a:hover{text-decoration:underline}
+.lc-create .wiz-crumbs .sep{opacity:.5}
+.lc-create .wiz-title{margin:0;font-size:1.45rem;font-weight:800;color:var(--lc-text);letter-spacing:-.02em;line-height:1.2}
+.lc-create .wiz-sub{margin:4px 0 0;font-size:.88rem;color:var(--lc-muted);line-height:1.45;max-width:52rem}
+.lc-create .wiz-badge{
+    height:34px;padding:0 12px;border-radius:999px;border:1px solid #dbe3f0;background:#fff;
+    display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700;color:#475569;
+}
 
 .lc-create .sec-card{
     background:#fff;border:1px solid var(--lc-border);border-radius:16px;
-    box-shadow:0 8px 24px rgba(148,163,184,.10);margin-bottom:1rem;
-    overflow:hidden; /* clip head/body/table to rounded corners */
-    height:100%;
-    background-clip:padding-box;
+    box-shadow:0 6px 18px rgba(148,163,184,.08);margin-bottom:1rem;overflow:hidden;height:100%;
 }
 .lc-create .sec-head{
-    display:flex;align-items:center;gap:12px;padding:14px 18px;
-    border-bottom:1px solid #eef2f7;background:#fff;
-    border-radius:16px 16px 0 0;
+    display:flex;align-items:center;gap:12px;padding:12px 16px;
+    border-bottom:1px solid #eef2f7;background:linear-gradient(180deg,#fff 0%,#fbfcfe 100%);
 }
 .lc-create .sec-ico{
-    width:38px;height:38px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;
-    background:#ede9fe;color:var(--lc-purple);font-size:1rem;flex-shrink:0;
+    width:38px;height:38px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;
+    background:var(--theme-100);color:var(--theme-primary);font-size:1rem;flex-shrink:0;
 }
-.lc-create .sec-ico.ico-blue{background:var(--theme-100);color:var(--lc-primary)}
-.lc-create .sec-ico.ico-indigo{background:#e0e7ff;color:#4f46e5}
-.lc-create .sec-ico.ico-teal{background:#ccfbf1;color:#0d9488}
-.lc-create .sec-ico.ico-amber{background:#fef3c7;color:#d97706}
-.lc-create .sec-head h6{margin:0;font-size:.98rem;font-weight:800}
+.lc-create .sec-ico.ico-loan{background:#ecfdf5;color:#059669}
+.lc-create .sec-ico.ico-job{background:#eff6ff;color:#2563eb}
+.lc-create .sec-ico.ico-own{background:#f0fdfa;color:#0d9488}
+.lc-create .sec-ico.ico-doc{background:#f5f3ff;color:#7c3aed}
+.lc-create .sec-ico.ico-amber{background:#fffbeb;color:#d97706}
+.lc-create .sec-head h6{margin:0;font-size:.95rem;font-weight:800;color:#0f172a}
+.lc-create .sec-head .sec-note{margin-left:auto;font-size:.75rem;color:#94a3b8;font-weight:600}
 .lc-create .sec-body{padding:16px 18px 18px}
 .lc-create .sec-pair{margin-bottom:1rem}
 .lc-create .sec-pair > [class*="col-"]{display:flex;flex-direction:column}
 .lc-create .sec-pair .sec-card{margin-bottom:0}
 
 .lc-create .form-label{display:block;font-size:.76rem;font-weight:700;color:#475569;margin-bottom:6px}
-.lc-create .form-label .req{color:#ef4444;margin-left:2px}
+.lc-create .form-label .req{color:#dc2626;margin-left:2px;font-weight:800}
 .lc-create .form-control,.lc-create .form-select{
-    min-height:44px;border-radius:10px;border:1px solid var(--lc-border);background:#f8fafc;
+    min-height:44px;border-radius:10px;border:1px solid #d1d5db;background:#fff;
     font-size:.9rem;color:var(--lc-text);padding:.55rem .9rem;
 }
 .lc-create .form-control::placeholder{color:#94a3b8}
 .lc-create .form-control:focus,.lc-create .form-select:focus{
-    border-color:var(--theme-300);background:#fff;box-shadow:0 0 0 3px rgba(36,91,235,.12);
+    border-color:var(--theme-300);background:#fff;box-shadow:0 0 0 3px var(--theme-primary-ring);
 }
 .lc-create .form-control:disabled,.lc-create .form-control.is-readonly{
-    background:#eef4ff;color:#64748b;border-color:#dbe4f0;cursor:default;
+    background:#f1f5f9;color:#64748b;border-color:#e2e8f0;cursor:default;
 }
 .lc-create .ld-input-ico{position:relative;width:100%}
 .lc-create .ld-input-ico > i,.lc-create .ld-input-ico > .rupee{
@@ -71,25 +79,53 @@
 .lc-create .ld-input-ico .flatpickr-alt{padding-left:40px!important;width:100%}
 .lc-create .select2-container{width:100%!important}
 .lc-create .select2-container--default .select2-selection--single{
-    min-height:44px;height:44px;border-radius:10px;border:1px solid var(--lc-border);background:#f8fafc;
+    min-height:44px;height:44px;border-radius:10px;border:1px solid #d1d5db;background:#fff;
 }
 .lc-create .select2-container--default .select2-selection--single .select2-selection__rendered{
     padding-left:.9rem;padding-right:2rem;line-height:42px;font-size:.9rem;font-weight:500;color:var(--lc-text);
 }
 .lc-create .select2-container--default .select2-selection--single .select2-selection__arrow{height:42px}
 .lc-create .ld-input-ico .select2-container--default .select2-selection--single .select2-selection__rendered{padding-left:40px!important}
-
-.lc-create .consent-row{display:flex;align-items:center;gap:12px;min-height:44px}
-.lc-create .consent-row .consent-meta{font-size:.78rem;color:var(--lc-muted)}
-.lc-create .form-switch{padding-left:2.7em;margin:0}
-.lc-create .form-switch .form-check-input{
-    width:2.7em;height:1.4em;margin-left:-2.7em;cursor:pointer;background-color:#cbd5e1;border-color:#cbd5e1;
+.lc-create .select2-container--default.select2-container--focus .select2-selection--single,
+.lc-create .select2-container--default.select2-container--open .select2-selection--single{
+    border-color:var(--theme-300);box-shadow:0 0 0 3px var(--theme-primary-ring);
 }
-.lc-create .form-switch .form-check-input:checked{background-color:var(--lc-primary);border-color:var(--lc-primary)}
 
-.lc-create .bm-reco-grid{
-    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;
+.lc-create .consent-box{
+    min-height:48px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;
+    padding:10px 12px;display:flex;align-items:center;gap:12px;cursor:pointer;
+    transition:border-color .15s ease,background .15s ease;
 }
+.lc-create .consent-box:hover{border-color:#cbd5e1}
+.lc-create .consent-box.is-on{border-color:#86efac;background:#f0fdf4}
+.lc-create .consent-box .consent-copy{min-width:0;flex:1}
+.lc-create .consent-box .consent-meta{font-size:.75rem;color:var(--lc-muted);line-height:1.35}
+.lc-create .consent-box #consentLabelText{font-size:.86rem;font-weight:700}
+.lc-create .consent-box:not(.is-on) #consentLabelText{color:#b91c1c}
+.lc-create .consent-box.is-on #consentLabelText{color:#15803d}
+.lc-create .consent-toggle{
+    position:relative;flex-shrink:0;width:46px;height:26px;margin:0;display:inline-block;
+}
+.lc-create .consent-toggle input{
+    position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:2;
+}
+.lc-create .consent-toggle .track{
+    position:absolute;inset:0;border-radius:999px;background:#cbd5e1;
+    box-shadow:inset 0 0 0 1px rgba(15,23,42,.06);
+    transition:background .18s ease;
+}
+.lc-create .consent-toggle .knob{
+    position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.25);
+    transition:transform .18s ease;pointer-events:none;
+}
+.lc-create .consent-toggle input:checked + .track{background:var(--theme-primary)}
+.lc-create .consent-toggle input:checked + .track .knob{transform:translateX(20px)}
+.lc-create .consent-toggle input:focus-visible + .track{
+    outline:2px solid var(--theme-primary);outline-offset:2px;
+}
+
+.lc-create .bm-reco-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0}
 .lc-create .bm-reco-cell{padding:4px 16px;border-right:1px solid #eef2f7}
 .lc-create .bm-reco-cell:first-child{padding-left:0}
 .lc-create .bm-reco-cell:last-child{border-right:0;padding-right:0}
@@ -104,45 +140,47 @@
 }
 .lc-create .doc-table td{padding:.7rem .75rem;border-bottom:1px solid #eef2f7;vertical-align:middle;font-size:.86rem}
 .lc-create .doc-table tr:last-child td{border-bottom:0}
-.lc-create .sec-body .table-responsive{
-    border-radius:12px;overflow:hidden;border:1px solid #eef2f7;
-}
+.lc-create .sec-body .table-responsive{border-radius:12px;overflow:hidden;border:1px solid #eef2f7}
 .lc-create .doc-badge{
     display:inline-block;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:999px;
-    background:var(--theme-50);color:var(--lc-primary);
+    background:var(--theme-50);color:var(--theme-primary);
 }
 .lc-create .doc-badge.req{background:#fef2f2;color:#dc2626}
-.lc-create .doc-file{font-size:.8rem;color:var(--lc-muted)}
+.lc-create .doc-empty{text-align:center;padding:1.5rem 1rem;color:#94a3b8;font-size:.88rem}
+.lc-create .doc-empty i{display:block;font-size:1.4rem;margin-bottom:6px;opacity:.7}
 
 .lc-create .wiz-footer{
     position:sticky;bottom:58px;z-index:30;width:100%;
     margin:0 0 8px;border:1px solid var(--lc-border);border-radius:16px;
-    background:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:flex-end;gap:8px;
-    box-shadow:0 8px 22px rgba(148,163,184,.14);
-    overflow:hidden;
+    background:rgba(255,255,255,.96);backdrop-filter:blur(8px);padding:12px 16px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    box-shadow:0 10px 28px rgba(15,23,42,.10);
 }
-.lc-create .sec-pair > [class*="col-"] > .sec-card{
-    border-radius:16px;
-}
+.lc-create .wiz-footer-hint{font-size:.78rem;color:#64748b;max-width:28rem;line-height:1.4}
+.lc-create .wiz-footer-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .lc-create .btn-cancel{
     height:42px;padding:0 16px;border-radius:10px;font-weight:700;font-size:.86rem;
-    border:1px solid var(--lc-border);background:#fff;color:#334155;text-decoration:none;
+    border:1px solid #d1d5db;background:#fff;color:#334155;text-decoration:none;
     display:inline-flex;align-items:center;
 }
+.lc-create .btn-cancel:hover{background:#f8fafc;color:#0f172a}
 .lc-create .btn-draft{
     height:42px;padding:0 16px;border-radius:10px;font-weight:700;font-size:.86rem;
-    border:1.5px solid var(--theme-300);background:#fff;color:var(--lc-primary);
+    border:1.5px solid var(--theme-300);background:#fff;color:var(--theme-primary);
     display:inline-flex;align-items:center;gap:6px;
 }
+.lc-create .btn-draft:hover{background:var(--theme-50)}
 .lc-create .btn-next{
     height:42px;padding:0 18px;border-radius:10px;font-weight:700;font-size:.86rem;border:0;color:#fff;
-    background:linear-gradient(90deg,var(--lc-primary),var(--lc-purple));
-    display:inline-flex;align-items:center;gap:6px;box-shadow:0 8px 16px rgba(36,91,235,.22);
+    background:var(--theme-primary);
+    display:inline-flex;align-items:center;gap:6px;box-shadow:0 8px 16px var(--theme-primary-ring);
 }
+.lc-create .btn-next:hover{background:var(--theme-primary-hover);color:#fff}
 .lc-create .btn-next:disabled,.lc-create .btn-draft:disabled{opacity:.65;pointer-events:none}
-.lc-create .lead-hint{font-size:.78rem;color:var(--lc-muted);margin-top:6px}
+.lc-create .lead-hint{font-size:.78rem;color:var(--lc-muted);margin-top:6px;line-height:1.35}
 .lc-create .lead-hint.err{color:#b91c1c}
 .lc-create .lead-hint.ok{color:#15803d}
+.lc-create .alert-top{border-radius:12px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;padding:10px 14px;margin-bottom:1rem;font-size:.86rem}
 
 body > .select2-container{z-index:2000!important}
 body > .select2-container .select2-dropdown{
@@ -154,13 +192,13 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
     .lc-create .bm-reco-grid{grid-template-columns:1fr 1fr}
     .lc-create .bm-reco-cell{border-right:0;border-bottom:1px solid #eef2f7;padding:10px 0}
     .lc-create .sec-pair .sec-card{margin-bottom:1rem}
+    .lc-create .wiz-footer{flex-direction:column;align-items:stretch}
+    .lc-create .wiz-footer-actions{justify-content:stretch}
+    .lc-create .wiz-footer-actions > *{flex:1;justify-content:center}
 }
 @media (max-width:767.98px){
     .lc-create .bm-reco-grid{grid-template-columns:1fr}
-    .lc-create .wiz-footer{justify-content:stretch;flex-wrap:wrap}
-    .lc-create .wiz-footer .btn-cancel,
-    .lc-create .wiz-footer .btn-draft,
-    .lc-create .wiz-footer .btn-next{flex:1;justify-content:center}
+    .lc-create .wiz-footer{bottom:12px}
 }
 </style>
 @endpush
@@ -185,17 +223,26 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
      data-prefill='@json($prefill)'>
 
     <div class="wiz-top">
-        <a href="{{ route('goal.cases.index') }}" class="wiz-back" title="Back"><i class="bi bi-arrow-left"></i></a>
-        <div>
-            <h1 class="wiz-title">Create Loan Case</h1>
-            <div class="wiz-sub">Select a lead if you have one, or leave it blank and create a new customer case. Bank processing happens in Case Details.</div>
-            <div class="wiz-crumb">
-                <a href="{{ url('/') }}">Home</a> &gt;
-                <a href="{{ route('goal.cases.index') }}">Loan Cases</a> &gt;
-                <span class="current">Create Case</span>
+        <div class="wiz-top-main">
+            <a href="{{ route('goal.cases.index') }}" class="wiz-back" title="Back"><i class="bi bi-arrow-left"></i></a>
+            <div>
+                <ul class="wiz-crumbs">
+                    <li><a href="{{ url('/') }}">Home</a></li>
+                    <li class="sep">â€º</li>
+                    <li><a href="{{ route('goal.cases.index') }}">Loan Cases</a></li>
+                    <li class="sep">â€º</li>
+                    <li>Create Case</li>
+                </ul>
+                <h1 class="wiz-title">Create Loan Case</h1>
+                <div class="wiz-sub">Pick a Qualified lead, or leave Lead Reference blank to open a case for a new customer. Bank processing continues in Case Details.</div>
             </div>
         </div>
+        <span class="wiz-badge"><i class="bi bi-shield-check"></i> Consent required</span>
     </div>
+
+    @if($errors->any())
+        <div class="alert-top">{{ $errors->first() }}</div>
+    @endif
 
     <form method="POST" action="{{ $storeUrl }}" id="lcCreateForm" enctype="multipart/form-data" novalidate>
         @csrf
@@ -205,15 +252,16 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         {{-- Customer Details --}}
         <div class="sec-card">
             <div class="sec-head">
-                <span class="sec-ico"><i class="bi bi-file-earmark-text"></i></span>
+                <span class="sec-ico"><i class="bi bi-person-vcard"></i></span>
                 <h6>Customer Details</h6>
+                <span class="sec-note">Lead optional</span>
             </div>
             <div class="sec-body">
                 <div class="row g-3">
                     <div class="col-12 col-md-6 col-xl-3" id="leadSelectWrap">
                         <label class="form-label" for="lead_select">Lead Reference <span class="text-muted fw-semibold">(optional)</span></label>
                         <select id="lead_select" class="form-select" data-select2-skip="1"></select>
-                        <div class="lead-hint" id="lookupMsg">Optional — pick a Qualified lead without a case, or leave blank to create a new customer.</div>
+                        <div class="lead-hint" id="lookupMsg">Optional â€” pick a Qualified lead without a case, or leave blank to create a new customer.</div>
                         @error('goal_loan_lead_id')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                         @error('case_origin')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
@@ -274,7 +322,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                                        class="form-control js-timepicker" value="{{ $pctFrom }}"
                                        placeholder="From" autocomplete="off" data-minute-increment="15">
                             </div>
-                            <span class="text-muted small fw-semibold">—</span>
+                            <span class="text-muted small fw-semibold">â€”</span>
                             <div class="ld-input-ico flex-grow-1">
                                 <i class="bi bi-clock"></i>
                                 <input type="text" name="preferred_contact_to" id="preferred_contact_to"
@@ -285,15 +333,16 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                     </div>
                     <div class="col-12 col-md-6 col-xl-3">
                         <label class="form-label" for="consent_recorded">Customer Consent <span class="req">*</span></label>
-                        <div class="consent-row">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch"
-                                       name="consent_recorded" id="consent_recorded" value="1" required
-                                       @checked(old('consent_recorded', $prefill['consent_recorded'] ?? false))>
-                            </div>
-                            <div>
-                                <div class="fw-semibold" id="consentLabelText">{{ old('consent_recorded', $prefill['consent_recorded'] ?? false) ? 'Consent recorded' : 'Not recorded' }}</div>
-                                <div class="consent-meta">Turn this ON before Create Case. Timestamp and user are stored on save.</div>
+                        @php $consentOn = (bool) old('consent_recorded', $prefill['consent_recorded'] ?? false); @endphp
+                        <div class="consent-box {{ $consentOn ? 'is-on' : '' }}" id="consentBox">
+                            <label class="consent-toggle" for="consent_recorded" aria-label="Customer consent">
+                                <input type="checkbox" role="switch" name="consent_recorded" id="consent_recorded"
+                                       value="1" required @checked($consentOn)>
+                                <span class="track"><span class="knob"></span></span>
+                            </label>
+                            <div class="consent-copy">
+                                <div id="consentLabelText">{{ $consentOn ? 'Consent recorded' : 'Not recorded' }}</div>
+                                <div class="consent-meta">Required before Create Case. Timestamp and user are stored on save.</div>
                             </div>
                         </div>
                         <div class="text-danger small mt-1 d-none" id="consentClientError">Customer consent must be recorded.</div>
@@ -306,14 +355,14 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         {{-- Loan Requirement --}}
         <div class="sec-card">
             <div class="sec-head">
-                <span class="sec-ico ico-blue"><i class="bi bi-layers"></i></span>
+                <span class="sec-ico ico-loan"><i class="bi bi-layers"></i></span>
                 <h6>Loan Requirement</h6>
             </div>
             <div class="sec-body">
                 <div class="row g-3">
                     <div class="col-12 col-md-6 col-xl-3">
                         <label class="form-label" for="product">Product <span class="req">*</span></label>
-                        <select name="product" id="product" class="form-select" required>
+                        <select name="product" id="product" data-draft-optional="1" class="form-select" required>
                             <option value="">Select product</option>
                             @foreach($products as $p)
                                 <option value="{{ $p->product_name }}" @selected(old('product', $prefill['product'] ?? '') === $p->product_name)>{{ $p->product_name }}</option>
@@ -322,11 +371,11 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                         @error('product')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-12 col-md-6 col-xl-3">
-                        <label class="form-label" for="loan_amount">Requested Amount (?) <span class="req">*</span></label>
+                        <label class="form-label" for="loan_amount">Requested Amount <span class="req">*</span></label>
                         <div class="ld-input-ico">
-                            <span class="rupee">?</span>
-                            <input type="text" inputmode="decimal" data-decimals="2" name="loan_amount" id="loan_amount"
-                                   class="form-control js-decimal" value="{{ old('loan_amount', $prefill['loan_amount'] ?? '') }}" placeholder="0.00">
+                            <span class="rupee">â‚¹</span>
+                            <input type="text" inputmode="decimal" data-decimals="2" name="loan_amount" id="loan_amount" data-draft-optional="1"
+                                   class="form-control js-decimal" value="{{ old('loan_amount', $prefill['loan_amount'] ?? '') }}" placeholder="0.00" required>
                         </div>
                         @error('loan_amount')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
@@ -354,14 +403,14 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
             <div class="col-12 col-lg-7">
                 <div class="sec-card">
                     <div class="sec-head">
-                        <span class="sec-ico ico-indigo"><i class="bi bi-briefcase"></i></span>
+                        <span class="sec-ico ico-job"><i class="bi bi-briefcase"></i></span>
                         <h6>Employment &amp; Financial Details</h6>
                     </div>
                     <div class="sec-body">
                         <div class="row g-3">
                             <div class="col-12 col-md-4">
                                 <label class="form-label" for="employment_type">Employment Type <span class="req">*</span></label>
-                                <select name="employment_type" id="employment_type" class="form-select" data-search="false">
+                                <select name="employment_type" id="employment_type" data-draft-optional="1" class="form-select" data-search="false" required>
                                     <option value="">Select</option>
                                     @foreach($employmentTypes as $t)
                                         <option value="{{ $t }}" @selected(old('employment_type') === $t)>{{ $t }}</option>
@@ -369,18 +418,18 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                                 </select>
                             </div>
                             <div class="col-12 col-md-4">
-                                <label class="form-label" for="monthly_income">Monthly Income (?) <span class="req">*</span></label>
+                                <label class="form-label" for="monthly_income">Monthly Income <span class="req">*</span></label>
                                 <div class="ld-input-ico">
-                                    <span class="rupee">?</span>
-                                    <input type="text" inputmode="decimal" data-decimals="2" name="monthly_income" id="monthly_income"
-                                           class="form-control js-decimal" value="{{ old('monthly_income') }}" placeholder="0.00">
+                                    <span class="rupee">â‚¹</span>
+                                    <input type="text" inputmode="decimal" data-decimals="2" name="monthly_income" id="monthly_income" data-draft-optional="1"
+                                           class="form-control js-decimal" value="{{ old('monthly_income') }}" placeholder="0.00" required>
                                 </div>
                                 @error('monthly_income')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-12 col-md-4">
-                                <label class="form-label" for="existing_obligations">Existing Obligations (?)</label>
+                                <label class="form-label" for="existing_obligations">Existing Obligations</label>
                                 <div class="ld-input-ico">
-                                    <span class="rupee">?</span>
+                                    <span class="rupee">â‚¹</span>
                                     <input type="text" inputmode="decimal" data-decimals="2" name="existing_obligations" id="existing_obligations"
                                            class="form-control js-decimal" value="{{ old('existing_obligations') }}" placeholder="0.00">
                                 </div>
@@ -398,9 +447,9 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                                 @error('work_experience_years')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-12 col-md-4">
-                                <label class="form-label" for="net_income">Net Income (?)</label>
+                                <label class="form-label" for="net_income">Net Income</label>
                                 <div class="ld-input-ico">
-                                    <span class="rupee">?</span>
+                                    <span class="rupee">â‚¹</span>
                                     <input type="text" inputmode="decimal" data-decimals="2" name="net_income" id="net_income"
                                            class="form-control js-decimal is-readonly" value="{{ old('net_income') }}"
                                            placeholder="Auto-calculated" readonly tabindex="-1">
@@ -414,7 +463,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
             <div class="col-12 col-lg-5">
                 <div class="sec-card">
                     <div class="sec-head">
-                        <span class="sec-ico ico-teal"><i class="bi bi-people"></i></span>
+                        <span class="sec-ico ico-own"><i class="bi bi-people"></i></span>
                         <h6>Case Ownership</h6>
                     </div>
                     <div class="sec-body">
@@ -423,7 +472,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                                 <label class="form-label" for="goal_org_unit_id">Branch <span class="req">*</span></label>
                                 <div class="ld-input-ico">
                                     <i class="bi bi-building"></i>
-                                    <select name="goal_org_unit_id" id="goal_org_unit_id" class="form-select" required>
+                                    <select name="goal_org_unit_id" id="goal_org_unit_id" data-draft-optional="1" class="form-select" required>
                                         <option value="">Select branch</option>
                                         @foreach($branches as $b)
                                             <option value="{{ $b->id }}" @selected((string) old('goal_org_unit_id', $prefill['goal_org_unit_id'] ?? auth()->user()->goal_org_unit_id) === (string) $b->id)>{{ $b->name }}</option>
@@ -436,7 +485,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                                 <label class="form-label" for="branch_manager_id">Branch Manager <span class="req">*</span></label>
                                 <div class="ld-input-ico">
                                     <i class="bi bi-person"></i>
-                                    <select name="branch_manager_id" id="branch_manager_id" class="form-select" required>
+                                    <select name="branch_manager_id" id="branch_manager_id" data-draft-optional="1" class="form-select" required>
                                         <option value="">Select BM</option>
                                         @foreach($branchManagers as $u)
                                             <option value="{{ $u->id }}"
@@ -452,7 +501,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                                 <label class="form-label" for="owner_id">Assigned To (SM/JSM) <span class="req">*</span></label>
                                 <div class="ld-input-ico">
                                     <i class="bi bi-person"></i>
-                                    <select name="owner_id" id="owner_id" class="form-select" required>
+                                    <select name="owner_id" id="owner_id" data-draft-optional="1" class="form-select" required>
                                         <option value="">Select owner</option>
                                         @foreach($owners as $u)
                                             <option value="{{ $u->id }}"
@@ -485,19 +534,19 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                 <div class="bm-reco-grid">
                     <div class="bm-reco-cell">
                         <div class="k">Recommended Amount</div>
-                        <div class="v" id="bmRecoAmount">—</div>
+                        <div class="v" id="bmRecoAmount">â€”</div>
                     </div>
                     <div class="bm-reco-cell">
                         <div class="k">Recommended By</div>
-                        <div class="v" id="bmRecoBy">—</div>
+                        <div class="v" id="bmRecoBy">â€”</div>
                     </div>
                     <div class="bm-reco-cell">
                         <div class="k">Recommendation Date</div>
-                        <div class="v" id="bmRecoDate">—</div>
+                        <div class="v" id="bmRecoDate">â€”</div>
                     </div>
                     <div class="bm-reco-cell">
                         <div class="k">Remarks / Status</div>
-                        <div class="v muted" id="bmRecoRemarks">—</div>
+                        <div class="v muted" id="bmRecoRemarks">â€”</div>
                     </div>
                 </div>
             </div>
@@ -506,11 +555,12 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         {{-- Documents --}}
         <div class="sec-card">
             <div class="sec-head">
-                <span class="sec-ico"><i class="bi bi-file-earmark-check"></i></span>
+                <span class="sec-ico ico-doc"><i class="bi bi-file-earmark-check"></i></span>
                 <h6>Documents</h6>
+                <span class="sec-note">From product config</span>
             </div>
             <div class="sec-body">
-                <p class="lead-hint mb-3">Document types load from product configuration. Uploads are stored privately. Verification is completed in Case Details — uploads stay <strong>Pending</strong> until reviewed.</p>
+                <p class="lead-hint mb-3">Document types load from product configuration. Uploads are stored privately. Verification is completed in Case Details â€” uploads stay <strong>Pending</strong> until reviewed.</p>
                 @error('documents')<div class="alert alert-danger py-2 small">{{ $message }}</div>@enderror
                 <div class="table-responsive">
                     <table class="doc-table">
@@ -523,7 +573,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
                             </tr>
                         </thead>
                         <tbody id="docChecklistBody">
-                            <tr><td colspan="4" class="text-muted">Select a product to load required documents.</td></tr>
+                            <tr><td colspan="4"><div class="doc-empty"><i class="bi bi-folder2-open"></i>Select a product to load required documents.</div></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -531,9 +581,12 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         </div>
 
         <div class="wiz-footer">
-            <a href="{{ route('goal.cases.index') }}" class="btn-cancel">Cancel</a>
-            <button type="submit" class="btn-draft" data-action="draft" id="btnDraft"><i class="bi bi-floppy"></i> Save as Draft</button>
-            <button type="submit" class="btn-next" data-action="next" id="btnNext">Create Case <i class="bi bi-arrow-right"></i></button>
+            <div class="wiz-footer-hint">Draft saves progress. Create Case validates required fields and opens the case workspace.</div>
+            <div class="wiz-footer-actions">
+                <a href="{{ route('goal.cases.index') }}" class="btn-cancel">Cancel</a>
+                <button type="submit" class="btn-draft" data-action="draft" id="btnDraft"><i class="bi bi-floppy"></i> Save as Draft</button>
+                <button type="submit" class="btn-next" data-action="next" id="btnNext"><i class="bi bi-check2-circle"></i> Create Case</button>
+            </div>
         </div>
     </form>
 </div>
@@ -557,7 +610,16 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
 
     form.querySelectorAll('[data-action]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            if (saveActionEl) saveActionEl.value = btn.getAttribute('data-action') || 'draft';
+            var action = btn.getAttribute('data-action') || 'draft';
+            if (saveActionEl) saveActionEl.value = action;
+            form.querySelectorAll('[data-draft-optional]').forEach(function (el) {
+                if (action === 'draft') {
+                    el.dataset.wasRequired = el.required ? '1' : '0';
+                    el.required = false;
+                } else {
+                    el.required = true;
+                }
+            });
         });
     });
 
@@ -583,7 +645,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         form.querySelectorAll('button[type="submit"]').forEach(function (b) { b.disabled = true; });
     });
 
-    setMsg('Optional — pick a Qualified lead without a case, or leave blank to create a new customer.', null);
+    setMsg('Optional â€” pick a Qualified lead without a case, or leave blank to create a new customer.', null);
 
     // Cascade: Branch ? Branch Manager ? Assigned To (reports to BM).
     // Keep Select2 design: destroy ? rebuild options ? re-init.
@@ -785,12 +847,22 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         var consent = document.getElementById('consent_recorded');
         var label = document.getElementById('consentLabelText');
         var consentErr = document.getElementById('consentClientError');
+        var box = document.getElementById('consentBox');
         if (!consent || !label) return;
         label.textContent = consent.checked ? 'Consent recorded' : 'Not recorded';
+        if (box) box.classList.toggle('is-on', !!consent.checked);
         if (consent.checked && consentErr) consentErr.classList.add('d-none');
     }
     var consentEl = document.getElementById('consent_recorded');
     if (consentEl) consentEl.addEventListener('change', syncConsentLabel);
+    var consentBox = document.getElementById('consentBox');
+    if (consentBox && consentEl) {
+        consentBox.addEventListener('click', function (e) {
+            if (e.target === consentEl || (e.target.closest && e.target.closest('.consent-toggle'))) return;
+            consentEl.checked = !consentEl.checked;
+            consentEl.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
 
     function syncPreferredContactTime() {
         var fromEl = document.getElementById('preferred_contact_from');
@@ -831,7 +903,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         if (!body) return;
         docs = docs || [];
         if (!docs.length) {
-            body.innerHTML = '<tr><td colspan="4" class="text-muted">No document requirements configured for this product.</td></tr>';
+            body.innerHTML = '<tr><td colspan="4"><div class="doc-empty"><i class="bi bi-inbox"></i>No document requirements configured for this product.</div></td></tr>';
             return;
         }
         body.innerHTML = docs.map(function (doc, i) {
@@ -858,10 +930,10 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
     }
 
     function formatInr(v) {
-        if (v == null || v === '') return '—';
+        if (v == null || v === '') return 'â€”';
         var n = Number(v);
         if (isNaN(n)) return String(v);
-        return '? ' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+        return 'â‚¹ ' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
     }
 
     function showBmReco(reco) {
@@ -873,9 +945,9 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         }
         card.classList.remove('d-none');
         document.getElementById('bmRecoAmount').textContent = formatInr(reco.amount);
-        document.getElementById('bmRecoBy').textContent = reco.by || '—';
-        document.getElementById('bmRecoDate').textContent = reco.date || '—';
-        document.getElementById('bmRecoRemarks').textContent = reco.remarks || reco.status || '—';
+        document.getElementById('bmRecoBy').textContent = reco.by || 'â€”';
+        document.getElementById('bmRecoDate').textContent = reco.date || 'â€”';
+        document.getElementById('bmRecoRemarks').textContent = reco.remarks || reco.status || 'â€”';
     }
 
     function syncNetIncome() {
@@ -912,7 +984,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         if (lead.can_create === false) {
             setMsg(lead.eligibility_message || ('Lead loaded, but status ' + (lead.status || '') + ' cannot create a case yet.'), false);
         } else {
-            setMsg('Lead ' + (lead.ref_no || '') + ' loaded — ' + (lead.status || '') + '.', true);
+            setMsg('Lead ' + (lead.ref_no || '') + ' loaded â€” ' + (lead.status || '') + '.', true);
         }
         loadProductDocs(lead.product);
     }
@@ -944,7 +1016,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
 
     function loadLeadById(id) {
         if (!id) return;
-        setMsg('Loading lead—', true);
+        setMsg('Loading leadâ€¦', true);
         fetch(lookupUrl + '?lead_id=' + encodeURIComponent(id), {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         }).then(function (r) {
@@ -991,7 +1063,7 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
         });
 
         if (prefill && prefill.id) {
-            var option = new Option(prefill.ref_no + ' — ' + prefill.customer_name + ' — ' + (prefill.mobile || '—'), prefill.id, true, true);
+            var option = new Option(prefill.ref_no + ' â€” ' + prefill.customer_name + ' â€” ' + (prefill.mobile || 'â€”'), prefill.id, true, true);
             $lead.append(option).trigger('change');
             applyLead(prefill);
         } else if (leadIdEl.value) {

@@ -1,14 +1,9 @@
 @extends('layouts.app')
 
 @php
-    $sourceLabel = match (strtolower((string) ($lead->source ?? ''))) {
-        'vrm' => 'VRM Calling',
-        'channel' => 'Channel Partner',
-        'walkin' => 'Walk-in',
-        'referral' => 'Referral',
-        'manual' => 'Manual',
-        default => $lead->source ? ucfirst($lead->source) : '—',
-    };
+    $sourceLabel = $lead->source
+        ? (\App\Models\LeadSource::resolveCanonicalName($lead->source) ?: $lead->source)
+        : '—';
     $statusLower = strtolower((string) $lead->status);
     $statusTone = str_contains($statusLower, 'pending') ? 'amber'
         : (str_contains($statusLower, 'future') ? 'blue'
@@ -754,30 +749,24 @@
             </div>
         </div>
         <div class="ld-actions">
+            @if(!empty($canEditLead))
             <button type="button" class="ld-btn" data-bs-toggle="modal" data-bs-target="#editLeadModal">
                 <i class="bi bi-pencil-square"></i> Edit
             </button>
+            @endif
             @if($canAllocate)
                 <button type="button" class="ld-btn" data-bs-toggle="modal" data-bs-target="#reassignLeadModal"
                     @disabled(!$lead->assigned_to && $lead->status !== 'Pending BM Allocation')>
                     <i class="bi bi-person-plus"></i> Reassign
                 </button>
             @endif
-            @if($canOpenCase)
-                <a href="{{ route('goal.cases.show', $lead->loanCase) }}" class="ld-btn ld-btn-primary">
-                    <i class="bi bi-briefcase-fill"></i> Open Case
+            @if(!empty($needsAllocation))
+                <a href="{{ route('goal.allocation.index', ['q' => $lead->ref_no]) }}" class="ld-btn ld-btn-primary">
+                    <i class="bi bi-person-check"></i> Allocate
                 </a>
-            @elseif($canConvert)
-                <form method="POST" action="{{ route('goal.leads.convert', $lead) }}" class="d-inline">
-                    @csrf
-                    <input type="hidden" name="consent_recorded" value="1">
-                    <button type="submit" class="ld-btn ld-btn-primary">
-                        <i class="bi bi-briefcase-fill"></i> Convert to Case
-                    </button>
-                </form>
-            @else
+            @elseif(!empty($next))
                 <button type="button" class="ld-btn ld-btn-primary" data-bs-toggle="modal" data-bs-target="#transitionModal">
-                    <i class="bi bi-briefcase-fill"></i> Convert to Case
+                    <i class="bi bi-signpost-2"></i> Update Status
                 </button>
             @endif
             <div class="dropdown">
@@ -785,10 +774,10 @@
                     Actions
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                    <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#transitionModal"><i class="bi bi-signpost-2 me-2"></i>Change status</button></li>
+                    <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#transitionModal"><i class="bi bi-signpost-2 me-2"></i>Update status</button></li>
+                    <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#addNoteModal"><i class="bi bi-journal-plus me-2"></i>Add note</button></li>
                     <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#rescheduleModal"><i class="bi bi-calendar-event me-2"></i>Reschedule follow-up</button></li>
                     <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#logVisitModal"><i class="bi bi-geo-alt me-2"></i>Log customer visit</button></li>
-                    <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#addNoteModal"><i class="bi bi-journal-plus me-2"></i>Add note</button></li>
                     @if($lead->loanCase)
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ route('goal.cases.show', $lead->loanCase) }}"><i class="bi bi-folder me-2"></i>View case {{ $lead->loanCase->case_no }}</a></li>
@@ -1185,7 +1174,7 @@
                             <div><div class="ld-field-label">Amount</div><div class="ld-field-val">{{ $fmtInr($lead->loanCase->loan_amount) }}</div></div>
                         </div>
                     @else
-                        <div class="ld-empty">No case linked. Use Convert to Case when the lead is Qualified.</div>
+                        <div class="ld-empty">No case linked yet. Use Update Status → Documents Pending when the lead is Qualified.</div>
                     @endif
                 </div></div>
             </div>
@@ -1353,25 +1342,52 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Source</label>
+                        @php
+                            $branchLocked = !empty($branchLocked);
+                            $currentSource = old('source', $lead->source);
+                            $showSources = $leadSources ?? collect();
+                            if ($currentSource && ! $showSources->contains(fn ($s) => $s->name === $currentSource)) {
+                                $showSources = $showSources->prepend((object) ['name' => $currentSource]);
+                            }
+                        @endphp
                         <div class="ld-input-ico">
                             <i class="bi bi-broadcast"></i>
-                            <select name="source" class="form-select" data-search="false">
-                                @foreach(['vrm'=>'VRM Calling','channel'=>'Channel','walkin'=>'Walk-in','referral'=>'Referral','manual'=>'Manual'] as $val => $lab)
-                                    <option value="{{ $val }}" @selected(old('source', $lead->source) === $val)>{{ $lab }}</option>
-                                @endforeach
-                            </select>
+                            @if($branchLocked)
+                                <input type="hidden" name="source" value="{{ $currentSource }}">
+                                <input type="text" class="form-control" value="{{ $currentSource ?: '-' }}" readonly disabled>
+                            @else
+                                <select name="source" class="form-select js-select2" data-placeholder="Select source" data-search="false">
+                                    @forelse($showSources as $src)
+                                        <option value="{{ $src->name }}" @selected($currentSource === $src->name)>{{ $src->name }}</option>
+                                    @empty
+                                        <option value="{{ $currentSource }}">{{ $currentSource ?: 'Manual' }}</option>
+                                    @endforelse
+                                </select>
+                            @endif
                         </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Branch</label>
+                        @php
+                            $editBranchId = old('goal_org_unit_id', $lead->goal_org_unit_id);
+                            $editBranchName = optional($branches->firstWhere('id', (int) $editBranchId))->name
+                                ?? optional($lead->orgUnit)->name
+                                ?? optional(auth()->user()->orgUnit)->name
+                                ?? 'Your branch';
+                        @endphp
                         <div class="ld-input-ico">
                             <i class="bi bi-building"></i>
-                            <select name="goal_org_unit_id" class="form-select">
-                                <option value="">Select branch</option>
-                                @foreach($branches as $b)
-                                    <option value="{{ $b->id }}" @selected((int) old('goal_org_unit_id', $lead->goal_org_unit_id) === (int) $b->id)>{{ $b->name }}</option>
-                                @endforeach
-                            </select>
+                            @if($branchLocked)
+                                <input type="hidden" name="goal_org_unit_id" value="{{ $editBranchId }}">
+                                <input type="text" class="form-control" value="{{ $editBranchName }}" readonly disabled>
+                            @else
+                                <select name="goal_org_unit_id" class="form-select js-select2" data-placeholder="Select branch">
+                                    <option value="">Select branch</option>
+                                    @foreach($branches as $b)
+                                        <option value="{{ $b->id }}" @selected((int) $editBranchId === (int) $b->id)>{{ $b->name }}</option>
+                                    @endforeach
+                                </select>
+                            @endif
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -1385,7 +1401,8 @@
                         <label class="form-label">Disposition</label>
                         <div class="ld-input-ico">
                             <i class="bi bi-chat-left-dots"></i>
-                            <input name="disposition" class="form-control" value="{{ old('disposition', $lead->disposition) }}">
+                            <input type="hidden" name="disposition" value="{{ $lead->disposition }}">
+                            <input type="text" class="form-control" value="{{ $lead->disposition ?: '-' }}" readonly disabled>
                         </div>
                     </div>
                     <div class="col-12">
@@ -1527,12 +1544,17 @@
                             <input name="closure_reason" id="ldClosureReason" class="form-control" placeholder="Required when closing">
                         </div>
                     </div>
-                    @unless($canConvert)
+                    @if($lead->status === 'Pending BM Allocation')
                         <div class="ld-hint">
                             <i class="bi bi-info-circle"></i>
-                            <span>Convert to Case is available when status can move to <strong>Documents Pending</strong> (from Qualified).</span>
+                            <span>Use <strong>BM Allocation</strong> to assign sales. Status becomes Assigned automatically.</span>
                         </div>
-                    @endunless
+                    @elseif($canConvert)
+                        <div class="ld-hint">
+                            <i class="bi bi-info-circle"></i>
+                            <span>Moving to <strong>Documents Pending</strong> creates the case automatically. No separate Open Case step.</span>
+                        </div>
+                    @endif
                 @endif
             </div>
             <div class="modal-footer">

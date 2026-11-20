@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<link href="{{asset('css/user.css') }}" rel="stylesheet">
+    <link href="{{asset('css/user.css') }}" rel="stylesheet">
     <style>
         .users-view-toggle {
             display: inline-flex; background: #f1f5f9; border-radius: 10px; padding: 3px; gap: 2px;
