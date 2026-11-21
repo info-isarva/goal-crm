@@ -93,39 +93,133 @@
     </div>
 </div>
 
-{{-- Upload Document --}}
-<div class="modal fade" id="cwUploadDocModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <form method="POST" action="{{ route('goal.cases.documents.store', $case) }}" enctype="multipart/form-data" class="modal-content">
+{{-- Add Document (checklist item, no file) --}}
+<style>
+#cwAddDocModal .cw-add-doc-meta{
+    display:flex;flex-wrap:wrap;gap:8px 14px;margin:0 0 1rem;padding:.7rem .85rem;
+    border-radius:10px;background:#f8fafc;border:1px solid #eef2f7;
+}
+#cwAddDocModal .cw-add-doc-meta .item{min-width:0}
+#cwAddDocModal .cw-add-doc-meta .k{
+    display:block;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#94a3b8;margin-bottom:2px;
+}
+#cwAddDocModal .cw-add-doc-meta .v{
+    font-size:.84rem;font-weight:700;color:#0f172a;line-height:1.25;
+}
+#cwAddDocModal .cw-add-doc-grid{
+    display:grid;grid-template-columns:minmax(0,1.4fr) minmax(140px,.7fr);gap:12px;align-items:end;
+}
+#cwAddDocModal .cw-add-doc-grid .full{grid-column:1 / -1}
+#cwAddDocModal .cw-req-row{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin:0;padding:.85rem .9rem;border-radius:10px;border:1px solid #e2e8f0;background:#fff;
+}
+#cwAddDocModal .cw-req-row .txt{min-width:0}
+#cwAddDocModal .cw-req-row .ttl{display:block;font-size:.84rem;font-weight:700;color:#0f172a}
+#cwAddDocModal .cw-req-row .sub{display:block;font-size:.72rem;color:#64748b;margin-top:2px}
+#cwAddDocModal .cw-docs-switch{
+    display:inline-flex;align-items:center;gap:8px;margin:0;cursor:pointer;user-select:none;flex-shrink:0;
+}
+#cwAddDocModal .cw-docs-switch input{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+#cwAddDocModal .cw-docs-switch .track{
+    position:relative;width:40px;height:22px;border-radius:999px;background:#cbd5e1;flex-shrink:0;transition:background .15s ease;
+}
+#cwAddDocModal .cw-docs-switch .track::after{
+    content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.2);transition:transform .15s ease;
+}
+#cwAddDocModal .cw-docs-switch input:checked + .track{background:#0d9488}
+#cwAddDocModal .cw-docs-switch input:checked + .track::after{transform:translateX(18px)}
+#cwAddDocModal .cw-docs-switch .lbl{font-size:.78rem;font-weight:700;color:#64748b;min-width:1.75rem}
+#cwAddDocModal .cw-docs-switch input:checked ~ .lbl{color:#0f766e}
+#cwAddDocModal .modal-footer{
+    display:flex;justify-content:flex-end;align-items:center;
+    padding:.85rem 1.1rem;border-top:1px solid #eef2f7;background:#fafbfc;
+}
+#cwAddDocModal .cw-add-doc-actions{
+    display:inline-grid;grid-template-columns:1fr 1fr;gap:10px;margin-left:auto;
+}
+#cwAddDocModal .btn-add-cancel,
+#cwAddDocModal .btn-add-submit{
+    height:40px;padding:0 14px;border-radius:10px;font-size:.88rem;font-weight:700;
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;
+    width:100%;box-sizing:border-box;white-space:nowrap;
+}
+#cwAddDocModal .btn-add-cancel{
+    border:1px solid #cbd5e1;background:#fff;color:#475569;
+}
+#cwAddDocModal .btn-add-cancel:hover{background:#f8fafc;border-color:#94a3b8;color:#0f172a}
+#cwAddDocModal .btn-add-submit{
+    border:1px solid transparent;background:var(--theme-primary,#0d9488);color:#fff;
+    box-shadow:0 6px 14px rgba(13,148,136,.25);
+}
+#cwAddDocModal .btn-add-submit:hover{
+    background:var(--theme-primary-hover,#0f766e);color:#fff;
+}
+@media (max-width:575.98px){
+    #cwAddDocModal .cw-add-doc-grid{grid-template-columns:1fr}
+    #cwAddDocModal .cw-add-doc-actions{display:grid;width:100%;margin-left:0}
+}
+</style>
+<div class="modal fade" id="cwAddDocModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" action="{{ route('goal.cases.documents.store', $case) }}" class="modal-content" id="cwAddDocForm">
             @csrf
             <div class="modal-header">
-                <h5 class="modal-title">Upload Document</h5>
-                <button type="button" class="modal-close" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+                <h5 class="modal-title"><i class="bi bi-file-earmark-plus me-1"></i> Add document</h5>
+                <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Document Key</label>
-                    <input type="text" name="key" class="form-control" required maxlength="60" placeholder="e.g. identity">
+                <div class="cw-add-doc-meta">
+                    <div class="item">
+                        <span class="k">Case</span>
+                        <span class="v">{{ $case->case_no }}</span>
+                    </div>
+                    <div class="item" style="flex:1">
+                        <span class="k">Customer</span>
+                        <span class="v">{{ $case->customer_name ?: '—' }}</span>
+                    </div>
+                    @if($case->product)
+                        <div class="item">
+                            <span class="k">Product</span>
+                            <span class="v">{{ $case->product }}</span>
+                        </div>
+                    @endif
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Document Type / Label</label>
-                    <input type="text" name="label" class="form-control" required maxlength="120" placeholder="e.g. Identity Proof">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Party</label>
-                    <select name="party" class="form-select">
-                        <option value="Applicant">Applicant</option>
-                        <option value="Co-Applicant">Co-Applicant</option>
-                    </select>
-                </div>
-                <div class="mb-0">
-                    <label class="form-label">File</label>
-                    <input type="file" name="file" class="form-control" required accept=".pdf,.jpg,.jpeg,.png,.webp">
+
+                <div class="cw-add-doc-grid">
+                    <div>
+                        <label class="form-label" for="cwAddDocLabel">Document name <span class="text-danger">*</span></label>
+                        <input type="text" name="label" id="cwAddDocLabel" class="form-control" required maxlength="120"
+                               placeholder="e.g. PAN Card, Aadhaar, Bank Statement" autocomplete="off">
+                    </div>
+                    <div>
+                        <label class="form-label" for="cwAddDocParty">Party</label>
+                        <select name="party" id="cwAddDocParty" class="form-select">
+                            <option value="Applicant">Applicant</option>
+                            <option value="Co-Applicant">Co-Applicant</option>
+                        </select>
+                    </div>
+                    <div class="full">
+                        <div class="cw-req-row">
+                            <div class="txt">
+                                <span class="ttl">Required for this case</span>
+                                <span class="sub">Turn on if this must be verified before Ready for Login</span>
+                            </div>
+                            <label class="cw-docs-switch" for="cwAddDocRequired">
+                                <input type="checkbox" name="mandatory" value="1" id="cwAddDocRequired">
+                                <span class="track" aria-hidden="true"></span>
+                                <span class="lbl" id="cwAddDocReqLbl">No</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn-primary-cw">Upload</button>
+                <div class="cw-add-doc-actions">
+                    <button type="button" class="btn-add-cancel" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn-add-submit"><i class="bi bi-plus-lg"></i> Add document</button>
+                </div>
             </div>
         </form>
     </div>
@@ -372,6 +466,28 @@
             if (!btn) return;
             document.getElementById('cwRejectDocKey').value = btn.getAttribute('data-doc-key') || '';
             document.getElementById('cwRejectDocParty').value = btn.getAttribute('data-doc-party') || 'Applicant';
+        });
+    }
+
+    var addDocModal = document.getElementById('cwAddDocModal');
+    var addDocReq = document.getElementById('cwAddDocRequired');
+    var addDocReqLbl = document.getElementById('cwAddDocReqLbl');
+    function syncAddDocReqLabel() {
+        if (!addDocReqLbl || !addDocReq) return;
+        addDocReqLbl.textContent = addDocReq.checked ? 'Yes' : 'No';
+    }
+    if (addDocReq) {
+        addDocReq.addEventListener('change', syncAddDocReqLabel);
+        syncAddDocReqLabel();
+    }
+    if (addDocModal) {
+        addDocModal.addEventListener('show.bs.modal', function () {
+            var form = document.getElementById('cwAddDocForm');
+            if (form) form.reset();
+            if (addDocReq) addDocReq.checked = false;
+            syncAddDocReqLabel();
+            var label = document.getElementById('cwAddDocLabel');
+            if (label) setTimeout(function () { label.focus(); }, 200);
         });
     }
 

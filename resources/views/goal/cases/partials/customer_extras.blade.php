@@ -380,12 +380,18 @@
                             <tr data-loan-row>
                                 <td class="cw-loan-num"><span class="cw-loan-idx">{{ $i + 1 }}</span></td>
                                 <td>
-                                    <select class="cw-party-chip {{ $party === 'co_applicant' ? 'is-co' : 'is-app' }}"
-                                            name="existing_loans[rows][{{ $i }}][party]" {{ $dis }}
-                                            onchange="this.classList.toggle('is-co', this.value==='co_applicant'); this.classList.toggle('is-app', this.value!=='co_applicant');">
-                                        <option value="applicant" @selected($party === 'applicant' || $party === '')>Applicant</option>
-                                        <option value="co_applicant" @selected($party === 'co_applicant')>Co-Applicant</option>
-                                    </select>
+                                    @php $isCo = $party === 'co_applicant'; @endphp
+                                    <div class="cw-party-dd {{ $isCo ? 'is-co' : 'is-app' }}" data-party-dd>
+                                        <button type="button" class="cw-party-chip" aria-haspopup="listbox" aria-expanded="false" {{ $dis }}>
+                                            <span class="cw-party-label">{{ $isCo ? 'Co-Applicant' : 'Applicant' }}</span>
+                                            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                                        </button>
+                                        <div class="cw-party-menu" role="listbox" hidden>
+                                            <button type="button" role="option" data-value="applicant" class="{{ ! $isCo ? 'is-selected' : '' }}">Applicant</button>
+                                            <button type="button" role="option" data-value="co_applicant" class="{{ $isCo ? 'is-selected' : '' }}">Co-Applicant</button>
+                                        </div>
+                                        <input type="hidden" name="existing_loans[rows][{{ $i }}][party]" value="{{ $isCo ? 'co_applicant' : 'applicant' }}">
+                                    </div>
                                 </td>
                                 <td>
                                     <select class="cw-select" name="existing_loans[rows][{{ $i }}][type]" {{ $dis }}>
@@ -440,11 +446,17 @@
                 <tr data-loan-row>
                     <td class="cw-loan-num"><span class="cw-loan-idx">__n__</span></td>
                     <td>
-                        <select class="cw-party-chip is-app" name="existing_loans[rows][__i__][party]"
-                                onchange="this.classList.toggle('is-co', this.value==='co_applicant'); this.classList.toggle('is-app', this.value!=='co_applicant');">
-                            <option value="applicant" selected>Applicant</option>
-                            <option value="co_applicant">Co-Applicant</option>
-                        </select>
+                        <div class="cw-party-dd is-app" data-party-dd>
+                            <button type="button" class="cw-party-chip" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="cw-party-label">Applicant</span>
+                                <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                            </button>
+                            <div class="cw-party-menu" role="listbox" hidden>
+                                <button type="button" role="option" data-value="applicant" class="is-selected">Applicant</button>
+                                <button type="button" role="option" data-value="co_applicant">Co-Applicant</button>
+                            </div>
+                            <input type="hidden" name="existing_loans[rows][__i__][party]" value="applicant">
+                        </div>
                     </td>
                     <td>
                         <select class="cw-select" name="existing_loans[rows][__i__][type]">

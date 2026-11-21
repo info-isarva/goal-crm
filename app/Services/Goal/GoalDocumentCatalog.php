@@ -60,4 +60,51 @@ class GoalDocumentCatalog
 
         return $out;
     }
+
+    /**
+     * Document was recorded (Mark Received) and/or has an optional file / final review status.
+     */
+    public static function isReceived(array $doc): bool
+    {
+        if (filled($doc['uploaded_at'] ?? null) || filled($doc['received_at'] ?? null)) {
+            return true;
+        }
+        if (filled($doc['path'] ?? ($doc['storage_path'] ?? null))) {
+            return true;
+        }
+
+        return in_array((string) ($doc['status'] ?? ''), ['Verified', 'Rejected'], true);
+    }
+
+    public static function normalizeStatus(array $doc): string
+    {
+        $st = (string) ($doc['status'] ?? 'Pending');
+        if ($st === 'Uploaded') {
+            $st = 'Pending';
+        }
+        if (! in_array($st, ['Pending', 'Verified', 'Rejected'], true)) {
+            $st = 'Pending';
+        }
+
+        return $st;
+    }
+
+    /**
+     * Checklist-facing status label (no file required).
+     */
+    public static function displayStatus(array $doc): string
+    {
+        $st = self::normalizeStatus($doc);
+        if ($st === 'Verified') {
+            return 'Verified';
+        }
+        if ($st === 'Rejected') {
+            return 'Rejected';
+        }
+        if (self::isReceived($doc)) {
+            return 'Pending Verification';
+        }
+
+        return 'Not recorded';
+    }
 }

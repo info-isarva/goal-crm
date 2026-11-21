@@ -455,27 +455,30 @@ class GoalLoanCaseController extends Controller
 
     /**
      * Aggregate document checklist progress for a case (customer_details.documents).
+     * Checklist-first: "received" means recorded (optional file), not upload-required.
      *
-     * @return array{total:int,uploaded:int,pending:int,verified:int,rejected:int,missing:int,label:string}
+     * @return array{total:int,required:int,received:int,uploaded:int,pending:int,verified:int,rejected:int,missing:int,label:string}
      */
     protected function summarizeCaseDocuments(GoalLoanCase $case): array
     {
         $docs = collect(data_get($case->customer_details, 'documents', []) ?: []);
-        $uploaded = $docs->filter(fn ($d) => !empty($d['path'] ?? null) || !empty($d['storage_path'] ?? null))->count();
+        $received = $docs->filter(fn ($d) => \App\Services\Goal\GoalDocumentCatalog::isReceived(is_array($d) ? $d : []))->count();
+        $uploaded = $docs->filter(fn ($d) => ! empty($d['path'] ?? null) || ! empty($d['storage_path'] ?? null))->count();
         $pending = $docs->filter(function ($d) {
-            $st = $d['status'] ?? 'Pending';
-            $hasFile = !empty($d['path'] ?? null) || !empty($d['storage_path'] ?? null);
+            $row = is_array($d) ? $d : [];
+            $st = \App\Services\Goal\GoalDocumentCatalog::normalizeStatus($row);
 
-            return $hasFile && in_array($st, ['Pending', 'Uploaded'], true);
+            return $st === 'Pending' && \App\Services\Goal\GoalDocumentCatalog::isReceived($row);
         })->count();
         $verified = $docs->where('status', 'Verified')->count();
         $rejected = $docs->where('status', 'Rejected')->count();
-        $mandatory = $docs->filter(fn ($d) => !empty($d['mandatory']))->count();
-        $mandatoryUploaded = $docs->filter(function ($d) {
-            return !empty($d['mandatory'])
-                && (!empty($d['path'] ?? null) || !empty($d['storage_path'] ?? null));
+        $mandatory = $docs->filter(fn ($d) => ! empty($d['mandatory']))->count();
+        $mandatoryReceived = $docs->filter(function ($d) {
+            $row = is_array($d) ? $d : [];
+
+            return ! empty($row['mandatory']) && \App\Services\Goal\GoalDocumentCatalog::isReceived($row);
         })->count();
-        $missing = max(0, $mandatory - $mandatoryUploaded);
+        $missing = max(0, $mandatory - $mandatoryReceived);
         $total = $docs->count();
         $label = $total === 0
             ? 'No checklist'
@@ -485,6 +488,8 @@ class GoalLoanCaseController extends Controller
 
         return [
             'total' => $total,
+            'required' => $mandatory,
+            'received' => $received,
             'uploaded' => $uploaded,
             'pending' => $pending,
             'verified' => $verified,
@@ -492,6 +497,18 @@ class GoalLoanCaseController extends Controller
             'missing' => $missing,
             'label' => $label,
         ];
+    }
+
+    /**
+     * Case document checklist as stored (staff add items; nothing auto-required from catalog).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function ensureDocumentChecklist(GoalLoanCase $case): array
+    {
+        $details = is_array($case->customer_details) ? $case->customer_details : [];
+
+        return array_values($details['documents'] ?? []);
     }
 
     /**
@@ -791,43 +808,8 @@ class GoalLoanCaseController extends Controller
             $bmId = $this->defaultBmForBranch($branchId, $scope)?->id;
         }
 
-        $allowedDocs = collect($this->documentsForProduct($data['product']))->keyBy('key');
+        // Checklist is built on the case workspace (Add document + Required checkbox).
         $docs = [];
-        foreach ($data['documents'] ?? [] as $i => $doc) {
-            $key = $doc['key'] ?? null;
-            if (!$key || !$allowedDocs->has($key)) {
-                continue;
-            }
-            $meta = $allowedDocs->get($key);
-            $uploaded = $request->file("documents.$i.file");
-            $docs[] = [
-                'key' => $key,
-                'label' => $meta['label'],
-                'mandatory' => (bool) ($meta['mandatory'] ?? false),
-                'status' => 'Pending',
-                'reviewer' => null,
-                'rejection_reason' => null,
-                'uploaded_at' => null,
-                'file_name' => $uploaded?->getClientOriginalName(),
-                'file_tmp' => $uploaded,
-            ];
-        }
-
-        foreach ($allowedDocs as $key => $meta) {
-            if (!collect($docs)->contains(fn ($d) => $d['key'] === $key)) {
-                $docs[] = [
-                    'key' => $key,
-                    'label' => $meta['label'],
-                    'mandatory' => (bool) ($meta['mandatory'] ?? false),
-                    'status' => 'Pending',
-                    'reviewer' => null,
-                    'rejection_reason' => null,
-                    'uploaded_at' => null,
-                    'file_name' => null,
-                    'file_tmp' => null,
-                ];
-            }
-        }
 
         $tenure = isset($data['tenure_months']) && $data['tenure_months'] !== ''
             ? (int) $data['tenure_months']
@@ -1067,12 +1049,36 @@ class GoalLoanCaseController extends Controller
 
         $progress = $this->caseProgressSteps($case);
 
-        // Prefer explicit ?tab= (sidebar / list deep-link); else consume session from module hub
-        $activeTab = (string) request('tab', session('cw_tab', 'overview'));
-        $allowedTabs = ['overview', 'customer', 'recommendation', 'documents', 'lenders', 'queries', 'sanction', 'disbursement', 'mis', 'visits', 'activity'];
-        if (!in_array($activeTab, $allowedTabs, true)) {
-            $activeTab = 'overview';
+        $canViewMis = $user->isSuperAdmin()
+            || $user->hasCrmPermission('branch_mis_guard')
+            || $user->hasCrmPermission('manage_permissions_guard');
+        $canViewFollowups = $user->isSuperAdmin()
+            || $user->hasCrmPermission('customer_visits_guard')
+            || $user->hasCrmPermission('edit_case_workspace_guard')
+            || $user->hasCrmPermission('manage_permissions_guard');
+
+        $workspaceTabs = [
+            'overview' => ['label' => 'Overview', 'icon' => 'bi-grid'],
+            'customer' => ['label' => 'Customer', 'icon' => 'bi-person'],
+            'recommendation' => ['label' => 'Recommendation', 'icon' => 'bi-lightbulb'],
+            'documents' => ['label' => 'Documents', 'icon' => 'bi-file-earmark'],
+            'banking' => ['label' => 'Banking', 'icon' => 'bi-bank'],
+        ];
+        if ($canViewMis) {
+            $workspaceTabs['mis'] = ['label' => 'Branch MIS', 'icon' => 'bi-clipboard-data'];
         }
+        if ($canViewFollowups) {
+            $workspaceTabs['followups'] = ['label' => 'Follow-ups', 'icon' => 'bi-geo-alt'];
+        }
+
+        // Prefer explicit ?tab= (sidebar / list deep-link); else consume session from module hub.
+        // Legacy keys map into consolidated tabs + in-pane sections.
+        $requestedTab = (string) request('tab', session('cw_tab', 'overview'));
+        [$activeTab, $activeSection] = $this->resolveWorkspaceTab(
+            $requestedTab,
+            (string) request('section', ''),
+            array_keys($workspaceTabs)
+        );
         session()->forget('cw_tab');
 
         $scope = $this->scopedOrgIds();
@@ -1091,13 +1097,16 @@ class GoalLoanCaseController extends Controller
             ->sum('amount');
         $sanctionCap = (float) ($activeSanction?->sanction_amount ?? $case->sanction_amount ?? 0);
 
-        $docs = data_get($case->customer_details, 'documents', []) ?: [];
+        $docs = $this->ensureDocumentChecklist($case);
+        $summary = $this->summarizeCaseDocuments($case);
         $docSummary = [
-            'required' => collect($docs)->where('mandatory', true)->count(),
-            'uploaded' => collect($docs)->filter(fn ($d) => !empty($d['path'] ?? null))->count(),
-            'pending' => collect($docs)->whereIn('status', ['Pending', 'Uploaded'])->count(),
-            'verified' => collect($docs)->where('status', 'Verified')->count(),
-            'rejected' => collect($docs)->where('status', 'Rejected')->count(),
+            'required' => $summary['required'],
+            'received' => $summary['received'],
+            'uploaded' => $summary['uploaded'],
+            'pending' => $summary['pending'],
+            'verified' => $summary['verified'],
+            'rejected' => $summary['rejected'],
+            'missing' => $summary['missing'],
         ];
 
         $lenderSummary = [
@@ -1122,6 +1131,8 @@ class GoalLoanCaseController extends Controller
             'branchManager',
             'progress',
             'activeTab',
+            'activeSection',
+            'workspaceTabs',
             'reassignUsers',
             'openQuery',
             'activeSanction',
@@ -1131,6 +1142,55 @@ class GoalLoanCaseController extends Controller
             'docSummary',
             'lenderSummary'
         ));
+    }
+
+    /**
+     * Map legacy / hub tab keys onto the consolidated workspace tabs.
+     *
+     * @param  list<string>  $visibleTabs
+     * @return array{0: string, 1: string}
+     */
+    protected function resolveWorkspaceTab(string $requestedTab, string $requestedSection, array $visibleTabs): array
+    {
+        $legacy = [
+            'lenders' => ['banking', 'lenders'],
+            'queries' => ['banking', 'queries'],
+            'sanction' => ['banking', 'sanction'],
+            'disbursement' => ['banking', 'disbursement'],
+            'visits' => ['followups', 'visits'],
+            'activity' => ['followups', 'activity'],
+        ];
+
+        if (isset($legacy[$requestedTab])) {
+            [$tab, $section] = $legacy[$requestedTab];
+        } elseif ($requestedTab === 'banking') {
+            $tab = 'banking';
+            $section = $requestedSection !== '' ? $requestedSection : 'lenders';
+        } elseif ($requestedTab === 'followups') {
+            $tab = 'followups';
+            $section = $requestedSection !== '' ? $requestedSection : 'visits';
+        } else {
+            $tab = $requestedTab;
+            $section = '';
+        }
+
+        $bankingSections = ['lenders', 'queries', 'sanction', 'disbursement'];
+        $followSections = ['visits', 'activity'];
+
+        if ($tab === 'banking' && ! in_array($section, $bankingSections, true)) {
+            $section = 'lenders';
+        }
+        if ($tab === 'followups' && ! in_array($section, $followSections, true)) {
+            $section = 'visits';
+        }
+
+        if (! in_array($tab, $visibleTabs, true)) {
+            // Hidden by role — fall back to overview (or first visible).
+            $tab = in_array('overview', $visibleTabs, true) ? 'overview' : ($visibleTabs[0] ?? 'overview');
+            $section = '';
+        }
+
+        return [$tab, $section];
     }
 
     public function updateWorkspace(Request $request, GoalLoanCase $case)
@@ -1534,12 +1594,9 @@ class GoalLoanCaseController extends Controller
         $case->loadMissing(['bankApplications', 'bankQueries', 'sanctions', 'disbursements']);
         $docs = collect(data_get($case->customer_details, 'documents', []) ?: []);
         $mandatory = $docs->where('mandatory', true);
-        // Empty checklist = incomplete (must seed product docs and verify them).
-        $requiredDocsComplete = $mandatory->isNotEmpty()
-            && $mandatory->every(function ($d) {
-                return ($d['status'] ?? '') === 'Verified'
-                    && filled($d['path'] ?? ($d['storage_path'] ?? null));
-            });
+        // Only docs marked Required on the case must be verified. None required = gate passes.
+        $requiredDocsComplete = $mandatory->isEmpty()
+            || $mandatory->every(fn ($d) => ($d['status'] ?? '') === 'Verified');
         $caseDetailsComplete = filled($case->customer_name) && filled($case->product) && (float) $case->loan_amount > 0;
         $hasLender = $case->bankApplications->isNotEmpty() || filled($data['lender_name'] ?? $case->lender_name);
         $queriesCleared = !$case->bankQueries
@@ -1633,7 +1690,7 @@ class GoalLoanCaseController extends Controller
             'body' => $data['notes'] ?? null,
         ]);
 
-        return back()->with('success', 'Task added.')->with('cw_tab', 'visits');
+        return back()->with('success', 'Task added.')->with('cw_tab', 'followups');
     }
 
     protected function salesUsers(array $scope, $branchId = null): Collection

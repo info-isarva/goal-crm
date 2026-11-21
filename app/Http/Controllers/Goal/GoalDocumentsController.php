@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Goal;
 
+use App\Exports\GoalSheetExport;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Goal\Concerns\AuthorizesGoal;
+use App\Library\MpdfDocument;
 use App\Models\GoalLoanCase;
 use App\Models\GoalOrgUnit;
 use App\Models\Product;
@@ -12,6 +14,9 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Excel as ExcelWriter;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GoalDocumentsController extends Controller
@@ -39,7 +44,7 @@ class GoalDocumentsController extends Controller
         $rows = $this->collectDocuments();
         $kpis = [
             'total' => $rows->count(),
-            'pending' => $rows->where('status', 'Pending')->count(),
+            'pending' => $rows->filter(fn ($r) => ($r['status'] ?? '') === 'Pending' && ! empty($r['is_received']))->count(),
             'verified' => $rows->where('status', 'Verified')->count(),
             'rejected' => $rows->where('status', 'Rejected')->count(),
         ];
@@ -47,7 +52,10 @@ class GoalDocumentsController extends Controller
         $tab = (string) $request->input('tab', 'all');
         $filtered = $this->applyFilters($rows, $request, $tab);
 
-        $perPage = (int) ($request->input('per_page') ?: 25);
+        $perPage = (int) ($request->input('per_page') ?: 10);
+        if (! in_array($perPage, [10, 25, 50, 100], true)) {
+            $perPage = 10;
+        }
         $page = max(1, (int) $request->input('page', 1));
         $documents = new LengthAwarePaginator(
             $filtered->forPage($page, $perPage)->values(),
@@ -56,6 +64,7 @@ class GoalDocumentsController extends Controller
             $page,
             ['path' => $request->url(), 'query' => $request->query()]
         );
+        $documents->withQueryString();
 
         $scope = $this->scopedOrgIds();
         $branches = GoalOrgUnit::query()
@@ -103,11 +112,12 @@ class GoalDocumentsController extends Controller
             'docTypes',
             'reviewers',
             'canUpload',
-            'canVerify'
+            'canVerify',
+            'perPage'
         ));
     }
 
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request): StreamedResponse|BinaryFileResponse|\Illuminate\Http\Response
     {
         $this->requireGoalPermission('view_loan_cases_guard');
 
@@ -122,34 +132,77 @@ class GoalDocumentsController extends Controller
             'reviewer' => 'nullable|string|max:150',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
+            'format' => 'nullable|in:csv,xlsx,excel,pdf',
         ]);
+
+        $format = strtolower((string) $request->input('format', 'csv'));
+        if (! in_array($format, ['csv', 'xlsx', 'excel', 'pdf'], true)) {
+            $format = 'csv';
+        }
+        if ($format === 'excel') {
+            $format = 'xlsx';
+        }
 
         $tab = (string) $request->input('tab', 'all');
         $rows = $this->applyFilters($this->collectDocuments(), $request, $tab);
-        $filename = 'document-register-'.now()->format('Ymd-His').'.csv';
+        $stamp = now()->format('Ymd-His');
+        $headings = [
+            'Case Reference', 'Customer', 'Document Type', 'Party', 'Required',
+            'Recorded By', 'Recorded On', 'Verification Status', 'Reviewer', 'Branch', 'Product',
+        ];
 
-        return response()->streamDownload(function () use ($rows) {
+        $sheetRows = [];
+        foreach ($rows as $row) {
+            $statusLabel = $row['display_status']
+                ?? ($row['status'] === 'Pending'
+                    ? (! empty($row['is_received']) ? 'Pending Verification' : 'Not recorded')
+                    : $row['status']);
+            $sheetRows[] = [
+                $row['case_no'],
+                $row['customer_name'],
+                $row['label'],
+                $row['party'] ?? 'Applicant',
+                ! empty($row['mandatory']) ? 'Yes' : 'No',
+                $row['uploaded_by'],
+                $row['uploaded_at'],
+                $statusLabel,
+                $row['reviewer'],
+                $row['branch'],
+                $row['product'],
+            ];
+        }
+
+        if ($format === 'pdf') {
+            return MpdfDocument::fromView(
+                'goal.documents.exports.register-pdf',
+                [
+                    'headings' => $headings,
+                    'rows' => $sheetRows,
+                    'generatedAt' => now(),
+                ],
+                'document-register-'.$stamp.'.pdf',
+                true,
+                'A4-L'
+            );
+        }
+
+        if ($format === 'xlsx') {
+            return Excel::download(
+                new GoalSheetExport($sheetRows, $headings, 'Documents'),
+                'document-register-'.$stamp.'.xlsx',
+                ExcelWriter::XLSX
+            );
+        }
+
+        return response()->streamDownload(function () use ($sheetRows, $headings) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, [
-                'Case Reference', 'Customer', 'Document Type', 'File Name',
-                'Uploaded By', 'Uploaded On', 'Verification Status', 'Reviewer', 'Branch', 'Product',
-            ]);
-            foreach ($rows as $row) {
-                fputcsv($out, [
-                    $row['case_no'],
-                    $row['customer_name'],
-                    $row['label'],
-                    $row['file_name'],
-                    $row['uploaded_by'],
-                    $row['uploaded_at'],
-                    $row['status'] === 'Pending' ? 'Pending Verification' : $row['status'],
-                    $row['reviewer'],
-                    $row['branch'],
-                    $row['product'],
-                ]);
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, $headings);
+            foreach ($sheetRows as $row) {
+                fputcsv($out, $row);
             }
             fclose($out);
-        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'document-register-'.$stamp.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /**
@@ -189,73 +242,73 @@ class GoalDocumentsController extends Controller
         ]);
     }
 
-    public function upload(Request $request)
+    /**
+     * Add a checklist document for a selected case/customer (no file).
+     */
+    public function store(Request $request)
     {
         $this->requireGoalPermission('edit_case_workspace_guard');
 
         $data = $request->validate([
             'case_id' => 'required|integer|exists:goal_loan_cases,id',
-            'key' => 'required|string|max:60',
             'label' => 'required|string|max:120',
             'party' => 'nullable|in:Applicant,Co-Applicant',
-            'file' => 'required|file|max:5120|mimes:pdf,jpg,jpeg,png,webp',
+            'mandatory' => 'nullable|boolean',
         ]);
 
         $case = GoalLoanCase::query()->findOrFail((int) $data['case_id']);
         $this->assertCaseInScope($case);
 
-        $file = $request->file('file');
-        $path = $file->store('goal/case-docs/'.$case->id, 'local');
         $party = $data['party'] ?? 'Applicant';
+        $label = trim($data['label']);
+        $mandatory = $request->boolean('mandatory');
+        $baseKey = \Illuminate\Support\Str::slug($label);
+        if ($baseKey === '') {
+            $baseKey = 'doc';
+        }
+        $baseKey = \Illuminate\Support\Str::limit($baseKey, 50, '');
 
         $details = is_array($case->customer_details) ? $case->customer_details : [];
         $docs = array_values($details['documents'] ?? []);
-        $found = false;
-        foreach ($docs as &$doc) {
-            if (($doc['key'] ?? '') === $data['key'] && ($doc['party'] ?? 'Applicant') === $party) {
-                $doc['path'] = $path;
-                $doc['file_name'] = $file->getClientOriginalName();
-                $doc['uploaded_at'] = now()->toDateTimeString();
-                $doc['uploaded_by'] = auth()->user()->name;
-                $doc['uploaded_by_id'] = auth()->id();
-                $doc['status'] = 'Pending';
-                $doc['reviewer'] = null;
-                $doc['rejection_reason'] = null;
-                $doc['label'] = $data['label'];
-                $doc['party'] = $party;
-                $found = true;
-                break;
+        $used = [];
+        foreach ($docs as $d) {
+            if (($d['party'] ?? 'Applicant') === $party) {
+                $used[(string) ($d['key'] ?? '')] = true;
             }
         }
-        unset($doc);
-
-        if (!$found) {
-            $docs[] = [
-                'key' => $data['key'],
-                'label' => $data['label'],
-                'party' => $party,
-                'path' => $path,
-                'file_name' => $file->getClientOriginalName(),
-                'uploaded_at' => now()->toDateTimeString(),
-                'uploaded_by' => auth()->user()->name,
-                'uploaded_by_id' => auth()->id(),
-                'status' => 'Pending',
-                'mandatory' => false,
-            ];
+        $key = $baseKey;
+        $n = 2;
+        while (isset($used[$key])) {
+            $key = \Illuminate\Support\Str::limit($baseKey, 46, '').'-'.$n;
+            $n++;
         }
+
+        $docs[] = [
+            'key' => $key,
+            'label' => $label,
+            'party' => $party,
+            'mandatory' => $mandatory,
+            'status' => 'Pending',
+        ];
 
         $details['documents'] = $docs;
         $case->customer_details = $details;
         $case->save();
 
-        GoalCaseAudit::record($case, 'document', 'Document uploaded', auth()->user(), [
-            'to' => $data['label'],
-            'body' => $file->getClientOriginalName(),
+        GoalCaseAudit::record($case, 'document', 'Document added to checklist', auth()->user(), [
+            'to' => $label,
+            'body' => ($mandatory ? 'Required' : 'Optional').' · '.$case->case_no,
         ]);
 
         return redirect()
-            ->route('goal.documents.index', ['tab' => 'pending'])
-            ->with('success', 'Document uploaded (pending verification).');
+            ->route('goal.documents.index', ['case_id' => $case->id, 'tab' => 'all'])
+            ->with('success', 'Document added for '.$case->case_no.' — '.$case->customer_name.'.');
+    }
+
+    /** @deprecated Use store() checklist add instead of file upload. */
+    public function upload(Request $request)
+    {
+        return $this->store($request);
     }
 
     public function verify(Request $request, GoalLoanCase $case)
@@ -340,23 +393,16 @@ class GoalDocumentsController extends Controller
         $rows = collect();
         foreach ($cases as $case) {
             foreach (array_values(data_get($case->customer_details, 'documents', []) ?: []) as $doc) {
-                $path = $doc['path'] ?? ($doc['storage_path'] ?? null);
-                $fileName = $doc['file_name'] ?? null;
-                if (empty($path) && empty($fileName)) {
+                if (! is_array($doc) || empty($doc['key'])) {
                     continue;
                 }
 
-                $status = (string) ($doc['status'] ?? 'Pending');
-                if ($status === 'Uploaded') {
-                    $status = 'Pending';
-                }
-                if (!in_array($status, ['Pending', 'Verified', 'Rejected'], true)) {
-                    $status = 'Pending';
-                }
+                $status = \App\Services\Goal\GoalDocumentCatalog::normalizeStatus($doc);
+                $isReceived = \App\Services\Goal\GoalDocumentCatalog::isReceived($doc);
+                $displayStatus = \App\Services\Goal\GoalDocumentCatalog::displayStatus($doc);
 
                 $key = (string) ($doc['key'] ?? '');
                 $party = (string) ($doc['party'] ?? 'Applicant');
-                $hasFile = (bool) $this->resolveGoalDisk($path);
 
                 $rows->push([
                     'case_id' => $case->id,
@@ -368,22 +414,15 @@ class GoalDocumentsController extends Controller
                     'key' => $key,
                     'label' => (string) ($doc['label'] ?? $doc['key'] ?? 'Document'),
                     'party' => $party,
-                    'file_name' => $fileName,
-                    'path' => $path,
-                    'has_file' => $hasFile,
-                    'mandatory' => !empty($doc['mandatory']),
-                    'preview_url' => $hasFile
-                        ? route('goal.documents.file', [$case, 'key' => $key, 'party' => $party, 'disposition' => 'inline'])
-                        : null,
-                    'download_url' => $hasFile
-                        ? route('goal.documents.file', [$case, 'key' => $key, 'party' => $party, 'disposition' => 'attachment'])
-                        : null,
+                    'is_received' => $isReceived,
+                    'mandatory' => ! empty($doc['mandatory']),
                     'uploaded_by' => $doc['uploaded_by'] ?? null,
-                    'uploaded_at' => $doc['uploaded_at'] ?? null,
+                    'uploaded_at' => $doc['uploaded_at'] ?? ($doc['received_at'] ?? null),
                     'status' => $status,
+                    'display_status' => $displayStatus,
                     'reviewer' => $doc['reviewer'] ?? null,
                     'rejection_reason' => $doc['rejection_reason'] ?? null,
-                    'sort_at' => $doc['uploaded_at'] ?? optional($case->updated_at)->toDateTimeString(),
+                    'sort_at' => $doc['uploaded_at'] ?? ($doc['received_at'] ?? optional($case->updated_at)->toDateTimeString()),
                 ]);
             }
         }
@@ -394,7 +433,7 @@ class GoalDocumentsController extends Controller
     protected function applyFilters(Collection $rows, Request $request, string $tab): Collection
     {
         if ($tab === 'pending') {
-            $rows = $rows->where('status', 'Pending');
+            $rows = $rows->filter(fn ($r) => ($r['status'] ?? '') === 'Pending' && ! empty($r['is_received']));
         } elseif ($tab === 'verified') {
             $rows = $rows->where('status', 'Verified');
         } elseif ($tab === 'rejected') {
@@ -402,7 +441,12 @@ class GoalDocumentsController extends Controller
         }
 
         if ($request->filled('status') && $tab === 'all') {
-            $rows = $rows->where('status', $request->input('status'));
+            $status = (string) $request->input('status');
+            if ($status === 'Pending') {
+                $rows = $rows->filter(fn ($r) => ($r['status'] ?? '') === 'Pending' && ! empty($r['is_received']));
+            } else {
+                $rows = $rows->where('status', $status);
+            }
         }
 
         if ($request->filled('q')) {

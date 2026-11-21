@@ -38,7 +38,9 @@
 .gd-page .welcome-copy .sub{font-size:.9rem;color:#334155;margin:.4rem 0 0;line-height:1.45}
 .gd-page .role-badge{
     display:inline-flex;align-items:center;gap:.35rem;margin-top:.55rem;padding:.32rem .75rem;
-    border-radius:999px;background:#0f172a;color:#fff;font-size:.72rem;font-weight:700;
+    border-radius:999px;font-size:.72rem;font-weight:700;
+    background:rgba(15,118,110,.12);color:#0f766e;
+    border:1px solid rgba(15,118,110,.28);
 }
 .gd-page .pipe-strip{
     display:flex;flex-wrap:wrap;gap:6px;margin-top:.7rem;position:relative;z-index:1;

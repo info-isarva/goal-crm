@@ -102,7 +102,7 @@
 
 <form method="POST" action="{{ route('goal.cases.workspace', $case) }}" id="cwBranchMisForm" class="mis-tab" novalidate>
     @csrf
-    <input type="hidden" name="cw_tab" value="mis">
+    <input type="hidden" name="cw_tab" value="mis" data-cw-fixed-tab="1">
     <input type="hidden" name="customer_name" value="{{ old('customer_name', $case->customer_name) }}">
     <input type="hidden" name="mobile" value="{{ old('mobile', $case->mobile) }}">
 

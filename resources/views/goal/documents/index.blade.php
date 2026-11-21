@@ -218,6 +218,17 @@
     padding:0 14px;font-weight:650;font-size:.84rem;text-decoration:none;
     display:inline-flex;align-items:center;gap:6px;
 }
+.doc-page .btn-export:hover{background:#f8fafc;color:#0f172a}
+.doc-page .doc-export-menu{
+    min-width:168px;border:1px solid #e2e8f0;border-radius:12px;
+    box-shadow:0 10px 28px rgba(15,23,42,.12);padding:.35rem;margin-top:.35rem !important;
+}
+.doc-page .doc-export-menu .dropdown-item{
+    display:flex;align-items:center;gap:8px;border-radius:8px;
+    font-size:.84rem;font-weight:600;color:#334155;padding:.45rem .65rem;
+}
+.doc-page .doc-export-menu .dropdown-item:hover{background:#f8fafc;color:#0f172a}
+.doc-page .doc-export-menu .dropdown-item i{font-size:1rem}
 .doc-page .table-card-body{padding:0}
 .doc-page .docs-table-wrap{
     border:0;border-radius:0;overflow-x:auto;background:#fff;max-width:100%;
@@ -226,48 +237,109 @@
 }
 .doc-page .docs-table-wrap::-webkit-scrollbar{height:6px}
 .doc-page .docs-table-wrap::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:999px}
-.doc-page table{width:100%;min-width:1100px;margin:0;border-collapse:separate;border-spacing:0}
-.doc-page table thead th{
-    font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;
-    color:#64748b;font-weight:700;background:#f1f5f9;
-    border-bottom:1px solid #e2e8f0;white-space:nowrap;padding:.75rem .85rem;
+.doc-page .docs-table-wrap > table.doc-grid{
+    width:100%;min-width:1180px;margin:0;
+    table-layout:fixed;border-collapse:collapse;border-spacing:0;
 }
-.doc-page table tbody td{
-    vertical-align:middle;font-size:.875rem;color:#334155;
-    border-color:#eef2f7;padding:.75rem .85rem;white-space:nowrap;
+.doc-page .docs-table-wrap > table.doc-grid col.c-num{width:48px}
+.doc-page .docs-table-wrap > table.doc-grid col.c-case{width:140px}
+.doc-page .docs-table-wrap > table.doc-grid col.c-cust{width:110px}
+.doc-page .docs-table-wrap > table.doc-grid col.c-doc{width:150px}
+.doc-page .docs-table-wrap > table.doc-grid col.c-req{width:80px}
+.doc-page .docs-table-wrap > table.doc-grid col.c-party{width:100px}
+.doc-page .docs-table-wrap > table.doc-grid col.c-by{width:110px}
+.doc-page .docs-table-wrap > table.doc-grid col.c-on{width:110px}
+.doc-page .docs-table-wrap > table.doc-grid col.c-status{width:120px}
+.doc-page .docs-table-wrap > table.doc-grid col.c-rev{width:100px}
+.doc-page .docs-table-wrap > table.doc-grid col.c-act{width:210px}
+.doc-page .docs-table-wrap > table.doc-grid thead th{
+    font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;
+    color:#64748b;font-weight:700;background:#f8fafc !important;
+    border-bottom:1px solid #e2e8f0 !important;border-top:0 !important;
+    white-space:nowrap;height:42px;
+    padding:0 12px !important;
+    text-align:left !important;vertical-align:middle !important;
 }
-.doc-page table tbody tr:hover{background:#f8fbff}
+.doc-page .docs-table-wrap > table.doc-grid tbody td{
+    font-size:.84rem;color:#334155;background:#fff;
+    border-bottom:1px solid #f1f5f9 !important;border-top:0 !important;
+    white-space:nowrap;height:52px;
+    padding:8px 12px !important;
+    text-align:left !important;vertical-align:middle !important;
+}
+.doc-page .docs-table-wrap > table.doc-grid thead th.c-act,
+.doc-page .docs-table-wrap > table.doc-grid tbody td.c-act{
+    text-align:right !important;
+}
+.doc-page .docs-table-wrap > table.doc-grid tbody tr:hover td{background:#f8fafc}
+.doc-page .docs-table-wrap > table.doc-grid tbody tr:last-child td{border-bottom:0 !important}
+.doc-page .docs-table-wrap > table.doc-grid .cell-clip{
+    display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;
+}
 .doc-page .case-link{
     font-weight:800;color:var(--theme-primary);text-decoration:none;
     font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.82rem;
 }
 .doc-page .case-link:hover{text-decoration:underline}
-.doc-page .file-cell{display:inline-flex;align-items:center;gap:8px;max-width:220px}
-.doc-page .file-cell i{color:#ef4444}
-.doc-page .file-name{overflow:hidden;text-overflow:ellipsis;font-weight:600;color:#0f172a}
 .doc-page .req-pill{
-    display:inline-flex;margin-left:6px;padding:.1rem .4rem;border-radius:999px;
+    display:inline-flex;align-items:center;padding:.12rem .45rem;border-radius:999px;
     font-size:.65rem;font-weight:700;background:#fee2e2;color:#b91c1c;
+}
+.doc-page .opt-pill{
+    display:inline-flex;align-items:center;padding:.12rem .45rem;border-radius:999px;
+    font-size:.65rem;font-weight:700;background:#f1f5f9;color:#64748b;
 }
 .doc-page .status-pill{
     display:inline-flex;align-items:center;justify-content:center;
-    padding:.28rem .7rem;border-radius:999px;font-size:.74rem;font-weight:700;
+    padding:.28rem .7rem;border-radius:999px;font-size:.74rem;font-weight:700;white-space:nowrap;
 }
+.doc-page .status-pill.idle{background:#f1f5f9;color:#64748b}
 .doc-page .status-pill.pending{background:#ffedd5;color:#c2410c}
 .doc-page .status-pill.verified{background:#dcfce7;color:#15803d}
 .doc-page .status-pill.rejected{background:#fee2e2;color:#b91c1c}
-.doc-page .actions-cell{display:inline-flex;align-items:center;gap:4px}
-.doc-page .action-btn{
-    width:32px;height:32px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#475569;
-    display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:0;
+.doc-page .actions-cell{
+    display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap;width:100%;
 }
-.doc-page .action-btn:hover{background:#f8fafc;color:var(--theme-primary)}
-.doc-page .action-btn.ok:hover{color:#15803d}
-.doc-page .action-btn.bad:hover{color:#dc2626}
+.doc-page .actions-cell form{display:inline;margin:0}
+.doc-page .doc-act-btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:5px;
+    height:32px;padding:0 10px;margin:0;border-radius:8px;border:1px solid #e2e8f0;
+    background:#fff;color:#475569;font-size:.74rem;font-weight:700;line-height:1;
+    cursor:pointer;text-decoration:none;white-space:nowrap;
+}
+.doc-page .doc-act-btn:hover{background:#f8fafc;border-color:#cbd5e1;color:#0f172a;text-decoration:none}
+.doc-page .doc-act-btn i{font-size:.88rem}
+.doc-page .doc-act-btn.is-open{border-color:#cbd5e1}
+.doc-page .doc-act-btn.is-verify{border-color:#a7f3d0;background:#ecfdf5;color:#059669}
+.doc-page .doc-act-btn.is-verify:hover{background:#d1fae5;color:#047857}
+.doc-page .doc-act-btn.is-reject{border-color:#fecaca;background:#fef2f2;color:#dc2626}
+.doc-page .doc-act-btn.is-reject:hover{background:#fee2e2;color:#b91c1c}
 .doc-page .table-footer-bar{
     display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
     gap:.75rem;padding:.75rem 1.15rem;border-top:1px solid #eef2f7;font-size:.82rem;color:#64748b;
+    background:#fafbfc;
 }
+.doc-page .table-footer-bar .foot-left{font-weight:600;color:#64748b}
+.doc-page .table-footer-bar .foot-right{
+    display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-left:auto;
+}
+.doc-page .table-footer-bar .per-page-wrap{
+    display:inline-flex;align-items:center;gap:6px;margin:0;font-size:.78rem;font-weight:600;color:#64748b;
+}
+.doc-page .table-footer-bar .per-page-wrap select{
+    height:32px;min-width:64px;border:1px solid #e2e8f0;border-radius:8px;padding:0 8px;
+    background:#fff;color:#334155;font-size:.78rem;font-weight:600;
+}
+.doc-page .table-footer-bar .foot-pager .pagination{margin:0;gap:4px}
+.doc-page .table-footer-bar .page-link{
+    min-width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;
+    border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#475569;
+    font-size:.78rem;font-weight:700;padding:0 8px;
+}
+.doc-page .table-footer-bar .page-item.active .page-link{
+    background:var(--theme-primary);border-color:var(--theme-primary);color:#fff;
+}
+.doc-page .table-footer-bar .page-item.disabled .page-link{opacity:.45;pointer-events:none}
 .doc-page .table-card-body:has(> .empty-state){padding:0 !important}
 .doc-page .empty-state{
     display:flex;align-items:center;justify-content:flex-start;gap:12px;
@@ -364,7 +436,7 @@
     .doc-page .docs-table-wrap > table td > *{max-width:64%;overflow-wrap:anywhere;word-break:break-word}
     .doc-page .docs-table-wrap > table td[data-label="#"],
     .doc-page .docs-table-wrap > table td[data-label="Reviewer"],
-    .doc-page .docs-table-wrap > table td[data-label="Uploaded By"]{
+    .doc-page .docs-table-wrap > table td[data-label="Recorded By"]{
         display:none !important;
     }
     .doc-page .docs-table-wrap > table td[data-label="Case Reference"]{
@@ -373,13 +445,20 @@
     }
     .doc-page .docs-table-wrap > table td[data-label="Case Reference"]::before{content:"Case"}
     .doc-page .docs-table-wrap > table td[data-label="Document"]::before{content:"Document"}
-    .doc-page .docs-table-wrap > table td[data-label="Uploaded On"]::before{content:"Uploaded"}
+    .doc-page .docs-table-wrap > table td[data-label="Recorded On"]::before{content:"Recorded"}
     .doc-page .docs-table-wrap > table td[data-label="Status"]::before{content:"Status"}
-    .doc-page .docs-table-wrap > table td.col-actions{
+    .doc-page .docs-table-wrap > table.doc-grid,
+    .doc-page .docs-table-wrap > table.doc-grid thead,
+    .doc-page .docs-table-wrap > table.doc-grid tbody,
+    .doc-page .docs-table-wrap > table.doc-grid tr,
+    .doc-page .docs-table-wrap > table.doc-grid th,
+    .doc-page .docs-table-wrap > table.doc-grid td{display:block;width:100%;table-layout:auto}
+    .doc-page .docs-table-wrap > table.doc-grid thead{display:none}
+    .doc-page .docs-table-wrap > table.doc-grid tbody td.c-act{
         padding-top:.35rem !important;margin-top:.1rem !important;align-items:center !important;
+        justify-content:flex-start !important;text-align:left !important;
     }
-    .doc-page .file-cell{max-width:100%}
-    .doc-page .action-btn{width:30px;height:30px}
+    .doc-page .docs-table-wrap > table.doc-grid .actions-cell{justify-content:flex-start}
 }
 </style>
 @endpush
@@ -388,19 +467,25 @@
 @php
     $canUpload = $canUpload ?? false;
     $canVerify = $canVerify ?? false;
-    $statusLabel = fn ($s) => $s === 'Pending' ? 'Pending Verification' : $s;
-    $statusClass = fn ($s) => match ($s) {
-        'Verified' => 'verified',
-        'Rejected' => 'rejected',
-        default => 'pending',
+    $statusLabel = function ($doc) {
+        if (is_array($doc) && ! empty($doc['display_status'])) {
+            return $doc['display_status'];
+        }
+        $s = is_array($doc) ? ($doc['status'] ?? 'Pending') : (string) $doc;
+        return $s === 'Pending' ? 'Pending Verification' : $s;
     };
-    $fileIcon = function ($name) {
-        $ext = strtolower(pathinfo((string) $name, PATHINFO_EXTENSION));
-        return match ($ext) {
-            'pdf' => 'bi-file-earmark-pdf-fill',
-            'jpg', 'jpeg', 'png', 'webp' => 'bi-file-earmark-image',
-            default => 'bi-file-earmark-text',
+    $statusClass = function ($doc) use ($statusLabel) {
+        $label = is_array($doc) ? $statusLabel($doc) : (string) $doc;
+        return match ($label) {
+            'Verified' => 'verified',
+            'Rejected' => 'rejected',
+            'Pending Verification', 'Pending' => 'pending',
+            default => 'idle',
         };
+    };
+    $statusShort = fn ($label) => match ($label) {
+        'Pending Verification' => 'Pending',
+        default => $label,
     };
     $tabQuery = fn ($key) => array_filter(array_merge(request()->except('page'), ['tab' => $key]));
 @endphp
@@ -418,16 +503,37 @@
                 </ol>
             </nav>
             <h1 class="page-title">Documents</h1>
-            <div class="page-sub">Centralized document register — verification, reviewer history and case workspace links.</div>
+            <div class="page-sub">Checklist register — pick a case/customer, add documents, mark required, then verify manually.</div>
         </div>
         <div class="hero-actions">
             <a href="{{ route('goal.cases.index') }}" class="btn-doc-cancel" style="text-decoration:none"><i class="bi bi-briefcase"></i> Cases</a>
             <a href="{{ route('goal.bank-processing.index') }}" class="btn-doc-cancel" style="text-decoration:none"><i class="bi bi-bank"></i> Bank</a>
             <a href="{{ route('goal.allocation.index') }}" class="btn-doc-cancel" style="text-decoration:none"><i class="bi bi-people"></i> Allocation</a>
-            <a href="{{ route('goal.documents.export', request()->query()) }}" class="btn-doc-cancel" style="text-decoration:none"><i class="bi bi-download"></i> Export</a>
+            <div class="dropdown">
+                <button type="button" class="btn-doc-cancel dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-download"></i> Export
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end doc-export-menu">
+                    <li>
+                        <a class="dropdown-item" data-no-loader href="{{ route('goal.documents.export', array_merge(request()->query(), ['format' => 'pdf'])) }}">
+                            <i class="bi bi-file-earmark-pdf text-danger"></i> Export to PDF
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" data-no-loader href="{{ route('goal.documents.export', array_merge(request()->query(), ['format' => 'xlsx'])) }}">
+                            <i class="bi bi-file-earmark-excel text-success"></i> Excel
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" data-no-loader href="{{ route('goal.documents.export', array_merge(request()->query(), ['format' => 'csv'])) }}">
+                            <i class="bi bi-filetype-csv text-primary"></i> CSV
+                        </a>
+                    </li>
+                </ul>
+            </div>
             @if($canUpload)
-                <button type="button" class="btn-doc-primary" data-bs-toggle="modal" data-bs-target="#docUploadModal">
-                    <i class="bi bi-upload"></i> Upload Documents
+                <button type="button" class="btn-doc-primary" data-bs-toggle="modal" data-bs-target="#docAddModal">
+                    <i class="bi bi-plus-lg"></i> Add document
                 </button>
             @endif
         </div>
@@ -497,6 +603,7 @@
     <div class="filter-card">
         <form method="GET" action="{{ route('goal.documents.index') }}" id="docFilterForm">
             <input type="hidden" name="tab" value="{{ $tab }}">
+            <input type="hidden" name="per_page" value="{{ $perPage ?? request('per_page', 10) }}">
             <input type="hidden" name="date_from" id="date_from" value="{{ request('date_from') }}">
             <input type="hidden" name="date_to" id="date_to" value="{{ request('date_to') }}">
 
@@ -560,7 +667,7 @@
                     </select>
                 </div>
                 <div>
-                    <label for="docDateRange">Uploaded Date</label>
+                    <label for="docDateRange">Recorded Date</label>
                     <div class="doc-date">
                         <input type="text" id="docDateRange" class="form-control" placeholder="Select Date Range" autocomplete="off" readonly>
                         <i class="bi bi-calendar3"></i>
@@ -586,12 +693,38 @@
     <div class="table-card">
         <div class="table-card-head">
             <div>
-                <h5>Document Register</h5>
-                <p class="head-sub">{{ number_format($documents->total()) }} document{{ $documents->total() === 1 ? '' : 's' }} in this view</p>
+                <h5>Document checklist register</h5>
+                <p class="head-sub">{{ number_format($documents->total()) }} item{{ $documents->total() === 1 ? '' : 's' }} · record &amp; verify (no file upload)</p>
             </div>
-            <a class="btn-export" href="{{ route('goal.documents.export', request()->query()) }}">
-                <i class="bi bi-download"></i> Export
-            </a>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                @if($canUpload)
+                    <button type="button" class="btn-doc-primary" data-bs-toggle="modal" data-bs-target="#docAddModal" style="height:36px">
+                        <i class="bi bi-plus-lg"></i> Add document
+                    </button>
+                @endif
+                <div class="dropdown">
+                    <button type="button" class="btn-export dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-download"></i> Export
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end doc-export-menu">
+                        <li>
+                            <a class="dropdown-item" data-no-loader href="{{ route('goal.documents.export', array_merge(request()->query(), ['format' => 'pdf'])) }}">
+                                <i class="bi bi-file-earmark-pdf text-danger"></i> Export to PDF
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" data-no-loader href="{{ route('goal.documents.export', array_merge(request()->query(), ['format' => 'xlsx'])) }}">
+                                <i class="bi bi-file-earmark-excel text-success"></i> Excel
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" data-no-loader href="{{ route('goal.documents.export', array_merge(request()->query(), ['format' => 'csv'])) }}">
+                                <i class="bi bi-filetype-csv text-primary"></i> CSV
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
         <div class="table-card-body">
             @if($documents->total() === 0)
@@ -599,24 +732,38 @@
                     <div class="illus"><i class="bi bi-file-earmark-text"></i></div>
                     <div class="copy">
                         <strong>No documents found.</strong>
-                        <span>Upload documents to a case to populate this register.</span>
+                        <span>Add documents on a case checklist, then record and verify them here.</span>
                     </div>
                 </div>
             @else
                 <div class="docs-table-wrap">
-                    <table class="table mb-0 align-middle">
+                    <table class="doc-grid">
+                        <colgroup>
+                            <col class="c-num">
+                            <col class="c-case">
+                            <col class="c-cust">
+                            <col class="c-doc">
+                            <col class="c-req">
+                            <col class="c-party">
+                            <col class="c-by">
+                            <col class="c-on">
+                            <col class="c-status">
+                            <col class="c-rev">
+                            <col class="c-act">
+                        </colgroup>
                         <thead>
                             <tr>
-                                <th>#</th>
-                                <th>Case Reference</th>
-                                <th>Customer</th>
-                                <th>Document Type</th>
-                                <th>File Name</th>
-                                <th>Uploaded By</th>
-                                <th>Uploaded On</th>
-                                <th>Verification Status</th>
-                                <th>Reviewer</th>
-                                <th class="col-actions">Actions</th>
+                                <th scope="col">#</th>
+                                <th scope="col">Case</th>
+                                <th scope="col">Customer</th>
+                                <th scope="col">Document</th>
+                                <th scope="col">Required</th>
+                                <th scope="col">Party</th>
+                                <th scope="col">Recorded by</th>
+                                <th scope="col">Recorded on</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Reviewer</th>
+                                <th scope="col" class="c-act">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -626,86 +773,71 @@
                                 if (!empty($doc['uploaded_at'])) {
                                     try { $uploadedOn = \Carbon\Carbon::parse($doc['uploaded_at'])->format('d M Y'); } catch (\Throwable) { $uploadedOn = $doc['uploaded_at']; }
                                 }
-                                $isPending = in_array($doc['status'], ['Pending'], true);
+                                $disp = $statusLabel($doc);
+                                $canReviewRow = $canVerify && ($doc['status'] ?? '') === 'Pending' && ! empty($doc['is_received']);
                             @endphp
                             <tr>
                                 <td data-label="#">{{ $documents->firstItem() + $i }}</td>
                                 <td data-label="Case Reference">
-                                    <a class="case-link" href="{{ route('goal.cases.show', $doc['case_id']) }}?tab=documents">
+                                    <a class="case-link cell-clip" href="{{ route('goal.cases.show', $doc['case_id']) }}?tab=documents" title="{{ $doc['case_no'] }}">
                                         {{ $doc['case_no'] }}
                                     </a>
                                 </td>
-                                <td data-label="Customer">{{ $doc['customer_name'] ?: '—' }}</td>
+                                <td data-label="Customer">
+                                    <span class="cell-clip" title="{{ $doc['customer_name'] ?: '' }}">{{ $doc['customer_name'] ?: '—' }}</span>
+                                </td>
                                 <td data-label="Document">
-                                    {{ $doc['label'] }}
-                                    @if(!empty($doc['mandatory']))<span class="req-pill">Required</span>@endif
+                                    <span class="fw-semibold cell-clip" title="{{ $doc['label'] }}">{{ $doc['label'] }}</span>
+                                    @if(!empty($doc['rejection_reason']))
+                                        <div class="small text-danger cell-clip" title="{{ $doc['rejection_reason'] }}">{{ \Illuminate\Support\Str::limit($doc['rejection_reason'], 36) }}</div>
+                                    @endif
                                 </td>
-                                <td data-label="File">
-                                    <span class="file-cell" title="{{ $doc['file_name'] }}">
-                                        <i class="bi {{ $fileIcon($doc['file_name']) }}"></i>
-                                        <span class="file-name">{{ $doc['file_name'] ?: '—' }}</span>
-                                    </span>
+                                <td data-label="Required">
+                                    @if(!empty($doc['mandatory']))
+                                        <span class="req-pill">Yes</span>
+                                    @else
+                                        <span class="opt-pill">No</span>
+                                    @endif
                                 </td>
-                                <td data-label="Uploaded By">{{ $doc['uploaded_by'] ?: '—' }}</td>
-                                <td data-label="Uploaded On">{{ $uploadedOn ?: '—' }}</td>
+                                <td data-label="Party">{{ $doc['party'] ?: 'Applicant' }}</td>
+                                <td data-label="Recorded By">
+                                    <span class="cell-clip" title="{{ $doc['uploaded_by'] ?: '' }}">{{ $doc['uploaded_by'] ?: '—' }}</span>
+                                </td>
+                                <td data-label="Recorded On">{{ $uploadedOn ?: '—' }}</td>
                                 <td data-label="Status">
-                                    <span class="status-pill {{ $statusClass($doc['status']) }}">{{ $statusLabel($doc['status']) }}</span>
+                                    <span class="status-pill {{ $statusClass($doc) }}" title="{{ $disp }}">{{ $statusShort($disp) }}</span>
                                 </td>
-                                <td data-label="Reviewer">{{ $doc['reviewer'] ?: '—' }}</td>
-                                <td class="col-actions" data-label="Actions">
+                                <td data-label="Reviewer">
+                                    <span class="cell-clip" title="{{ $doc['reviewer'] ?: '' }}">{{ $doc['reviewer'] ?: '—' }}</span>
+                                </td>
+                                <td class="c-act" data-label="Actions">
                                     <div class="actions-cell">
-                                        @if(!empty($doc['preview_url']))
-                                            <button type="button" class="action-btn"
-                                                    data-doc-preview
-                                                    data-url="{{ $doc['preview_url'] }}"
-                                                    data-title="{{ $doc['label'] }} — {{ $doc['case_no'] }}"
-                                                    title="Preview">
-                                                <i class="bi bi-eye"></i>
+                                        @if($canReviewRow)
+                                            <form method="POST" action="{{ route('goal.documents.verify', $doc['case_id']) }}" class="js-doc-confirm"
+                                                data-swal-title="Verify document?"
+                                                data-swal-text="Confirm verification for {{ $doc['label'] }}."
+                                                data-swal-confirm="Yes, verify"
+                                                data-swal-icon="question"
+                                                data-swal-color="#059669">
+                                                @csrf
+                                                <input type="hidden" name="key" value="{{ $doc['key'] }}">
+                                                <input type="hidden" name="party" value="{{ $doc['party'] }}">
+                                                <input type="hidden" name="action" value="Verified">
+                                                <button type="submit" class="doc-act-btn is-verify">
+                                                    <i class="bi bi-shield-check"></i> Verify
+                                                </button>
+                                            </form>
+                                            <button type="button" class="doc-act-btn is-reject js-doc-reject"
+                                                    data-reject-action="{{ route('goal.documents.verify', $doc['case_id']) }}"
+                                                    data-doc-key="{{ $doc['key'] }}"
+                                                    data-doc-party="{{ $doc['party'] }}"
+                                                    data-doc-label="{{ $doc['label'] }}">
+                                                <i class="bi bi-x-lg"></i> Reject
                                             </button>
-                                            <a href="{{ $doc['download_url'] }}" class="action-btn" title="Download"><i class="bi bi-download"></i></a>
-                                        @else
-                                            <span class="action-btn" title="File unavailable"><i class="bi bi-eye-slash"></i></span>
                                         @endif
-                                        <div class="dropdown">
-                                            <button type="button" class="action-btn" data-bs-toggle="dropdown" aria-expanded="false" title="More">
-                                                <i class="bi bi-three-dots-vertical"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end">
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('goal.cases.show', $doc['case_id']) }}?tab=documents">
-                                                        <i class="bi bi-folder2-open me-2"></i> Open Loan Case Workspace
-                                                    </a>
-                                                </li>
-                                                @if($canVerify && $isPending && !empty($doc['preview_url']))
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <form method="POST" action="{{ route('goal.documents.verify', $doc['case_id']) }}">
-                                                            @csrf
-                                                            <input type="hidden" name="key" value="{{ $doc['key'] }}">
-                                                            <input type="hidden" name="party" value="{{ $doc['party'] }}">
-                                                            <input type="hidden" name="action" value="Verified">
-                                                            <button type="submit" class="dropdown-item text-success">
-                                                                <i class="bi bi-check2-circle me-2"></i> Verify
-                                                            </button>
-                                                        </form>
-                                                    </li>
-                                                    <li>
-                                                        <button type="button" class="dropdown-item text-danger"
-                                                                data-bs-toggle="modal" data-bs-target="#docRejectModal"
-                                                                data-case-id="{{ $doc['case_id'] }}"
-                                                                data-doc-key="{{ $doc['key'] }}"
-                                                                data-doc-party="{{ $doc['party'] }}">
-                                                            <i class="bi bi-x-circle me-2"></i> Reject
-                                                        </button>
-                                                    </li>
-                                                @endif
-                                                @if(!empty($doc['rejection_reason']))
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li><h6 class="dropdown-header">Rejection reason</h6></li>
-                                                    <li><span class="dropdown-item-text small text-wrap">{{ $doc['rejection_reason'] }}</span></li>
-                                                @endif
-                                            </ul>
-                                        </div>
+                                        <a class="doc-act-btn is-open" href="{{ route('goal.cases.show', $doc['case_id']) }}?tab=documents">
+                                            <i class="bi bi-folder2-open"></i> Open case
+                                        </a>
                                     </div>
                                 </td>
                             </tr>
@@ -714,55 +846,68 @@
                     </table>
                 </div>
                 <div class="table-footer-bar">
-                    <div>Showing {{ $documents->firstItem() }}–{{ $documents->lastItem() }} of {{ $documents->total() }}</div>
-                    <div>{{ $documents->links() }}</div>
+                    <div class="foot-left">
+                        @if($documents->total() > 0)
+                            Showing {{ $documents->firstItem() }}–{{ $documents->lastItem() }} of {{ number_format($documents->total()) }}
+                        @else
+                            Showing 0 entries
+                        @endif
+                    </div>
+                    <div class="foot-right">
+                        <form method="GET" action="{{ route('goal.documents.index') }}" class="per-page-wrap">
+                            @foreach(request()->except('per_page', 'page') as $key => $value)
+                                @if(is_array($value))
+                                    @foreach($value as $v)
+                                        <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
+                                    @endforeach
+                                @else
+                                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                                @endif
+                            @endforeach
+                            <span>Rows</span>
+                            <select name="per_page" data-select2-skip="1" onchange="this.form.submit()" aria-label="Rows per page">
+                                @foreach([10, 25, 50, 100] as $n)
+                                    <option value="{{ $n }}" @selected((int) ($perPage ?? 10) === $n)>{{ $n }}</option>
+                                @endforeach
+                            </select>
+                        </form>
+                        @if($documents->hasPages())
+                            <div class="foot-pager">
+                                {{ $documents->onEachSide(1)->links('vendor.pagination.users') }}
+                            </div>
+                        @endif
+                    </div>
                 </div>
             @endif
         </div>
     </div>
 </div>
 
-{{-- Secure preview modal --}}
-<div class="modal fade doc-modal" id="docPreviewModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="docPreviewTitle">Document Preview</h5>
-                <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
-            </div>
-            <div class="modal-body p-2">
-                <iframe id="docPreviewFrame" class="preview-frame" title="Secure document viewer"></iframe>
-            </div>
-        </div>
-    </div>
-</div>
-
 @if($canUpload)
-<div class="modal fade doc-modal" id="docUploadModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade doc-modal" id="docAddModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <form method="POST" action="{{ route('goal.documents.upload') }}" enctype="multipart/form-data" class="modal-content">
+        <form method="POST" action="{{ route('goal.documents.store') }}" class="modal-content">
             @csrf
             <div class="modal-header">
-                <h5 class="modal-title">Upload Documents</h5>
+                <h5 class="modal-title">Add document</h5>
                 <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
+                <p class="small text-muted mb-3">Select the case/customer, then add the document to that case checklist.</p>
                 <div class="mb-3">
-                    <label class="form-label">Case Reference <span class="text-danger">*</span></label>
+                    <label class="form-label">Case / Customer <span class="text-danger">*</span></label>
                     <select name="case_id" class="form-select" required>
                         <option value="">Select case...</option>
                         @foreach($cases as $c)
-                            <option value="{{ $c->id }}">{{ $c->case_no }} — {{ $c->customer_name }}</option>
+                            <option value="{{ $c->id }}" @selected((string) request('case_id') === (string) $c->id)>
+                                {{ $c->case_no }} — {{ $c->customer_name }}{{ $c->product ? ' · '.$c->product : '' }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Document Key <span class="text-danger">*</span></label>
-                    <input type="text" name="key" class="form-control" required maxlength="60" placeholder="e.g. pan">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Document Type <span class="text-danger">*</span></label>
-                    <input type="text" name="label" class="form-control" required maxlength="120" placeholder="e.g. PAN Card">
+                    <label class="form-label">Document name <span class="text-danger">*</span></label>
+                    <input type="text" name="label" class="form-control" required maxlength="120" placeholder="e.g. PAN Card, Salary Slip">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Party</label>
@@ -771,53 +916,129 @@
                         <option value="Co-Applicant">Co-Applicant</option>
                     </select>
                 </div>
-                <div class="mb-0">
-                    <label class="form-label">File <span class="text-danger">*</span></label>
-                    <div class="file-field">
-                        <input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp">
-                    </div>
-                    <div class="form-text">PDF / JPG / PNG / WEBP · max 5 MB. Uploads start as Pending Verification and are audited.</div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="mandatory" value="1" id="docAddRequired">
+                    <label class="form-check-label" for="docAddRequired">
+                        This document is required for this case
+                    </label>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-doc-cancel" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn-doc-primary"><i class="bi bi-upload"></i> Upload</button>
+                <button type="submit" class="btn-doc-primary"><i class="bi bi-plus-lg"></i> Add document</button>
             </div>
         </form>
     </div>
 </div>
 @endif
 
-@if($canVerify)
-<div class="modal fade doc-modal" id="docRejectModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <form method="POST" action="" class="modal-content" id="docRejectForm">
-            @csrf
-            <input type="hidden" name="key" id="docRejectKey">
-            <input type="hidden" name="party" id="docRejectParty" value="Applicant">
-            <input type="hidden" name="action" value="Rejected">
-            <div class="modal-header">
-                <h5 class="modal-title">Reject Document</h5>
-                <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
-            </div>
-            <div class="modal-body">
-                <label class="form-label">Rejection reason <span class="text-danger">*</span></label>
-                <textarea name="rejection_reason" class="form-control" rows="3" required maxlength="500"
-                          placeholder="Mandatory reason recorded in the audit trail"></textarea>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-doc-cancel" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn-doc-danger"><i class="bi bi-x-circle"></i> Reject</button>
-            </div>
-        </form>
-    </div>
-</div>
-@endif
 @endsection
 
 @push('scripts')
 <script>
 (function () {
+    var theme = (getComputedStyle(document.documentElement).getPropertyValue('--theme-primary') || '').trim() || '#009B80';
+
+    function confirmThen(opts, onYes) {
+        if (window.Swal && typeof Swal.fire === 'function') {
+            Swal.fire({
+                icon: opts.icon || 'question',
+                title: opts.title || 'Confirm',
+                text: opts.text || '',
+                showCancelButton: true,
+                focusCancel: true,
+                confirmButtonColor: opts.color || theme,
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: opts.confirmText || 'Yes',
+                cancelButtonText: 'Cancel'
+            }).then(function (r) {
+                if (r.isConfirmed) onYes();
+            });
+            return;
+        }
+        if (window.confirm((opts.title || 'Confirm') + (opts.text ? '\n\n' + opts.text : ''))) {
+            onYes();
+        }
+    }
+
+    document.querySelectorAll('form.js-doc-confirm').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            confirmThen({
+                title: form.getAttribute('data-swal-title') || 'Confirm?',
+                text: form.getAttribute('data-swal-text') || '',
+                confirmText: form.getAttribute('data-swal-confirm') || 'Yes',
+                icon: form.getAttribute('data-swal-icon') || 'question',
+                color: form.getAttribute('data-swal-color') || theme
+            }, function () {
+                HTMLFormElement.prototype.submit.call(form);
+            });
+        });
+    });
+
+    document.querySelectorAll('.js-doc-reject').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var label = btn.getAttribute('data-doc-label') || 'this document';
+            var key = btn.getAttribute('data-doc-key') || '';
+            var party = btn.getAttribute('data-doc-party') || 'Applicant';
+            var action = btn.getAttribute('data-reject-action') || '';
+            if (!action || !key) return;
+
+            var runReject = function (reason) {
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = action;
+                form.style.display = 'none';
+                function add(name, value) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = name;
+                    input.value = value;
+                    form.appendChild(input);
+                }
+                var token = document.querySelector('meta[name="csrf-token"]');
+                add('_token', token ? token.getAttribute('content') : '{{ csrf_token() }}');
+                add('key', key);
+                add('party', party);
+                add('action', 'Rejected');
+                add('rejection_reason', reason);
+                document.body.appendChild(form);
+                form.submit();
+            };
+
+            if (window.Swal && typeof Swal.fire === 'function') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Reject document?',
+                    html: '<div style="text-align:left;font-size:.9rem;color:#475569;margin-bottom:.5rem">Reject <strong>' +
+                        String(label).replace(/</g, '&lt;') + '</strong>. Reason is required.</div>',
+                    input: 'textarea',
+                    inputPlaceholder: 'Enter rejection reason…',
+                    inputAttributes: { maxlength: 500, 'aria-label': 'Rejection reason' },
+                    showCancelButton: true,
+                    focusCancel: true,
+                    confirmButtonText: 'Reject',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#94a3b8',
+                    preConfirm: function (value) {
+                        if (!value || !String(value).trim()) {
+                            Swal.showValidationMessage('Rejection reason is required');
+                            return false;
+                        }
+                        return String(value).trim();
+                    }
+                }).then(function (r) {
+                    if (r.isConfirmed) runReject(r.value);
+                });
+                return;
+            }
+
+            var reason = window.prompt('Rejection reason for ' + label + ' (required):', '');
+            if (reason && reason.trim()) runReject(reason.trim());
+        });
+    });
+
     var form = document.getElementById('docFilterForm');
     if (form) {
         form.querySelectorAll('select').forEach(function (el) {
@@ -858,37 +1079,6 @@
                 }
             });
         }
-    }
-
-    var previewModal = document.getElementById('docPreviewModal');
-    var previewFrame = document.getElementById('docPreviewFrame');
-    var previewTitle = document.getElementById('docPreviewTitle');
-    document.querySelectorAll('[data-doc-preview]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            if (previewFrame) previewFrame.src = btn.getAttribute('data-url') || '';
-            if (previewTitle) previewTitle.textContent = btn.getAttribute('data-title') || 'Document Preview';
-            if (previewModal && window.bootstrap) {
-                bootstrap.Modal.getOrCreateInstance(previewModal).show();
-            }
-        });
-    });
-    if (previewModal) {
-        previewModal.addEventListener('hidden.bs.modal', function () {
-            if (previewFrame) previewFrame.src = 'about:blank';
-        });
-    }
-
-    var rejectModal = document.getElementById('docRejectModal');
-    var rejectForm = document.getElementById('docRejectForm');
-    if (rejectModal && rejectForm) {
-        rejectModal.addEventListener('show.bs.modal', function (e) {
-            var btn = e.relatedTarget;
-            if (!btn) return;
-            var caseId = btn.getAttribute('data-case-id');
-            rejectForm.action = @json(url('goal/documents')).replace(/\/?$/, '') + '/' + caseId + '/verify';
-            document.getElementById('docRejectKey').value = btn.getAttribute('data-doc-key') || '';
-            document.getElementById('docRejectParty').value = btn.getAttribute('data-doc-party') || 'Applicant';
-        });
     }
 })();
 </script>

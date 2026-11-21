@@ -776,7 +776,7 @@ class GoalLoanLeadController extends Controller
                     ->when($lead->goal_org_unit_id, fn ($q) => $q->where('goal_org_unit_id', $lead->goal_org_unit_id))
                     ->value('id');
 
-            $seedDocs = \App\Services\Goal\GoalDocumentCatalog::forProduct($lead->product, true);
+            $seedDocs = []; // Checklist is built per case (Add document); nothing auto-required.
             $case = GoalLoanCase::create([
                 'case_no' => 'CS-' . now()->format('ymd') . '-' . Str::upper(Str::random(4)),
                 'goal_loan_lead_id' => $lead->id,
@@ -946,11 +946,8 @@ class GoalLoanLeadController extends Controller
         $docs = collect(data_get($case->customer_details, 'documents', []) ?: []);
         $mandatory = $docs->where('mandatory', true);
 
-        return $mandatory->isNotEmpty()
-            && $mandatory->every(function ($d) {
-                return ($d['status'] ?? '') === 'Verified'
-                    && filled($d['path'] ?? ($d['storage_path'] ?? null));
-            });
+        return $mandatory->isEmpty()
+            || $mandatory->every(fn ($d) => ($d['status'] ?? '') === 'Verified');
     }
 
     protected function priorityFor(GoalLoanLead $lead): string

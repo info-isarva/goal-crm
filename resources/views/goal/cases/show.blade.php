@@ -344,6 +344,71 @@
 .cw-page .cw-tab.active i{color:#fff}
 .cw-page .cw-tab.active + .cw-tab::before,
 .cw-page .cw-tab.active::before{display:none}
+.cw-page .cw-subnav{
+    display:flex;flex-wrap:wrap;gap:6px;margin:0 0 .85rem;padding:.55rem;
+    background:#fff;border:1px solid #e8edf5;border-radius:12px;
+}
+.cw-page .cw-subnav-btn{
+    height:34px;padding:0 12px;border-radius:999px;border:1px solid #e2e8f0;
+    background:#f8fafc;color:#475569;font-size:.78rem;font-weight:700;
+    display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+}
+.cw-page .cw-subnav-btn:hover{background:#fff;color:#0f172a}
+.cw-page .cw-subnav-btn.active{
+    background:var(--theme-primary,#0f766e);border-color:transparent;color:#fff;
+}
+.cw-page .cw-section{display:none}
+.cw-page .cw-section.is-active{display:block}
+
+/* Party dropdown (Applicant / Co-Applicant) — custom menu matches pill chip */
+.cw-page .cw-party-dd{position:relative;display:inline-block;vertical-align:middle;min-width:8.75rem;max-width:100%}
+.cw-page .cw-party-dd .cw-party-chip{
+    display:inline-flex;align-items:center;justify-content:space-between;gap:6px;
+    width:100%;min-width:8.75rem;height:30px;padding:0 10px 0 12px;margin:0;
+    border-radius:999px;border:1px solid transparent;font-size:11px;font-weight:700;
+    line-height:1;cursor:pointer;background-image:none!important;
+    appearance:none;-webkit-appearance:none;
+}
+.cw-page .cw-party-dd .cw-party-chip i{font-size:10px;opacity:.75;transition:transform .15s ease;flex-shrink:0}
+.cw-page .cw-party-dd.is-open .cw-party-chip i{transform:rotate(180deg)}
+.cw-page .cw-party-dd.is-app .cw-party-chip{
+    border-color:#bae6fd;background:#e0f2fe;color:#075985;
+}
+.cw-page .cw-party-dd.is-co .cw-party-chip{
+    border-color:#ddd6fe;background:#ede9fe;color:#5b21b6;
+}
+.cw-page .cw-party-dd.is-open.is-app .cw-party-chip{
+    box-shadow:0 0 0 3px rgba(14,165,233,.18);
+}
+.cw-page .cw-party-dd.is-open.is-co .cw-party-chip{
+    box-shadow:0 0 0 3px rgba(139,92,246,.18);
+}
+.cw-page .cw-party-dd .cw-party-chip:focus{
+    outline:none;box-shadow:0 0 0 3px rgba(14,165,233,.18);
+}
+.cw-page .cw-party-dd.is-co .cw-party-chip:focus{
+    box-shadow:0 0 0 3px rgba(139,92,246,.18);
+}
+.cw-page .cw-party-dd .cw-party-chip:disabled{opacity:.65;cursor:not-allowed}
+.cw-page .cw-party-menu{
+    display:none;position:absolute;z-index:50;top:calc(100% + 4px);left:0;right:0;
+    width:100%;box-sizing:border-box;padding:4px;border-radius:14px;border:1px solid #e2e8f0;
+    background:#fff;box-shadow:0 12px 28px rgba(15,23,42,.14);
+}
+.cw-page .cw-party-dd.is-open .cw-party-menu{display:block}
+.cw-page .cw-party-menu[hidden]{display:none!important}
+.cw-page .cw-party-menu button{
+    display:flex;align-items:center;width:100%;border:0;background:transparent;
+    border-radius:999px;padding:7px 12px;font-size:11px;font-weight:700;
+    color:#334155;text-align:left;cursor:pointer;
+}
+.cw-page .cw-party-menu button:hover{background:#f1f5f9;color:#0f172a}
+.cw-page .cw-party-menu button.is-selected{
+    background:#e0f2fe;color:#075985;
+}
+.cw-page .cw-party-dd.is-co .cw-party-menu button.is-selected{
+    background:#ede9fe;color:#5b21b6;
+}
 @media (max-width:1200px){
     .cw-page .cw-hero{grid-template-columns:1fr}
     .cw-page .cw-actions{justify-content:flex-start;flex-wrap:wrap}
@@ -1137,7 +1202,9 @@
 @endpush
 
 @section('content')
-<div class="cw-page w-full max-w-full px-4 py-4" id="cwPage" data-active-tab="{{ $activeTab }}">
+<div class="cw-page w-full max-w-full px-4 py-4" id="cwPage"
+     data-active-tab="{{ $activeTab }}"
+     data-active-section="{{ $activeSection ?? '' }}">
     {{-- Header --}}
     <div class="cw-hero">
         <div class="flex items-start gap-3">
@@ -1170,6 +1237,7 @@
                     @endif
                     <li><a class="dropdown-item" href="#" data-cw-tab-jump="activity" data-cw-filter="assignment"><i class="bi bi-clock-history me-1"></i> Assignment History</a></li>
                     <li><a class="dropdown-item" href="#" data-cw-tab-jump="activity"><i class="bi bi-journal-text me-1"></i> Audit History</a></li>
+                    {{-- data-cw-tab-jump legacy keys resolve to Follow-ups / Banking in JS --}}
                     @if(!empty($canAdvanceStatus) && $next !== [])
                         <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#cwAdvanceStatusModal"><i class="bi bi-arrow-right-circle me-1"></i> Advance Status</button></li>
                     @endif
@@ -1290,23 +1358,11 @@
         </div>
     @endif
 
-    {{-- Tabs --}}
+    {{-- Tabs (consolidated; role-filtered via $workspaceTabs) --}}
     <div class="cw-tabs" role="tablist">
-        @foreach([
-            'overview' => ['Overview', 'bi-grid'],
-            'customer' => ['Customer', 'bi-person'],
-            'recommendation' => ['BM Recommendation', 'bi-lightbulb'],
-            'documents' => ['Documents', 'bi-file-earmark'],
-            'lenders' => ['Lender Applications', 'bi-layers'],
-            'queries' => ['Bank Queries', 'bi-chat-dots'],
-            'sanction' => ['Sanction', 'bi-award'],
-            'disbursement' => ['Disbursement', 'bi-credit-card'],
-            'mis' => ['Branch MIS', 'bi-clipboard-data'],
-            'visits' => ['Visits & Follow-ups', 'bi-geo-alt'],
-            'activity' => ['Activity History', 'bi-clock-history'],
-        ] as $key => $meta)
+        @foreach(($workspaceTabs ?? []) as $key => $meta)
             <button type="button" class="cw-tab {{ $activeTab === $key ? 'active' : '' }}" data-cw-tab="{{ $key }}" role="tab" aria-selected="{{ $activeTab === $key ? 'true' : 'false' }}">
-                <i class="bi {{ $meta[1] }}"></i><span>{{ $meta[0] }}</span>
+                <i class="bi {{ $meta['icon'] }}"></i><span>{{ $meta['label'] }}</span>
             </button>
         @endforeach
     </div>
@@ -1529,69 +1585,66 @@
                 <div class="sec-card cw-table-card">
                     <div class="sec-head has-line">
                         <div class="sec-head-left">
-                            <span class="sec-ico"><i class="bi bi-file-earmark-text"></i></span>
-                            <div><h6>Documents</h6></div>
+                            <span class="sec-ico"><i class="bi bi-clipboard-check"></i></span>
+                            <div>
+                                <h6>Documents</h6>
+                                <div class="sec-sub">Add documents, mark required, record &amp; verify</div>
+                            </div>
                         </div>
                         <button type="button" class="btn-link-cw" data-cw-tab-jump="documents">View All →</button>
                     </div>
                     <div class="cw-table-wrap">
                         @if(collect($docs)->isEmpty())
-                            <div class="cw-empty-inline">No documents uploaded.</div>
+                            <div class="cw-empty-inline">No documents yet. Open Documents to add checklist items.</div>
                         @else
                             <div class="table-responsive">
                                 <table class="table table-sm mb-0 align-middle">
                                     <thead>
                                         <tr>
                                             <th>Document Type</th>
-                                            <th>Uploaded</th>
-                                            <th>Verification</th>
+                                            <th>Recorded</th>
+                                            <th>Status</th>
                                             <th>Reviewer</th>
-                                            <th class="text-end">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach(collect($docs)->take(5) as $doc)
                                             @php
-                                                $st = $doc['status'] ?? 'Pending';
-                                                $badge = match($st){ 'Verified'=>'ok', 'Rejected'=>'bad', default=>'warn' };
-                                                $path = $doc['path'] ?? ($doc['storage_path'] ?? null);
-                                                $label = $doc['label'] ?? $doc['key'] ?? 'Document';
+                                                $row = is_array($doc) ? $doc : [];
+                                                $stLabel = \App\Services\Goal\GoalDocumentCatalog::displayStatus($row);
+                                                $badge = match($stLabel){
+                                                    'Verified' => 'ok',
+                                                    'Rejected' => 'bad',
+                                                    'Pending Verification' => 'warn',
+                                                    default => 'warn',
+                                                };
+                                                $label = $row['label'] ?? $row['key'] ?? 'Document';
+                                                $recorded = $row['uploaded_at'] ?? ($row['received_at'] ?? null);
                                                 $docIcon = match(true){
                                                     str_contains(strtolower((string)$label), 'income') => 'bi-cash-stack',
                                                     str_contains(strtolower((string)$label), 'address') => 'bi-geo-alt',
-                                                    str_contains(strtolower((string)$label), 'identity') || str_contains(strtolower((string)$label), 'id proof') => 'bi-person-vcard',
+                                                    str_contains(strtolower((string)$label), 'identity') || str_contains(strtolower((string)$label), 'id proof') || str_contains(strtolower((string)$label), 'pan') || str_contains(strtolower((string)$label), 'aadhaar') => 'bi-person-vcard',
                                                     default => 'bi-file-earmark-text',
                                                 };
                                             @endphp
                                             <tr>
                                                 <td data-label="Document">
-                                                    <div class="d-flex align-items-center gap-2 justify-content-end">
+                                                    <div class="d-flex align-items-center gap-2">
                                                         <i class="bi {{ $docIcon }} doc-type-ico"></i>
                                                         <span class="fw-semibold">{{ $label }}</span>
                                                     </div>
                                                 </td>
-                                                <td data-label="Uploaded">{{ $doc['uploaded_at'] ?? '—' }}</td>
+                                                <td data-label="Recorded">{{ $recorded ?: '—' }}</td>
                                                 <td data-label="Status">
-                                                    <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-                                                        <span class="doc-badge {{ $badge }}">
-                                                            @if($st === 'Verified')<i class="bi bi-check-lg"></i>
-                                                            @elseif($st === 'Rejected')<i class="bi bi-x-lg"></i>
-                                                            @else<i class="bi bi-clock"></i>@endif
-                                                            {{ $st }}
-                                                        </span>
-                                                        @if($st === 'Rejected' && !empty($doc['rejection_reason']))
-                                                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" title="{{ $doc['rejection_reason'] }}">Reason available</button>
-                                                        @endif
-                                                    </div>
+                                                    <span class="doc-badge {{ $badge }}">
+                                                        @if($stLabel === 'Verified')<i class="bi bi-check-lg"></i>
+                                                        @elseif($stLabel === 'Rejected')<i class="bi bi-x-lg"></i>
+                                                        @elseif($stLabel === 'Not recorded')<i class="bi bi-dash-lg"></i>
+                                                        @else<i class="bi bi-clock"></i>@endif
+                                                        {{ $stLabel }}
+                                                    </span>
                                                 </td>
-                                                <td data-label="Reviewer">{{ $doc['reviewer'] ?? '—' }}</td>
-                                                <td class="text-end cw-col-actions" data-label="Actions">
-                                                    @if($path)
-                                                        <a class="btn-download" href="{{ asset('storage/'.$path) }}" target="_blank" aria-label="Download"><i class="bi bi-download"></i></a>
-                                                    @else
-                                                        <span class="text-muted">—</span>
-                                                    @endif
-                                                </td>
+                                                <td data-label="Reviewer">{{ $row['reviewer'] ?? '—' }}</td>
                                             </tr>
                                         @endforeach
                                     </tbody>
@@ -1797,7 +1850,7 @@
     <div class="cw-pane {{ $activeTab === 'customer' ? 'active' : '' }}" data-pane="customer">
         <form method="POST" action="{{ route('goal.cases.workspace', $case) }}" id="cwWorkspaceForm" novalidate>
             @csrf
-            <input type="hidden" name="cw_tab" value="{{ $activeTab }}">
+            <input type="hidden" name="cw_tab" value="customer" data-cw-fixed-tab="1">
             @include('goal.cases.partials.customer_fields')
             @if($canEdit)
             <div class="cw-footer">
@@ -1815,7 +1868,7 @@
     <div class="cw-pane {{ $activeTab === 'recommendation' ? 'active' : '' }}" data-pane="recommendation">
         <form method="POST" action="{{ route('goal.cases.workspace', $case) }}" id="cwRecommendationForm" novalidate>
             @csrf
-            <input type="hidden" name="cw_tab" value="recommendation">
+            <input type="hidden" name="cw_tab" value="recommendation" data-cw-fixed-tab="1">
             <input type="hidden" name="customer_name" value="{{ old('customer_name', $case->customer_name) }}">
             <input type="hidden" name="mobile" value="{{ old('mobile', $case->mobile) }}">
             @include('goal.cases.partials.customer_extras')
@@ -1846,40 +1899,64 @@
         @include('goal.cases.partials.tab_documents')
     </div>
 
-    {{-- ===================== LENDERS ===================== --}}
-    <div class="cw-pane {{ $activeTab === 'lenders' ? 'active' : '' }}" data-pane="lenders">
-        @include('goal.cases.partials.tab_lenders')
-    </div>
-
-    {{-- ===================== QUERIES ===================== --}}
-    <div class="cw-pane {{ $activeTab === 'queries' ? 'active' : '' }}" data-pane="queries">
-        @include('goal.cases.partials.tab_queries')
-    </div>
-
-    {{-- ===================== SANCTION ===================== --}}
-    <div class="cw-pane {{ $activeTab === 'sanction' ? 'active' : '' }}" data-pane="sanction">
-        @include('goal.cases.partials.tab_sanction')
-    </div>
-
-    {{-- ===================== DISBURSEMENT ===================== --}}
-    <div class="cw-pane {{ $activeTab === 'disbursement' ? 'active' : '' }}" data-pane="disbursement">
-        @include('goal.cases.partials.tab_disbursement')
+    {{-- ===================== BANKING (Lenders · Queries · Sanction · Disbursement) ===================== --}}
+    @php $bankSection = $activeSection ?? 'lenders'; @endphp
+    <div class="cw-pane {{ $activeTab === 'banking' ? 'active' : '' }}" data-pane="banking">
+        <div class="cw-subnav" role="tablist" aria-label="Banking sections">
+            <button type="button" class="cw-subnav-btn {{ $bankSection === 'lenders' ? 'active' : '' }}" data-cw-section="lenders" data-cw-parent="banking">
+                <i class="bi bi-layers"></i> Applications
+            </button>
+            <button type="button" class="cw-subnav-btn {{ $bankSection === 'queries' ? 'active' : '' }}" data-cw-section="queries" data-cw-parent="banking">
+                <i class="bi bi-chat-dots"></i> Queries
+            </button>
+            <button type="button" class="cw-subnav-btn {{ $bankSection === 'sanction' ? 'active' : '' }}" data-cw-section="sanction" data-cw-parent="banking">
+                <i class="bi bi-award"></i> Sanction
+            </button>
+            <button type="button" class="cw-subnav-btn {{ $bankSection === 'disbursement' ? 'active' : '' }}" data-cw-section="disbursement" data-cw-parent="banking">
+                <i class="bi bi-credit-card"></i> Disbursement
+            </button>
+        </div>
+        <div class="cw-section {{ $bankSection === 'lenders' ? 'is-active' : '' }}" data-section="lenders">
+            @include('goal.cases.partials.tab_lenders')
+        </div>
+        <div class="cw-section {{ $bankSection === 'queries' ? 'is-active' : '' }}" data-section="queries">
+            @include('goal.cases.partials.tab_queries')
+        </div>
+        <div class="cw-section {{ $bankSection === 'sanction' ? 'is-active' : '' }}" data-section="sanction">
+            @include('goal.cases.partials.tab_sanction')
+        </div>
+        <div class="cw-section {{ $bankSection === 'disbursement' ? 'is-active' : '' }}" data-section="disbursement">
+            @include('goal.cases.partials.tab_disbursement')
+        </div>
     </div>
 
     {{-- ===================== BRANCH MIS ===================== --}}
+    @if(!empty($workspaceTabs['mis']))
     <div class="cw-pane {{ $activeTab === 'mis' ? 'active' : '' }}" data-pane="mis">
         @include('goal.cases.partials.tab_branch_mis')
     </div>
+    @endif
 
-    {{-- ===================== VISITS & FOLLOW-UPS ===================== --}}
-    <div class="cw-pane {{ $activeTab === 'visits' ? 'active' : '' }}" data-pane="visits">
-        @include('goal.cases.partials.tab_visits')
+    {{-- ===================== FOLLOW-UPS (Visits · Activity) ===================== --}}
+    @if(!empty($workspaceTabs['followups']))
+    @php $followSection = in_array(($activeSection ?? ''), ['visits', 'activity'], true) ? $activeSection : 'visits'; @endphp
+    <div class="cw-pane {{ $activeTab === 'followups' ? 'active' : '' }}" data-pane="followups">
+        <div class="cw-subnav" role="tablist" aria-label="Follow-up sections">
+            <button type="button" class="cw-subnav-btn {{ $followSection === 'visits' ? 'active' : '' }}" data-cw-section="visits" data-cw-parent="followups">
+                <i class="bi bi-geo-alt"></i> Visits &amp; tasks
+            </button>
+            <button type="button" class="cw-subnav-btn {{ $followSection === 'activity' ? 'active' : '' }}" data-cw-section="activity" data-cw-parent="followups">
+                <i class="bi bi-clock-history"></i> Activity history
+            </button>
+        </div>
+        <div class="cw-section {{ $followSection === 'visits' ? 'is-active' : '' }}" data-section="visits">
+            @include('goal.cases.partials.tab_visits')
+        </div>
+        <div class="cw-section {{ $followSection === 'activity' ? 'is-active' : '' }}" data-section="activity">
+            @include('goal.cases.partials.tab_activity')
+        </div>
     </div>
-
-    {{-- ===================== ACTIVITY ===================== --}}
-    <div class="cw-pane {{ $activeTab === 'activity' ? 'active' : '' }}" data-pane="activity">
-        @include('goal.cases.partials.tab_activity')
-    </div>
+    @endif
 
     @include('goal.cases.partials.modals')
 
@@ -1948,28 +2025,86 @@
         }
     }
 
-    function activateTab(key) {
+    var tabAliases = {
+        lenders: { tab: 'banking', section: 'lenders' },
+        queries: { tab: 'banking', section: 'queries' },
+        sanction: { tab: 'banking', section: 'sanction' },
+        disbursement: { tab: 'banking', section: 'disbursement' },
+        visits: { tab: 'followups', section: 'visits' },
+        activity: { tab: 'followups', section: 'activity' }
+    };
+
+    function resolveTab(key, section) {
+        if (tabAliases[key]) {
+            return { tab: tabAliases[key].tab, section: tabAliases[key].section };
+        }
+        if (key === 'banking') {
+            return { tab: 'banking', section: section || 'lenders' };
+        }
+        if (key === 'followups') {
+            return { tab: 'followups', section: section || 'visits' };
+        }
+        return { tab: key, section: section || '' };
+    }
+
+    function activateSection(pane, section) {
+        if (!pane || !section) return;
+        pane.querySelectorAll('.cw-subnav-btn').forEach(function (btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-cw-section') === section);
+        });
+        pane.querySelectorAll('.cw-section').forEach(function (sec) {
+            sec.classList.toggle('is-active', sec.getAttribute('data-section') === section);
+        });
+    }
+
+    function activateTab(key, section) {
+        var resolved = resolveTab(key, section || '');
+        var tab = resolved.tab;
+        var sec = resolved.section;
         var activeBtn = null;
+
+        // If role-hidden tab is requested, fall back to overview.
+        if (!page.querySelector('.cw-tab[data-cw-tab="' + tab + '"]')) {
+            tab = 'overview';
+            sec = '';
+        }
+
         page.querySelectorAll('.cw-tab').forEach(function (btn) {
-            var on = btn.getAttribute('data-cw-tab') === key;
+            var on = btn.getAttribute('data-cw-tab') === tab;
             btn.classList.toggle('active', on);
             btn.setAttribute('aria-selected', on ? 'true' : 'false');
             if (on) activeBtn = btn;
         });
         page.querySelectorAll('.cw-pane').forEach(function (pane) {
-            pane.classList.toggle('active', pane.getAttribute('data-pane') === key);
+            var on = pane.getAttribute('data-pane') === tab;
+            pane.classList.toggle('active', on);
+            if (on && sec) activateSection(pane, sec);
         });
         page.querySelectorAll('input[name="cw_tab"]').forEach(function (inp) {
-            inp.value = key;
+            if (inp.getAttribute('data-cw-fixed-tab') === '1') return;
+            inp.value = tab;
         });
-        page.setAttribute('data-active-tab', key);
-        try { history.replaceState(null, '', '?tab=' + encodeURIComponent(key)); } catch (e) {}
-        // Defer so layout (active styles / widths) settle before measuring.
+        page.setAttribute('data-active-tab', tab);
+        page.setAttribute('data-active-section', sec || '');
+        try {
+            var qs = '?tab=' + encodeURIComponent(tab);
+            if (sec) qs += '&section=' + encodeURIComponent(sec);
+            history.replaceState(null, '', qs);
+        } catch (e) {}
         requestAnimationFrame(function () { centerActiveTab(activeBtn); });
     }
 
     page.querySelectorAll('.cw-tab').forEach(function (btn) {
-        btn.addEventListener('click', function () { activateTab(btn.getAttribute('data-cw-tab')); });
+        btn.addEventListener('click', function () {
+            var key = btn.getAttribute('data-cw-tab');
+            var defaultSection = key === 'banking' ? 'lenders' : (key === 'followups' ? 'visits' : '');
+            activateTab(key, defaultSection);
+        });
+    });
+    page.querySelectorAll('.cw-subnav-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            activateTab(btn.getAttribute('data-cw-parent'), btn.getAttribute('data-cw-section'));
+        });
     });
     page.querySelectorAll('[data-cw-tab-jump]').forEach(function (el) {
         el.addEventListener('click', function (e) {
@@ -2114,11 +2249,23 @@
                 only.querySelectorAll('input, select').forEach(function (el) {
                     if (el.tagName === 'SELECT') {
                         el.selectedIndex = 0;
-                        if (el.classList.contains('cw-party-chip')) {
-                            el.classList.add('is-app');
-                            el.classList.remove('is-co');
+                    } else if (el.type === 'hidden' && el.name && el.name.indexOf('[party]') !== -1) {
+                        el.value = 'applicant';
+                        var dd = el.closest('[data-party-dd]');
+                        if (dd) {
+                            dd.classList.add('is-app');
+                            dd.classList.remove('is-co', 'is-open');
+                            var label = dd.querySelector('.cw-party-label');
+                            if (label) label.textContent = 'Applicant';
+                            dd.querySelectorAll('.cw-party-menu [data-value]').forEach(function (opt) {
+                                opt.classList.toggle('is-selected', opt.getAttribute('data-value') === 'applicant');
+                            });
+                            var menu = dd.querySelector('.cw-party-menu');
+                            if (menu) menu.hidden = true;
+                            var chip = dd.querySelector('.cw-party-chip');
+                            if (chip) chip.setAttribute('aria-expanded', 'false');
                         }
-                    } else {
+                    } else if (el.type !== 'hidden') {
                         el.value = '';
                     }
                 });
@@ -2127,6 +2274,67 @@
             var row = btn.closest('[data-loan-row]');
             if (row) row.remove();
             reindexLoan();
+        });
+    })();
+
+    (function initPartyDropdowns() {
+        function closeAll(except) {
+            page.querySelectorAll('[data-party-dd].is-open').forEach(function (dd) {
+                if (except && dd === except) return;
+                dd.classList.remove('is-open');
+                var menu = dd.querySelector('.cw-party-menu');
+                var chip = dd.querySelector('.cw-party-chip');
+                if (menu) menu.hidden = true;
+                if (chip) chip.setAttribute('aria-expanded', 'false');
+            });
+        }
+
+        function setParty(dd, value) {
+            var isCo = value === 'co_applicant';
+            var label = isCo ? 'Co-Applicant' : 'Applicant';
+            dd.classList.toggle('is-co', isCo);
+            dd.classList.toggle('is-app', !isCo);
+            var labelEl = dd.querySelector('.cw-party-label');
+            if (labelEl) labelEl.textContent = label;
+            var hidden = dd.querySelector('input[type="hidden"]');
+            if (hidden) hidden.value = value;
+            dd.querySelectorAll('.cw-party-menu [data-value]').forEach(function (opt) {
+                opt.classList.toggle('is-selected', opt.getAttribute('data-value') === value);
+            });
+            closeAll();
+        }
+
+        page.addEventListener('click', function (e) {
+            var chip = e.target.closest('[data-party-dd] .cw-party-chip');
+            if (chip) {
+                e.preventDefault();
+                if (chip.disabled) return;
+                var dd = chip.closest('[data-party-dd]');
+                var willOpen = !dd.classList.contains('is-open');
+                closeAll();
+                if (willOpen) {
+                    dd.classList.add('is-open');
+                    var menu = dd.querySelector('.cw-party-menu');
+                    if (menu) menu.hidden = false;
+                    chip.setAttribute('aria-expanded', 'true');
+                }
+                return;
+            }
+
+            var opt = e.target.closest('[data-party-dd] .cw-party-menu [data-value]');
+            if (opt) {
+                e.preventDefault();
+                setParty(opt.closest('[data-party-dd]'), opt.getAttribute('data-value'));
+                return;
+            }
+
+            if (!e.target.closest('[data-party-dd]')) {
+                closeAll();
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeAll();
         });
     })();
 

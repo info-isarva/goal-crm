@@ -439,7 +439,198 @@ class GoalCaseWorkspaceController extends Controller
         return back()->with('success', 'Disbursement verified — revenue recognized.')->with('cw_tab', 'disbursement');
     }
 
-    public function uploadDocument(Request $request, GoalLoanCase $case)
+    /**
+     * Mark document(s) as received/collected without attaching a file (checklist-first).
+     */
+    public function receiveDocument(Request $request, GoalLoanCase $case)
+    {
+        $this->requireGoalPermission('edit_case_workspace_guard');
+        $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'documents')) {
+            return $redirect;
+        }
+
+        $data = $request->validate([
+            'key' => 'nullable|string|max:60',
+            'label' => 'nullable|string|max:120',
+            'party' => 'nullable|in:Applicant,Co-Applicant',
+            'mandatory' => 'nullable|boolean',
+            'keys' => 'nullable|array',
+            'keys.*' => 'string|max:60',
+            'parties' => 'nullable|array',
+            'parties.*' => 'nullable|in:Applicant,Co-Applicant',
+            'bulk_missing' => 'nullable|boolean',
+        ]);
+
+        $details = is_array($case->customer_details) ? $case->customer_details : [];
+        $docs = array_values($details['documents'] ?? []);
+
+        $user = auth()->user();
+        $now = now()->toDateTimeString();
+        $recorded = 0;
+
+        $targets = [];
+        if (! empty($data['bulk_missing'])) {
+            foreach ($docs as $doc) {
+                $st = \App\Services\Goal\GoalDocumentCatalog::normalizeStatus($doc);
+                if (! empty($doc['mandatory'])
+                    && $st !== 'Verified'
+                    && ! \App\Services\Goal\GoalDocumentCatalog::isReceived($doc)) {
+                    $targets[] = [
+                        'key' => (string) ($doc['key'] ?? ''),
+                        'label' => (string) ($doc['label'] ?? $doc['key'] ?? 'Document'),
+                        'party' => (string) ($doc['party'] ?? 'Applicant'),
+                        'mandatory' => true,
+                    ];
+                }
+            }
+        } elseif (! empty($data['keys']) && is_array($data['keys'])) {
+            foreach (array_values($data['keys']) as $i => $key) {
+                $party = $data['parties'][$i] ?? 'Applicant';
+                $existing = collect($docs)->first(fn ($d) => ($d['key'] ?? '') === $key && ($d['party'] ?? 'Applicant') === $party);
+                $targets[] = [
+                    'key' => (string) $key,
+                    'label' => (string) ($existing['label'] ?? $key),
+                    'party' => (string) $party,
+                    'mandatory' => (bool) ($existing['mandatory'] ?? false),
+                ];
+            }
+        } else {
+            if (empty($data['key'])) {
+                return back()->withErrors(['key' => 'Document key is required.'])->with('cw_tab', 'documents');
+            }
+            $targets[] = [
+                'key' => (string) $data['key'],
+                'label' => (string) ($data['label'] ?? $data['key']),
+                'party' => (string) ($data['party'] ?? 'Applicant'),
+                'mandatory' => (bool) ($data['mandatory'] ?? false),
+            ];
+        }
+
+        foreach ($targets as $target) {
+            if ($target['key'] === '') {
+                continue;
+            }
+            $found = false;
+            foreach ($docs as &$doc) {
+                if (($doc['key'] ?? '') === $target['key'] && ($doc['party'] ?? 'Applicant') === $target['party']) {
+                    $doc['label'] = $doc['label'] ?? $target['label'];
+                    $doc['party'] = $target['party'];
+                    $doc['uploaded_at'] = $now;
+                    $doc['uploaded_by'] = $user->name;
+                    $doc['uploaded_by_id'] = $user->id;
+                    $doc['received_at'] = $now;
+                    $doc['status'] = 'Pending';
+                    $doc['reviewer'] = null;
+                    $doc['reviewed_at'] = null;
+                    $doc['rejection_reason'] = null;
+                    if (! array_key_exists('mandatory', $doc)) {
+                        $doc['mandatory'] = $target['mandatory'];
+                    }
+                    $found = true;
+                    $recorded++;
+                    break;
+                }
+            }
+            unset($doc);
+
+            if (! $found) {
+                $docs[] = [
+                    'key' => $target['key'],
+                    'label' => $target['label'],
+                    'party' => $target['party'],
+                    'uploaded_at' => $now,
+                    'uploaded_by' => $user->name,
+                    'uploaded_by_id' => $user->id,
+                    'received_at' => $now,
+                    'status' => 'Pending',
+                    'mandatory' => $target['mandatory'],
+                ];
+                $recorded++;
+            }
+
+            GoalCaseAudit::record($case, 'document', 'Document recorded', $user, [
+                'to' => $target['label'],
+                'body' => 'Marked received (no file)',
+            ]);
+        }
+
+        $details['documents'] = $docs;
+        $case->customer_details = $details;
+        $case->save();
+
+        $msg = $recorded === 1
+            ? 'Document marked as received (pending verification).'
+            : $recorded.' documents marked as received (pending verification).';
+
+        return back()->with('success', $msg)->with('cw_tab', 'documents');
+    }
+
+    /**
+     * Add a checklist document (no file). Staff choose whether it is required for this case.
+     */
+    public function addDocument(Request $request, GoalLoanCase $case)
+    {
+        $this->requireGoalPermission('edit_case_workspace_guard');
+        $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'documents')) {
+            return $redirect;
+        }
+
+        $data = $request->validate([
+            'label' => 'required|string|max:120',
+            'party' => 'nullable|in:Applicant,Co-Applicant',
+            'mandatory' => 'nullable|boolean',
+        ]);
+
+        $party = $data['party'] ?? 'Applicant';
+        $label = trim($data['label']);
+        $mandatory = $request->boolean('mandatory');
+        $baseKey = Str::slug($label);
+        if ($baseKey === '') {
+            $baseKey = 'doc';
+        }
+        $baseKey = Str::limit($baseKey, 50, '');
+
+        $details = is_array($case->customer_details) ? $case->customer_details : [];
+        $docs = array_values($details['documents'] ?? []);
+        $used = [];
+        foreach ($docs as $d) {
+            if (($d['party'] ?? 'Applicant') === $party) {
+                $used[(string) ($d['key'] ?? '')] = true;
+            }
+        }
+        $key = $baseKey;
+        $n = 2;
+        while (isset($used[$key])) {
+            $key = Str::limit($baseKey, 46, '').'-'.$n;
+            $n++;
+        }
+
+        $docs[] = [
+            'key' => $key,
+            'label' => $label,
+            'party' => $party,
+            'mandatory' => $mandatory,
+            'status' => 'Pending',
+        ];
+
+        $details['documents'] = $docs;
+        $case->customer_details = $details;
+        $case->save();
+
+        GoalCaseAudit::record($case, 'document', 'Document added to checklist', auth()->user(), [
+            'to' => $label,
+            'body' => $mandatory ? 'Required' : 'Optional',
+        ]);
+
+        return back()->with('success', 'Document added to checklist.')->with('cw_tab', 'documents');
+    }
+
+    /**
+     * Toggle whether a checklist document is required for this case.
+     */
+    public function updateDocumentMeta(Request $request, GoalLoanCase $case)
     {
         $this->requireGoalPermission('edit_case_workspace_guard');
         $this->assertCaseInScope($case);
@@ -449,60 +640,33 @@ class GoalCaseWorkspaceController extends Controller
 
         $data = $request->validate([
             'key' => 'required|string|max:60',
-            'label' => 'required|string|max:120',
             'party' => 'nullable|in:Applicant,Co-Applicant',
-            'file' => 'required|file|max:5120|mimes:pdf,jpg,jpeg,png,webp',
+            'mandatory' => 'nullable|boolean',
         ]);
 
-        $file = $request->file('file');
-        $path = $file->store('goal/case-docs/'.$case->id, 'local');
-
+        $party = $data['party'] ?? 'Applicant';
+        $mandatory = $request->boolean('mandatory');
         $details = is_array($case->customer_details) ? $case->customer_details : [];
         $docs = array_values($details['documents'] ?? []);
-        $found = false;
+        $updated = false;
         foreach ($docs as &$doc) {
-            if (($doc['key'] ?? '') === $data['key'] && ($doc['party'] ?? 'Applicant') === ($data['party'] ?? 'Applicant')) {
-                $doc['path'] = $path;
-                $doc['file_name'] = $file->getClientOriginalName();
-                $doc['uploaded_at'] = now()->toDateTimeString();
-                $doc['uploaded_by'] = auth()->user()->name;
-                $doc['uploaded_by_id'] = auth()->id();
-                $doc['status'] = 'Pending';
-                $doc['reviewer'] = null;
-                $doc['rejection_reason'] = null;
-                $doc['label'] = $data['label'];
-                $doc['party'] = $data['party'] ?? 'Applicant';
-                $found = true;
+            if (($doc['key'] ?? '') === $data['key'] && ($doc['party'] ?? 'Applicant') === $party) {
+                $doc['mandatory'] = $mandatory;
+                $updated = true;
                 break;
             }
         }
         unset($doc);
 
-        if (!$found) {
-            $docs[] = [
-                'key' => $data['key'],
-                'label' => $data['label'],
-                'party' => $data['party'] ?? 'Applicant',
-                'path' => $path,
-                'file_name' => $file->getClientOriginalName(),
-                'uploaded_at' => now()->toDateTimeString(),
-                'uploaded_by' => auth()->user()->name,
-                'uploaded_by_id' => auth()->id(),
-                'status' => 'Pending',
-                'mandatory' => false,
-            ];
+        if (! $updated) {
+            return back()->withErrors(['key' => 'Document not found.'])->with('cw_tab', 'documents');
         }
 
         $details['documents'] = $docs;
         $case->customer_details = $details;
         $case->save();
 
-        GoalCaseAudit::record($case, 'document', 'Document uploaded', auth()->user(), [
-            'to' => $data['label'],
-            'body' => $file->getClientOriginalName(),
-        ]);
-
-        return back()->with('success', 'Document uploaded (pending verification).')->with('cw_tab', 'documents');
+        return back()->with('success', $mandatory ? 'Document marked required.' : 'Document marked optional.')->with('cw_tab', 'documents');
     }
 
     public function verifyDocument(Request $request, GoalLoanCase $case)

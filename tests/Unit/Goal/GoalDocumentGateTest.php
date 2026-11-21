@@ -45,4 +45,19 @@ class GoalDocumentGateTest extends TestCase
         ]);
         $this->assertTrue($ok['ok']);
     }
+
+    public function test_checklist_received_without_file(): void
+    {
+        $seed = ['key' => 'pan', 'status' => 'Pending'];
+        $this->assertFalse(GoalDocumentCatalog::isReceived($seed));
+        $this->assertSame('Not recorded', GoalDocumentCatalog::displayStatus($seed));
+
+        $received = ['key' => 'pan', 'status' => 'Pending', 'uploaded_at' => '2026-01-01 10:00:00'];
+        $this->assertTrue(GoalDocumentCatalog::isReceived($received));
+        $this->assertSame('Pending Verification', GoalDocumentCatalog::displayStatus($received));
+
+        $verified = ['key' => 'pan', 'status' => 'Verified'];
+        $this->assertTrue(GoalDocumentCatalog::isReceived($verified));
+        $this->assertSame('Verified', GoalDocumentCatalog::displayStatus($verified));
+    }
 }

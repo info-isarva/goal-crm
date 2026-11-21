@@ -93,6 +93,7 @@ Route::prefix('goal')->name('goal.')->group(function () {
 
     Route::get('documents', [GoalDocumentsController::class, 'index'])->name('documents.index');
     Route::get('documents/export', [GoalDocumentsController::class, 'export'])->name('documents.export');
+    Route::post('documents', [GoalDocumentsController::class, 'store'])->name('documents.store');
     Route::post('documents/upload', [GoalDocumentsController::class, 'upload'])->name('documents.upload');
     Route::get('documents/{case}/file', [GoalDocumentsController::class, 'file'])->name('documents.file');
     Route::post('documents/{case}/verify', [GoalDocumentsController::class, 'verify'])->name('documents.verify');
@@ -125,7 +126,9 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::post('cases/{case}/bm-reco/equifax', [GoalCaseWorkspaceController::class, 'uploadBmRecoEquifax'])->name('cases.bm-reco.equifax');
     Route::get('cases/{case}/bm-reco/equifax', [GoalCaseWorkspaceController::class, 'downloadBmRecoEquifax'])->name('cases.bm-reco.equifax.download');
     Route::delete('cases/{case}/bm-reco/equifax', [GoalCaseWorkspaceController::class, 'removeBmRecoEquifax'])->name('cases.bm-reco.equifax.remove');
-    Route::post('cases/{case}/documents', [GoalCaseWorkspaceController::class, 'uploadDocument'])->name('cases.documents.store');
+    Route::post('cases/{case}/documents', [GoalCaseWorkspaceController::class, 'addDocument'])->name('cases.documents.store');
+    Route::post('cases/{case}/documents/meta', [GoalCaseWorkspaceController::class, 'updateDocumentMeta'])->name('cases.documents.meta');
+    Route::post('cases/{case}/documents/receive', [GoalCaseWorkspaceController::class, 'receiveDocument'])->name('cases.documents.receive');
     Route::post('cases/{case}/documents/verify', [GoalCaseWorkspaceController::class, 'verifyDocument'])->name('cases.documents.verify');
     Route::post('cases/{case}/bank-applications', [GoalCaseWorkspaceController::class, 'storeApplication'])->name('cases.bank-applications.store');
     Route::patch('bank-applications/{application}/status', [GoalCaseWorkspaceController::class, 'updateApplicationStatus'])->name('bank-applications.status');

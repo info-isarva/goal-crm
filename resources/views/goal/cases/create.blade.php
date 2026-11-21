@@ -562,31 +562,18 @@ body > .select2-container .select2-results > .select2-results__options{max-heigh
             </div>
         </div>
 
-        {{-- Documents --}}
+        {{-- Documents — added per case after create (not a fixed required list) --}}
         <div class="sec-card">
             <div class="sec-head">
-                <span class="sec-ico ico-doc"><i class="bi bi-file-earmark-check"></i></span>
+                <span class="sec-ico ico-doc"><i class="bi bi-clipboard-check"></i></span>
                 <h6>Documents</h6>
-                <span class="sec-note">From product config</span>
+                <span class="sec-note">Per case checklist</span>
             </div>
             <div class="sec-body">
-                <p class="lead-hint mb-3">Document types load from product configuration. Uploads are stored privately. Verification is completed in Case Details — uploads stay <strong>Pending</strong> until reviewed.</p>
-                @error('documents')<div class="alert alert-danger py-2 small">{{ $message }}</div>@enderror
-                <div class="table-responsive">
-                    <table class="doc-table">
-                        <thead>
-                            <tr>
-                                <th>Document Type</th>
-                                <th style="width:120px">Requirement</th>
-                                <th style="width:220px">Upload</th>
-                                <th style="width:120px">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="docChecklistBody">
-                            <tr><td colspan="4"><div class="doc-empty"><i class="bi bi-folder2-open"></i>Select a product to load required documents.</div></td></tr>
-                        </tbody>
-                    </table>
-                </div>
+                <p class="lead-hint mb-0">
+                    Documents are added on the <strong>Case Documents</strong> tab after the case is created.
+                    Staff choose what to collect and mark which items are <strong>Required</strong> for that case — nothing is forced from a fixed product list.
+                </p>
             </div>
         </div>
 
