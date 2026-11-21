@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Goal\Concerns;
 use App\Models\GoalLoanCase;
 use App\Services\Goal\GoalWorkflow;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 trait AuthorizesGoal
 {
@@ -20,7 +22,7 @@ trait AuthorizesGoal
      * Block sales/workspace mutations once the case is Disbursed / PMS / Rejected / Closed.
      * Admins with manage_permissions_guard may override.
      */
-    protected function assertCaseWorkspaceUnlocked(GoalLoanCase $case, ?string $cwTab = null): ?RedirectResponse
+    protected function assertCaseWorkspaceUnlocked(GoalLoanCase $case, ?string $cwTab = null): RedirectResponse|JsonResponse|null
     {
         if (! GoalWorkflow::isWorkspaceLocked($case->status)) {
             return null;
@@ -29,9 +31,18 @@ trait AuthorizesGoal
             return null;
         }
 
+        $message = GoalWorkflow::workspaceLockMessage($case->status);
+        $request = request();
+        if ($request instanceof Request && ($request->expectsJson() || $request->ajax())) {
+            return response()->json([
+                'message' => $message,
+                'errors' => ['workspace' => [$message]],
+            ], 423);
+        }
+
         return back()
             ->withInput()
-            ->withErrors(['workspace' => GoalWorkflow::workspaceLockMessage($case->status)])
+            ->withErrors(['workspace' => $message])
             ->with('cw_tab', $cwTab ?: 'overview');
     }
 

@@ -1244,10 +1244,11 @@ class GoalLoanCaseController extends Controller
         if (is_array($docs)) {
             foreach ($docs as $i => $doc) {
                 if (($doc['status'] ?? '') === 'Rejected' && empty(trim((string) ($doc['rejection_reason'] ?? '')))) {
-                    return back()
-                        ->withInput()
-                        ->withErrors(["customer_details.documents.$i.rejection_reason" => 'Rejection reason is required for rejected documents.'])
-                        ->with('cw_tab', $data['cw_tab'] ?? 'documents');
+                    return $this->workspaceValidationError(
+                        $request,
+                        ["customer_details.documents.$i.rejection_reason" => 'Rejection reason is required for rejected documents.'],
+                        $data['cw_tab'] ?? 'documents'
+                    );
                 }
             }
         }
@@ -1257,10 +1258,11 @@ class GoalLoanCaseController extends Controller
         if ($incomingCd !== []) {
             $reqErrors = GoalCaseRequiredFields::validateCustomerDetails($incomingCd);
             if ($reqErrors !== []) {
-                return back()
-                    ->withInput()
-                    ->withErrors($reqErrors)
-                    ->with('cw_tab', $data['cw_tab'] ?? 'customer');
+                return $this->workspaceValidationError(
+                    $request,
+                    $reqErrors,
+                    $data['cw_tab'] ?? 'customer'
+                );
             }
         }
         $mergedCd = $this->mergeWorkspaceJson($case->customer_details, $incomingCd);
@@ -1392,9 +1394,49 @@ class GoalLoanCaseController extends Controller
             ]),
         ]);
 
+        $tab = $data['cw_tab'] ?? 'customer';
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Case workspace saved.',
+                'cw_tab' => $tab,
+            ]);
+        }
+
         return back()
             ->with('success', 'Case workspace saved.')
-            ->with('cw_tab', $data['cw_tab'] ?? 'customer');
+            ->with('cw_tab', $tab);
+    }
+
+    /**
+     * @param  array<string, string|array<int, string>>  $errors
+     */
+    protected function workspaceValidationError(Request $request, array $errors, string $tab = 'customer')
+    {
+        $normalized = [];
+        foreach ($errors as $key => $message) {
+            $normalized[$key] = is_array($message) ? array_values($message) : [(string) $message];
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            $first = collect($normalized)->flatten()->first() ?: 'Please fix the highlighted fields.';
+
+            return response()->json([
+                'message' => $first,
+                'errors' => $normalized,
+                'cw_tab' => $tab,
+            ], 422);
+        }
+
+        $flat = [];
+        foreach ($normalized as $key => $messages) {
+            $flat[$key] = $messages[0] ?? 'Invalid.';
+        }
+
+        return back()
+            ->withInput()
+            ->withErrors($flat)
+            ->with('cw_tab', $tab);
     }
 
     protected function assertCaseInScope(GoalLoanCase $case): void

@@ -99,6 +99,18 @@
     --cw-primary:var(--theme-primary);--cw-purple:#7C3AED;--cw-border:#E2E8F0;--cw-text:#0f172a;--cw-muted:#64748b;
     color:var(--cw-text);padding-bottom:96px;background:transparent;
 }
+.cw-page .cw-field-error{
+    display:none;margin:.15rem 0 0;font-size:.72rem;font-weight:650;line-height:1.3;color:#dc2626;
+}
+.cw-page .cw-field-row > .cw-field-error{grid-column:1 / -1}
+@media (min-width:576px){
+    .cw-page .cw-field-row > .cw-field-error{grid-column:2}
+}
+.cw-page .cw-field-error.is-visible{display:block}
+.cw-page .cw-input.is-invalid,
+.cw-page .cw-select.is-invalid{border-color:#f87171 !important;box-shadow:0 0 0 2px rgba(248,113,113,.18)}
+.cw-page .cw-input-group.is-invalid{border-color:#f87171 !important;box-shadow:0 0 0 2px rgba(248,113,113,.18)}
+.cw-page .select2-container .select2-selection.is-invalid{border-color:#f87171 !important}
 .cw-page .cw-actions .dropdown{position:relative;z-index:30}
 .cw-page .cw-actions .dropdown-menu{z-index:40;min-width:220px}
 .cw-page .cw-table-card .table-responsive,
@@ -1338,11 +1350,8 @@
         </div>
     </div>
 
-    @if(isset($errors) && $errors->any())
-        <div class="alert alert-danger py-2 small">
-            <strong>Please fix:</strong>
-            <ul class="mb-0 mt-1">@foreach($errors->all() as $err)<li>{{ $err }}</li>@endforeach</ul>
-        </div>
+    @if(isset($errors) && $errors->has('workspace'))
+        <div class="alert alert-danger py-2 small">{{ $errors->first('workspace') }}</div>
     @endif
     @if(!empty($workspaceLocked))
         <div class="alert alert-warning border-0 py-2 px-3 small d-flex align-items-start gap-2 mb-3" style="border-radius:12px;background:#fff7ed;color:#9a3412">
@@ -1848,7 +1857,7 @@
 
     {{-- ===================== CUSTOMER ===================== --}}
     <div class="cw-pane {{ $activeTab === 'customer' ? 'active' : '' }}" data-pane="customer">
-        <form method="POST" action="{{ route('goal.cases.workspace', $case) }}" id="cwWorkspaceForm" novalidate>
+        <form method="POST" action="{{ route('goal.cases.workspace', $case) }}" id="cwWorkspaceForm" class="js-cw-ajax-save" data-no-loader novalidate>
             @csrf
             <input type="hidden" name="cw_tab" value="customer" data-cw-fixed-tab="1">
             @include('goal.cases.partials.customer_fields')
@@ -1866,7 +1875,7 @@
 
     {{-- ===================== BM RECOMMENDATION ===================== --}}
     <div class="cw-pane {{ $activeTab === 'recommendation' ? 'active' : '' }}" data-pane="recommendation">
-        <form method="POST" action="{{ route('goal.cases.workspace', $case) }}" id="cwRecommendationForm" novalidate>
+        <form method="POST" action="{{ route('goal.cases.workspace', $case) }}" id="cwRecommendationForm" class="js-cw-ajax-save" data-no-loader novalidate>
             @csrf
             <input type="hidden" name="cw_tab" value="recommendation" data-cw-fixed-tab="1">
             <input type="hidden" name="customer_name" value="{{ old('customer_name', $case->customer_name) }}">
@@ -2127,6 +2136,157 @@
             if (mobEl && hiddenMob && mobEl.value) hiddenMob.value = mobEl.value;
         });
     }
+
+    (function initCwAjaxSave() {
+        function errorKeyToName(key) {
+            var parts = String(key || '').split('.');
+            if (!parts.length) return '';
+            return parts.map(function (part, i) {
+                return i === 0 ? part : '[' + part + ']';
+            }).join('');
+        }
+
+        function clearFieldErrors(form) {
+            form.querySelectorAll('.cw-field-error').forEach(function (el) { el.remove(); });
+            form.querySelectorAll('.is-invalid').forEach(function (el) { el.classList.remove('is-invalid'); });
+        }
+
+        function markInvalid(control) {
+            if (!control) return;
+            control.classList.add('is-invalid');
+            var group = control.closest('.cw-input-group');
+            if (group) group.classList.add('is-invalid');
+            if (control.classList.contains('js-select2') || control.classList.contains('select2-hidden-accessible')) {
+                var s2 = control.nextElementSibling;
+                if (s2 && s2.classList.contains('select2-container')) {
+                    var sel = s2.querySelector('.select2-selection');
+                    if (sel) sel.classList.add('is-invalid');
+                }
+            }
+        }
+
+        function showFieldError(form, key, message) {
+            var name = errorKeyToName(key);
+            var control = name ? form.querySelector('[name="' + name + '"]') : null;
+            if (!control && key === 'workspace') {
+                if (typeof showFlashSwal === 'function') showFlashSwal('error', message);
+                return;
+            }
+            if (!control) return;
+
+            markInvalid(control);
+
+            var host = control.closest('.cw-field-row')
+                || control.closest('.cw-emp-row > div')
+                || control.parentElement;
+            if (!host) return;
+
+            var err = document.createElement('div');
+            err.className = 'cw-field-error is-visible';
+            err.setAttribute('data-error-for', name);
+            err.textContent = message;
+            host.appendChild(err);
+        }
+
+        function applyErrors(form, errors) {
+            clearFieldErrors(form);
+            if (!errors || typeof errors !== 'object') return;
+            var firstControl = null;
+            Object.keys(errors).forEach(function (key) {
+                var msgs = errors[key];
+                var msg = Array.isArray(msgs) ? msgs[0] : msgs;
+                if (!msg) return;
+                showFieldError(form, key, String(msg));
+                if (!firstControl) {
+                    var name = errorKeyToName(key);
+                    firstControl = name ? form.querySelector('[name="' + name + '"]') : null;
+                }
+            });
+            if (firstControl && typeof firstControl.focus === 'function') {
+                try { firstControl.focus({ preventScroll: false }); } catch (e) { firstControl.focus(); }
+                firstControl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        var initialErrors = @json(isset($errors) ? $errors->messages() : new \stdClass());
+        document.querySelectorAll('form.js-cw-ajax-save').forEach(function (form) {
+            if (initialErrors && Object.keys(initialErrors).length) {
+                applyErrors(form, initialErrors);
+            }
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                if (form.id === 'cwWorkspaceForm') {
+                    var nameEl = form.querySelector('[name="customer_details[applicant][name]"]');
+                    var mobEl = form.querySelector('[name="customer_details[applicant][mobile]"]');
+                    var hiddenName = document.getElementById('cw_customer_name');
+                    var hiddenMob = document.getElementById('cw_mobile');
+                    if (nameEl && hiddenName && nameEl.value) hiddenName.value = nameEl.value;
+                    if (mobEl && hiddenMob && mobEl.value) hiddenMob.value = mobEl.value;
+                }
+
+                clearFieldErrors(form);
+                if (window.GoalPageLoader) GoalPageLoader.show();
+
+                var submitBtn = form.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.setAttribute('aria-busy', 'true');
+                }
+
+                var token = document.querySelector('meta[name="csrf-token"]');
+                fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': token ? token.getAttribute('content') : ''
+                    },
+                    credentials: 'same-origin'
+                }).then(function (res) {
+                    return res.json().catch(function () { return {}; }).then(function (payload) {
+                        return { ok: res.ok, status: res.status, payload: payload || {} };
+                    });
+                }).then(function (result) {
+                    if (window.GoalPageLoader) GoalPageLoader.hide();
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.removeAttribute('aria-busy');
+                    }
+
+                    if (result.ok && result.payload.success) {
+                        if (typeof showFlashSwal === 'function') {
+                            showFlashSwal('success', result.payload.message || 'Case workspace saved.');
+                        }
+                        return;
+                    }
+
+                    if (result.status === 422 || result.status === 423) {
+                        applyErrors(form, result.payload.errors || {});
+                        if (typeof showFlashSwal === 'function' && result.payload.message) {
+                            showFlashSwal('error', result.payload.message);
+                        }
+                        return;
+                    }
+
+                    if (typeof showFlashSwal === 'function') {
+                        showFlashSwal('error', (result.payload && result.payload.message) || 'Could not save. Please try again.');
+                    }
+                }).catch(function () {
+                    if (window.GoalPageLoader) GoalPageLoader.hide();
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.removeAttribute('aria-busy');
+                    }
+                    if (typeof showFlashSwal === 'function') {
+                        showFlashSwal('error', 'Could not save. Please try again.');
+                    }
+                });
+            });
+        });
+    })();
 
     var custLayout = document.getElementById('cwCustomerLayout');
     if (custLayout) {
