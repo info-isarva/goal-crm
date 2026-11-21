@@ -15,7 +15,10 @@
         return '₹ '.number_format((float) $v, 0);
     };
     $txt = fn ($v) => ($v === null || $v === '') ? '—' : (string) $v;
-    $equifaxName = data_get($br, 'equifax.file_name');
+    $equifaxReceived = ! empty(data_get($br, 'equifax.received'))
+        || filled(data_get($br, 'equifax.recorded_at'))
+        || filled(data_get($br, 'equifax.path'))
+        || filled(data_get($br, 'equifax.file_name'));
     $titleName = strtoupper((string) ($app['name'] ?? $case->customer_name ?? 'CUSTOMER'));
 @endphp
 <!DOCTYPE html>
@@ -47,14 +50,14 @@
         Case {{ $case->case_no }}
         · {{ $case->orgUnit?->name ?: '—' }}
         · Exported {{ $exportedAt->format('d-m-Y H:i') }}
-        @if($equifaxName)
-            · <span class="badge">Equifax attached: {{ $equifaxName }}</span>
+        @if($equifaxReceived)
+            · <span class="badge">Equifax received</span>
         @endif
     </div>
 
     <div class="letter">
         <p>Dear Sir,</p>
-        <p>Please find the below Proposal brief summary of <strong>{{ $titleName }}</strong>@if($equifaxName). Attached Goal Corporation Equifax Report.@else.@endif</p>
+        <p>Please find the below Proposal brief summary of <strong>{{ $titleName }}</strong>@if($equifaxReceived). Equifax / credit bureau check recorded.@else.@endif</p>
     </div>
 
     <h2>Borrower Profile</h2>

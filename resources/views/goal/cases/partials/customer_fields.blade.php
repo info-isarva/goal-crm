@@ -202,46 +202,74 @@
             <span class="cw-ico"><i class="bi bi-house-door"></i></span>
             <h6 class="cw-card-title">Residence</h6>
         </div>
-        <div class="space-y-3 px-4 pb-4">
-            <div class="grid grid-cols-1 items-end gap-3 lg:grid-cols-12">
-                <div class="lg:col-span-8">
-                    <label class="cw-label">Present Residence Address{!! $reqMark('residence.present_address') !!}</label>
-                    <div class="cw-input-group">
-                        <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
-                        <input class="cw-input" name="customer_details[residence][present_address]" value="{{ $res['present_address'] ?? '' }}" placeholder="Enter present address" {{ $ro }} {{ $reqAttr('residence.present_address') }}>
+        <div class="px-4 pb-4">
+            <div class="cw-emp-grid">
+                <div class="cw-emp-row">
+                    <div></div>
+                    <div class="cw-party-head cw-party-head-app mb-0"><i class="bi bi-person-fill"></i><span>Applicant</span></div>
+                    <div class="cw-party-head cw-party-head-co mb-0"><i class="bi bi-people-fill"></i><span>Co-Applicant</span></div>
+                </div>
+
+                <div class="cw-emp-row">
+                    <label class="cw-label-inline">Present Residence Address</label>
+                    <div>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
+                            <input class="cw-input" name="customer_details[residence][present_address]" value="{{ $res['present_address'] ?? '' }}" placeholder="Enter present address" {{ $ro }} {{ $reqAttr('residence.present_address') }}>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
+                            <input class="cw-input" name="customer_details[residence][present_address_co]" value="{{ $res['present_address_co'] ?? '' }}" placeholder="Enter present address" {{ $ro }} {{ $reqAttr('residence.present_address_co') }}>
+                        </div>
                     </div>
                 </div>
-                <div class="lg:col-span-4">
-                    <label class="cw-label">Pincode{!! $reqMark('residence.present_pincode') !!}</label>
-                    <input class="cw-input" name="customer_details[residence][present_pincode]" value="{{ $res['present_pincode'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }} {{ $reqAttr('residence.present_pincode') }}>
-                </div>
-            </div>
 
-            <div class="cw-years-box">
-                <div class="cw-label mb-2">No. of Years at above Residence</div>
-                <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div class="cw-emp-row">
+                    <label class="cw-label-inline">Pincode</label>
                     <div>
-                        <label class="cw-mini-label">Applicant{!! $reqMark('residence.years_applicant') !!}</label>
+                        <input class="cw-input" name="customer_details[residence][present_pincode]" value="{{ $res['present_pincode'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }} {{ $reqAttr('residence.present_pincode') }}>
+                    </div>
+                    <div>
+                        <input class="cw-input" name="customer_details[residence][present_pincode_co]" value="{{ $res['present_pincode_co'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }} {{ $reqAttr('residence.present_pincode_co') }}>
+                    </div>
+                </div>
+
+                <div class="cw-emp-row">
+                    <label class="cw-label-inline">No. of Years at above Residence</label>
+                    <div>
                         <input class="cw-input" name="customer_details[residence][years_applicant]" value="{{ $res['years_applicant'] ?? '' }}" placeholder="Enter years" {{ $ro }} {{ $reqAttr('residence.years_applicant') }}>
                     </div>
                     <div>
-                        <label class="cw-mini-label">Co-Applicant{!! $reqMark('residence.years_co') !!}</label>
                         <input class="cw-input" name="customer_details[residence][years_co]" value="{{ $res['years_co'] ?? '' }}" placeholder="Enter years" {{ $ro }} {{ $reqAttr('residence.years_co') }}>
                     </div>
                 </div>
-            </div>
 
-            <div class="grid grid-cols-1 items-end gap-3 lg:grid-cols-12">
-                <div class="lg:col-span-8">
-                    <label class="cw-label">Permanent Address{!! $reqMark('residence.permanent_address') !!}</label>
-                    <div class="cw-input-group">
-                        <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
-                        <input class="cw-input" name="customer_details[residence][permanent_address]" value="{{ $res['permanent_address'] ?? '' }}" placeholder="Enter permanent address" {{ $ro }} {{ $reqAttr('residence.permanent_address') }}>
+                <div class="cw-emp-row">
+                    <label class="cw-label-inline">Permanent Address</label>
+                    <div>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
+                            <input class="cw-input" name="customer_details[residence][permanent_address]" value="{{ $res['permanent_address'] ?? '' }}" placeholder="Enter permanent address" {{ $ro }} {{ $reqAttr('residence.permanent_address') }}>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
+                            <input class="cw-input" name="customer_details[residence][permanent_address_co]" value="{{ $res['permanent_address_co'] ?? '' }}" placeholder="Enter permanent address" {{ $ro }} {{ $reqAttr('residence.permanent_address_co') }}>
+                        </div>
                     </div>
                 </div>
-                <div class="lg:col-span-4">
-                    <label class="cw-label">Pincode{!! $reqMark('residence.permanent_pincode') !!}</label>
-                    <input class="cw-input" name="customer_details[residence][permanent_pincode]" value="{{ $res['permanent_pincode'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }} {{ $reqAttr('residence.permanent_pincode') }}>
+
+                <div class="cw-emp-row">
+                    <label class="cw-label-inline">Permanent Pincode</label>
+                    <div>
+                        <input class="cw-input" name="customer_details[residence][permanent_pincode]" value="{{ $res['permanent_pincode'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }} {{ $reqAttr('residence.permanent_pincode') }}>
+                    </div>
+                    <div>
+                        <input class="cw-input" name="customer_details[residence][permanent_pincode_co]" value="{{ $res['permanent_pincode_co'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }} {{ $reqAttr('residence.permanent_pincode_co') }}>
+                    </div>
                 </div>
             </div>
         </div>
@@ -261,21 +289,25 @@
                     <div class="cw-party-head cw-party-head-co mb-0"><i class="bi bi-people-fill"></i><span>Co-Applicant</span></div>
                 </div>
 
-                <div class="cw-emp-row-span">
-                    <label class="cw-label-inline">Office Address &amp; Pincode</label>
-                    <div class="cw-emp-span-fields">
-                        <div class="cw-input-group min-w-0 flex-1">
+                <div class="cw-emp-row">
+                    <label class="cw-label-inline">Office Address</label>
+                    <div>
+                        <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
                             <input class="cw-input" name="customer_details[employment][office_address]" value="{{ $emp['office_address'] ?? '' }}" placeholder="Enter office address" {{ $ro }}>
                         </div>
-                        <input class="cw-input cw-pin" name="customer_details[employment][office_pincode]" value="{{ $emp['office_pincode'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }}>
+                    </div>
+                    <div>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
+                            <input class="cw-input" name="customer_details[employment][office_address_co]" value="{{ $emp['office_address_co'] ?? '' }}" placeholder="Enter office address" {{ $ro }}>
+                        </div>
                     </div>
                 </div>
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">Employment Type</label>
                     <div>
-                        <label class="cw-mini-label d-md-none">Applicant{!! $reqMark('employment.type_applicant') !!}</label>
                         <select class="cw-select js-select2" name="customer_details[employment][type_applicant]" {{ $dis }} {{ $reqAttr('employment.type_applicant') }}>
                             @foreach($empTypeOpts as $val => $label)
                                 <option value="{{ $val }}" @selected($empTypeApp === $val)>{{ $label }}</option>
@@ -283,7 +315,6 @@
                         </select>
                     </div>
                     <div>
-                        <label class="cw-mini-label d-md-none">Co-Applicant{!! $reqMark('employment.type_co') !!}</label>
                         <select class="cw-select js-select2" name="customer_details[employment][type_co]" {{ $dis }} {{ $reqAttr('employment.type_co') }}>
                             @foreach(['' => 'Select', 'Salaried' => 'Salaried', 'Self Employed' => 'Self Employed', 'Business' => 'Business', 'Professional' => 'Professional', 'Other' => 'Other'] as $val => $label)
                                 <option value="{{ $val }}" @selected($empTypeCo === $val)>{{ $label }}</option>

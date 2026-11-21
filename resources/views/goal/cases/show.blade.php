@@ -1884,7 +1884,7 @@
         </form>
         {{-- Equifax forms live outside cwRecommendationForm (HTML forbids nested forms). --}}
         @if($canEdit)
-        <form id="cwEquifaxUploadForm" method="POST" action="{{ route('goal.cases.bm-reco.equifax', $case) }}" enctype="multipart/form-data" class="d-none" aria-hidden="true">
+        <form id="cwEquifaxRecordForm" method="POST" action="{{ route('goal.cases.bm-reco.equifax', $case) }}" class="d-none" aria-hidden="true">
             @csrf
         </form>
         <form id="cwEquifaxRemoveForm" method="POST" action="{{ route('goal.cases.bm-reco.equifax.remove', $case) }}" class="d-none" aria-hidden="true">
@@ -2403,6 +2403,33 @@
             }).catch(function () {});
         });
     });
+
+    var equifaxClear = page.querySelector('.js-cw-equifax-clear');
+    var equifaxRemoveForm = document.getElementById('cwEquifaxRemoveForm');
+    if (equifaxClear && equifaxRemoveForm) {
+        equifaxClear.addEventListener('click', function (e) {
+            e.preventDefault();
+            var title = equifaxClear.getAttribute('data-swal-title') || 'Clear Equifax record?';
+            var text = equifaxClear.getAttribute('data-swal-text') || '';
+            var theme = (getComputedStyle(document.documentElement).getPropertyValue('--theme-primary') || '').trim() || '#009B80';
+            var go = function () { HTMLFormElement.prototype.submit.call(equifaxRemoveForm); };
+            if (window.Swal && typeof Swal.fire === 'function') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: title,
+                    text: text,
+                    showCancelButton: true,
+                    focusCancel: true,
+                    confirmButtonText: 'Yes, clear',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#94a3b8'
+                }).then(function (r) { if (r.isConfirmed) go(); });
+                return;
+            }
+            if (window.confirm(title + (text ? '\n\n' + text : ''))) go();
+        });
+    }
 })();
 </script>
 @endpush

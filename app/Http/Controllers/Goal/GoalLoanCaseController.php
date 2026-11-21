@@ -1233,7 +1233,14 @@ class GoalLoanCaseController extends Controller
             'loan_amount.regex' => 'Enter a valid amount (digits, optional 2 decimals).',
         ], PhoneNumber::messages('mobile'), PhoneNumber::messages('customer_details.applicant.mobile'), PhoneNumber::messages('customer_details.co_applicant.mobile')));
 
-        $docs = data_get($data, 'customer_details.documents', []);
+        // Use the full posted customer_details payload. $request->validate() / validated()
+        // drops nested keys that are not listed in the rules (e.g. father_name, employment),
+        // which made most Customer-tab fields appear to "save" then vanish on reload.
+        $incomingCd = is_array($request->input('customer_details'))
+            ? $request->input('customer_details')
+            : [];
+
+        $docs = data_get($incomingCd, 'documents', []);
         if (is_array($docs)) {
             foreach ($docs as $i => $doc) {
                 if (($doc['status'] ?? '') === 'Rejected' && empty(trim((string) ($doc['rejection_reason'] ?? '')))) {
@@ -1245,7 +1252,6 @@ class GoalLoanCaseController extends Controller
             }
         }
 
-        $incomingCd = is_array($data['customer_details'] ?? null) ? $data['customer_details'] : [];
         // Empty co-applicant / optional selects often post as "" — normalize before required checks.
         $incomingCd = $this->normalizeCustomerDetailsInput($incomingCd);
         if ($incomingCd !== []) {
@@ -1314,18 +1320,32 @@ class GoalLoanCaseController extends Controller
 
         $case->customer_details = $mergedCd;
         $prevEquifax = data_get($case->bm_reco, 'equifax');
-        $incomingBm = $data['bm_reco'] ?? null;
+        // Prefer full posted bm_reco / collateral / loans (same validated()-key trap as customer_details).
+        $incomingBm = $request->input('bm_reco');
         if (is_array($incomingBm)) {
-            unset($incomingBm['equifax']); // Equifax managed via dedicated upload route
+            unset($incomingBm['equifax']); // Equifax managed via dedicated record route
+        } else {
+            $incomingBm = $data['bm_reco'] ?? null;
         }
         $case->bm_reco = $this->mergeWorkspaceJson($case->bm_reco, $incomingBm);
-        if (is_array($prevEquifax) && ! empty($prevEquifax['path'])) {
+        if (is_array($prevEquifax) && (
+            ! empty($prevEquifax['path'])
+            || ! empty($prevEquifax['received'])
+            || filled($prevEquifax['recorded_at'] ?? null)
+        )) {
             $mergedBm = is_array($case->bm_reco) ? $case->bm_reco : [];
             $mergedBm['equifax'] = $prevEquifax;
             $case->bm_reco = $mergedBm;
         }
-        $case->collateral = $this->mergeWorkspaceJson($case->collateral, $data['collateral'] ?? null);
-        $incomingLoans = $data['existing_loans'] ?? null;
+        $incomingCollateral = $request->input('collateral');
+        $case->collateral = $this->mergeWorkspaceJson(
+            $case->collateral,
+            is_array($incomingCollateral) ? $incomingCollateral : ($data['collateral'] ?? null)
+        );
+        $incomingLoans = $request->input('existing_loans');
+        if (! is_array($incomingLoans)) {
+            $incomingLoans = $data['existing_loans'] ?? null;
+        }
         if (is_array($incomingLoans)) {
             if (array_key_exists('bt_source', $incomingLoans)) {
                 $bt = $incomingLoans['bt_source'];

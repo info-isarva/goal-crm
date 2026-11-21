@@ -33,12 +33,16 @@ class GoalCaseRequiredFields
             'co_applicant.email' => ['label' => 'Co-Applicant — Personal Mail ID', 'group' => 'Co-Applicant (Identity & Contact)', 'default' => false],
             'co_applicant.official_email' => ['label' => 'Co-Applicant — Official Mail ID', 'group' => 'Co-Applicant (Identity & Contact)', 'default' => false],
 
-            'residence.present_address' => ['label' => 'Present Residence Address', 'group' => 'Residence', 'default' => false],
-            'residence.present_pincode' => ['label' => 'Present Pincode', 'group' => 'Residence', 'default' => false],
+            'residence.present_address' => ['label' => 'Present Residence Address — Applicant', 'group' => 'Residence', 'default' => false],
+            'residence.present_address_co' => ['label' => 'Present Residence Address — Co-Applicant', 'group' => 'Residence', 'default' => false],
+            'residence.present_pincode' => ['label' => 'Present Pincode — Applicant', 'group' => 'Residence', 'default' => false],
+            'residence.present_pincode_co' => ['label' => 'Present Pincode — Co-Applicant', 'group' => 'Residence', 'default' => false],
             'residence.years_applicant' => ['label' => 'Years at Residence — Applicant', 'group' => 'Residence', 'default' => false],
             'residence.years_co' => ['label' => 'Years at Residence — Co-Applicant', 'group' => 'Residence', 'default' => false],
-            'residence.permanent_address' => ['label' => 'Permanent Address', 'group' => 'Residence', 'default' => false],
-            'residence.permanent_pincode' => ['label' => 'Permanent Pincode', 'group' => 'Residence', 'default' => false],
+            'residence.permanent_address' => ['label' => 'Permanent Address — Applicant', 'group' => 'Residence', 'default' => false],
+            'residence.permanent_address_co' => ['label' => 'Permanent Address — Co-Applicant', 'group' => 'Residence', 'default' => false],
+            'residence.permanent_pincode' => ['label' => 'Permanent Pincode — Applicant', 'group' => 'Residence', 'default' => false],
+            'residence.permanent_pincode_co' => ['label' => 'Permanent Pincode — Co-Applicant', 'group' => 'Residence', 'default' => false],
 
             'employment.type_applicant' => ['label' => 'Employment Type — Applicant', 'group' => 'Employment', 'default' => false],
             'employment.type_co' => ['label' => 'Employment Type — Co-Applicant', 'group' => 'Employment', 'default' => false],
@@ -133,7 +137,11 @@ class GoalCaseRequiredFields
         }
 
         foreach ([
+            'residence.present_address_co',
+            'residence.present_pincode_co',
             'residence.years_co',
+            'residence.permanent_address_co',
+            'residence.permanent_pincode_co',
             'employment.type_co',
             'employment.employer_co',
             'employment.income_co',
@@ -141,6 +149,7 @@ class GoalCaseRequiredFields
             'employment.present_exp_co',
             'employment.designation_co',
             'employment.industry_co',
+            'employment.office_address_co',
         ] as $path) {
             $v = data_get($customerDetails, $path);
             if ($v !== null && trim((string) $v) !== '') {

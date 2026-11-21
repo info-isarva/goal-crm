@@ -505,10 +505,16 @@
         </div>
     </div>
 
-    {{-- ========== EQUIFAX ========== --}}
+    {{-- ========== EQUIFAX (record only — no file upload) ========== --}}
     @php
         $equifax = data_get($br, 'equifax', []) ?: [];
-        $hasEquifax = filled($equifax['path'] ?? null);
+        $equifaxReceived = ! empty($equifax['received']) || filled($equifax['recorded_at'] ?? null) || filled($equifax['path'] ?? null);
+        $equifaxWhen = $equifax['recorded_at'] ?? ($equifax['uploaded_at'] ?? null);
+        $equifaxBy = $equifax['recorded_by'] ?? ($equifax['uploaded_by'] ?? null);
+        $equifaxWhenFmt = null;
+        if (! empty($equifaxWhen)) {
+            try { $equifaxWhenFmt = \Carbon\Carbon::parse($equifaxWhen)->format('d M Y H:i'); } catch (\Throwable) { $equifaxWhenFmt = (string) $equifaxWhen; }
+        }
     @endphp
     <div class="cw-extra-section" id="cwEquifax">
         <div class="cw-card-tw cw-card-soft">
@@ -516,37 +522,41 @@
                 <span class="cw-ico cw-ico-amber"><i class="bi bi-file-earmark-lock"></i></span>
                 <h6 class="cw-card-title">Equifax / Credit Bureau</h6>
             </div>
-            <div class="cw-reco-col-grid cw-collateral-fields" style="align-items:end">
-                <div class="cw-reco-col-span">
-                    <label class="cw-label">Attached report</label>
-                    @if($hasEquifax)
-                        <div class="d-flex align-items-center gap-2 flex-wrap" style="min-height:40px">
-                            <a href="{{ route('goal.cases.bm-reco.equifax.download', $case) }}" target="_blank" rel="noopener" class="btn-ghost" style="height:36px;padding:0 12px">
-                                <i class="bi bi-eye"></i> {{ $equifax['file_name'] ?? 'View report' }}
-                            </a>
-                            <span class="text-muted" style="font-size:.78rem">
-                                {{ $equifax['uploaded_at'] ?? '' }}
-                                @if(!empty($equifax['uploaded_by'])) · {{ $equifax['uploaded_by'] }} @endif
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2" style="padding:.15rem 0">
+                <div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        @if($equifaxReceived)
+                            <span class="status-pill verified" style="display:inline-flex;align-items:center;gap:4px;padding:.2rem .55rem;border-radius:999px;font-size:.72rem;font-weight:700;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0">
+                                <i class="bi bi-check2-circle"></i> Received
                             </span>
-                            @if($canEdit)
-                                <button type="submit" form="cwEquifaxRemoveForm" class="btn btn-outline-danger btn-sm" style="height:36px;border-radius:10px"
-                                        onclick="return confirm('Remove Equifax attachment?');">Remove</button>
-                            @endif
-                        </div>
-                    @else
-                        <div class="text-muted" style="font-size:.84rem;min-height:40px;display:flex;align-items:center">No Equifax report attached yet.</div>
-                    @endif
+                        @else
+                            <span class="status-pill idle" style="display:inline-flex;align-items:center;gap:4px;padding:.2rem .55rem;border-radius:999px;font-size:.72rem;font-weight:700;background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0">
+                                Not recorded
+                            </span>
+                        @endif
+                        @if($equifaxReceived && ($equifaxWhenFmt || $equifaxBy))
+                            <span class="text-muted" style="font-size:.78rem">
+                                {{ $equifaxWhenFmt }}
+                                @if($equifaxBy) · {{ $equifaxBy }} @endif
+                            </span>
+                        @endif
+                    </div>
+                    <div class="text-muted mt-1" style="font-size:.72rem">Record that the Equifax / bureau check is done — no file upload.</div>
                 </div>
                 @if($canEdit)
-                    <div class="cw-reco-col-span">
-                        <div class="d-flex flex-wrap gap-2 align-items-end">
-                            <div style="flex:1;min-width:220px">
-                                <label class="cw-label">{{ $hasEquifax ? 'Replace file' : 'Upload Equifax PDF / image' }}</label>
-                                <input type="file" name="file" form="cwEquifaxUploadForm" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" required>
-                            </div>
-                            <button type="submit" form="cwEquifaxUploadForm" class="btn-save" style="height:40px"><i class="bi bi-upload"></i> {{ $hasEquifax ? 'Replace' : 'Upload' }}</button>
-                        </div>
-                        <div class="text-muted mt-1" style="font-size:.72rem">PDF or image · max 10 MB · stored privately with the case</div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        @if(! $equifaxReceived)
+                            <button type="submit" form="cwEquifaxRecordForm" class="btn-save" style="height:36px">
+                                <i class="bi bi-check2"></i> Mark received
+                            </button>
+                        @else
+                            <button type="submit" form="cwEquifaxRemoveForm" class="btn btn-outline-danger btn-sm js-cw-equifax-clear"
+                                    style="height:36px;border-radius:10px"
+                                    data-swal-title="Clear Equifax record?"
+                                    data-swal-text="This will mark Equifax as not recorded for this recommendation.">
+                                <i class="bi bi-x-lg"></i> Clear
+                            </button>
+                        @endif
                     </div>
                 @endif
             </div>
