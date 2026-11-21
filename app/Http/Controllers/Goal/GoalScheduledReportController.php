@@ -203,10 +203,12 @@ class GoalScheduledReportController extends Controller
 
     protected function snapshotFilters(Request $request): array
     {
+        $fyDefaults = app(\App\Services\FinancialYearService::class)->defaultDateFilters();
+
         return [
-            'fy' => (string) $request->input('fy', ''),
-            'date_from' => (string) $request->input('date_from', now()->startOfMonth()->format('Y-m-d')),
-            'date_to' => (string) $request->input('date_to', now()->format('Y-m-d')),
+            'fy' => (string) ($request->filled('fy') ? $request->input('fy') : $fyDefaults['fy']),
+            'date_from' => (string) ($request->filled('date_from') ? $request->input('date_from') : $fyDefaults['date_from']),
+            'date_to' => (string) ($request->filled('date_to') ? $request->input('date_to') : $fyDefaults['date_to']),
             'region' => $request->input('region'),
             'cluster' => $request->input('cluster'),
             'branch' => $request->input('branch'),

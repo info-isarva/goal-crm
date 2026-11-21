@@ -144,7 +144,12 @@
                 <li>Revenue Ledger</li>
             </ul>
             <h1 class="pd-title">Revenue Ledger</h1>
-            <p class="pd-sub">Company revenue journal — automatic recognition at verified disbursement, plus controlled adjustments.</p>
+            <p class="pd-sub">
+                Company revenue journal — automatic recognition at verified disbursement, plus controlled adjustments.
+                @if(!empty($filters['fy_label']))
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1">FY {{ $filters['fy_label'] }}</span>
+                @endif
+            </p>
         </div>
         <div class="pd-hero-actions">
             <a href="{{ route('goal.targets.index') }}" class="pd-link-btn"><i class="bi bi-bullseye"></i> Targets</a>

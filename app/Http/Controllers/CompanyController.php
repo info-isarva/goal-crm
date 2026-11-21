@@ -298,6 +298,13 @@ class CompanyController extends Controller
             return response()->json(['success' => false, 'error' => 'Financial year not found'], 404);
         }
         session(['selected_financial_year' => $fy->id]);
-        return response()->json(['success' => true, 'financial_year' => $fy->fin_key]);
+
+        return response()->json([
+            'success' => true,
+            'financial_year' => $fy->fin_key,
+            'from_date' => optional($fy->from_date)->toDateString(),
+            'to_date' => optional($fy->to_date)->toDateString(),
+            'label' => app(\App\Services\FinancialYearService::class)->label($fy),
+        ]);
     }
 }

@@ -12,6 +12,7 @@ use App\Models\GoalPayout;
 use App\Models\GoalRevenueEntry;
 use App\Models\GoalTarget;
 use App\Models\User;
+use App\Services\FinancialYearService;
 use Carbon\Carbon;
 /**
  * Analytics Dashboard + MIS Reports register payload (role-scoped).
@@ -21,8 +22,16 @@ class GoalAnalyticsMisService
     public function build(User $user, array $filters = []): array
     {
         $roleKey = $this->resolveRoleKey($user);
+        $fySvc = app(FinancialYearService::class);
+        $defaults = $fySvc->defaultDateFilters();
         if (empty($filters['fy'])) {
-            $filters['fy'] = $this->currentFy();
+            $filters['fy'] = $defaults['fy'];
+        }
+        if (empty($filters['date_from'])) {
+            $filters['date_from'] = $defaults['date_from'];
+        }
+        if (empty($filters['date_to'])) {
+            $filters['date_to'] = $defaults['date_to'];
         }
         $scopeIds = $this->resolveScopeIds($user, $filters);
         $range = $this->resolveDateRange($filters);
@@ -127,8 +136,33 @@ class GoalAnalyticsMisService
 
     public function resolveDateRange(array $filters): array
     {
-        $from = ! empty($filters['date_from']) ? Carbon::parse($filters['date_from'])->startOfDay() : now()->startOfMonth();
-        $to = ! empty($filters['date_to']) ? Carbon::parse($filters['date_to'])->endOfDay() : now()->endOfDay();
+        $fySvc = app(FinancialYearService::class);
+
+        if (! empty($filters['date_from']) || ! empty($filters['date_to'])) {
+            $defaults = $fySvc->defaultDateFilters();
+            $from = ! empty($filters['date_from'])
+                ? Carbon::parse($filters['date_from'])->startOfDay()
+                : Carbon::parse($defaults['date_from'])->startOfDay();
+            $to = ! empty($filters['date_to'])
+                ? Carbon::parse($filters['date_to'])->endOfDay()
+                : Carbon::parse($defaults['date_to'])->endOfDay();
+        } elseif (! empty($filters['fy']) && preg_match('/^(\d{4})-(\d{4})$/', (string) $filters['fy'], $m)) {
+            $match = \App\Models\FinancialYear::query()
+                ->orderByDesc('from_date')
+                ->get()
+                ->first(fn ($fy) => $fySvc->analyticsKey($fy) === $filters['fy']);
+            if ($match) {
+                [$from, $to] = $fySvc->range($match);
+            } else {
+                // Mid-year date inside Apr–Mar (or company) window that starts in $m[1]
+                [$from, $to] = $fySvc->computeContainingRange(
+                    Carbon::create((int) $m[1], 6, 15)->startOfDay()
+                );
+            }
+        } else {
+            [$from, $to] = $fySvc->range();
+        }
+
         if ($from->gt($to)) {
             [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
         }
@@ -811,25 +845,34 @@ class GoalAnalyticsMisService
 
     protected function currentFy(): string
     {
-        $y = (int) now()->year;
-        $m = (int) now()->month;
-        if ($m >= 4) {
-            return $y.'-'.($y + 1);
-        }
-
-        return ($y - 1).'-'.$y;
+        return app(FinancialYearService::class)->analyticsKey();
     }
 
     public function fyOptions(): array
     {
-        $cur = $this->currentFy();
-        [$a, $b] = array_map('intval', explode('-', $cur));
+        $fySvc = app(FinancialYearService::class);
+        $fySvc->ensureRecentYears();
 
-        return [
-            ($a - 1).'-'.$a,
-            $cur,
-            $b.'-'.($b + 1),
-        ];
+        $keys = \App\Models\FinancialYear::query()
+            ->orderByDesc('from_date')
+            ->get()
+            ->map(fn ($fy) => $fySvc->analyticsKey($fy))
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($keys === []) {
+            $cur = $this->currentFy();
+            [$a, $b] = array_map('intval', explode('-', $cur));
+
+            return [
+                ($a - 1).'-'.$a,
+                $cur,
+                $b.'-'.($b + 1),
+            ];
+        }
+
+        return $keys;
     }
 
     protected function inr(float $amount): string

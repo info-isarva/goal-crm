@@ -9,6 +9,7 @@ use App\Library\MpdfDocument;
 use App\Models\GoalLoanCase;
 use App\Models\GoalOrgUnit;
 use App\Models\GoalRevenueEntry;
+use App\Services\FinancialYearService;
 use App\Services\Goal\Pd01Service;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -29,7 +30,10 @@ class GoalMisController extends Controller
         $filters = $this->validatedBranchFilters($request);
         $query = $this->branchMisQuery($filters);
         $kpis = $this->branchMisKpis(clone $query);
-        $kpis['rev01_revenue'] = (float) $this->scopeByOrgColumn(GoalRevenueEntry::query())->sum('amount');
+        $kpis['rev01_revenue'] = (float) app(FinancialYearService::class)
+            ->applyToQuery($this->scopeByOrgColumn(GoalRevenueEntry::query()), 'created_at')
+            ->sum('amount');
+        $filters['fy_label'] = app(FinancialYearService::class)->label();
 
         $misSvc = app(\App\Services\Goal\GoalBranchMisService::class);
         $cases = (clone $query)->paginate(50)->withQueryString();
@@ -205,7 +209,14 @@ class GoalMisController extends Controller
             'reversal_count' => (clone $baseQuery)->where('entry_type', 'reversal')->count(),
         ];
         $entries = (clone $query)->paginate(50)->withQueryString();
-        $filters = ['q' => $q, 'entry_type' => $entryType];
+        $fySvc = app(FinancialYearService::class);
+        $filters = [
+            'q' => $q,
+            'entry_type' => $entryType,
+            'fy_label' => $fySvc->label(),
+            'date_from' => $fySvc->range()[0]->toDateString(),
+            'date_to' => $fySvc->range()[1]->toDateString(),
+        ];
         $rollups = $this->orgRollups();
         $cases = GoalLoanCase::query()
             ->tap(fn (Builder $b) => $this->scopeByOrgColumn($b))
@@ -461,6 +472,7 @@ class GoalMisController extends Controller
         $query = $this->scopeByOrgColumn(
             GoalRevenueEntry::query()->with(['loanCase', 'orgUnit'])->latest()
         );
+        app(FinancialYearService::class)->applyToQuery($query, 'created_at');
         if ($q !== '') {
             $query->where(function (Builder $b) use ($q) {
                 $b->where('note', 'like', '%'.$q.'%')
@@ -479,8 +491,11 @@ class GoalMisController extends Controller
      */
     protected function orgRollups(): array
     {
-        $entries = $this->scopeByOrgColumn(
-            GoalRevenueEntry::query()->select(['goal_org_unit_id', 'amount'])
+        $entries = app(FinancialYearService::class)->applyToQuery(
+            $this->scopeByOrgColumn(
+                GoalRevenueEntry::query()->select(['goal_org_unit_id', 'amount'])
+            ),
+            'created_at'
         )->get();
 
         $units = GoalOrgUnit::query()->get()->keyBy('id');
@@ -551,6 +566,7 @@ class GoalMisController extends Controller
             ->latest();
 
         $this->scopeByOrgColumn($query);
+        app(FinancialYearService::class)->applyToQuery($query, 'created_at');
 
         if (! empty($filters['branch'])) {
             $query->where('goal_org_unit_id', $filters['branch']);

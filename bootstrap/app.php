@@ -22,6 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         // Log out other devices when the password hash stored in the session no longer matches.
         $middleware->authenticateSessions();
+        // Ensure a financial year exists and is selected for authenticated Goal/CRM pages
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureFinancialYearSelected::class);
         // Audit trail: log authenticated mutating requests (and export/download GETs)
         $middleware->appendToGroup('web', \App\Http\Middleware\LogUserActions::class);
         $middleware->appendToGroup('api', \App\Http\Middleware\LogUserActions::class);

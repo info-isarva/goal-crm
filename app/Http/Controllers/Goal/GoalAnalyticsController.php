@@ -234,11 +234,13 @@ class GoalAnalyticsController extends Controller
             $section = 'overview';
         }
 
+        $fyDefaults = app(\App\Services\FinancialYearService::class)->defaultDateFilters();
+
         return [
             'section' => $section,
-            'fy' => (string) request('fy', ''),
-            'date_from' => (string) request('date_from', now()->startOfMonth()->format('Y-m-d')),
-            'date_to' => (string) request('date_to', now()->format('Y-m-d')),
+            'fy' => (string) (request()->filled('fy') ? request('fy') : $fyDefaults['fy']),
+            'date_from' => (string) (request()->filled('date_from') ? request('date_from') : $fyDefaults['date_from']),
+            'date_to' => (string) (request()->filled('date_to') ? request('date_to') : $fyDefaults['date_to']),
             'region' => request('region'),
             'cluster' => request('cluster'),
             'branch' => request('branch'),

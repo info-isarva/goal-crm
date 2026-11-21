@@ -138,7 +138,12 @@
                 <li>Branch MIS</li>
             </ul>
             <h1 class="pd-title">Branch MIS</h1>
-            <p class="pd-sub">Branch commercial sheet per case — disbursement, payin, payout and net revenue.</p>
+            <p class="pd-sub">
+                Branch commercial sheet per case — disbursement, payin, payout and net revenue.
+                @if(!empty($filters['fy_label']))
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1">FY {{ $filters['fy_label'] }}</span>
+                @endif
+            </p>
         </div>
         <div class="pd-hero-actions">
             <a href="{{ route('goal.revenue-ledger') }}" class="pd-link-btn"><i class="bi bi-journal-text"></i> Revenue Ledger</a>

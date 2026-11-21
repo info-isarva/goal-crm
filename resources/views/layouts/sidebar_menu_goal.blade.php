@@ -311,15 +311,6 @@
 </li>
 @endif
 
-@if($can('manage_company_guard') || $can('manage_crm_organization_guard') || $can('view_crm_organization_guard') || $isSuper)
-<li class="nav-item">
-    <a class="nav-link {{ request()->routeIs('organizations.*') || request()->routeIs('company.edit') ? 'active' : '' }}"
-       href="{{ route('organizations.index') }}">
-        <i class="bi bi-building"></i> <span class="nav-label">Company / Branches</span>
-    </a>
-</li>
-@endif
-
 @if($can('manage_users_guard') || $can('manage_roles_guard') || $can('manage_permissions_guard') || $isSuper
     || $can('manage_crm_user_guard') || $can('view_crm_user_guard') || $can('create_crm_user_guard') || $can('edit_crm_user_guard')
     || $can('manage_crm_role_guard'))
