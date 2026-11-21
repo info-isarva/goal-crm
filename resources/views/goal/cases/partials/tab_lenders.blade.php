@@ -110,7 +110,7 @@
                                                         </li>
                                                     @else
                                                         <li>
-                                                            <form method="POST" action="{{ route('goal.bank-applications.status', $ba) }}">
+                                                            <form method="POST" action="{{ route('goal.bank-applications.status', $ba) }}" class="js-cw-ajax-save" data-no-loader data-ajax-reload="1">
                                                                 @csrf
                                                                 @method('PATCH')
                                                                 <input type="hidden" name="status" value="{{ $st }}">

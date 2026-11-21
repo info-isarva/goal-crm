@@ -268,7 +268,7 @@
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             @if($canEdit && $missingRequired > 0)
-                <form method="POST" action="{{ route('goal.cases.documents.receive', $case) }}" class="js-cw-doc-confirm"
+                <form method="POST" action="{{ route('goal.cases.documents.receive', $case) }}" class="js-cw-doc-confirm" data-no-loader data-ajax-reload="1"
                     data-swal-title="Mark all missing as received?"
                     data-swal-text="{{ $missingRequired }} required document{{ $missingRequired === 1 ? '' : 's' }} will be marked received and pending verification."
                     data-swal-confirm="Yes, mark received"
@@ -340,13 +340,13 @@
                         </td>
                         <td class="c-req" data-label="Required">
                             @if($canEdit)
-                                <form method="POST" action="{{ route('goal.cases.documents.meta', $case) }}">
+                                <form method="POST" action="{{ route('goal.cases.documents.meta', $case) }}" class="js-cw-ajax-save" data-no-loader data-ajax-reload="1">
                                     @csrf
                                     <input type="hidden" name="key" value="{{ $key }}">
                                     <input type="hidden" name="party" value="{{ $party }}">
                                     <label class="cw-docs-switch" title="Toggle required for this case">
                                         <input type="checkbox" name="mandatory" value="1" @checked($isMandatory)
-                                            onchange="this.form.submit()">
+                                            onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.dispatchEvent(new Event('submit', {cancelable:true,bubbles:true}))">
                                         <span class="track" aria-hidden="true"></span>
                                         <span class="lbl">{{ $isMandatory ? 'Yes' : 'No' }}</span>
                                     </label>
@@ -383,7 +383,7 @@
                         <td class="c-actions" data-label="Actions">
                             <div class="cw-docs-actions">
                                 @if($canMarkReceived)
-                                    <form method="POST" action="{{ route('goal.cases.documents.receive', $case) }}" class="js-cw-doc-confirm"
+                                    <form method="POST" action="{{ route('goal.cases.documents.receive', $case) }}" class="js-cw-doc-confirm" data-no-loader data-ajax-reload="1"
                                         data-swal-title="Mark as received?"
                                         data-swal-text="{{ $label }} will be marked received and pending verification."
                                         data-swal-confirm="Yes, mark received"
@@ -399,7 +399,7 @@
                                     </form>
                                 @endif
                                 @if($canReview)
-                                    <form method="POST" action="{{ route('goal.cases.documents.verify', $case) }}" class="js-cw-doc-confirm"
+                                    <form method="POST" action="{{ route('goal.cases.documents.verify', $case) }}" class="js-cw-doc-confirm" data-no-loader data-ajax-reload="1"
                                         data-swal-title="Verify document?"
                                         data-swal-text="Confirm verification for {{ $label }}."
                                         data-swal-confirm="Yes, verify"
@@ -506,7 +506,11 @@
                 icon: form.getAttribute('data-swal-icon') || 'question',
                 color: form.getAttribute('data-swal-color') || theme
             }, function () {
-                HTMLFormElement.prototype.submit.call(form);
+                if (window.CwAjaxSave && typeof window.CwAjaxSave.submit === 'function') {
+                    window.CwAjaxSave.submit(form, { skipConfirm: true });
+                } else {
+                    HTMLFormElement.prototype.submit.call(form);
+                }
             });
         });
     });
@@ -523,6 +527,8 @@
                 var form = document.createElement('form');
                 form.method = 'POST';
                 form.action = action;
+                form.setAttribute('data-no-loader', '1');
+                form.setAttribute('data-ajax-reload', '1');
                 form.style.display = 'none';
                 function add(name, value) {
                     var input = document.createElement('input');
@@ -538,7 +544,11 @@
                 add('action', 'Rejected');
                 add('rejection_reason', reason);
                 document.body.appendChild(form);
-                form.submit();
+                if (window.CwAjaxSave && typeof window.CwAjaxSave.submit === 'function') {
+                    window.CwAjaxSave.submit(form, { skipConfirm: true });
+                } else {
+                    HTMLFormElement.prototype.submit.call(form);
+                }
             };
 
             if (window.Swal && typeof Swal.fire === 'function') {

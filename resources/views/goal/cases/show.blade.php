@@ -1256,7 +1256,9 @@
                     @if($canPms && $case->status === 'Disbursed')
                         <li><hr class="dropdown-divider"></li>
                         <li>
-                            <form method="POST" action="{{ route('goal.cases.pms-transfer', $case) }}" onsubmit="return confirm('Transfer eligible case to PMS?')">
+                            <form method="POST" action="{{ route('goal.cases.pms-transfer', $case) }}" class="js-cw-ajax-save" data-no-loader data-ajax-reload="1"
+                                data-confirm-title="Transfer to PMS?"
+                                data-confirm-text="Transfer this eligible case to PMS?">
                                 @csrf
                                 <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right me-1"></i> Transfer to PMS</button>
                             </form>
@@ -1265,7 +1267,9 @@
                     @if(!empty($canAdvanceStatus) && in_array('Closed', $next, true))
                         <li><hr class="dropdown-divider"></li>
                         <li>
-                            <form method="POST" action="{{ route('goal.cases.transition', $case) }}" onsubmit="return confirm('Close this case?')">
+                            <form method="POST" action="{{ route('goal.cases.transition', $case) }}" class="js-cw-ajax-save" data-no-loader data-ajax-reload="1"
+                                data-confirm-title="Close this case?"
+                                data-confirm-text="This will close the case.">
                                 @csrf
                                 <input type="hidden" name="to_status" value="Closed">
                                 <input type="hidden" name="rejection_reason" value="Closed via Actions">
@@ -1893,10 +1897,10 @@
         </form>
         {{-- Equifax forms live outside cwRecommendationForm (HTML forbids nested forms). --}}
         @if($canEdit)
-        <form id="cwEquifaxRecordForm" method="POST" action="{{ route('goal.cases.bm-reco.equifax', $case) }}" class="d-none" aria-hidden="true">
+        <form id="cwEquifaxRecordForm" method="POST" action="{{ route('goal.cases.bm-reco.equifax', $case) }}" class="d-none js-cw-ajax-save" data-no-loader data-ajax-reload="1" aria-hidden="true">
             @csrf
         </form>
-        <form id="cwEquifaxRemoveForm" method="POST" action="{{ route('goal.cases.bm-reco.equifax.remove', $case) }}" class="d-none" aria-hidden="true">
+        <form id="cwEquifaxRemoveForm" method="POST" action="{{ route('goal.cases.bm-reco.equifax.remove', $case) }}" class="d-none js-cw-ajax-save" data-no-loader data-ajax-reload="1" aria-hidden="true">
             @csrf
             @method('DELETE')
         </form>
@@ -1972,7 +1976,7 @@
     @if(!empty($canAdvanceStatus) && $next !== [])
     <div class="modal fade" id="cwAdvanceStatusModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <form method="POST" action="{{ route('goal.cases.transition', $case) }}" class="modal-content">
+            <form method="POST" action="{{ route('goal.cases.transition', $case) }}" class="modal-content js-cw-ajax-save" data-no-loader data-ajax-reload="1">
                 @csrf
                 <div class="modal-header">
                     <h5 class="modal-title">Advance Status</h5>
@@ -2149,6 +2153,7 @@
         function clearFieldErrors(form) {
             form.querySelectorAll('.cw-field-error').forEach(function (el) { el.remove(); });
             form.querySelectorAll('.is-invalid').forEach(function (el) { el.classList.remove('is-invalid'); });
+            form.querySelectorAll('.invalid-feedback.cw-ajax-err').forEach(function (el) { el.remove(); });
         }
 
         function markInvalid(control) {
@@ -2168,24 +2173,30 @@
         function showFieldError(form, key, message) {
             var name = errorKeyToName(key);
             var control = name ? form.querySelector('[name="' + name + '"]') : null;
-            if (!control && key === 'workspace') {
+            if (!control) {
                 if (typeof showFlashSwal === 'function') showFlashSwal('error', message);
-                return;
+                return null;
             }
-            if (!control) return;
 
             markInvalid(control);
 
             var host = control.closest('.cw-field-row')
                 || control.closest('.cw-emp-row > div')
+                || control.closest('.mb-3')
+                || control.closest('.col-md-6')
+                || control.closest('.col-md-4')
+                || control.closest('.col-md-12')
                 || control.parentElement;
-            if (!host) return;
+            if (!host) return control;
 
             var err = document.createElement('div');
-            err.className = 'cw-field-error is-visible';
+            err.className = host.classList.contains('cw-field-row') || host.classList.contains('cw-emp-row')
+                ? 'cw-field-error is-visible'
+                : 'invalid-feedback d-block cw-ajax-err';
             err.setAttribute('data-error-for', name);
             err.textContent = message;
             host.appendChild(err);
+            return control;
         }
 
         function applyErrors(form, errors) {
@@ -2196,11 +2207,8 @@
                 var msgs = errors[key];
                 var msg = Array.isArray(msgs) ? msgs[0] : msgs;
                 if (!msg) return;
-                showFieldError(form, key, String(msg));
-                if (!firstControl) {
-                    var name = errorKeyToName(key);
-                    firstControl = name ? form.querySelector('[name="' + name + '"]') : null;
-                }
+                var control = showFieldError(form, key, String(msg));
+                if (!firstControl && control) firstControl = control;
             });
             if (firstControl && typeof firstControl.focus === 'function') {
                 try { firstControl.focus({ preventScroll: false }); } catch (e) { firstControl.focus(); }
@@ -2208,82 +2216,153 @@
             }
         }
 
+        function tabQuery(tab) {
+            var section = '';
+            if (tab === 'lenders' || tab === 'queries' || tab === 'sanction' || tab === 'disbursement') {
+                section = tab;
+                tab = 'banking';
+            } else if (tab === 'visits' || tab === 'activity') {
+                section = tab;
+                tab = 'followups';
+            }
+            var qs = '?tab=' + encodeURIComponent(tab || 'overview');
+            if (section) qs += '&section=' + encodeURIComponent(section);
+            return qs;
+        }
+
+        function confirmIfNeeded(form, onYes) {
+            var title = form.getAttribute('data-confirm-title');
+            if (!title) {
+                onYes();
+                return;
+            }
+            var text = form.getAttribute('data-confirm-text') || '';
+            var theme = (getComputedStyle(document.documentElement).getPropertyValue('--theme-primary') || '').trim() || '#009B80';
+            if (window.Swal && typeof Swal.fire === 'function') {
+                Swal.fire({
+                    icon: 'question',
+                    title: title,
+                    text: text,
+                    showCancelButton: true,
+                    focusCancel: true,
+                    confirmButtonColor: theme,
+                    cancelButtonColor: '#94a3b8',
+                    confirmButtonText: 'Yes',
+                    cancelButtonText: 'Cancel'
+                }).then(function (r) { if (r.isConfirmed) onYes(); });
+                return;
+            }
+            if (window.confirm(title + (text ? '\n\n' + text : ''))) onYes();
+        }
+
+        function submitAjaxForm(form) {
+            if (form.id === 'cwWorkspaceForm') {
+                var nameEl = form.querySelector('[name="customer_details[applicant][name]"]');
+                var mobEl = form.querySelector('[name="customer_details[applicant][mobile]"]');
+                var hiddenName = document.getElementById('cw_customer_name');
+                var hiddenMob = document.getElementById('cw_mobile');
+                if (nameEl && hiddenName && nameEl.value) hiddenName.value = nameEl.value;
+                if (mobEl && hiddenMob && mobEl.value) hiddenMob.value = mobEl.value;
+            }
+
+            clearFieldErrors(form);
+            if (window.GoalPageLoader) GoalPageLoader.show();
+
+            var submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.setAttribute('aria-busy', 'true');
+            }
+
+            var token = document.querySelector('meta[name="csrf-token"]');
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': token ? token.getAttribute('content') : ''
+                },
+                credentials: 'same-origin'
+            }).then(function (res) {
+                return res.json().catch(function () { return {}; }).then(function (payload) {
+                    return { ok: res.ok, status: res.status, payload: payload || {} };
+                });
+            }).then(function (result) {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.removeAttribute('aria-busy');
+                }
+
+                if (result.ok && result.payload.success) {
+                    if (typeof showFlashSwal === 'function') {
+                        showFlashSwal('success', result.payload.message || 'Saved.');
+                    }
+                    var modalEl = form.closest('.modal');
+                    if (modalEl && window.bootstrap && bootstrap.Modal) {
+                        var inst = bootstrap.Modal.getInstance(modalEl);
+                        if (inst) inst.hide();
+                    }
+                    if (result.payload.redirect) {
+                        window.location.href = result.payload.redirect;
+                        return;
+                    }
+                    var shouldReload = result.payload.reload === true || form.getAttribute('data-ajax-reload') === '1';
+                    if (shouldReload) {
+                        var tab = result.payload.cw_tab || page.getAttribute('data-active-tab') || 'overview';
+                        window.location.href = window.location.pathname + tabQuery(tab);
+                        return;
+                    }
+                    if (window.GoalPageLoader) GoalPageLoader.hide();
+                    return;
+                }
+
+                if (window.GoalPageLoader) GoalPageLoader.hide();
+
+                if (result.status === 422 || result.status === 423) {
+                    applyErrors(form, result.payload.errors || {});
+                    if (typeof showFlashSwal === 'function' && result.payload.message) {
+                        showFlashSwal('error', result.payload.message);
+                    }
+                    return;
+                }
+
+                if (typeof showFlashSwal === 'function') {
+                    showFlashSwal('error', (result.payload && result.payload.message) || 'Could not save. Please try again.');
+                }
+            }).catch(function () {
+                if (window.GoalPageLoader) GoalPageLoader.hide();
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.removeAttribute('aria-busy');
+                }
+                if (typeof showFlashSwal === 'function') {
+                    showFlashSwal('error', 'Could not save. Please try again.');
+                }
+            });
+        }
+
+        window.CwAjaxSave = {
+            submit: function (form, opts) {
+                if (!form) return;
+                form.setAttribute('data-no-loader', '1');
+                if (opts && opts.skipConfirm) {
+                    submitAjaxForm(form);
+                    return;
+                }
+                confirmIfNeeded(form, function () { submitAjaxForm(form); });
+            }
+        };
+
         var initialErrors = @json(isset($errors) ? $errors->messages() : new \stdClass());
         document.querySelectorAll('form.js-cw-ajax-save').forEach(function (form) {
-            if (initialErrors && Object.keys(initialErrors).length) {
+            if (initialErrors && Object.keys(initialErrors).length && (form.id === 'cwWorkspaceForm' || form.id === 'cwRecommendationForm' || form.id === 'cwBranchMisForm')) {
                 applyErrors(form, initialErrors);
             }
 
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
-
-                if (form.id === 'cwWorkspaceForm') {
-                    var nameEl = form.querySelector('[name="customer_details[applicant][name]"]');
-                    var mobEl = form.querySelector('[name="customer_details[applicant][mobile]"]');
-                    var hiddenName = document.getElementById('cw_customer_name');
-                    var hiddenMob = document.getElementById('cw_mobile');
-                    if (nameEl && hiddenName && nameEl.value) hiddenName.value = nameEl.value;
-                    if (mobEl && hiddenMob && mobEl.value) hiddenMob.value = mobEl.value;
-                }
-
-                clearFieldErrors(form);
-                if (window.GoalPageLoader) GoalPageLoader.show();
-
-                var submitBtn = form.querySelector('button[type="submit"]');
-                if (submitBtn) {
-                    submitBtn.disabled = true;
-                    submitBtn.setAttribute('aria-busy', 'true');
-                }
-
-                var token = document.querySelector('meta[name="csrf-token"]');
-                fetch(form.action, {
-                    method: 'POST',
-                    body: new FormData(form),
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': token ? token.getAttribute('content') : ''
-                    },
-                    credentials: 'same-origin'
-                }).then(function (res) {
-                    return res.json().catch(function () { return {}; }).then(function (payload) {
-                        return { ok: res.ok, status: res.status, payload: payload || {} };
-                    });
-                }).then(function (result) {
-                    if (window.GoalPageLoader) GoalPageLoader.hide();
-                    if (submitBtn) {
-                        submitBtn.disabled = false;
-                        submitBtn.removeAttribute('aria-busy');
-                    }
-
-                    if (result.ok && result.payload.success) {
-                        if (typeof showFlashSwal === 'function') {
-                            showFlashSwal('success', result.payload.message || 'Case workspace saved.');
-                        }
-                        return;
-                    }
-
-                    if (result.status === 422 || result.status === 423) {
-                        applyErrors(form, result.payload.errors || {});
-                        if (typeof showFlashSwal === 'function' && result.payload.message) {
-                            showFlashSwal('error', result.payload.message);
-                        }
-                        return;
-                    }
-
-                    if (typeof showFlashSwal === 'function') {
-                        showFlashSwal('error', (result.payload && result.payload.message) || 'Could not save. Please try again.');
-                    }
-                }).catch(function () {
-                    if (window.GoalPageLoader) GoalPageLoader.hide();
-                    if (submitBtn) {
-                        submitBtn.disabled = false;
-                        submitBtn.removeAttribute('aria-busy');
-                    }
-                    if (typeof showFlashSwal === 'function') {
-                        showFlashSwal('error', 'Could not save. Please try again.');
-                    }
-                });
+                confirmIfNeeded(form, function () { submitAjaxForm(form); });
             });
         });
     })();
@@ -2572,7 +2651,15 @@
             var title = equifaxClear.getAttribute('data-swal-title') || 'Clear Equifax record?';
             var text = equifaxClear.getAttribute('data-swal-text') || '';
             var theme = (getComputedStyle(document.documentElement).getPropertyValue('--theme-primary') || '').trim() || '#009B80';
-            var go = function () { HTMLFormElement.prototype.submit.call(equifaxRemoveForm); };
+            var go = function () {
+                if (window.CwAjaxSave && typeof window.CwAjaxSave.submit === 'function') {
+                    window.CwAjaxSave.submit(equifaxRemoveForm, { skipConfirm: true });
+                } else if (typeof equifaxRemoveForm.requestSubmit === 'function') {
+                    equifaxRemoveForm.requestSubmit();
+                } else {
+                    HTMLFormElement.prototype.submit.call(equifaxRemoveForm);
+                }
+            };
             if (window.Swal && typeof Swal.fire === 'function') {
                 Swal.fire({
                     icon: 'warning',

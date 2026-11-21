@@ -1400,6 +1400,7 @@ class GoalLoanCaseController extends Controller
                 'success' => true,
                 'message' => 'Case workspace saved.',
                 'cw_tab' => $tab,
+                'reload' => false,
             ]);
         }
 
@@ -1636,19 +1637,19 @@ class GoalLoanCaseController extends Controller
                         'evidence_note' => $data['evidence_note'] ?? null,
                     ], auth()->user());
                 } catch (\Throwable $e) {
-                    return back()->withErrors(['to_status' => $e->getMessage()])->with('cw_tab', 'disbursement');
+                    return $this->ajaxFail(['to_status' => $e->getMessage()], 'disbursement');
                 }
 
-                return back()->with(
-                    'success',
-                    'Disbursement recorded as Pending Verification. Use Verify (PD-01) to recognize revenue and open PMS / Accounts.'
-                )->with('cw_tab', 'disbursement');
+                return $this->ajaxOk(
+                    'Disbursement recorded as Pending Verification. Use Verify (PD-01) to recognize revenue and open PMS / Accounts.',
+                    'disbursement'
+                );
             }
 
             if (! $hasVerified) {
-                return back()->withErrors([
+                return $this->ajaxFail([
                     'to_status' => 'Record and verify a disbursement (PD-01) before moving the case to Disbursed.',
-                ])->with('cw_tab', 'disbursement');
+                ], 'disbursement');
             }
             // Fall through: allow status update when verified disbursement already exists.
         }
@@ -1685,7 +1686,7 @@ class GoalLoanCaseController extends Controller
         $fromStatus = $case->status;
         $gate = GoalWorkflow::validateCase($fromStatus, $data['to_status'], $ctx);
         if (!$gate['ok']) {
-            return back()->withErrors(['to_status' => implode(' ', $gate['errors'])])->with('cw_tab', 'overview');
+            return $this->ajaxFail(['to_status' => implode(' ', $gate['errors'])], 'overview');
         }
 
         if (!empty($data['lender_name'])) {
@@ -1717,7 +1718,7 @@ class GoalLoanCaseController extends Controller
             'to' => $data['to_status'],
         ]);
 
-        return back()->with('success', 'Case status updated.')->with('cw_tab', 'overview');
+        return $this->ajaxOk('Case status updated.', 'overview');
     }
 
     public function storeTask(Request $request, GoalLoanCase $case)

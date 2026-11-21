@@ -67,7 +67,9 @@
                         <td>{{ $d->verifier?->name ?? '—' }}</td>
                         <td>
                             @if(!$d->verified_at && $canDisburse)
-                                <form method="POST" action="{{ route('goal.disbursements.verify', $d) }}" onsubmit="return confirm('Verify this disbursement and recognize revenue (PD-01)?')">
+                                <form method="POST" action="{{ route('goal.disbursements.verify', $d) }}" class="js-cw-ajax-save" data-no-loader data-ajax-reload="1"
+                                    data-confirm-title="Verify disbursement?"
+                                    data-confirm-text="This will verify the disbursement and recognize revenue (PD-01).">
                                     @csrf
                                     <button type="submit" class="btn-ghost" style="height:32px;padding:0 10px;color:#059669">Verify</button>
                                 </form>

@@ -2,7 +2,7 @@
 @if($canReassign)
 <div class="modal fade" id="cwReassignModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <form method="POST" action="{{ route('goal.cases.reassign', $case) }}" class="modal-content">
+        <form method="POST" action="{{ route('goal.cases.reassign', $case) }}" class="modal-content js-cw-ajax-save" data-no-loader data-ajax-reload="1">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title">Reassign Case</h5>
@@ -36,7 +36,7 @@
 @if($canEdit)
 <div class="modal fade" id="cwAddLenderModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <form method="POST" action="{{ route('goal.cases.bank-applications.store', $case) }}" enctype="multipart/form-data" class="modal-content">
+        <form method="POST" action="{{ route('goal.cases.bank-applications.store', $case) }}" enctype="multipart/form-data" class="modal-content js-cw-ajax-save" data-no-loader data-ajax-reload="1">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title">Add Lender Application</h5>
@@ -163,7 +163,7 @@
 </style>
 <div class="modal fade" id="cwAddDocModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <form method="POST" action="{{ route('goal.cases.documents.store', $case) }}" class="modal-content" id="cwAddDocForm">
+        <form method="POST" action="{{ route('goal.cases.documents.store', $case) }}" class="modal-content js-cw-ajax-save" id="cwAddDocForm" data-no-loader data-ajax-reload="1">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title"><i class="bi bi-file-earmark-plus me-1"></i> Add document</h5>
@@ -228,7 +228,7 @@
 {{-- Reject Document --}}
 <div class="modal fade" id="cwRejectDocModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <form method="POST" action="{{ route('goal.cases.documents.verify', $case) }}" class="modal-content" id="cwRejectDocForm">
+        <form method="POST" action="{{ route('goal.cases.documents.verify', $case) }}" class="modal-content js-cw-ajax-save" id="cwRejectDocForm" data-no-loader data-ajax-reload="1">
             @csrf
             <input type="hidden" name="key" id="cwRejectDocKey">
             <input type="hidden" name="party" id="cwRejectDocParty" value="Applicant">
@@ -252,7 +252,7 @@
 {{-- Add Query --}}
 <div class="modal fade" id="cwAddQueryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <form method="POST" action="" id="cwAddQueryForm" enctype="multipart/form-data" class="modal-content">
+        <form method="POST" action="" id="cwAddQueryForm" enctype="multipart/form-data" class="modal-content js-cw-ajax-save" data-no-loader data-ajax-reload="1">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title">Add Bank Query</h5>
@@ -312,7 +312,7 @@
 {{-- Resolve Query --}}
 <div class="modal fade" id="cwResolveQueryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <form method="POST" action="" id="cwResolveQueryForm" enctype="multipart/form-data" class="modal-content">
+        <form method="POST" action="" id="cwResolveQueryForm" enctype="multipart/form-data" class="modal-content js-cw-ajax-save" data-no-loader data-ajax-reload="1">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title">Resolve Bank Query</h5>
@@ -343,7 +343,7 @@
 {{-- Add Sanction --}}
 <div class="modal fade" id="cwAddSanctionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <form method="POST" action="" id="cwAddSanctionForm" enctype="multipart/form-data" class="modal-content">
+        <form method="POST" action="" id="cwAddSanctionForm" enctype="multipart/form-data" class="modal-content js-cw-ajax-save" data-no-loader data-ajax-reload="1">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title">Record Sanction</h5>
@@ -398,7 +398,7 @@
 {{-- Add Disbursement --}}
 <div class="modal fade" id="cwAddDisbModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <form method="POST" action="{{ route('goal.cases.disbursements.store', $case) }}" enctype="multipart/form-data" class="modal-content">
+        <form method="POST" action="{{ route('goal.cases.disbursements.store', $case) }}" enctype="multipart/form-data" class="modal-content js-cw-ajax-save" data-no-loader data-ajax-reload="1">
             @csrf
             <div class="modal-header">
                 <h5 class="modal-title">Record Disbursement</h5>

@@ -18,6 +18,68 @@ trait AuthorizesGoal
         }
     }
 
+    protected function wantsAjaxResponse(?Request $request = null): bool
+    {
+        $request = $request ?: request();
+
+        return $request instanceof Request && ($request->expectsJson() || $request->ajax());
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     */
+    protected function ajaxOk(string $message, ?string $tab = null, bool $reload = true, array $extra = [])
+    {
+        if ($this->wantsAjaxResponse()) {
+            return response()->json(array_merge([
+                'success' => true,
+                'message' => $message,
+                'cw_tab' => $tab,
+                'reload' => $reload,
+            ], $extra));
+        }
+
+        $response = back()->with('success', $message);
+        if ($tab) {
+            $response->with('cw_tab', $tab);
+        }
+
+        return $response;
+    }
+
+    /**
+     * @param  array<string, string|array<int, string>>  $errors
+     */
+    protected function ajaxFail(array $errors, ?string $tab = null, int $status = 422)
+    {
+        $normalized = [];
+        foreach ($errors as $key => $message) {
+            $normalized[$key] = is_array($message) ? array_values($message) : [(string) $message];
+        }
+
+        if ($this->wantsAjaxResponse()) {
+            $first = collect($normalized)->flatten()->first() ?: 'Please fix the highlighted fields.';
+
+            return response()->json([
+                'message' => $first,
+                'errors' => $normalized,
+                'cw_tab' => $tab,
+            ], $status);
+        }
+
+        $flat = [];
+        foreach ($normalized as $key => $messages) {
+            $flat[$key] = $messages[0] ?? 'Invalid.';
+        }
+
+        $response = back()->withInput()->withErrors($flat);
+        if ($tab) {
+            $response->with('cw_tab', $tab);
+        }
+
+        return $response;
+    }
+
     /**
      * Block sales/workspace mutations once the case is Disbursed / PMS / Rejected / Closed.
      * Admins with manage_permissions_guard may override.

@@ -39,10 +39,10 @@ class GoalCaseWorkspaceController extends Controller
         $scope = $this->scopedOrgIds();
         $owner = User::query()->findOrFail($data['owner_id']);
         if ($scope !== [] && $owner->goal_org_unit_id && !in_array((int) $owner->goal_org_unit_id, array_map('intval', $scope), true)) {
-            return back()->withErrors(['owner_id' => 'Selected employee is outside your organizational scope.'])->with('cw_tab', 'overview');
+            return $this->ajaxFail(['owner_id' => 'Selected employee is outside your organizational scope.'], 'overview');
         }
         if ($case->goal_org_unit_id && $owner->goal_org_unit_id && (int) $owner->goal_org_unit_id !== (int) $case->goal_org_unit_id) {
-            return back()->withErrors(['owner_id' => 'Assignee must belong to the case branch.'])->with('cw_tab', 'overview');
+            return $this->ajaxFail(['owner_id' => 'Assignee must belong to the case branch.'], 'overview');
         }
 
         $from = $case->owner_id;
@@ -58,7 +58,7 @@ class GoalCaseWorkspaceController extends Controller
 
         $this->notifyUser($owner, 'Case reassigned to you', $case->case_no.' — '.$case->customer_name, route('goal.cases.show', $case), 'reassignment-'.$case->id.'-'.$owner->id, 'assign', $case->case_no);
 
-        return back()->with('success', 'Case reassigned to '.$owner->name.'.')->with('cw_tab', 'overview');
+        return $this->ajaxOk('Case reassigned to '.$owner->name.'.', 'overview');
     }
 
     public function storeApplication(Request $request, GoalLoanCase $case)
@@ -128,7 +128,7 @@ class GoalCaseWorkspaceController extends Controller
             'body' => $app->application_ref,
         ]);
 
-        return back()->with('success', 'Lender application saved.')->with('cw_tab', 'lenders');
+        return $this->ajaxOk('Lender application saved.', 'lenders');
     }
 
     public function updateApplicationStatus(Request $request, GoalBankApplication $application)
@@ -153,7 +153,7 @@ class GoalCaseWorkspaceController extends Controller
             'verifiedDisbursement' => $case->disbursements->whereNotNull('verified_at')->isNotEmpty(),
         ]);
         if (! $gate['ok']) {
-            return back()->withErrors(['status' => implode(' ', $gate['errors'])])->with('cw_tab', 'lenders');
+            return $this->ajaxFail(['status' => implode(' ', $gate['errors'])], 'lenders');
         }
 
         $application->status = $data['status'];
@@ -167,7 +167,7 @@ class GoalCaseWorkspaceController extends Controller
             'body' => $data['rejection_reason'] ?? null,
         ]);
 
-        return back()->with('success', 'Application status updated.')->with('cw_tab', 'lenders');
+        return $this->ajaxOk('Application status updated.', 'lenders');
     }
 
     public function storeQuery(Request $request, GoalBankApplication $application)
@@ -235,7 +235,7 @@ class GoalCaseWorkspaceController extends Controller
             );
         }
 
-        return back()->with('success', 'Bank query recorded.')->with('cw_tab', 'queries');
+        return $this->ajaxOk('Bank query recorded.', 'queries');
     }
 
     public function resolveQuery(Request $request, GoalBankQuery $query)
@@ -288,7 +288,7 @@ class GoalCaseWorkspaceController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Query resolved.')->with('cw_tab', 'queries');
+        return $this->ajaxOk('Query resolved.', 'queries');
     }
 
     public function storeSanction(Request $request, GoalBankApplication $application)
@@ -355,7 +355,7 @@ class GoalCaseWorkspaceController extends Controller
             'related_id' => $sanction->id,
         ]);
 
-        return back()->with('success', 'Sanction saved.')->with('cw_tab', 'sanction');
+        return $this->ajaxOk('Sanction saved.', 'sanction');
     }
 
     public function storeDisbursement(Request $request, GoalLoanCase $case, Pd01Service $pd01)
@@ -380,7 +380,7 @@ class GoalCaseWorkspaceController extends Controller
                 ->where('goal_loan_case_id', $case->id)
                 ->exists();
             if (!$owns) {
-                return back()->withErrors(['goal_bank_application_id' => 'Invalid lender application.'])->with('cw_tab', 'disbursement');
+                return $this->ajaxFail(['goal_bank_application_id' => 'Invalid lender application.'], 'disbursement');
             }
         }
 
@@ -400,7 +400,7 @@ class GoalCaseWorkspaceController extends Controller
                 'idempotency_key' => $data['idempotency_key'] ?? null,
             ], auth()->user());
         } catch (\Throwable $e) {
-            return back()->withErrors(['amount' => $e->getMessage()])->with('cw_tab', 'disbursement');
+            return $this->ajaxFail(['amount' => $e->getMessage()], 'disbursement');
         }
 
         GoalCaseAudit::record($case, 'disbursement', 'Disbursement recorded (pending verification)', auth()->user(), [
@@ -421,7 +421,7 @@ class GoalCaseWorkspaceController extends Controller
             );
         }
 
-        return back()->with('success', 'Disbursement recorded — awaiting verification.')->with('cw_tab', 'disbursement');
+        return $this->ajaxOk('Disbursement recorded — awaiting verification.', 'disbursement');
     }
 
     public function verifyDisbursement(GoalDisbursement $disbursement, Pd01Service $pd01)
@@ -433,10 +433,10 @@ class GoalCaseWorkspaceController extends Controller
         try {
             $pd01->verify($disbursement, auth()->user());
         } catch (\Throwable $e) {
-            return back()->withErrors(['disbursement' => $e->getMessage()])->with('cw_tab', 'disbursement');
+            return $this->ajaxFail(['disbursement' => $e->getMessage()], 'disbursement');
         }
 
-        return back()->with('success', 'Disbursement verified — revenue recognized.')->with('cw_tab', 'disbursement');
+        return $this->ajaxOk('Disbursement verified — revenue recognized.', 'disbursement');
     }
 
     /**
@@ -497,7 +497,7 @@ class GoalCaseWorkspaceController extends Controller
             }
         } else {
             if (empty($data['key'])) {
-                return back()->withErrors(['key' => 'Document key is required.'])->with('cw_tab', 'documents');
+                return $this->ajaxFail(['key' => 'Document key is required.'], 'documents');
             }
             $targets[] = [
                 'key' => (string) $data['key'],
@@ -563,7 +563,7 @@ class GoalCaseWorkspaceController extends Controller
             ? 'Document marked as received (pending verification).'
             : $recorded.' documents marked as received (pending verification).';
 
-        return back()->with('success', $msg)->with('cw_tab', 'documents');
+        return $this->ajaxOk($msg, 'documents');
     }
 
     /**
@@ -624,7 +624,7 @@ class GoalCaseWorkspaceController extends Controller
             'body' => $mandatory ? 'Required' : 'Optional',
         ]);
 
-        return back()->with('success', 'Document added to checklist.')->with('cw_tab', 'documents');
+        return $this->ajaxOk('Document added to checklist.', 'documents');
     }
 
     /**
@@ -659,14 +659,14 @@ class GoalCaseWorkspaceController extends Controller
         unset($doc);
 
         if (! $updated) {
-            return back()->withErrors(['key' => 'Document not found.'])->with('cw_tab', 'documents');
+            return $this->ajaxFail(['key' => 'Document not found.'], 'documents');
         }
 
         $details['documents'] = $docs;
         $case->customer_details = $details;
         $case->save();
 
-        return back()->with('success', $mandatory ? 'Document marked required.' : 'Document marked optional.')->with('cw_tab', 'documents');
+        return $this->ajaxOk($mandatory ? 'Document marked required.' : 'Document marked optional.', 'documents');
     }
 
     public function verifyDocument(Request $request, GoalLoanCase $case)
@@ -689,14 +689,14 @@ class GoalCaseWorkspaceController extends Controller
         ]);
 
         if ($data['action'] === 'Rejected' && empty(trim((string) ($data['rejection_reason'] ?? '')))) {
-            return back()->withErrors(['rejection_reason' => 'Rejection reason is mandatory.'])->with('cw_tab', 'documents');
+            return $this->ajaxFail(['rejection_reason' => 'Rejection reason is mandatory.'], 'documents');
         }
 
         // Only BM (or users with bm_allocation) can verify/reject — SM may upload only.
         if ($data['action'] === 'Verified' && !$user->hasCrmPermission('bm_allocation_guard') && !$user->hasCrmPermission('pms_verification_guard')) {
             // Allow Super Admin style: if they have both edit + view they can still verify when granted bm or pms.
             if (!$user->hasCrmPermission('manage_permissions_guard')) {
-                return back()->withErrors(['action' => 'You are not authorized to verify documents.'])->with('cw_tab', 'documents');
+                return $this->ajaxFail(['action' => 'You are not authorized to verify documents.'], 'documents');
             }
         }
 
@@ -723,14 +723,14 @@ class GoalCaseWorkspaceController extends Controller
         unset($doc);
 
         if (!$updated) {
-            return back()->withErrors(['key' => 'Document not found.'])->with('cw_tab', 'documents');
+            return $this->ajaxFail(['key' => 'Document not found.'], 'documents');
         }
 
         $details['documents'] = $docs;
         $case->customer_details = $details;
         $case->save();
 
-        return back()->with('success', 'Document '.$data['action'].'.')->with('cw_tab', 'documents');
+        return $this->ajaxOk('Document '.$data['action'].'.', 'documents');
     }
 
     public function transferPms(Request $request, GoalLoanCase $case)
@@ -739,12 +739,12 @@ class GoalCaseWorkspaceController extends Controller
         $this->assertCaseInScope($case);
 
         if ($case->status !== 'Disbursed') {
-            return back()->withErrors(['pms' => 'Only Disbursed cases are eligible for PMS transfer.'])->with('cw_tab', 'overview');
+            return $this->ajaxFail(['pms' => 'Only Disbursed cases are eligible for PMS transfer.'], 'overview');
         }
 
         $verified = $case->disbursements()->whereNotNull('verified_at')->exists();
         if (!$verified) {
-            return back()->withErrors(['pms' => 'Verified disbursement required before PMS transfer.'])->with('cw_tab', 'overview');
+            return $this->ajaxFail(['pms' => 'Verified disbursement required before PMS transfer.'], 'overview');
         }
 
         $pending = $case->pmsItems()
@@ -764,6 +764,12 @@ class GoalCaseWorkspaceController extends Controller
             'from' => 'Disbursed',
             'to' => 'PMS',
         ]);
+
+        if ($this->wantsAjaxResponse($request)) {
+            return $this->ajaxOk('Case '.$case->case_no.' transferred to PMS.', 'overview', true, [
+                'redirect' => route('goal.pms.index'),
+            ]);
+        }
 
         return redirect()
             ->route('goal.pms.index')
@@ -798,7 +804,7 @@ class GoalCaseWorkspaceController extends Controller
 
         GoalCaseAudit::record($case, 'document', 'Equifax marked received on BM Reco', auth()->user());
 
-        return back()->with('success', 'Equifax marked as received.')->with('cw_tab', 'recommendation');
+        return $this->ajaxOk('Equifax marked as received.', 'recommendation');
     }
 
     /** @deprecated File download removed — Equifax is record-only. */
@@ -826,7 +832,7 @@ class GoalCaseWorkspaceController extends Controller
 
         GoalCaseAudit::record($case, 'document', 'Equifax record cleared from BM Reco', auth()->user());
 
-        return back()->with('success', 'Equifax record cleared.')->with('cw_tab', 'recommendation');
+        return $this->ajaxOk('Equifax record cleared.', 'recommendation');
     }
 
     /**
