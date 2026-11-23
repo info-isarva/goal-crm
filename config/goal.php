@@ -27,4 +27,26 @@ return [
     */
     'bank_query_predue_days' => (int) env('GOAL_BANK_QUERY_PREDUE_DAYS', 1),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Set Targets hierarchy
+    |--------------------------------------------------------------------------
+    | jump_pct: highlight when next-month target exceeds last month by this %.
+    | role_weights: default split weights for branch → staff (admin override table).
+    */
+    'target_jump_pct' => (float) env('GOAL_TARGET_JUMP_PCT', 15),
+    'target_unit_label' => env('GOAL_TARGET_UNIT_LABEL', '₹'),
+    // Super Admin / Admin / MD / CEO do not receive personal targets — they only distribute.
+    'target_exempt_crm_roles' => [0, 1, 4, 5],
+    'target_exempt_job_roles' => ['ceo', 'md', 'admin', 'super_admin'],
+    'target_role_weights' => [
+        'ssm' => 1.4,
+        'senior_sales_manager' => 1.4,
+        'sm' => 1.2,
+        'sales_manager' => 1.2,
+        'jsm' => 1.0,
+        'junior_sales' => 1.0,
+        'vrm' => 0.8,
+    ],
+
 ];

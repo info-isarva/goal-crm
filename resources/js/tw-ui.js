@@ -87,8 +87,8 @@
     }
     Modal.prototype.show = function (relatedTarget) {
         if (!this.el) return;
-        var showEv = new Event('show.bs.modal', { bubbles: true, cancelable: true });
-        showEv.relatedTarget = relatedTarget || null;
+        var showEv = new CustomEvent('show.bs.modal', { bubbles: true, cancelable: true, detail: { relatedTarget: relatedTarget || null } });
+        try { Object.defineProperty(showEv, 'relatedTarget', { value: relatedTarget || null, configurable: true }); } catch (e) {}
         this.el.dispatchEvent(showEv);
         if (showEv.defaultPrevented) return;
         portalModalToBody(this.el);
@@ -101,8 +101,8 @@
         this.el.removeAttribute('aria-hidden');
         this.el.setAttribute('aria-modal', 'true');
         document.body.classList.add('tw-modal-open');
-        var shownEv = new Event('shown.bs.modal', { bubbles: true });
-        shownEv.relatedTarget = relatedTarget || null;
+        var shownEv = new CustomEvent('shown.bs.modal', { bubbles: true, detail: { relatedTarget: relatedTarget || null } });
+        try { Object.defineProperty(shownEv, 'relatedTarget', { value: relatedTarget || null, configurable: true }); } catch (e) {}
         this.el.dispatchEvent(shownEv);
     };
     Modal.prototype.hide = function () {

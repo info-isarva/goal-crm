@@ -52,7 +52,7 @@ class GoalRevenueLedgerService
 
         $recentAdjustments = (clone $base)
             ->whereIn('entry_type', [GoalRevenueEntry::TYPE_ADJUSTMENT, GoalRevenueEntry::TYPE_REVERSAL])
-            ->with(['loanCase:id,case_no', 'creator:id,name'])
+            ->with(['loanCase:id,case_no', 'creator:id,name', 'approver:id,name'])
             ->latest('id')
             ->limit(5)
             ->get();
@@ -78,7 +78,7 @@ class GoalRevenueLedgerService
      *
      * @return array{kpis: array<string, float|int>, tabs: array<string, int>}
      */
-    protected function aggregateKpisAndTabs(Builder $base): array
+    public function aggregateKpisAndTabs(Builder $base): array
     {
         $row = (clone $base)
             ->reorder()
@@ -301,7 +301,7 @@ class GoalRevenueLedgerService
      * @param  array<string, mixed>  $filters
      * @return array{amount: float, count: int}
      */
-    protected function verifiedDisbursementTotals(array $scopeIds, array $filters): array
+    public function verifiedDisbursementTotals(array $scopeIds, array $filters): array
     {
         $from = Carbon::parse($filters['date_from'])->startOfDay();
         $to = Carbon::parse($filters['date_to'])->endOfDay();
@@ -347,6 +347,7 @@ class GoalRevenueLedgerService
     public function attributionSummaryFast(Builder $base): array
     {
         $empty = [
+            'entries' => 0,
             'disbursements' => 0,
             'disbursed' => 0.0,
             'recognized' => 0.0,
@@ -368,12 +369,13 @@ class GoalRevenueLedgerService
             ->selectRaw("
                 {$t}.attributed_user_id as owner_id,
                 {$t}.goal_org_unit_id as org_id,
+                COUNT({$t}.id) as entries,
                 COALESCE(SUM(CASE WHEN COALESCE({$t}.entry_type,'recognized') IN ('recognized','') THEN {$t}.amount ELSE 0 END),0) as recognized,
                 COALESCE(SUM(CASE WHEN {$t}.entry_type = 'adjustment' THEN {$t}.amount ELSE 0 END),0) as adjustments,
                 COALESCE(SUM(CASE WHEN {$t}.entry_type = 'reversal' THEN {$t}.amount ELSE 0 END),0) as reversals,
                 COALESCE(SUM({$t}.amount),0) as net,
-                SUM(CASE WHEN COALESCE({$t}.entry_type,'recognized') IN ('recognized','') AND d.id IS NOT NULL THEN 1 ELSE 0 END) as disbursements,
-                COALESCE(SUM(CASE WHEN COALESCE({$t}.entry_type,'recognized') IN ('recognized','') THEN d.amount ELSE 0 END),0) as disbursed
+                SUM(CASE WHEN d.id IS NOT NULL THEN 1 ELSE 0 END) as disbursements,
+                COALESCE(SUM(d.amount),0) as disbursed
             ")
             ->groupBy($t.'.attributed_user_id', $t.'.goal_org_unit_id')
             ->get();
@@ -393,6 +395,7 @@ class GoalRevenueLedgerService
             if (! isset($bucket[$key])) {
                 $bucket[$key] = array_merge(['key' => $key, 'label' => $label], $empty);
             }
+            $bucket[$key]['entries'] += (int) ($row->entries ?? 0);
             $bucket[$key]['recognized'] += (float) $row->recognized;
             $bucket[$key]['adjustments'] += (float) $row->adjustments;
             $bucket[$key]['reversals'] += (float) $row->reversals;
@@ -425,6 +428,7 @@ class GoalRevenueLedgerService
                 $guard++;
             }
 
+            $company['entries'] += (int) ($row->entries ?? 0);
             $company['recognized'] += (float) $row->recognized;
             $company['adjustments'] += (float) $row->adjustments;
             $company['reversals'] += (float) $row->reversals;
@@ -481,24 +485,68 @@ class GoalRevenueLedgerService
             $branch = null;
         }
 
+        // Prefer linked disbursement; otherwise fall back to case's latest verified disbursement.
+        $disb = $entry->disbursement;
+        if (! $disb && $case) {
+            $disb = GoalDisbursement::query()
+                ->with('verifier:id,name')
+                ->where('goal_loan_case_id', $case->id)
+                ->whereNotNull('verified_at')
+                ->latest('verified_at')
+                ->latest('id')
+                ->first();
+        }
+
+        $mis = is_array($case?->branch_mis) ? $case->branch_mis : [];
+        $defaultRatePct = round(((float) config('goal.revenue_rate', 0.0035)) * 100, 4);
+        $ratePct = isset($mis['payin_pct']) && $mis['payin_pct'] !== '' && $mis['payin_pct'] !== null
+            ? (float) $mis['payin_pct']
+            : $defaultRatePct;
+        $ratePctLabel = rtrim(rtrim(number_format($ratePct, 4, '.', ''), '0'), '.');
+        $policyRef = trim((string) ($mis['commercial_policy_ref'] ?? $mis['policy_ref'] ?? $mis['commercial_ref'] ?? ''));
+        if ($policyRef === '') {
+            $policyRef = 'Goal commercial · '.$ratePctLabel.'%';
+        }
+        $basis = isset($mis['payin_pct']) && $mis['payin_pct'] !== '' && $mis['payin_pct'] !== null
+            ? 'Case pay-in rate '.$ratePctLabel.'% of verified disbursement'
+            : 'Company commercial rate '.$ratePctLabel.'% of verified disbursement';
+        if (! empty($mis['exception_note']) || ! empty($mis['sm_remark'])) {
+            $basis .= ' · '.trim((string) ($mis['exception_note'] ?? $mis['sm_remark']));
+        }
+
+        $attrMode = $entry->attributed_user_id
+            ? 'Employee'
+            : (($entry->goal_org_unit_id ? ucfirst((string) ($entry->orgUnit?->type ?: 'org')) : 'Unassigned'));
+
         $audits = [];
         if ($case) {
             $audits = GoalCaseEvent::query()
                 ->where('goal_loan_case_id', $case->id)
-                ->where(function (Builder $b) use ($entry) {
+                ->where(function (Builder $b) use ($entry, $disb) {
                     $b->whereIn('event_type', ['revenue', 'disbursement'])
                         ->orWhere('related_type', GoalRevenueEntry::class)
                         ->orWhere(function (Builder $x) use ($entry) {
+                            $x->where('related_type', GoalRevenueEntry::class)
+                                ->where('related_id', $entry->id);
+                        });
+                    if ($disb?->id) {
+                        $b->orWhere(function (Builder $x) use ($disb) {
+                            $x->where('related_type', GoalDisbursement::class)
+                                ->where('related_id', $disb->id);
+                        });
+                    } elseif ($entry->goal_disbursement_id) {
+                        $b->orWhere(function (Builder $x) use ($entry) {
                             $x->where('related_type', GoalDisbursement::class)
                                 ->where('related_id', $entry->goal_disbursement_id);
                         });
+                    }
                 })
                 ->with('user:id,name')
                 ->latest('id')
                 ->limit(20)
                 ->get()
                 ->map(fn ($a) => [
-                    'when' => optional($a->created_at)->format('d M Y H:i'),
+                    'when' => optional($a->created_at)->format('d M Y, H:i'),
                     'event' => $a->title ?: ($a->event_type ?: 'Event'),
                     'actor' => $a->user?->name ?: 'System',
                     'body' => $a->body,
@@ -506,7 +554,18 @@ class GoalRevenueLedgerService
                 ->all();
         }
 
+        // Always include this ledger row's own posting as an audit beat when no events exist.
+        if ($audits === []) {
+            $audits[] = [
+                'when' => optional($entry->posted_at ?? $entry->created_at)->format('d M Y, H:i'),
+                'event' => $entry->typeLabel().' posted',
+                'actor' => $entry->creator?->name ?: ($entry->approver?->name ?: 'System'),
+                'body' => $entry->reason ?: $entry->note,
+            ];
+        }
+
         $period = optional($entry->posted_at ?? $entry->created_at)->format('M Y') ?: now()->format('M Y');
+        $ownerName = $entry->attributedUser?->name ?: ($case?->owner?->name ?: null);
 
         return [
             'id' => $entry->id,
@@ -526,31 +585,32 @@ class GoalRevenueLedgerService
                 'product' => $case?->product,
                 'source' => $case?->lead?->source,
                 'branch' => $branch?->name ?: $case?->orgUnit?->name,
-                'employee' => $entry->attributedUser?->name ?: $case?->owner?->name,
+                'employee' => $ownerName,
                 'url' => $case ? route('goal.cases.show', $case) : null,
             ],
             'disbursement' => [
-                'id' => $entry->disbursement?->id,
-                'ref' => $entry->disbursement ? ('DSB-'.str_pad((string) $entry->disbursement->id, 4, '0', STR_PAD_LEFT)) : null,
-                'amount' => (float) ($entry->disbursement?->amount ?? 0),
-                'date' => optional($entry->disbursement?->disbursed_on ?? $entry->disbursement?->verified_at)->format('d M Y'),
-                'verified' => (bool) $entry->disbursement?->verified_at,
-                'verified_on' => optional($entry->disbursement?->verified_at)->format('d M Y'),
-                'verified_by' => $entry->disbursement?->verifier?->name,
+                'id' => $disb?->id,
+                'ref' => $disb ? ('DSB-'.str_pad((string) $disb->id, 4, '0', STR_PAD_LEFT)) : null,
+                'amount' => $disb ? (float) $disb->amount : null,
+                'date' => optional($disb?->disbursed_on ?? $disb?->verified_at)->format('d M Y'),
+                'verified' => (bool) $disb?->verified_at,
+                'verified_on' => optional($disb?->verified_at)->format('d M Y'),
+                'verified_by' => $disb?->verifier?->name,
             ],
             'revenue' => [
-                'policy' => 'CP-'.now()->format('Y').'-REV',
-                'policy_label' => 'Approved commercial policy · rate '.round(((float) config('goal.revenue_rate', 0.0035)) * 100, 4).'%',
-                'basis' => 'Per approved commercial terms',
+                'policy' => $policyRef,
+                'policy_label' => $policyRef,
+                'rate_pct' => $ratePct,
+                'basis' => $basis,
                 'recognized' => (float) $entry->amount,
                 'type' => $entry->typeLabel(),
                 'posting_date' => optional($entry->posted_at ?? $entry->created_at)->format('d M Y'),
-                'remarks' => $entry->note ?: ($entry->reason ?: '—'),
+                'remarks' => $entry->note ?: ($entry->reason ?: null),
             ],
             'attribution' => [
-                'owner' => $entry->attributedUser?->name ?: '—',
-                'mode' => 'Team',
-                'branch' => $branch?->name ?: '—',
+                'owner' => $ownerName ?: '—',
+                'mode' => $attrMode,
+                'branch' => $branch?->name ?: ($case?->orgUnit?->name ?: '—'),
                 'cluster' => $cluster?->name ?: '—',
                 'region' => $region?->name ?: '—',
             ],
@@ -558,7 +618,7 @@ class GoalRevenueLedgerService
                 'period' => $period,
                 'included' => in_array($entry->status, [GoalRevenueEntry::STATUS_POSTED, GoalRevenueEntry::STATUS_APPROVED, null, ''], true),
                 'contribution' => (float) $entry->amount,
-                'credited_to' => $entry->attributedUser?->name ?: ($case?->owner?->name ?: '—'),
+                'credited_to' => $ownerName ?: '—',
             ],
             'parent_ref' => $entry->parentEntry?->entry_ref,
             'reversible_remaining' => $entry->reversibleRemaining(),
@@ -602,12 +662,88 @@ class GoalRevenueLedgerService
             $caseQ->whereIn('goal_org_unit_id', $scopeIds);
         }
 
-        $ownerIds = GoalRevenueEntry::query()
+        $attributedOwnerIds = GoalRevenueEntry::query()
             ->when($scopeIds === [-1], fn ($q) => $q->whereRaw('1 = 0'))
             ->when($scopeIds !== [] && $scopeIds !== [-1], fn ($q) => $q->whereIn('goal_org_unit_id', $scopeIds))
             ->whereNotNull('attributed_user_id')
             ->distinct()
             ->pluck('attributed_user_id');
+
+        // Employees for filter: active users in scoped org units + anyone attributed on ledger rows.
+        $ownerQuery = User::query()->where('status', 1)->orderBy('name');
+        if ($scopeIds === [-1]) {
+            $ownerQuery->whereRaw('1 = 0');
+        } elseif ($scopeIds !== []) {
+            $ownerQuery->where(function (Builder $b) use ($scopeIds, $attributedOwnerIds) {
+                $b->whereIn('goal_org_unit_id', $scopeIds);
+                if ($attributedOwnerIds->isNotEmpty()) {
+                    $b->orWhereIn('id', $attributedOwnerIds);
+                }
+            });
+        }
+        $ownerUsers = $ownerQuery->get(['id', 'name', 'goal_org_unit_id', 'job_role', 'crm_role_type']);
+
+        // Resolve region/cluster/branch for each owner so the UI can cascade-filter.
+        $unitById = GoalOrgUnit::query()
+            ->whereIn('id', $ownerUsers->pluck('goal_org_unit_id')->filter()->unique()->all())
+            ->get(['id', 'type', 'parent_id'])
+            ->keyBy('id');
+        // Also load ancestors we may walk into.
+        $extraParentIds = $unitById->pluck('parent_id')->filter()->unique()->all();
+        if ($extraParentIds !== []) {
+            $more = GoalOrgUnit::query()->whereIn('id', $extraParentIds)->get(['id', 'type', 'parent_id'])->keyBy('id');
+            $unitById = $unitById->union($more);
+            $grand = $more->pluck('parent_id')->filter()->unique()->all();
+            if ($grand !== []) {
+                $unitById = $unitById->union(
+                    GoalOrgUnit::query()->whereIn('id', $grand)->get(['id', 'type', 'parent_id'])->keyBy('id')
+                );
+            }
+        }
+
+        $owners = $ownerUsers->map(function (User $u) use ($unitById) {
+            $regionId = null;
+            $clusterId = null;
+            $branchId = null;
+            $cursor = $u->goal_org_unit_id ? ($unitById[(int) $u->goal_org_unit_id] ?? null) : null;
+            $guard = 0;
+            while ($cursor && $guard < 8) {
+                if ($cursor->type === GoalOrgUnit::TYPE_BRANCH) {
+                    $branchId = (int) $cursor->id;
+                } elseif ($cursor->type === GoalOrgUnit::TYPE_CLUSTER) {
+                    $clusterId = (int) $cursor->id;
+                } elseif ($cursor->type === GoalOrgUnit::TYPE_REGION) {
+                    $regionId = (int) $cursor->id;
+                }
+                $cursor = $cursor->parent_id ? ($unitById[(int) $cursor->parent_id] ?? null) : null;
+                $guard++;
+            }
+
+            $roleKey = GoalDashboardService::ROLE_KEYS[(int) ($u->crm_role_type ?? -1)] ?? null;
+            $roleLabel = $roleKey
+                ? (GoalDashboardService::ROLE_LABELS[$roleKey] ?? strtoupper($roleKey))
+                : (match (strtolower((string) ($u->job_role ?? ''))) {
+                    'bm', 'branch_manager' => 'Branch Manager',
+                    'jsm' => 'Junior Sales Manager',
+                    'sm' => 'Sales Manager',
+                    'ssm' => 'Senior Sales Manager',
+                    'rd' => 'Regional Director',
+                    'cluster' => 'Cluster Head',
+                    'vrm' => 'VRM',
+                    default => $u->job_role ? strtoupper((string) $u->job_role) : 'User',
+                });
+
+            return (object) [
+                'id' => $u->id,
+                'name' => $u->name,
+                'role' => $roleLabel,
+                'label' => $u->name.' ('.$roleLabel.')',
+                'goal_org_unit_id' => $u->goal_org_unit_id,
+                'region_id' => $regionId,
+                'cluster_id' => $clusterId,
+                'branch_id' => $branchId,
+            ];
+        })->values();
 
         return [
             'regions' => $units->where('type', GoalOrgUnit::TYPE_REGION)->values(),
@@ -619,7 +755,7 @@ class GoalRevenueLedgerService
                 ->when($scopeIds !== [] && $scopeIds !== [-1], fn ($q) => $q->whereIn('goal_org_unit_id', $scopeIds))
                 ->whereNotNull('source')->where('source', '!=', '')
                 ->distinct()->orderBy('source')->pluck('source'),
-            'owners' => User::query()->whereIn('id', $ownerIds)->orderBy('name')->get(['id', 'name']),
+            'owners' => $owners,
         ];
     }
 

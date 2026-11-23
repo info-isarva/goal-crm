@@ -189,6 +189,13 @@ body.tw-modal-open .top-slim-footer {
     .modal-dialog.modal-sm { max-width: 420px !important; }
     .modal-dialog.modal-lg { max-width: min(800px, 92vw) !important; }
     .modal-dialog.modal-xl { max-width: min(1100px, 94vw) !important; }
+    .modal.rev-export-modal.show .modal-dialog,
+    .modal.rev-export-modal .modal-dialog,
+    .modal-dialog.modal-xxl {
+        width: min(1440px, 98vw) !important;
+        max-width: min(1440px, 98vw) !important;
+        max-height: 94dvh !important;
+    }
     .modal-content {
         height: auto !important;
         max-height: 92dvh !important;
@@ -215,6 +222,19 @@ body.tw-modal-open .top-slim-footer {
     .modal-dialog.modal-sm { max-width: 420px !important; width: min(420px, 92vw) !important; }
     .modal-dialog.modal-lg { max-width: 800px !important; width: min(800px, 92vw) !important; }
     .modal-dialog.modal-xl { max-width: min(1100px, 94vw) !important; width: min(1100px, 94vw) !important; }
+    /* Revenue Ledger export modal — XXL 3-column workspace */
+    .modal.rev-export-modal.show .modal-dialog,
+    .modal.rev-export-modal .modal-dialog,
+    .modal-dialog.modal-xxl {
+        width: min(1600px, 98vw) !important;
+        max-width: min(1600px, 98vw) !important;
+        max-height: 94dvh !important;
+    }
+    .modal.rev-export-modal .modal-content {
+        max-height: 94dvh !important;
+        height: auto !important;
+        border-radius: 16px !important;
+    }
     .modal-content {
         height: auto !important;
         max-height: 90dvh !important;

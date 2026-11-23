@@ -297,7 +297,7 @@
                             <input class="cw-input" name="customer_details[employment][office_address]" value="{{ $emp['office_address'] ?? '' }}" placeholder="Enter office address" {{ $ro }}>
                         </div>
                     </div>
-                    <div>
+                        <div>
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
                             <input class="cw-input" name="customer_details[employment][office_address_co]" value="{{ $emp['office_address_co'] ?? '' }}" placeholder="Enter office address" {{ $ro }}>
@@ -311,15 +311,15 @@
                         <select class="cw-select js-select2" name="customer_details[employment][type_applicant]" {{ $dis }} {{ $reqAttr('employment.type_applicant') }}>
                             @foreach($empTypeOpts as $val => $label)
                                 <option value="{{ $val }}" @selected($empTypeApp === $val)>{{ $label }}</option>
-                            @endforeach
-                        </select>
+                                        @endforeach
+                                    </select>
                     </div>
                     <div>
                         <select class="cw-select js-select2" name="customer_details[employment][type_co]" {{ $dis }} {{ $reqAttr('employment.type_co') }}>
                             @foreach(['' => 'Select', 'Salaried' => 'Salaried', 'Self Employed' => 'Self Employed', 'Business' => 'Business', 'Professional' => 'Professional', 'Other' => 'Other'] as $val => $label)
                                 <option value="{{ $val }}" @selected($empTypeCo === $val)>{{ $label }}</option>
-                            @endforeach
-                        </select>
+                                        @endforeach
+                                    </select>
                     </div>
                 </div>
 
@@ -540,4 +540,4 @@
 
     <input type="hidden" name="customer_name" id="cw_customer_name" value="{{ old('customer_name', $case->customer_name) }}">
     <input type="hidden" name="mobile" id="cw_mobile" value="{{ old('mobile', $case->mobile) }}">
-</div>
+        </div>

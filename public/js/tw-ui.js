@@ -1,7 +1,6 @@
 /**
- * Lightweight Bootstrap API shim for Tailwind migration.
- * Supports data-bs-toggle="modal|collapse|dropdown|tab|tooltip"
- * and window.bootstrap.Modal / Collapse / Tooltip / Dropdown.
+ * Lightweight Bootstrap API shim (modal + collapse) for Tailwind migration.
+ * Supports data-bs-toggle="modal|collapse|tab" and window.bootstrap.Modal/Collapse.
  */
 (function (window, document) {
     'use strict';
@@ -61,13 +60,8 @@
         return el._twCollapse;
     };
 
-    /* ── Modal (supports nested / stacked modals) ─────────── */
+    /* ── Modal ────────────────────────────────────────────── */
     var backdropEl = null;
-    var openModalStack = [];
-    var BASE_MODAL_Z = 10650;
-    var BASE_BACKDROP_Z = 10640;
-    var STACK_STEP = 20;
-
     function ensureBackdrop() {
         if (!backdropEl) {
             backdropEl = document.createElement('div');
@@ -78,36 +72,10 @@
     }
     function portalModalToBody(el) {
         if (!el || el.parentElement === document.body) return;
-        // main.overflow-x-clip breaks position:fixed and lets sticky header cover the popup.
         document.body.appendChild(el);
     }
     function portalAllModals() {
         qsa('.modal').forEach(portalModalToBody);
-    }
-    function syncModalStackLayers() {
-        var bd = ensureBackdrop();
-        var depth = openModalStack.length;
-        if (depth === 0) {
-            bd.classList.remove('show');
-            bd.style.zIndex = '';
-            document.body.classList.remove('tw-modal-open');
-            return;
-        }
-        bd.classList.add('show');
-        // Backdrop sits just under the topmost modal (!important beats app-theme.css)
-        bd.style.setProperty('z-index', String(BASE_BACKDROP_Z + (depth - 1) * STACK_STEP), 'important');
-        openModalStack.forEach(function (modalEl, idx) {
-            var z = BASE_MODAL_Z + idx * STACK_STEP;
-            modalEl.style.setProperty('z-index', String(z), 'important');
-            // Keep topmost modal last in DOM so equal-specificity paint order is correct
-            if (idx === depth - 1) {
-                document.body.appendChild(modalEl);
-                if (bd.parentElement === document.body) {
-                    document.body.insertBefore(bd, modalEl);
-                }
-            }
-        });
-        document.body.classList.add('tw-modal-open');
     }
     function Modal(el, opts) {
         this.el = typeof el === 'string' ? qs(el) : el;
@@ -119,37 +87,32 @@
     }
     Modal.prototype.show = function (relatedTarget) {
         if (!this.el) return;
-        var showEv = new Event('show.bs.modal', { bubbles: true, cancelable: true });
-        showEv.relatedTarget = relatedTarget || null;
+        var showEv = new CustomEvent('show.bs.modal', { bubbles: true, cancelable: true, detail: { relatedTarget: relatedTarget || null } });
+        try { Object.defineProperty(showEv, 'relatedTarget', { value: relatedTarget || null, configurable: true }); } catch (e) {}
         this.el.dispatchEvent(showEv);
         if (showEv.defaultPrevented) return;
         portalModalToBody(this.el);
-
-        // Avoid duplicate stack entries if re-shown
-        openModalStack = openModalStack.filter(function (m) { return m !== this.el; }.bind(this));
-        openModalStack.push(this.el);
-
+        ensureBackdrop().classList.add('show');
+        if (backdropEl) document.body.insertBefore(backdropEl, this.el);
         this.el.classList.add('show');
-        // block (not flex): tall forms stay reachable from the top when overlay scrolls
         this.el.style.display = 'block';
+        this.el.style.zIndex = '10650';
         this.el.scrollTop = 0;
         this.el.removeAttribute('aria-hidden');
         this.el.setAttribute('aria-modal', 'true');
-        syncModalStackLayers();
-
-        var shownEv = new Event('shown.bs.modal', { bubbles: true });
-        shownEv.relatedTarget = relatedTarget || null;
+        document.body.classList.add('tw-modal-open');
+        var shownEv = new CustomEvent('shown.bs.modal', { bubbles: true, detail: { relatedTarget: relatedTarget || null } });
+        try { Object.defineProperty(shownEv, 'relatedTarget', { value: relatedTarget || null, configurable: true }); } catch (e) {}
         this.el.dispatchEvent(shownEv);
     };
     Modal.prototype.hide = function () {
         if (!this.el) return;
         this.el.classList.remove('show');
         this.el.style.display = 'none';
-        this.el.style.removeProperty('z-index');
         this.el.setAttribute('aria-hidden', 'true');
         this.el.removeAttribute('aria-modal');
-        openModalStack = openModalStack.filter(function (m) { return m !== this.el; }.bind(this));
-        syncModalStackLayers();
+        if (backdropEl) backdropEl.classList.remove('show');
+        document.body.classList.remove('tw-modal-open');
         this.el.dispatchEvent(new CustomEvent('hidden.bs.modal', { bubbles: true }));
     };
     Modal.prototype.toggle = function () {
@@ -215,16 +178,6 @@
             menu._twDropdownTrigger = null;
         }
     }
-    function resolveDropdownMenu(trigger) {
-        if (trigger._twMenu && document.body.contains(trigger._twMenu)) {
-            return trigger._twMenu;
-        }
-        var parent = trigger.closest('.dropdown') || trigger.parentElement;
-        if (!parent) return null;
-        var menu = qs('.dropdown-menu', parent);
-        if (menu) trigger._twMenu = menu;
-        return menu;
-    }
     function positionDropdownMenu(trigger, menu) {
         // Portal to body + fixed coords so overflow:hidden table cards cannot clip it.
         if (menu.parentElement !== document.body) {
@@ -262,7 +215,16 @@
             if (except && menu === except) return;
             resetDropdownMenu(menu);
         });
-        if (tipEl) tipEl.classList.remove('show');
+    }
+    function resolveDropdownMenu(trigger) {
+        if (trigger._twMenu && document.body.contains(trigger._twMenu)) {
+            return trigger._twMenu;
+        }
+        var parent = trigger.closest('.dropdown') || trigger.parentElement;
+        if (!parent) return null;
+        var menu = qs('.dropdown-menu', parent);
+        if (menu) trigger._twMenu = menu;
+        return menu;
     }
     function toggleDropdown(trigger) {
         var menu = resolveDropdownMenu(trigger);
@@ -283,107 +245,10 @@
         closeAllDropdowns();
     }, true);
 
-    /* ── Tooltip (native title → floating tip; no Bootstrap CSS) ── */
-    var tipEl = null;
-    function ensureTip() {
-        if (!tipEl) {
-            tipEl = document.createElement('div');
-            tipEl.className = 'tw-tooltip';
-            tipEl.setAttribute('role', 'tooltip');
-            tipEl.innerHTML = '<div class="tw-tooltip-inner"></div>';
-            document.body.appendChild(tipEl);
-        }
-        return tipEl;
-    }
-    function Tooltip(el, opts) {
-        this.el = typeof el === 'string' ? qs(el) : el;
-        this.opts = opts || {};
-        if (!this.el) return;
-        this.el._twTooltip = this;
-        this._title = this.opts.title
-            || this.el.getAttribute('data-bs-title')
-            || this.el.getAttribute('title')
-            || '';
-        if (this.el.hasAttribute('title')) {
-            this.el.setAttribute('data-bs-original-title', this.el.getAttribute('title'));
-            this.el.removeAttribute('title'); // avoid native + custom double tip
-        }
-        var self = this;
-        this._show = function () { self.show(); };
-        this._hide = function () { self.hide(); };
-        this.el.addEventListener('mouseenter', this._show);
-        this.el.addEventListener('focus', this._show);
-        this.el.addEventListener('mouseleave', this._hide);
-        this.el.addEventListener('blur', this._hide);
-    }
-    Tooltip.prototype.show = function () {
-        if (!this.el || !this._title) return;
-        var tip = ensureTip();
-        tip.querySelector('.tw-tooltip-inner').textContent = this._title;
-        // Measure off-screen first so width is accurate without flashing
-        tip.style.visibility = 'hidden';
-        tip.classList.add('show');
-        var r = this.el.getBoundingClientRect();
-        var tw = tip.offsetWidth || 120;
-        var th = tip.offsetHeight || 28;
-        // position:fixed — viewport coords only (never expands page scroll width)
-        var left = r.left + (r.width / 2) - (tw / 2);
-        var top = r.top - th - 8;
-        if (top < 4) top = r.bottom + 8;
-        var maxLeft = Math.max(8, window.innerWidth - tw - 8);
-        left = Math.min(Math.max(8, left), maxLeft);
-        tip.style.left = left + 'px';
-        tip.style.top = top + 'px';
-        tip.style.visibility = '';
-    };
-    Tooltip.prototype.hide = function () {
-        if (!tipEl) return;
-        tipEl.classList.remove('show');
-        tipEl.style.visibility = '';
-    };
-    Tooltip.prototype.dispose = function () {
-        if (!this.el) return;
-        this.el.removeEventListener('mouseenter', this._show);
-        this.el.removeEventListener('focus', this._show);
-        this.el.removeEventListener('mouseleave', this._hide);
-        this.el.removeEventListener('blur', this._hide);
-        if (this.el.getAttribute('data-bs-original-title')) {
-            this.el.setAttribute('title', this.el.getAttribute('data-bs-original-title'));
-        }
-        delete this.el._twTooltip;
-    };
-    Tooltip.getInstance = function (el) {
-        el = typeof el === 'string' ? qs(el) : el;
-        return el && el._twTooltip ? el._twTooltip : null;
-    };
-    Tooltip.getOrCreateInstance = function (el, opts) {
-        el = typeof el === 'string' ? qs(el) : el;
-        if (!el) return null;
-        return el._twTooltip || new Tooltip(el, opts);
-    };
-
-    /* ── Dropdown (minimal API used by custom-script) ── */
-    function Dropdown(el) {
-        this.el = typeof el === 'string' ? qs(el) : el;
-        if (this.el) this.el._twDropdown = this;
-    }
-    Dropdown.prototype.toggle = function () {
-        if (this.el) toggleDropdown(this.el);
-    };
-    Dropdown.prototype.dispose = function () {
-        if (this.el) delete this.el._twDropdown;
-    };
-    Dropdown.getInstance = function (el) {
-        el = typeof el === 'string' ? qs(el) : el;
-        return el && el._twDropdown ? el._twDropdown : null;
-    };
-
     /* ── Global bootstrap shim ────────────────────────────── */
     window.bootstrap = window.bootstrap || {};
     window.bootstrap.Collapse = Collapse;
     window.bootstrap.Modal = Modal;
-    window.bootstrap.Tooltip = Tooltip;
-    window.bootstrap.Dropdown = Dropdown;
 
     document.addEventListener('click', function (e) {
         var t = e.target.closest('[data-bs-toggle], [data-bs-dismiss]');
@@ -412,8 +277,9 @@
 
         if (toggle === 'modal' && targetSel) {
             e.preventDefault();
+            closeAllDropdowns();
             var modalEl = qs(targetSel);
-            if (modalEl) Modal.getOrCreateInstance(modalEl).show();
+            if (modalEl) Modal.getOrCreateInstance(modalEl).show(t);
             return;
         }
         if (toggle === 'collapse' && targetSel) {
@@ -437,14 +303,11 @@
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape') return;
         closeAllDropdowns();
-        // Close only the topmost modal so nested quick-add does not dismiss Log Call
-        if (openModalStack.length) {
-            var top = openModalStack[openModalStack.length - 1];
-            Modal.getOrCreateInstance(top).hide();
-        }
+        qsa('.modal.show').forEach(function (m) {
+            Modal.getOrCreateInstance(m).hide();
+        });
     });
 
-    // Keep every modal on <body> so sticky header / overflow-x-clip cannot cover it
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', portalAllModals);
     } else {

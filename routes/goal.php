@@ -15,8 +15,10 @@ use App\Http\Controllers\Goal\GoalMisReportController;
 use App\Http\Controllers\Goal\GoalOrgUnitController;
 use App\Http\Controllers\Goal\GoalPayoutController;
 use App\Http\Controllers\Goal\GoalPmsController;
+use App\Http\Controllers\Goal\GoalSetTargetsController;
 use App\Http\Controllers\Goal\GoalTargetController;
 use App\Http\Controllers\Goal\GoalVisitsController;
+use App\Http\Middleware\EnsureGoalTargetSubtree;
 use App\Http\Controllers\Goal\GoalVrmController;
 use App\Http\Controllers\Goal\GoalLeadSourceController;
 use App\Http\Controllers\Goal\GoalLoanPurposeController;
@@ -167,6 +169,21 @@ Route::prefix('goal')->name('goal.')->group(function () {
 
     Route::get('targets', [GoalTargetController::class, 'index'])->name('targets.index');
     Route::get('targets/export', [GoalTargetController::class, 'export'])->name('targets.export');
+    Route::get('targets/set', [GoalSetTargetsController::class, 'show'])->name('targets.set');
+    Route::get('targets/tree', [GoalSetTargetsController::class, 'tree'])->name('targets.tree');
+    Route::get('targets/audit-log', [GoalSetTargetsController::class, 'auditLog'])->name('targets.audit-log');
+    Route::post('targets/auto-split', [GoalSetTargetsController::class, 'autoSplit'])
+        ->middleware(EnsureGoalTargetSubtree::class)
+        ->name('targets.auto-split');
+    Route::post('targets/save-draft', [GoalSetTargetsController::class, 'saveDraft'])
+        ->middleware(EnsureGoalTargetSubtree::class)
+        ->name('targets.save-draft');
+    Route::post('targets/assign', [GoalSetTargetsController::class, 'assign'])
+        ->middleware(EnsureGoalTargetSubtree::class)
+        ->name('targets.assign');
+    Route::post('targets/{target}/request-revision', [GoalSetTargetsController::class, 'requestRevision'])
+        ->middleware(EnsureGoalTargetSubtree::class)
+        ->name('targets.request-revision');
     Route::post('targets', [GoalTargetController::class, 'store'])->name('targets.store');
     Route::put('targets/{target}', [GoalTargetController::class, 'update'])->name('targets.update');
 
@@ -175,6 +192,7 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::get('branch-mis/{case}', [GoalMisController::class, 'showBranchMis'])->name('branch-mis.show');
     Route::get('revenue-ledger', [GoalMisController::class, 'revenueLedger'])->name('revenue-ledger');
     Route::get('revenue-ledger/export', [GoalMisController::class, 'exportRevenueLedger'])->name('revenue-ledger.export');
+    Route::get('revenue-ledger/export/preview', [GoalMisController::class, 'revenueReportPreview'])->name('revenue-ledger.export.preview');
     Route::get('revenue-ledger/entries/{entry}', [GoalMisController::class, 'showRevenueEntry'])->name('revenue-ledger.entry');
     Route::post('revenue-ledger/adjust', [GoalMisController::class, 'adjustRevenue'])->name('revenue-ledger.adjust');
 });

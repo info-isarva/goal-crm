@@ -500,9 +500,9 @@
                 <i class="bi bi-download"></i> Export CSV
             </a>
             @if($canManage)
-                <button type="button" class="pd-link-btn primary" data-bs-toggle="modal" data-bs-target="#addTargetModal">
-                    <i class="bi bi-plus-lg"></i> Add Target
-                </button>
+                <a href="{{ route('goal.targets.set', request()->only('period', 'metric')) }}" class="pd-link-btn primary">
+                    <i class="bi bi-diagram-3"></i> Set Targets
+                </a>
             @endif
         </div>
     </div>
@@ -718,9 +718,9 @@
                                     <i class="bi bi-inbox"></i>
                                     <div>No targets match your filters.</div>
                                     @if($canManage)
-                                        <button type="button" class="btn-gt-primary mt-3" data-bs-toggle="modal" data-bs-target="#addTargetModal">
-                                            <i class="bi bi-plus-lg"></i> Add first target
-                                        </button>
+                                        <a href="{{ route('goal.targets.set') }}" class="btn-gt-primary mt-3">
+                                            <i class="bi bi-diagram-3"></i> Set Targets
+                                        </a>
                                     @else
                                         <a href="{{ route('goal.targets.index') }}" class="btn-gt-reset mt-2 d-inline-flex">Reset filters</a>
                                     @endif

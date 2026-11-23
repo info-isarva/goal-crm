@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Goal;
 
+use App\Exports\GoalMultiSheetExport;
 use App\Exports\GoalSheetExport;
+use App\Helpers\ActivityLogger;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Goal\Concerns\AuthorizesGoal;
 use App\Library\MpdfDocument;
@@ -11,6 +13,7 @@ use App\Models\GoalOrgUnit;
 use App\Models\GoalRevenueEntry;
 use App\Services\FinancialYearService;
 use App\Services\Goal\GoalRevenueLedgerService;
+use App\Services\Goal\GoalRevenueReportService;
 use App\Services\Goal\Pd01Service;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -172,7 +175,7 @@ class GoalMisController extends Controller
         }, 'branch-mis-'.$stamp.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    public function revenueLedger(Request $request, GoalRevenueLedgerService $ledger)
+    public function revenueLedger(Request $request, GoalRevenueLedgerService $ledger, GoalRevenueReportService $reports)
     {
         $this->requireGoalPermission('revenue_ledger_guard');
 
@@ -189,6 +192,7 @@ class GoalMisController extends Controller
         return view('goal.mis.revenue', array_merge($payload, [
             'canAdjust' => $canAdjust,
             'revenueRatePct' => $revenueRatePct,
+            'reportCatalog' => $reports->catalog(),
         ]));
     }
 
@@ -198,7 +202,13 @@ class GoalMisController extends Controller
 
         $scope = $this->scopedOrgIds();
         $orgId = (int) ($entry->goal_org_unit_id ?? 0);
-        if ($scope === [] || ! $orgId || ! in_array($orgId, array_map('intval', $scope), true)) {
+        if ($orgId <= 0) {
+            $entry->loadMissing('loanCase:id,goal_org_unit_id');
+            $orgId = (int) ($entry->loanCase?->goal_org_unit_id ?? 0);
+        }
+        // Super Admin / MD / CEO already get full org id lists; empty scope = no access.
+        $scopeInts = array_map('intval', $scope);
+        if ($scope === [] || ($orgId > 0 && ! in_array($orgId, $scopeInts, true))) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -208,124 +218,80 @@ class GoalMisController extends Controller
         ]);
     }
 
-    public function exportRevenueLedger(Request $request, GoalRevenueLedgerService $ledger): StreamedResponse|BinaryFileResponse|\Illuminate\Http\Response
+    public function revenueReportPreview(Request $request, GoalRevenueReportService $reports)
     {
         $this->requireGoalPermission('revenue_ledger_guard');
 
+        $user = auth()->user();
         $scopeIds = $this->scopedOrgIds();
         if ($scopeIds === []) {
             $scopeIds = [-1];
         }
-        $filters = $ledger->normalizeFilters($request);
-        $query = $ledger->applyTabAndCard($ledger->baseQuery($scopeIds, $filters), $filters);
-        $entries = $query->with([
-            'loanCase:id,case_no,customer_name,product,goal_loan_lead_id',
-            'loanCase.lead:id,source',
-            'disbursement:id,amount,disbursed_on,verified_at',
-            'orgUnit:id,name',
-            'attributedUser:id,name',
-        ])->limit(5000)->latest('id')->get();
 
-        $format = strtolower((string) $request->input('format', 'csv'));
+        return response()->json($reports->preview($user, $scopeIds, $request));
+    }
+
+    public function exportRevenueLedger(Request $request, GoalRevenueLedgerService $ledger, GoalRevenueReportService $reports): StreamedResponse|BinaryFileResponse|\Illuminate\Http\Response
+    {
+        $this->requireGoalPermission('revenue_ledger_guard');
+
+        $user = auth()->user();
+        $scopeIds = $this->scopedOrgIds();
+        if ($scopeIds === []) {
+            $scopeIds = [-1];
+        }
+
+        $format = strtolower((string) $request->input('format', 'xlsx'));
         if (! in_array($format, ['csv', 'xlsx', 'excel', 'pdf'], true)) {
-            $format = 'csv';
+            $format = 'xlsx';
         }
         if ($format === 'excel') {
             $format = 'xlsx';
         }
 
+        $reportKey = $reports->resolveReportKey($request->input('report', 'summary'));
+        $filters = $ledger->normalizeFilters($request);
+        $payload = $reports->build($user, $scopeIds, $filters, $reportKey, false);
+        $rowCount = count($payload['rows'] ?? []);
+        $reports->logExport($user, $reportKey, $format, $filters, $rowCount);
+
         $stamp = now()->format('Ymd-His');
-        $headings = [
-            'Entry ID', 'Disbursement Ref', 'Case Ref', 'Customer', 'Disbursement Date',
-            'Disbursed Amount', 'Recognized Revenue', 'Revenue Owner', 'Branch',
-            'Entry Type', 'Status', 'Product', 'Source', 'Reason', 'Posted At',
-        ];
-        $sheetRows = [];
-        $pdfRows = [];
-        foreach ($entries as $e) {
-            $type = $e->entry_type ?: 'recognized';
-            $amt = (float) $e->amount;
-            $disbAmt = (float) ($e->disbursement?->amount ?? 0);
-            $disbRef = $e->disbursement ? ('DSB-'.str_pad((string) $e->disbursement->id, 4, '0', STR_PAD_LEFT)) : '';
-            $sheetRows[] = [
-                $e->entry_ref ?: ('RV-'.$e->id),
-                $disbRef,
-                $e->loanCase?->case_no,
-                $e->loanCase?->customer_name,
-                optional($e->disbursement?->disbursed_on ?? $e->disbursement?->verified_at)->format('Y-m-d'),
-                number_format($disbAmt, 2, '.', ''),
-                number_format($amt, 2, '.', ''),
-                $e->attributedUser?->name,
-                $e->orgUnit?->name,
-                $e->typeLabel(),
-                $e->statusLabel(),
-                $e->loanCase?->product,
-                $e->loanCase?->lead?->source,
-                $e->reason ?: $e->note,
-                optional($e->posted_at ?? $e->created_at)->format('Y-m-d H:i'),
-            ];
-            $pdfRows[] = [
-                'when' => optional($e->posted_at ?? $e->created_at)->format('d M Y H:i') ?: '—',
-                'case_no' => $e->loanCase?->case_no ?: '—',
-                'customer' => $e->loanCase?->customer_name ?: '—',
-                'type' => $e->typeLabel(),
-                'org' => $e->orgUnit?->name ?: '—',
-                'amount' => '₹ '.number_format($amt, 2),
-                'amount_raw' => $amt,
-                'note' => $e->reason ?: ($e->note ?: '—'),
-            ];
-        }
+        $slug = $reportKey;
+        $filenameBase = 'revenue-'.$slug.'-'.$stamp;
 
         if ($format === 'pdf') {
-            $recognized = 0.0;
-            $adjustments = 0.0;
-            $reversals = 0.0;
-            foreach ($entries as $e) {
-                $amt = (float) $e->amount;
-                $type = (string) ($e->entry_type ?: 'recognized');
-                if ($type === 'adjustment') {
-                    $adjustments += $amt;
-                } elseif ($type === 'reversal') {
-                    $reversals += $amt;
-                } else {
-                    $recognized += $amt;
-                }
-            }
-            $summary = [
-                'total' => count($pdfRows),
-                'recognized' => $recognized,
-                'adjustments' => $adjustments,
-                'reversals' => $reversals,
-                'net' => $recognized + $adjustments + $reversals,
-            ];
-            $filterLabels = array_values(array_filter([
-                ! empty($filters['fy_label']) ? 'FY: '.$filters['fy_label'] : null,
-                ($filters['date_from'] ?? '').' to '.($filters['date_to'] ?? ''),
-                ($filters['entry_type'] ?? '') !== '' ? 'Type: '.ucfirst($filters['entry_type']) : null,
-                ($filters['q'] ?? '') !== '' ? 'Search: '.$filters['q'] : null,
-            ]));
-
             return MpdfDocument::fromView(
-                'goal.mis.exports.revenue-pdf',
+                'goal.mis.exports.revenue-report-pdf',
                 [
-                    'rows' => $pdfRows,
-                    'summary' => $summary,
-                    'filterLabels' => $filterLabels,
-                    'generatedAt' => now(),
+                    'meta' => $payload['meta'] ?? [],
+                    'kpis' => $payload['kpis'] ?? [],
+                    'columns' => $payload['columns'] ?? [],
+                    'rows' => $payload['rows'] ?? [],
+                    'sections' => $payload['sections'] ?? null,
+                    'charts' => $payload['charts'] ?? [],
                 ],
-                'revenue-ledger-'.$stamp.'.pdf',
+                $filenameBase.'.pdf',
                 true,
                 'A4-L'
             );
         }
 
+        $sheets = $payload['sheets'] ?? [[
+            'title' => $payload['meta']['title'] ?? 'Report',
+            'headings' => $payload['columns'] ?? [],
+            'rows' => $payload['rows'] ?? [],
+        ]];
+
         if ($format === 'xlsx') {
             return Excel::download(
-                new GoalSheetExport($sheetRows, $headings, 'Revenue Ledger'),
-                'revenue-ledger-'.$stamp.'.xlsx',
+                new GoalMultiSheetExport($sheets),
+                $filenameBase.'.xlsx',
                 ExcelWriter::XLSX
             );
         }
+
+        $headings = $sheets[0]['headings'] ?? [];
+        $sheetRows = $sheets[0]['rows'] ?? [];
 
         return response()->streamDownload(function () use ($sheetRows, $headings) {
             $out = fopen('php://output', 'w');
@@ -335,7 +301,7 @@ class GoalMisController extends Controller
                 fputcsv($out, $row);
             }
             fclose($out);
-        }, 'revenue-ledger-'.$stamp.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, $filenameBase.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /**
@@ -464,7 +430,7 @@ class GoalMisController extends Controller
         }
 
         try {
-            $pd01->adjustRevenue(
+            $entry = $pd01->adjustRevenue(
                 $case,
                 (float) $data['amount'],
                 $note,
@@ -480,7 +446,31 @@ class GoalMisController extends Controller
             return back()->withErrors(['amount' => $e->getMessage()])->withInput();
         }
 
-        return back()->with('success', 'REV-03 '.$data['entry_type'].' posted to the revenue ledger.');
+        $isReversal = $data['entry_type'] === 'reversal';
+        ActivityLogger::log([
+            'user_id' => auth()->id(),
+            'type' => $isReversal ? 'reversal' : 'adjustment',
+            'module' => 'goal_revenue_ledger',
+            'action' => $isReversal ? 'post_reversal' : 'post_adjustment',
+            'details' => [
+                'entry_id' => $entry->id,
+                'entry_ref' => $entry->entry_ref,
+                'entry_type' => $entry->entry_type,
+                'amount' => (float) $entry->amount,
+                'parent_entry_id' => $parent?->id,
+                'case_id' => $case->id,
+                'case_no' => $case->case_no,
+                'direction' => $data['adjustment_direction'] ?? null,
+                'reason' => $note,
+            ],
+        ]);
+
+        return back()->with(
+            'success',
+            $isReversal
+                ? 'Reversal posted to the revenue ledger. Original credit retained.'
+                : 'Adjustment posted to the revenue ledger. Original credit retained.'
+        );
     }
 
     protected function ledgerQuery(string $q = ''): Builder
