@@ -10,6 +10,7 @@ use App\Models\GoalLoanCase;
 use App\Models\GoalOrgUnit;
 use App\Models\GoalRevenueEntry;
 use App\Services\FinancialYearService;
+use App\Services\Goal\GoalRevenueLedgerService;
 use App\Services\Goal\Pd01Service;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -171,78 +172,60 @@ class GoalMisController extends Controller
         }, 'branch-mis-'.$stamp.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    public function revenueLedger(Request $request)
+    public function revenueLedger(Request $request, GoalRevenueLedgerService $ledger)
     {
         $this->requireGoalPermission('revenue_ledger_guard');
 
-        $q = trim((string) $request->input('q', ''));
-        $entryType = trim((string) $request->input('entry_type', ''));
-        $baseQuery = $this->ledgerQuery($q);
-        $query = clone $baseQuery;
-        if (in_array($entryType, ['recognized', 'adjustment', 'reversal'], true)) {
-            if ($entryType === 'recognized') {
-                $query->where(function (Builder $b) {
-                    $b->where('entry_type', 'recognized')->orWhereNull('entry_type')->orWhere('entry_type', '');
-                });
-            } else {
-                $query->where('entry_type', $entryType);
-            }
+        $user = auth()->user();
+        $scopeIds = $this->scopedOrgIds();
+        if ($scopeIds === []) {
+            $scopeIds = [-1];
         }
 
-        $recognizedAmt = (float) (clone $baseQuery)->where(function (Builder $b) {
-            $b->where('entry_type', 'recognized')->orWhereNull('entry_type')->orWhere('entry_type', '');
-        })->sum('amount');
-        $adjustmentAmt = (float) (clone $baseQuery)->where('entry_type', 'adjustment')->sum('amount');
-        $reversalAmt = (float) (clone $baseQuery)->where('entry_type', 'reversal')->sum('amount');
-        $netAmt = (float) (clone $baseQuery)->sum('amount');
-
-        $kpis = [
-            'total' => (clone $baseQuery)->count(),
-            'amount' => $netAmt,
-            'recognized' => $recognizedAmt,
-            'adjustments' => $adjustmentAmt,
-            'reversals' => $reversalAmt,
-            'recognized_count' => (clone $baseQuery)->where(function (Builder $b) {
-                $b->where('entry_type', 'recognized')->orWhereNull('entry_type')->orWhere('entry_type', '');
-            })->count(),
-            'adjustment_count' => (clone $baseQuery)->where('entry_type', 'adjustment')->count(),
-            'reversal_count' => (clone $baseQuery)->where('entry_type', 'reversal')->count(),
-        ];
-        $entries = (clone $query)->paginate(50)->withQueryString();
-        $fySvc = app(FinancialYearService::class);
-        $filters = [
-            'q' => $q,
-            'entry_type' => $entryType,
-            'fy_label' => $fySvc->label(),
-            'date_from' => $fySvc->range()[0]->toDateString(),
-            'date_to' => $fySvc->range()[1]->toDateString(),
-        ];
-        $rollups = $this->orgRollups();
-        $cases = GoalLoanCase::query()
-            ->tap(fn (Builder $b) => $this->scopeByOrgColumn($b))
-            ->orderByDesc('id')
-            ->limit(200)
-            ->get(['id', 'case_no', 'customer_name']);
-        $canAdjust = auth()->user()?->hasCrmPermission('manage_targets_guard') ?? false;
+        $payload = $ledger->build($user, $request, $scopeIds);
+        $canAdjust = $user?->hasCrmPermission('manage_targets_guard') ?? false;
         $revenueRatePct = round(((float) config('goal.revenue_rate', 0.0035)) * 100, 4);
 
-        return view('goal.mis.revenue', compact(
-            'entries',
-            'kpis',
-            'filters',
-            'rollups',
-            'cases',
-            'canAdjust',
-            'revenueRatePct'
-        ));
+        return view('goal.mis.revenue', array_merge($payload, [
+            'canAdjust' => $canAdjust,
+            'revenueRatePct' => $revenueRatePct,
+        ]));
     }
 
-    public function exportRevenueLedger(Request $request): StreamedResponse|BinaryFileResponse|\Illuminate\Http\Response
+    public function showRevenueEntry(GoalRevenueEntry $entry, GoalRevenueLedgerService $ledger)
     {
         $this->requireGoalPermission('revenue_ledger_guard');
 
-        $q = trim((string) $request->input('q', ''));
-        $entryType = trim((string) $request->input('entry_type', ''));
+        $scope = $this->scopedOrgIds();
+        $orgId = (int) ($entry->goal_org_unit_id ?? 0);
+        if ($scope === [] || ! $orgId || ! in_array($orgId, array_map('intval', $scope), true)) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        return response()->json([
+            'ok' => true,
+            'entry' => $ledger->entryDetail($entry),
+        ]);
+    }
+
+    public function exportRevenueLedger(Request $request, GoalRevenueLedgerService $ledger): StreamedResponse|BinaryFileResponse|\Illuminate\Http\Response
+    {
+        $this->requireGoalPermission('revenue_ledger_guard');
+
+        $scopeIds = $this->scopedOrgIds();
+        if ($scopeIds === []) {
+            $scopeIds = [-1];
+        }
+        $filters = $ledger->normalizeFilters($request);
+        $query = $ledger->applyTabAndCard($ledger->baseQuery($scopeIds, $filters), $filters);
+        $entries = $query->with([
+            'loanCase:id,case_no,customer_name,product,goal_loan_lead_id',
+            'loanCase.lead:id,source',
+            'disbursement:id,amount,disbursed_on,verified_at',
+            'orgUnit:id,name',
+            'attributedUser:id,name',
+        ])->limit(5000)->latest('id')->get();
+
         $format = strtolower((string) $request->input('format', 'csv'));
         if (! in_array($format, ['csv', 'xlsx', 'excel', 'pdf'], true)) {
             $format = 'csv';
@@ -251,42 +234,45 @@ class GoalMisController extends Controller
             $format = 'xlsx';
         }
 
-        $query = $this->ledgerQuery($q);
-        if (in_array($entryType, ['recognized', 'adjustment', 'reversal'], true)) {
-            if ($entryType === 'recognized') {
-                $query->where(function (Builder $b) {
-                    $b->where('entry_type', 'recognized')->orWhereNull('entry_type')->orWhere('entry_type', '');
-                });
-            } else {
-                $query->where('entry_type', $entryType);
-            }
-        }
-        $entries = $query->limit(5000)->get();
         $stamp = now()->format('Ymd-His');
-        $headings = ['When', 'Case', 'Customer', 'Amount', 'Type', 'Org Unit', 'Note'];
+        $headings = [
+            'Entry ID', 'Disbursement Ref', 'Case Ref', 'Customer', 'Disbursement Date',
+            'Disbursed Amount', 'Recognized Revenue', 'Revenue Owner', 'Branch',
+            'Entry Type', 'Status', 'Product', 'Source', 'Reason', 'Posted At',
+        ];
         $sheetRows = [];
         $pdfRows = [];
         foreach ($entries as $e) {
             $type = $e->entry_type ?: 'recognized';
             $amt = (float) $e->amount;
+            $disbAmt = (float) ($e->disbursement?->amount ?? 0);
+            $disbRef = $e->disbursement ? ('DSB-'.str_pad((string) $e->disbursement->id, 4, '0', STR_PAD_LEFT)) : '';
             $sheetRows[] = [
-                optional($e->created_at)->format('Y-m-d H:i'),
+                $e->entry_ref ?: ('RV-'.$e->id),
+                $disbRef,
                 $e->loanCase?->case_no,
                 $e->loanCase?->customer_name,
+                optional($e->disbursement?->disbursed_on ?? $e->disbursement?->verified_at)->format('Y-m-d'),
+                number_format($disbAmt, 2, '.', ''),
                 number_format($amt, 2, '.', ''),
-                $type,
+                $e->attributedUser?->name,
                 $e->orgUnit?->name,
-                $e->note,
+                $e->typeLabel(),
+                $e->statusLabel(),
+                $e->loanCase?->product,
+                $e->loanCase?->lead?->source,
+                $e->reason ?: $e->note,
+                optional($e->posted_at ?? $e->created_at)->format('Y-m-d H:i'),
             ];
             $pdfRows[] = [
-                'when' => optional($e->created_at)->format('d M Y H:i') ?: '—',
+                'when' => optional($e->posted_at ?? $e->created_at)->format('d M Y H:i') ?: '—',
                 'case_no' => $e->loanCase?->case_no ?: '—',
                 'customer' => $e->loanCase?->customer_name ?: '—',
-                'type' => ucfirst($type),
+                'type' => $e->typeLabel(),
                 'org' => $e->orgUnit?->name ?: '—',
                 'amount' => '₹ '.number_format($amt, 2),
                 'amount_raw' => $amt,
-                'note' => $e->note ?: '—',
+                'note' => $e->reason ?: ($e->note ?: '—'),
             ];
         }
 
@@ -294,9 +280,9 @@ class GoalMisController extends Controller
             $recognized = 0.0;
             $adjustments = 0.0;
             $reversals = 0.0;
-            foreach ($pdfRows as $row) {
-                $amt = (float) ($row['amount_raw'] ?? 0);
-                $type = strtolower((string) ($row['type'] ?? 'recognized'));
+            foreach ($entries as $e) {
+                $amt = (float) $e->amount;
+                $type = (string) ($e->entry_type ?: 'recognized');
                 if ($type === 'adjustment') {
                     $adjustments += $amt;
                 } elseif ($type === 'reversal') {
@@ -313,8 +299,10 @@ class GoalMisController extends Controller
                 'net' => $recognized + $adjustments + $reversals,
             ];
             $filterLabels = array_values(array_filter([
-                $q !== '' ? 'Search: '.$q : null,
-                $entryType !== '' ? 'Type: '.ucfirst($entryType) : null,
+                ! empty($filters['fy_label']) ? 'FY: '.$filters['fy_label'] : null,
+                ($filters['date_from'] ?? '').' to '.($filters['date_to'] ?? ''),
+                ($filters['entry_type'] ?? '') !== '' ? 'Type: '.ucfirst($filters['entry_type']) : null,
+                ($filters['q'] ?? '') !== '' ? 'Search: '.$filters['q'] : null,
             ]));
 
             return MpdfDocument::fromView(
@@ -439,32 +427,60 @@ class GoalMisController extends Controller
         $this->requireGoalPermission('manage_targets_guard');
 
         $data = $request->validate([
-            'goal_loan_case_id' => 'required|exists:goal_loan_cases,id',
-            'amount' => 'required|numeric',
+            'parent_entry_id' => 'nullable|exists:goal_revenue_entries,id',
+            'goal_loan_case_id' => 'nullable|exists:goal_loan_cases,id',
+            'amount' => 'required|numeric|not_in:0',
             'entry_type' => 'required|in:adjustment,reversal',
-            'note' => 'required|string|max:255',
+            'adjustment_direction' => 'nullable|in:increase,decrease',
+            'note' => 'required|string|max:500',
+            'remarks' => 'nullable|string|max:500',
+            'evidence' => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,webp',
         ]);
 
-        $case = GoalLoanCase::query()->findOrFail((int) $data['goal_loan_case_id']);
+        $parent = null;
+        if (! empty($data['parent_entry_id'])) {
+            $parent = GoalRevenueEntry::query()->findOrFail((int) $data['parent_entry_id']);
+            $case = GoalLoanCase::query()->findOrFail((int) $parent->goal_loan_case_id);
+        } else {
+            if (empty($data['goal_loan_case_id'])) {
+                return back()->withErrors(['parent_entry_id' => 'Select the original revenue entry or a case.'])->withInput();
+            }
+            $case = GoalLoanCase::query()->findOrFail((int) $data['goal_loan_case_id']);
+        }
         $scope = $this->scopedOrgIds();
         $orgId = (int) ($case->goal_org_unit_id ?? 0);
         if ($scope === [] || ! $orgId || ! in_array($orgId, array_map('intval', $scope), true)) {
             abort(403, 'Unauthorized action.');
         }
 
+        $evidencePath = null;
+        if ($request->hasFile('evidence')) {
+            $evidencePath = $request->file('evidence')->store('goal/revenue-evidence', 'public');
+        }
+
+        $note = trim($data['note']);
+        if (! empty($data['remarks'])) {
+            $note .= ($note !== '' ? ' · ' : '').trim((string) $data['remarks']);
+        }
+
         try {
             $pd01->adjustRevenue(
                 $case,
                 (float) $data['amount'],
-                $data['note'],
+                $note,
                 auth()->user(),
-                $data['entry_type']
+                $data['entry_type'],
+                [
+                    'parent_entry_id' => $parent?->id,
+                    'direction' => $data['adjustment_direction'] ?? null,
+                    'evidence_path' => $evidencePath,
+                ]
             );
         } catch (\Throwable $e) {
             return back()->withErrors(['amount' => $e->getMessage()])->withInput();
         }
 
-        return back()->with('success', 'REV-03 '.$data['entry_type'].' posted.');
+        return back()->with('success', 'REV-03 '.$data['entry_type'].' posted to the revenue ledger.');
     }
 
     protected function ledgerQuery(string $q = ''): Builder

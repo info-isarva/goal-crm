@@ -156,7 +156,10 @@
     box-shadow:0 2px 8px rgba(148,163,184,.06);box-sizing:border-box
 }
 .mis-show .ms-filters > div{min-width:0;display:flex;flex-direction:column;justify-content:flex-end}
-.mis-show .ms-filters > .ms-f-fy{flex:0 1 118px}
+.mis-show .ms-filters > .ms-f-fy{flex:0 0 150px;min-width:150px}
+.mis-show .ms-filters > .ms-f-fy .form-select{
+    text-overflow:clip;overflow:visible;white-space:nowrap;padding-right:1.75rem
+}
 .mis-show .ms-filters > .ms-f-date{flex:1 1 200px;max-width:240px}
 .mis-show .ms-filters > .ms-f-region,
 .mis-show .ms-filters > .ms-f-cluster,
@@ -542,7 +545,7 @@
                                             <i class="bi bi-circle-fill" style="font-size:.45rem"></i>{{ $val }}
                                         </span>
                                     @elseif($isAge)
-                                        <span class="ms-age"><i class="bi {{ $cellIcon ?? 'bi-hourglass' }}"></i>{{ $val }}{{ is_numeric($val) ? 'd' : '' }}</span>
+                                        <span class="ms-age"><i class="bi {{ $cellIcon ?? 'bi-hourglass' }}"></i>{{ is_numeric($val) ? ((int) round((float) $val)).'d' : $val }}</span>
                                     @elseif($isMoney)
                                         <span class="ms-money"><i class="bi bi-currency-rupee"></i>{{ str_replace('₹', '', (string) $val) }}</span>
                                     @elseif($isCount)
@@ -580,11 +583,41 @@
     const rangeEl = document.getElementById('msDateRange');
     const fromEl = document.getElementById('msDateFrom');
     const toEl = document.getElementById('msDateTo');
+    const fyEl = document.getElementById('msFy');
+    const fyRanges = @json($fyRangeMap ?? []);
+    let fpInstance = null;
+
+    function applyFyDates(fyKey) {
+        const range = fyRanges[fyKey];
+        if (!range || !fromEl || !toEl) return;
+        fromEl.value = range.date_from || '';
+        toEl.value = range.date_to || '';
+        if (fpInstance) {
+            try {
+                fpInstance.setDate([range.date_from, range.date_to], true);
+            } catch (e) {}
+        } else if (rangeEl) {
+            const fmt = function (iso) {
+                if (!iso) return '';
+                const d = new Date(iso + 'T00:00:00');
+                if (isNaN(d.getTime())) return iso;
+                return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            };
+            rangeEl.value = (fmt(range.date_from) + (range.date_to ? ' – ' + fmt(range.date_to) : '')).trim();
+        }
+    }
+
+    if (fyEl) {
+        fyEl.addEventListener('change', function () {
+            applyFyDates(fyEl.value);
+        });
+    }
+
     if (rangeEl && window.flatpickr) {
         const defaults = [];
         if (fromEl && fromEl.value) defaults.push(fromEl.value);
         if (toEl && toEl.value) defaults.push(toEl.value);
-        flatpickr(rangeEl, {
+        fpInstance = flatpickr(rangeEl, {
             mode: 'range',
             dateFormat: 'Y-m-d',
             altInput: true,

@@ -89,6 +89,7 @@ class GoalAnalyticsMisService
             'alerts' => $alerts,
             'mis_register' => $misRegister,
             'fy_options' => $this->fyOptions(),
+            'fy_range_map' => $fySvc->fyRangeMap(),
         ];
     }
 

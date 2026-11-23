@@ -101,9 +101,12 @@ class Pd01Service
                     'amount' => $revenueAmount,
                     'attributed_user_id' => $case->owner_id,
                     'goal_org_unit_id' => $case->goal_org_unit_id,
-                    'entry_type' => 'recognized',
+                    'entry_type' => GoalRevenueEntry::TYPE_RECOGNIZED,
+                    'status' => GoalRevenueEntry::STATUS_POSTED,
+                    'posted_at' => now(),
                     'created_by' => $actor->id,
                     'note' => 'REV-01 at verified disbursement',
+                    'reason' => 'Revenue credited on verified disbursement',
                 ]);
             }
 
@@ -305,44 +308,105 @@ class Pd01Service
     }
 
     /**
-     * REV-03: manual adjustment / reversal against a case (updates Approved target actuals).
+     * REV-03: manual adjustment / reversal. Never overwrites the original credit.
+     *
+     * @param  array{
+     *   parent_entry_id?: int|null,
+     *   direction?: string|null,
+     *   evidence_path?: string|null,
+     *   remarks?: string|null,
+     *   status?: string|null
+     * }  $options
      */
-    public function adjustRevenue(GoalLoanCase $case, float $amount, string $note, User $actor, string $entryType = 'adjustment'): GoalRevenueEntry
-    {
-        if (! in_array($entryType, ['adjustment', 'reversal'], true)) {
+    public function adjustRevenue(
+        GoalLoanCase $case,
+        float $amount,
+        string $note,
+        User $actor,
+        string $entryType = 'adjustment',
+        array $options = []
+    ): GoalRevenueEntry {
+        if (! in_array($entryType, [GoalRevenueEntry::TYPE_ADJUSTMENT, GoalRevenueEntry::TYPE_REVERSAL], true)) {
             throw new RuntimeException('Invalid revenue entry type.');
         }
         if ($amount == 0.0) {
             throw new RuntimeException('Adjustment amount cannot be zero.');
         }
-        if ($entryType === 'reversal' && $amount > 0) {
-            $amount = -abs($amount);
+
+        $parentId = isset($options['parent_entry_id']) ? (int) $options['parent_entry_id'] : null;
+        $parent = null;
+        if ($parentId) {
+            $parent = GoalRevenueEntry::query()->find($parentId);
+            if (! $parent || (int) $parent->goal_loan_case_id !== (int) $case->id) {
+                throw new RuntimeException('Original revenue entry not found for this case.');
+            }
         }
 
-        return DB::transaction(function () use ($case, $amount, $note, $actor, $entryType) {
+        $direction = $options['direction'] ?? null;
+        if ($entryType === GoalRevenueEntry::TYPE_ADJUSTMENT) {
+            if ($direction === 'decrease') {
+                $amount = -abs($amount);
+            } elseif ($direction === 'increase') {
+                $amount = abs($amount);
+            }
+        }
+
+        if ($entryType === GoalRevenueEntry::TYPE_REVERSAL) {
+            $amount = -abs($amount);
+            if ($parent) {
+                $remaining = $parent->reversibleRemaining();
+                if (abs($amount) - $remaining > 0.009) {
+                    throw new RuntimeException(
+                        'Reversal amount exceeds remaining reversible balance of ₹ '.number_format($remaining, 2)
+                    );
+                }
+            }
+        }
+
+        $status = $options['status'] ?? GoalRevenueEntry::STATUS_POSTED;
+        if (! in_array($status, [GoalRevenueEntry::STATUS_POSTED, GoalRevenueEntry::STATUS_PENDING, GoalRevenueEntry::STATUS_APPROVED], true)) {
+            $status = GoalRevenueEntry::STATUS_POSTED;
+        }
+
+        return DB::transaction(function () use ($case, $amount, $note, $actor, $entryType, $parent, $direction, $options, $status) {
             $entry = GoalRevenueEntry::create([
                 'goal_loan_case_id' => $case->id,
-                'goal_disbursement_id' => null,
+                'goal_disbursement_id' => $parent?->goal_disbursement_id,
+                'parent_entry_id' => $parent?->id,
                 'amount' => round($amount, 2),
-                'attributed_user_id' => $case->owner_id,
-                'goal_org_unit_id' => $case->goal_org_unit_id,
+                'attributed_user_id' => $parent?->attributed_user_id ?: $case->owner_id,
+                'goal_org_unit_id' => $parent?->goal_org_unit_id ?: $case->goal_org_unit_id,
                 'entry_type' => $entryType,
+                'adjustment_direction' => $entryType === GoalRevenueEntry::TYPE_ADJUSTMENT ? ($direction ?: ($amount < 0 ? 'decrease' : 'increase')) : null,
+                'status' => $status,
+                'posted_at' => $status === GoalRevenueEntry::STATUS_PENDING ? null : now(),
+                'approved_by' => $status === GoalRevenueEntry::STATUS_PENDING ? null : $actor->id,
+                'approved_at' => $status === GoalRevenueEntry::STATUS_PENDING ? null : now(),
                 'created_by' => $actor->id,
                 'note' => $note !== '' ? $note : ('REV-03 '.$entryType),
+                'reason' => $note !== '' ? $note : ('REV-03 '.$entryType),
+                'evidence_path' => $options['evidence_path'] ?? null,
             ]);
 
-            $this->syncTargetActuals(
-                $case,
-                0.0,
-                (float) $entry->amount,
-                now()->format('Y-m')
-            );
+            if ($status !== GoalRevenueEntry::STATUS_PENDING) {
+                $this->syncTargetActuals(
+                    $case,
+                    0.0,
+                    (float) $entry->amount,
+                    now()->format('Y-m')
+                );
+            }
 
             GoalCaseAudit::record($case, 'revenue', 'Revenue '.$entryType, $actor, [
                 'to' => (string) $entry->amount,
                 'related_type' => GoalRevenueEntry::class,
                 'related_id' => $entry->id,
-                'body' => $entry->note,
+                'body' => $entry->reason ?: $entry->note,
+                'meta' => [
+                    'parent_entry_id' => $parent?->id,
+                    'entry_ref' => $entry->entry_ref,
+                    'status' => $entry->status,
+                ],
             ]);
 
             return $entry;

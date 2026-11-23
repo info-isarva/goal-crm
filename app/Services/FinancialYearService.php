@@ -177,6 +177,86 @@ class FinancialYearService
     }
 
     /**
+     * Resolve FY + dates for report filters.
+     * Selected FY wins; stale dates outside that FY are reset to the FY window.
+     * Dates inside the FY are kept (user narrowed range).
+     *
+     * @return array{date_from: string, date_to: string, fy: string, financial_year_id: int}
+     */
+    public function resolveReportPeriod(?string $fyKey = null, ?string $dateFrom = null, ?string $dateTo = null): array
+    {
+        $this->ensureRecentYears();
+        $fyKey = trim((string) $fyKey);
+        $dateFrom = trim((string) $dateFrom);
+        $dateTo = trim((string) $dateTo);
+
+        $fy = $this->findByAnalyticsKey($fyKey) ?? $this->current();
+        $defaults = $this->defaultDateFilters($fy);
+        [$fyFrom, $fyTo] = $this->range($fy);
+
+        if ($dateFrom === '' || $dateTo === '') {
+            return $defaults;
+        }
+
+        try {
+            $from = Carbon::parse($dateFrom)->startOfDay();
+            $to = Carbon::parse($dateTo)->endOfDay();
+        } catch (\Throwable $e) {
+            return $defaults;
+        }
+
+        if ($from->gt($to)) {
+            [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
+        }
+
+        // Dates outside selected FY → snap back to that FY (fixes FY vs date mismatch).
+        if ($from->lt($fyFrom) || $to->gt($fyTo) || $to->lt($fyFrom) || $from->gt($fyTo)) {
+            return $defaults;
+        }
+
+        return [
+            'date_from' => $from->toDateString(),
+            'date_to' => $to->toDateString(),
+            'fy' => $this->analyticsKey($fy),
+            'financial_year_id' => (int) $fy->id,
+        ];
+    }
+
+    public function findByAnalyticsKey(?string $key): ?FinancialYear
+    {
+        $key = trim((string) $key);
+        if ($key === '' || ! preg_match('/^(\d{4})-(\d{4})$/', $key)) {
+            return null;
+        }
+
+        return FinancialYear::query()
+            ->orderByDesc('from_date')
+            ->get()
+            ->first(fn (FinancialYear $fy) => $this->analyticsKey($fy) === $key);
+    }
+
+    /**
+     * Map of analytics FY key => [date_from, date_to] for frontend sync.
+     *
+     * @return array<string, array{date_from: string, date_to: string, label: string}>
+     */
+    public function fyRangeMap(): array
+    {
+        $this->ensureRecentYears();
+        $map = [];
+        foreach (FinancialYear::query()->orderByDesc('from_date')->get() as $fy) {
+            $defaults = $this->defaultDateFilters($fy);
+            $map[$defaults['fy']] = [
+                'date_from' => $defaults['date_from'],
+                'date_to' => $defaults['date_to'],
+                'label' => $this->label($fy),
+            ];
+        }
+
+        return $map;
+    }
+
+    /**
      * @return array{0: Carbon, 1: Carbon}
      */
     public function computeContainingRange(Carbon $date): array

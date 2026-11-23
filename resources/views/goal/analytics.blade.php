@@ -104,12 +104,16 @@
 
 .ga-hub .ga-filters{
     display:grid;
-    grid-template-columns:minmax(120px,.9fr) minmax(200px,1.35fr) repeat(5,minmax(110px,1fr)) auto;
+    grid-template-columns:minmax(150px,160px) minmax(200px,1.35fr) repeat(5,minmax(110px,1fr)) auto;
     gap:12px;align-items:end;
     margin-bottom:1rem;padding:14px 16px;background:#fff;border:1px solid #e8edf5;border-radius:14px;
     box-shadow:0 6px 16px rgba(148,163,184,.08)
 }
 .ga-hub .ga-filters > div:not(.ga-filter-actions){min-width:0;display:flex;flex-direction:column;justify-content:flex-end}
+.ga-hub .ga-filters > div:first-child{min-width:150px}
+.ga-hub .ga-filters > div:first-child .form-select{
+    text-overflow:clip;overflow:visible;white-space:nowrap;padding-right:1.75rem
+}
 .ga-hub .ga-filters label{
     display:block;font-size:.68rem;font-weight:700;color:#64748b;margin:0 0 5px;
     text-transform:uppercase;letter-spacing:.03em;line-height:1.2
@@ -757,7 +761,7 @@
 
         <div>
             <label>Financial Year</label>
-            <select name="fy" class="form-select">
+            <select name="fy" id="gaFy" class="form-select">
                 @foreach(($dash['fy_options'] ?? []) as $fy)
                     <option value="{{ $fy }}" @selected(($f['fy'] ?? '') === $fy)>{{ str_replace('-', ' - ', $fy) }}</option>
                 @endforeach
@@ -1056,10 +1060,25 @@
         }
     }
 
+    const fyRanges = @json($dash['fy_range_map'] ?? []);
+
+    function applyGaFyDates(fyKey) {
+        const range = fyRanges[fyKey];
+        const fromEl = document.getElementById('gaDateFrom');
+        const toEl = document.getElementById('gaDateTo');
+        if (!range || !fromEl || !toEl) return;
+        fromEl.value = range.date_from || '';
+        toEl.value = range.date_to || '';
+        if (fpInstance) {
+            try { fpInstance.setDate([range.date_from, range.date_to], true); } catch (e) {}
+        }
+    }
+
     function initDateRange() {
         const rangeEl = document.getElementById('gaDateRange');
         const fromEl = document.getElementById('gaDateFrom');
         const toEl = document.getElementById('gaDateTo');
+        const fyEl = document.getElementById('gaFy');
         if (!rangeEl || !window.flatpickr) return;
         if (fpInstance) {
             try { fpInstance.destroy(); } catch (e) {}
@@ -1082,6 +1101,12 @@
                     : (selectedDates[0] ? instance.formatDate(selectedDates[0], 'Y-m-d') : '');
             }
         });
+        if (fyEl && !fyEl.dataset.fyBound) {
+            fyEl.dataset.fyBound = '1';
+            fyEl.addEventListener('change', function () {
+                applyGaFyDates(fyEl.value);
+            });
+        }
     }
 
     function setLoading(on) {

@@ -99,7 +99,7 @@
 @endif
 @if($can('mis_reports_guard') || $isSuper || $canPerfFin)
 <li class="nav-item">
-    <a class="nav-link {{ request()->routeIs('goal.mis-reports') ? 'active' : '' }}" href="{{ route('goal.mis-reports') }}">
+    <a class="nav-link {{ request()->routeIs('goal.mis-reports', 'goal.mis-reports.*') ? 'active' : '' }}" href="{{ route('goal.mis-reports') }}">
         <i class="bi bi-file-earmark-bar-graph"></i> <span class="nav-label">MIS Reports</span>
     </a>
 </li>
@@ -229,7 +229,7 @@
 
 @if($can('revenue_ledger_guard'))
 <li class="nav-item">
-    <a class="nav-link {{ request()->routeIs('goal.revenue-ledger') ? 'active' : '' }}" href="{{ route('goal.revenue-ledger') }}">
+    <a class="nav-link {{ request()->routeIs('goal.revenue-ledger', 'goal.revenue-ledger.*') ? 'active' : '' }}" href="{{ route('goal.revenue-ledger') }}">
         <i class="bi bi-currency-rupee"></i> <span class="nav-label">Revenue Ledger</span>
     </a>
 </li>
@@ -237,7 +237,7 @@
 
 @if($can('branch_mis_guard'))
 <li class="nav-item">
-    <a class="nav-link {{ request()->routeIs('goal.branch-mis') ? 'active' : '' }}" href="{{ route('goal.branch-mis') }}">
+    <a class="nav-link {{ request()->routeIs('goal.branch-mis', 'goal.branch-mis.*') ? 'active' : '' }}" href="{{ route('goal.branch-mis') }}">
         <i class="bi bi-grid-3x3-gap"></i> <span class="nav-label">Branch MIS</span>
     </a>
 </li>

@@ -175,5 +175,6 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::get('branch-mis/{case}', [GoalMisController::class, 'showBranchMis'])->name('branch-mis.show');
     Route::get('revenue-ledger', [GoalMisController::class, 'revenueLedger'])->name('revenue-ledger');
     Route::get('revenue-ledger/export', [GoalMisController::class, 'exportRevenueLedger'])->name('revenue-ledger.export');
+    Route::get('revenue-ledger/entries/{entry}', [GoalMisController::class, 'showRevenueEntry'])->name('revenue-ledger.entry');
     Route::post('revenue-ledger/adjust', [GoalMisController::class, 'adjustRevenue'])->name('revenue-ledger.adjust');
 });

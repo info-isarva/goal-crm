@@ -60,7 +60,10 @@
     box-shadow:0 2px 8px rgba(148,163,184,.06);box-sizing:border-box
 }
 .mis-page .mis-filters > div{min-width:0;display:flex;flex-direction:column;justify-content:flex-end}
-.mis-page .mis-filters > .mis-f-fy{flex:0 1 118px}
+.mis-page .mis-filters > .mis-f-fy{flex:0 0 150px;min-width:150px}
+.mis-page .mis-filters > .mis-f-fy .form-select{
+    text-overflow:clip;overflow:visible;white-space:nowrap;padding-right:1.75rem
+}
 .mis-page .mis-filters > .mis-f-date{flex:1 1 200px;max-width:240px}
 .mis-page .mis-filters > .mis-f-region,
 .mis-page .mis-filters > .mis-f-cluster,

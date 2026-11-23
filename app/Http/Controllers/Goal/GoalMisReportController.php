@@ -32,12 +32,14 @@ class GoalMisReportController extends Controller
         $scopeIds = $this->analytics->resolveScopeIds($user, $filters);
         $filterOptions = $this->analytics->filterOptions($user, $scopeIds);
         $fyOptions = $this->analytics->fyOptions();
+        $fyRangeMap = app(\App\Services\FinancialYearService::class)->fyRangeMap();
 
         return view('goal.mis-reports.show', [
             'report' => $reportData,
             'user' => $user,
             'filterOptions' => $filterOptions,
             'fyOptions' => $fyOptions,
+            'fyRangeMap' => $fyRangeMap,
             'filters' => $reportData['filters'] ?? $filters,
             'catalog' => $this->reports->catalog(),
         ]);
@@ -221,12 +223,16 @@ class GoalMisReportController extends Controller
 
     protected function requestFilters(): array
     {
-        $fyDefaults = app(\App\Services\FinancialYearService::class)->defaultDateFilters();
+        $period = app(\App\Services\FinancialYearService::class)->resolveReportPeriod(
+            request('fy'),
+            request('date_from'),
+            request('date_to')
+        );
 
         return [
-            'fy' => (string) (request()->filled('fy') ? request('fy') : $fyDefaults['fy']),
-            'date_from' => (string) (request()->filled('date_from') ? request('date_from') : $fyDefaults['date_from']),
-            'date_to' => (string) (request()->filled('date_to') ? request('date_to') : $fyDefaults['date_to']),
+            'fy' => $period['fy'],
+            'date_from' => $period['date_from'],
+            'date_to' => $period['date_to'],
             'region' => request('region'),
             'cluster' => request('cluster'),
             'branch' => request('branch'),

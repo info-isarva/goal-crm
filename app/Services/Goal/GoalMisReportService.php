@@ -231,7 +231,7 @@ class GoalMisReportService
                 'status' => $l->status,
                 'follow_up' => optional($l->follow_up_at)->format('d M Y H:i') ?: '—',
                 'case_ref' => $case ?: '—',
-                'age' => $l->created_at ? $l->created_at->diffInDays(now()) : 0,
+                'age' => $l->created_at ? (int) $l->created_at->diffInDays(now()) : 0,
                 '_link' => route('goal.leads.show', $l),
             ];
         })->values()->all();
@@ -281,8 +281,10 @@ class GoalMisReportService
 
         $byStatus = $cases->groupBy('status')->map->count();
         $rows = $cases->take(500)->map(function ($c) {
-            $pendingDays = $c->updated_at ? $c->updated_at->diffInDays(now()) : 0;
-            $tat = $c->created_at ? $c->created_at->diffInDays($c->status === 'Disbursed' ? ($c->updated_at ?? now()) : now()) : 0;
+            $pendingDays = $c->updated_at ? (int) $c->updated_at->diffInDays(now()) : 0;
+            $tat = $c->created_at
+                ? (int) $c->created_at->diffInDays($c->status === 'Disbursed' ? ($c->updated_at ?? now()) : now())
+                : 0;
 
             return [
                 'case_ref' => $c->case_no,
@@ -526,7 +528,7 @@ class GoalMisReportService
                 'disb_date' => optional($verified->sortByDesc('disbursed_on')->first()?->disbursed_on)->format('d M Y') ?: '—',
                 'disb_amt' => $this->money((float) $verified->sum('amount')),
                 'status' => $c->status,
-                'age' => $c->created_at ? $c->created_at->diffInDays(now()) : 0,
+                'age' => $c->created_at ? (int) $c->created_at->diffInDays(now()) : 0,
                 '_link' => route('goal.cases.show', $c),
             ];
         })->values()->all();
@@ -984,7 +986,7 @@ class GoalMisReportService
             'branch' => $branch ?: '—',
             'created' => $createdAt?->format('d M Y') ?: '—',
             'due' => $dueAt?->format('d M Y') ?: '—',
-            'pending_days' => $createdAt ? $createdAt->diffInDays(now()) : 0,
+            'pending_days' => $createdAt ? (int) $createdAt->diffInDays(now()) : 0,
             'priority' => $priority,
             'status' => 'Open',
             '_link' => $link,
