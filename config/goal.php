@@ -38,7 +38,12 @@ return [
     'target_unit_label' => env('GOAL_TARGET_UNIT_LABEL', '₹'),
     // Super Admin / Admin / MD / CEO do not receive personal targets — they only distribute.
     'target_exempt_crm_roles' => [0, 1, 4, 5],
-    'target_exempt_job_roles' => ['ceo', 'md', 'admin', 'super_admin'],
+    // No personal targets for leadership + non-sales ops (accounts / PMS).
+    'target_exempt_job_roles' => [
+        'ceo', 'md', 'admin', 'super_admin',
+        'accounts', 'account', 'accountant', 'accounts_manager', 'accounts manager',
+        'pms', 'pm', 'portfolio_manager', 'portfolio manager',
+    ],
     'target_role_weights' => [
         'ssm' => 1.4,
         'senior_sales_manager' => 1.4,

@@ -541,6 +541,14 @@
 .goal-set-targets .st-ent-ico.other { background: #ffedd5; color: #c2410c; }
 .goal-set-targets .st-ent-name { font-weight: 700; font-size: .86rem; color: #0f172a; line-height: 1.25; }
 .goal-set-targets .st-ent-meta { font-size: .7rem; color: #94a3b8; margin-top: 1px; }
+.goal-set-targets .st-ent-lead {
+    font-weight: 650; white-space: nowrap;
+}
+.goal-set-targets .st-ent-lead.rd { color: #059669; }
+.goal-set-targets .st-ent-lead.cluster { color: #2563eb; }
+.goal-set-targets .st-ent-lead.bm { color: #7c3aed; }
+.goal-set-targets .st-ent-lead.staff,
+.goal-set-targets .st-ent-lead.other { color: #0f766e; }
 
 .goal-set-targets .st-type {
     display: inline-flex; align-items: center; height: 22px; padding: 0 9px;
@@ -554,22 +562,33 @@
 
 .goal-set-targets .st-cell-num {
     font-variant-numeric: tabular-nums; color: #475569; font-weight: 600;
-    display: inline-block; min-width: 4.5rem; text-align: right;
+    display: inline-flex; align-items: center; justify-content: flex-end;
+    box-sizing: border-box; width: 118px; min-width: 118px; text-align: right;
 }
 .goal-set-targets .st-eff {
     font-variant-numeric: tabular-nums; font-weight: 800; color: #0f172a; font-size: .88rem;
-    display: inline-block; min-width: 4.5rem; text-align: right;
+    display: inline-flex; align-items: center; justify-content: flex-end;
+    box-sizing: border-box; width: 118px; min-width: 118px; text-align: right;
 }
 .goal-set-targets table.st-tree td.num {
     text-align: right;
     vertical-align: middle;
+    white-space: nowrap;
 }
-.goal-set-targets table.st-tree td.num .st-input-wrap {
+.goal-set-targets table.st-tree td.num > .st-input-wrap,
+.goal-set-targets table.st-tree td.num > .st-cell-num,
+.goal-set-targets table.st-tree td.num > .st-eff {
     margin-left: auto;
+    margin-right: 0;
 }
 .goal-set-targets table.st-tree tfoot td.num {
     text-align: right;
     font-variant-numeric: tabular-nums;
+}
+.goal-set-targets table.st-tree th.col-actions,
+.goal-set-targets table.st-tree td.col-actions {
+    text-align: right;
+    white-space: nowrap;
 }
 
 /* Single clean currency field — kill global input chrome (double box) */
@@ -807,7 +826,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             <span class="st-kpi-ico"><i class="bi bi-clock-history"></i></span>
             <div class="st-kpi-body">
                 <div class="st-kpi-top">
-                    <p class="st-kpi-label" id="stKpiLeftLabel">Opening Shortfall (Revenue)</p>
+                    <p class="st-kpi-label" id="stKpiLeftLabel">Last Month Target (Revenue)</p>
                 </div>
                 <div class="st-kpi-value" id="stKpiRemaining">₹ 0</div>
                 <p class="st-kpi-meta" id="stKpiLeftMeta">From previous period</p>
@@ -918,22 +937,22 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                         <th class="idx">#</th>
                         <th style="min-width:260px">Entity / Person (Hierarchy)</th>
                         <th>Type</th>
-                        <th class="num">Opening Shortfall ({{ $unit }}) <i class="bi bi-info-circle th-info" title="Carried from previous period closing shortfall — not this month’s Base Target"></i></th>
-                        <th class="num">Base Target ({{ $unit }})</th>
-                        <th class="num">Adjustments ({{ $unit }}) <i class="bi bi-info-circle th-info" title="Personal / adjustment amount"></i></th>
-                        <th class="num col-eff">Effective Target ({{ $unit }}) <i class="bi bi-info-circle th-info" title="Opening Shortfall + Base Target + Adjustments"></i></th>
-                        <th class="num">Actions</th>
+                        <th class="num">Last Month Target ({{ $unit }}) <i class="bi bi-info-circle th-info" title="Previous period’s assigned total target (read-only)"></i></th>
+                        <th class="num">Total Target ({{ $unit }}) <i class="bi bi-info-circle th-info" title="This period’s total target to assign"></i></th>
+                        <th class="num">Owner Target ({{ $unit }}) <i class="bi bi-info-circle th-info" title="Personal share kept by this person — must be within Total Target (not extra)"></i></th>
+                        <th class="num col-eff">Remaining ({{ $unit }}) <i class="bi bi-info-circle th-info" title="Amount left to distribute below = Total Target − Owner Target"></i></th>
+                        <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="stTreeBody"></tbody>
                 <tfoot>
                     <tr>
                         <td colspan="3"><strong>Total</strong></td>
-                        <td class="num" id="stFootLast">0</td>
-                        <td class="num" id="stFootTarget">0</td>
-                        <td class="num" id="stFootPersonal">0</td>
-                        <td class="num col-eff" id="stFootTeam">0</td>
-                        <td></td>
+                        <td class="num"><span class="st-cell-num" id="stFootLast">0</span></td>
+                        <td class="num"><span class="st-cell-num" id="stFootTarget">0</span></td>
+                        <td class="num"><span class="st-cell-num" id="stFootPersonal">0</span></td>
+                        <td class="num col-eff"><span class="st-eff" id="stFootTeam">0</span></td>
+                        <td class="col-actions"></td>
                     </tr>
                 </tfoot>
             </table>
@@ -968,7 +987,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             <div>
                 <div class="st-tip">
                     <i class="bi bi-info-circle-fill"></i>
-                    <span><strong>Opening Shortfall</strong> is carried from last month. Enter <strong>Base Target</strong> for this period, then Assign.</span>
+                    <span><strong>Owner Target</strong> is within <strong>Total Target</strong> (not extra). <strong>Remaining</strong> = Total − Owner (to distribute below).</span>
                 </div>
                 <div id="stCheckSummary" class="ok">Ready</div>
             </div>
@@ -1039,7 +1058,14 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
     function collectRows(nodes, out = []) {
         (nodes || []).forEach((n) => {
-            if (n.editable) {
+            if (n.is_org_group && n.linked_user_id && n.editable) {
+                out.push({
+                    employee_id: Number(n.linked_user_id),
+                    set_target: Number(n.set_target || 0),
+                    owner_target: Number(n.owner_target || 0),
+                    row_source: n.row_source === 'edited' ? 'edited' : 'auto',
+                });
+            } else if (n.editable && !n.is_org_group) {
                 out.push({
                     employee_id: n.id,
                     set_target: Number(n.set_target || 0),
@@ -1076,12 +1102,29 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
     function countByRole(nodes, out = { rd: 0, cluster: 0, bm: 0, staff: 0 }) {
         (nodes || []).forEach((n) => {
-            const rm = roleMeta(n);
-            if (rm.cls === 'rd') out.rd += 1;
-            else if (rm.cls === 'cluster') out.cluster += 1;
-            else if (rm.cls === 'bm') out.bm += 1;
-            else out.staff += 1;
+            if (n.is_org_group) {
+                const t = String(n.org_type || '').toLowerCase();
+                if (t === 'region') out.rd += 1;
+                else if (t === 'cluster') out.cluster += 1;
+                else if (t === 'branch') out.bm += 1;
+            } else {
+                out.staff += 1;
+            }
             if (n.children?.length) countByRole(n.children, out);
+        });
+        return out;
+    }
+
+    function countOrgChildren(nodes, out = { cluster: 0, branch: 0, people: 0 }) {
+        (nodes || []).forEach((n) => {
+            if (n.is_org_group) {
+                const t = String(n.org_type || '').toLowerCase();
+                if (t === 'cluster') out.cluster += 1;
+                else if (t === 'branch') out.branch += 1;
+                if (n.children?.length) countOrgChildren(n.children, out);
+            } else {
+                out.people += 1;
+            }
         });
         return out;
     }
@@ -1089,23 +1132,49 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     function childCounts(n) {
         const kids = n.children || [];
         if (!kids.length) return '';
+        if (n.is_org_group) {
+            const by = countOrgChildren(kids);
+            const parts = [];
+            if (by.cluster) parts.push(by.cluster + ' Cluster' + (by.cluster > 1 ? 's' : ''));
+            if (by.branch) parts.push(by.branch + ' Branch' + (by.branch > 1 ? 'es' : ''));
+            if (by.people) parts.push(by.people + ' Emp');
+            return parts.join(' · ') || (kids.length + ' items');
+        }
         const by = countByRole(kids);
         const parts = [];
+        if (by.rd) parts.push(by.rd + ' Region' + (by.rd > 1 ? 's' : ''));
         if (by.cluster) parts.push(by.cluster + ' Cluster' + (by.cluster > 1 ? 's' : ''));
         if (by.bm) parts.push(by.bm + ' Branch' + (by.bm > 1 ? 'es' : ''));
-        if (by.staff && !by.cluster && !by.bm) parts.push(by.staff + ' Employee' + (by.staff > 1 ? 's' : ''));
-        else if (by.staff && (by.cluster || by.bm)) parts.push(by.staff + ' Emp');
-        if (by.rd) parts.push(by.rd + ' Region' + (by.rd > 1 ? 's' : ''));
+        if (by.staff && !by.cluster && !by.bm && !by.rd) parts.push(by.staff + ' Employee' + (by.staff > 1 ? 's' : ''));
+        else if (by.staff && (by.cluster || by.bm || by.rd)) parts.push(by.staff + ' Emp');
         return parts.join(' · ') || (kids.length + ' reports');
     }
 
     function recompute(nodes) {
         (nodes || []).forEach((n) => {
             const hasKids = !!(n.children && n.children.length);
-            n.is_staff = !hasKids;
+            n.is_staff = !hasKids && !n.is_org_group;
             if (hasKids) {
                 recompute(n.children);
                 const teamRollup = n.children.reduce((s, c) => s + Number(c.set_target || 0), 0);
+                const openRollup = n.children.reduce((s, c) => s + Number(c.last_month || 0), 0);
+                if (n.is_org_group) {
+                    n.total_target = teamRollup;
+                    if (!n.linked_user_id) {
+                        n.set_target = Math.round(teamRollup * 100) / 100;
+                        n.last_month = Math.round(openRollup * 100) / 100;
+                        n.owner_target = 0;
+                        n.remainder = n.set_target;
+                    } else {
+                        const owner = Number(n.owner_target || 0);
+                        const set = Number(n.set_target || 0);
+                        n.remainder = Math.max(0, Math.round((set - owner) * 100) / 100);
+                    }
+                    n.over_allocated = false;
+                    n.pending_distribution = false;
+                    n.check_ok = true;
+                    return;
+                }
                 const owner = Number(n.owner_target || 0);
                 const set = Number(n.set_target || 0);
                 const rem = Math.max(0, set - owner);
@@ -1134,13 +1203,15 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     function collectChecks(nodes, out = []) {
         (nodes || []).forEach((n) => {
             if (n.children?.length) {
-                out.push({
-                    id: n.id,
-                    label: n.check_label || n.name,
-                    ok: !!n.check_ok,
-                    over: !!n.over_allocated,
-                    pending: !!n.pending_distribution,
-                });
+                if (!n.is_org_group) {
+                    out.push({
+                        id: n.id,
+                        label: n.check_label || n.name,
+                        ok: !!n.check_ok,
+                        over: !!n.over_allocated,
+                        pending: !!n.pending_distribution,
+                    });
+                }
                 collectChecks(n.children, out);
             }
         });
@@ -1148,18 +1219,27 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     }
 
     function roleMeta(n) {
+        const orgType = String(n.org_type || '').toLowerCase();
+        const crm = Number(n.crm_role_type);
         const role = String(n.role || '').toLowerCase();
         const job = String(n.job_role || '').toLowerCase().replace(/[\s_-]+/g, '');
-        if (role.includes('regional') || job === 'rd' || job === 'regionaldirector') {
+        // Org scaffold rows (Target Allocation style)
+        if (n.is_org_group) {
+            if (orgType === 'cluster') return { cls: 'cluster', short: 'Cluster', label: 'Cluster', icon: 'bi-diagram-3' };
+            if (orgType === 'branch') return { cls: 'bm', short: 'Branch', label: 'Branch', icon: 'bi-bank' };
             return { cls: 'rd', short: 'Region', label: 'Region', icon: 'bi-building' };
         }
-        if (role.includes('cluster') || job === 'cluster' || job === 'clusterhead' || job === 'cd') {
+        // People — use role, not org unit type (people on a Region unit are not always Type=Region)
+        if (crm === 6 || role.includes('regional') || role === 'region' || job === 'rd' || job === 'regionaldirector') {
+            return { cls: 'rd', short: 'Region', label: 'Region', icon: 'bi-building' };
+        }
+        if (crm === 7 || role.includes('cluster') || job === 'cluster' || job === 'clusterhead' || job === 'cd') {
             return { cls: 'cluster', short: 'Cluster', label: 'Cluster', icon: 'bi-diagram-3' };
         }
-        if (role.includes('branch') || job === 'bm' || job === 'branchmanager') {
+        if (crm === 8 || role.includes('branch') || job === 'bm' || job === 'branchmanager') {
             return { cls: 'bm', short: 'Branch', label: 'Branch', icon: 'bi-bank' };
         }
-        if (!n.children?.length) return { cls: 'staff', short: 'Employee', label: 'Employee', icon: 'bi-person' };
+        if (!n.children?.length || n.is_staff) return { cls: 'staff', short: 'Employee', label: 'Employee', icon: 'bi-person' };
         return { cls: 'other', short: (n.role || 'Role').slice(0, 10), label: n.role || 'Role', icon: 'bi-person-badge' };
     }
 
@@ -1173,7 +1253,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
     function matchesSearch(n) {
         if (!searchQ) return true;
-        const hay = `${n.name || ''} ${n.area || ''} ${n.role || ''} ${n.job_role || ''}`.toLowerCase();
+        const hay = `${n.name || ''} ${n.linked_user_name || ''} ${n.area || ''} ${n.role || ''} ${n.job_role || ''}`.toLowerCase();
         return hay.includes(searchQ);
     }
 
@@ -1196,16 +1276,32 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         return out;
     }
 
+    function collectOrgByType(nodes, type, out = []) {
+        (nodes || []).forEach((n) => {
+            if (n.is_org_group && String(n.org_type || '') === type) out.push(n);
+            else if (n.children?.length) collectOrgByType(n.children, type, out);
+        });
+        return out;
+    }
+
     /** Roots for current Apply To + hierarchy mode (mockup behavior). */
     function getDisplayRoots() {
         const tree = state.tree || [];
         if (applyFilter === 'all') return tree;
         if (applyFilter === 'rd') {
-            const rds = tree.filter((n) => roleMeta(n).cls === 'rd');
-            return rds.length ? rds : tree;
+            const regions = tree.filter((n) => n.is_org_group && n.org_type === 'region');
+            return regions.length ? regions : collectOrgByType(tree, 'region');
         }
-        // Cluster / Branch / Employee → lift matching nodes as roots
-        return collectByRole(tree, applyFilter);
+        if (applyFilter === 'cluster') {
+            const clusters = collectOrgByType(tree, 'cluster');
+            return clusters.length ? clusters : collectByRole(tree, 'cluster');
+        }
+        if (applyFilter === 'bm') {
+            const branches = collectOrgByType(tree, 'branch');
+            return branches.length ? branches : collectByRole(tree, 'bm');
+        }
+        // Employee → people leaves
+        return collectByRole(tree, 'staff');
     }
 
     function inputHtml(n, cls, value, disabled, label) {
@@ -1220,20 +1316,74 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         </span>`;
     }
 
-    /** Effective = Opening Shortfall + Base Target + Adjustments */
-    function effectiveOf(n) {
-        const open = Number(n.last_month || 0);
-        const base = Number(n.set_target || 0);
+    /** Owner amount shown in the Owner Target column (staff leaves show 0). */
+    function ownerDisplayed(n) {
         const hasKids = !!(n.children && n.children.length);
-        const adj = hasKids ? Number(n.owner_target || 0) : 0;
-        return Math.round((open + base + adj) * 100) / 100;
+        if (n.is_org_group) {
+            return n.linked_user_id ? Number(n.owner_target || 0) : 0;
+        }
+        if (!hasKids) return 0; // staff: Owner Target column shows 0
+        return Number(n.owner_target || 0);
+    }
+
+    /**
+     * Remaining to distribute below = Total Target − Owner Target.
+     * Owner is a share of Total (not an extra add-on). Last Month is reference only.
+     */
+    function effectiveOf(n) {
+        const total = Number(n.set_target || 0);
+        const owner = ownerDisplayed(n);
+        // Leaf staff: nothing left to push down
+        if (!n.is_org_group && !(n.children && n.children.length)) {
+            return 0;
+        }
+        return Math.max(0, Math.round((total - owner) * 100) / 100);
     }
 
     function entityTitle(n) {
+        if (n.is_org_group) return n.name || n.region_name || 'Region';
         const name = n.name || '';
-        const area = n.area && n.area !== n.name ? n.area : '';
-        if (area && !name.includes(area)) return `${name}`;
+        const org = n.org_name && n.org_name !== name ? n.org_name : '';
+        const code = n.org_code ? ` (${n.org_code})` : '';
+        // Region / Cluster / Branch people: show org unit like Target Allocation when useful
+        const rm = roleMeta(n);
+        if (org && (rm.cls === 'rd' || rm.cls === 'cluster' || rm.cls === 'bm') && !name.includes(org)) {
+            return `${name}`;
+        }
         return name;
+    }
+
+    function personRoleLabel(n) {
+        const role = String(n.role || '').trim();
+        if (role && !['team member', 'role'].includes(role.toLowerCase())) return role;
+        const job = String(n.job_role || '').trim();
+        if (!job) return 'Employee';
+        const map = {
+            rd: 'Regional Director',
+            cluster: 'Cluster Director',
+            bm: 'Branch Manager',
+            ssm: 'Senior Sales Manager',
+            sm: 'Sales Manager',
+            jsm: 'Junior Sales',
+            vrm: 'VRM',
+        };
+        const key = job.toLowerCase().replace(/[\s_-]+/g, '');
+        return map[key] || job;
+    }
+
+    function entityMeta(n) {
+        if (n.is_org_group) {
+            const parts = [];
+            const counts = childCounts(n);
+            if (counts) parts.push(escapeHtml(counts));
+            if (n.linked_user_name) {
+                const cls = roleMeta(n).cls || 'other';
+                parts.push(`<span class="st-ent-lead ${cls}">${escapeHtml(n.linked_user_name)}</span>`);
+            }
+            return parts.join(' · ');
+        }
+        // People: show job role under the name
+        return escapeHtml(personRoleLabel(n));
     }
 
     function renderRows(nodes, depth = 0, parentCollapsed = false, rows = [], pathPrefix = '') {
@@ -1251,8 +1401,11 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                 const eff = effectiveOf(n);
                 const filteredOut = !matchesFilter(n);
                 const rm = roleMeta(n);
-                const meta = childCounts(n) || (n.area && n.area !== n.name ? n.area : (n.role || ''));
-                const canEditAdj = editable && !locked && !isStaff;
+                const meta = entityMeta(n);
+                const typeLabel = n.is_org_group ? rm.label : personRoleLabel(n);
+                const linkedEditable = !!(n.is_org_group && n.linked_user_id && editable && !locked);
+                const canEditAdj = (editable && !locked && !isStaff && !n.is_org_group) || linkedEditable;
+                const canEditBase = (editable && !locked && !n.is_org_group) || linkedEditable;
                 rows.push(`
                     <tr class="${depth === 0 ? 'st-root' : ''} ${n.amber ? 'st-amber' : ''} ${filteredOut ? 'is-filtered-out' : ''}" data-id="${n.id}" data-depth="${depth}" data-role="${rm.cls}">
                         <td class="idx">${num}</td>
@@ -1264,19 +1417,25 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                                 <span class="st-ent-ico ${rm.cls}"><i class="bi ${rm.icon}"></i></span>
                                 <div style="min-width:0">
                                     <div class="st-ent-name">${escapeHtml(entityTitle(n))}</div>
-                                    <div class="st-ent-meta">${escapeHtml(meta)}</div>
+                                    <div class="st-ent-meta">${meta}</div>
                                 </div>
                             </div>
                         </td>
-                        <td><span class="st-type ${rm.cls}">${escapeHtml(rm.label)}</span></td>
-                        <td class="num st-cell-num">${fmt(n.last_month)}</td>
+                        <td><span class="st-type ${rm.cls}" title="${escapeHtml(typeLabel)}">${escapeHtml(typeLabel)}</span></td>
+                        <td class="num"><span class="st-cell-num" data-open-for="${n.id}">${fmt(n.last_month)}</span></td>
                         <td class="num">
-                            ${inputHtml(n, 'st-set', n.set_target, !(editable && !locked), 'Base target for ' + escapeHtml(n.name))}
+                            ${canEditBase
+                                ? inputHtml(n, 'st-set', n.set_target, false, 'Total target for ' + escapeHtml(n.name))
+                                : (n.is_org_group
+                                    ? `<span class="st-cell-num" data-set-for="${n.id}">${fmt(n.set_target)}</span>`
+                                    : inputHtml(n, 'st-set', n.set_target, true, 'Total target for ' + escapeHtml(n.name)))}
                         </td>
                         <td class="num">
-                            ${isStaff
-                                ? `<span class="st-cell-num" data-owner-for="${n.id}">${fmt(0)}</span>`
-                                : inputHtml(n, 'st-owner', n.owner_target, !canEditAdj, 'Adjustments for ' + escapeHtml(n.name))}
+                            ${canEditAdj
+                                ? inputHtml(n, 'st-owner', n.owner_target, false, 'Owner target for ' + escapeHtml(n.name))
+                                : (n.is_org_group || isStaff
+                                    ? `<span class="st-cell-num" data-owner-for="${n.id}">${fmt(ownerDisplayed(n))}</span>`
+                                    : inputHtml(n, 'st-owner', n.owner_target, true, 'Owner target for ' + escapeHtml(n.name)))}
                         </td>
                         <td class="num col-eff">
                             <span class="st-eff" data-total-for="${n.id}">
@@ -1284,7 +1443,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                                 <span class="st-rem-hint d-none" data-check-label="${n.id}"></span>
                             </span>
                         </td>
-                        <td class="num">
+                        <td class="col-actions">
                             <div class="st-row-actions">
                                 <div class="st-action-dd" data-row-dd="${n.id}">
                                     <button type="button" class="st-btn-assign" data-assign-toggle="${n.id}" ${editable && !locked ? '' : 'disabled'} title="Assign options">
@@ -1293,7 +1452,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                                     <ul class="st-action-menu" role="menu">
                                         <li><button type="button" data-row-act="assign" data-id="${n.id}" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-send"></i> Assign &amp; notify</button></li>
                                         <li><button type="button" data-row-act="draft" data-id="${n.id}" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-floppy"></i> Save draft</button></li>
-                                        <li><button type="button" data-row-act="copy-open" data-id="${n.id}" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-arrow-down-left-square"></i> Use opening as base</button></li>
+                                        <li><button type="button" data-row-act="copy-open" data-id="${n.id}" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-arrow-down-left-square"></i> Use last month as total</button></li>
                                     </ul>
                                 </div>
                                 <div class="st-action-dd" data-more-dd="${n.id}">
@@ -1388,7 +1547,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         (getDisplayRoots() || []).forEach((n) => {
             open += Number(n.last_month || 0);
             base += Number(n.set_target || 0);
-            adj += (n.children?.length) ? Number(n.owner_target || 0) : 0;
+            adj += ownerDisplayed(n);
             eff += effectiveOf(n);
         });
         if ($('stFootLast')) $('stFootLast').textContent = fmt(open);
@@ -1436,7 +1595,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             shortfall = Number(state.self.last_month || 0);
         }
         if ($('stKpiRemaining')) $('stKpiRemaining').textContent = money(Math.max(0, shortfall));
-        if ($('stKpiLeftLabel')) $('stKpiLeftLabel').textContent = 'Opening Shortfall (Revenue)';
+        if ($('stKpiLeftLabel')) $('stKpiLeftLabel').textContent = 'Last Month Target (Revenue)';
         if ($('stKpiLeftMeta')) $('stKpiLeftMeta').textContent = 'Carried from previous period';
 
         if ($('stKpiCount')) $('stKpiCount').textContent = String(count);
@@ -1531,8 +1690,16 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                         const valEl = totalCell.querySelector('.st-rem-val') || totalCell;
                         if (valEl) valEl.textContent = fmt(effectiveOf(n));
                     }
+                    const setSpan = row.querySelector(`[data-set-for="${n.id}"]`);
+                    if (setSpan) setSpan.textContent = fmt(n.set_target);
+                    if (n.is_org_group && !n.linked_user_id) {
+                        const openCell = row.querySelector(`[data-open-for="${n.id}"]`);
+                        if (openCell) openCell.textContent = fmt(n.last_month);
+                    }
                     const ownerSpan = row.querySelector(`[data-owner-for="${n.id}"]`);
-                    if (ownerSpan) ownerSpan.textContent = fmt(0);
+                    if (ownerSpan) {
+                        ownerSpan.textContent = fmt(n.is_org_group && n.linked_user_id ? (n.owner_target || 0) : 0);
+                    }
                 }
                 if (n.children?.length) walk(n.children);
             });
@@ -1689,14 +1856,14 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             if (owner > set) {
                 owner = set;
                 el.value = String(owner);
-                notifyCap('Personal cannot exceed Target.');
+                notifyCap('Owner Target cannot exceed Total Target.');
             }
             const kids = (node.children || []).reduce((s, c) => s + Number(c.set_target || 0), 0);
             const ownerCap = Math.max(0, Math.round((set - kids) * 100) / 100);
             if (owner > ownerCap + 0.0001) {
                 owner = ownerCap;
                 el.value = String(owner);
-                notifyCap(`Personal max is ${fmt(ownerCap)}.`);
+                notifyCap(`Owner Target max is ${fmt(ownerCap)}.`);
             }
             node.owner_target = owner;
         }
@@ -1857,7 +2024,13 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     }
 
     function collectRowsForIds(ids) {
-        const want = new Set((ids || []).map(Number));
+        const want = new Set();
+        (ids || []).forEach((raw) => {
+            const id = Number(raw);
+            want.add(id);
+            const n = findNode(state.tree, id);
+            if (n?.linked_user_id) want.add(Number(n.linked_user_id));
+        });
         return collectRows(state.tree || []).filter((r) => want.has(Number(r.employee_id)));
     }
 
@@ -1872,7 +2045,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             return;
         }
         if (assign && totalBaseInRows(rows) <= 0) {
-            flash('Enter Base Target amounts before Assign. Opening Shortfall is only carry-forward from last month.', 'warn');
+            flash('Enter Total Target amounts before Assign. Last Month Target is from the previous period.', 'warn');
             return;
         }
         const btns = [ $('stSaveDraft'), $('stSaveDraftTop'), $('stAssign'), $('stAssignTop') ].filter(Boolean);
@@ -1910,7 +2083,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                 return;
             }
             if (totalBaseInRows(collectRows(state.tree || [])) <= 0) {
-                flash('Jan (this period) Base Targets are still 0. Enter amounts in Base Target, then Assign. Opening Shortfall is from last month.', 'warn');
+                flash('This period’s Total Targets are still 0. Enter Total Target, then Assign. Last Month Target is from the previous period.', 'warn');
                 return;
             }
             if (!confirm('Assign these targets and notify the team?')) return;
@@ -1952,7 +2125,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             node.row_source = 'edited';
             node.chip = 'Edited';
             render();
-            flash(`Base Target set to opening shortfall (${fmt(open)}) for ${node.name}. Save or Assign when ready.`, 'ok');
+            flash(`Total Target set from Last Month Target (${fmt(open)}) for ${node.linked_user_name || node.name}. Save or Assign when ready.`, 'ok');
             return;
         }
         if (act === 'clear') {
@@ -1970,10 +2143,11 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         }
         if (act === 'assign') {
             if (Number(node.set_target || 0) <= 0) {
-                flash('Enter a Base Target for this person first (Opening Shortfall is only carry-forward).', 'warn');
+                flash('Enter a Total Target for this person first (Last Month Target is from the previous period).', 'warn');
                 return;
             }
-            if (!confirm(`Assign target for ${node.name} and notify them?`)) return;
+            const label = node.linked_user_name || node.name;
+            if (!confirm(`Assign target for ${label} and notify them?`)) return;
             persist(true, [id]).catch((err) => flash(err.message, 'err'));
         }
     });

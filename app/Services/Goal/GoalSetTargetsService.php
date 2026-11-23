@@ -3,6 +3,7 @@
 namespace App\Services\Goal;
 
 use App\Helpers\ActivityLogger;
+use App\Models\GoalOrgUnit;
 use App\Models\GoalTarget;
 use App\Models\GoalTargetAuditLog;
 use App\Models\GoalTargetRoleWeight;
@@ -26,9 +27,27 @@ class GoalSetTargetsService
         }
 
         $job = strtolower(trim((string) ($user->job_role ?? '')));
-        $exemptJobs = array_map('strtolower', (array) config('goal.target_exempt_job_roles', ['ceo', 'md', 'admin']));
+        if ($job === '') {
+            return false;
+        }
 
-        return $job !== '' && in_array($job, $exemptJobs, true);
+        $exemptJobs = array_map('strtolower', (array) config('goal.target_exempt_job_roles', ['ceo', 'md', 'admin']));
+        if (in_array($job, $exemptJobs, true)) {
+            return true;
+        }
+
+        // Normalize separators so "accounts_manager" / "Accounts Manager" match config.
+        $jobKey = preg_replace('/[\s_-]+/', '', $job) ?: '';
+        $exemptKeys = array_map(
+            static fn ($j) => preg_replace('/[\s_-]+/', '', strtolower((string) $j)) ?: '',
+            $exemptJobs
+        );
+        if ($jobKey !== '' && in_array($jobKey, $exemptKeys, true)) {
+            return true;
+        }
+
+        // Catch role labels that contain accounts / pms / accountant.
+        return (bool) preg_match('/\b(accounts?|accountant|pms|portfolio\s*manager)\b/i', $job);
     }
 
     public function actorReceivesTarget(User $actor): bool
@@ -124,6 +143,18 @@ class GoalSetTargetsService
     }
 
     /**
+     * Previous period's assigned total target (base) for the "Last Month Target" column.
+     */
+    protected function lastMonthTarget(?GoalTarget $prev): float
+    {
+        if (! $prev) {
+            return 0.0;
+        }
+
+        return round((float) ($prev->base_target ?? 0), 2);
+    }
+
+    /**
      * @return array{period: string, prev_period: string, metric: string, unit: string, jump_pct: float, self: array, tree: list<array>, checks: list<array>, can_assign: bool}
      */
     public function tree(User $actor, string $period, string $metric = 'revenue'): array
@@ -139,21 +170,28 @@ class GoalSetTargetsService
         $targetMap = $this->targetsMap($period, $metric, $users->pluck('id')->all());
         $prevMap = $this->targetsMap($prev, $metric, $users->pluck('id')->all());
 
-        // Prefer direct reports; if actor is SA/MD/CEO (or reports to an exempt parent),
-        // roots are people whose manager is not in the editable set (typically Regional Directors).
-        $roots = $byParent->get((int) $actor->id, collect());
-        if ($roots->isEmpty() || $this->isExemptFromTargets($actor)) {
-            $roots = $users->filter(function (User $u) use ($users) {
-                $pid = (int) ($u->reports_to_user_id ?: $u->assign_manager ?: 0);
-
-                return $pid === 0 || ! $users->contains('id', $pid);
-            })->values();
+        // Build leaf person nodes (editable), then nest under org Region → Cluster → Branch
+        $peopleByOrg = [];
+        $unassignedPeople = [];
+        foreach ($users as $user) {
+            $leaf = $this->buildNode($user, collect(), $targetMap, $prevMap, $editable, 0);
+            $leaf['children'] = [];
+            $leaf['total_target'] = null;
+            $isMgr = $this->isHierarchyManager($user);
+            $leaf['is_staff'] = ! $isMgr;
+            if ($isMgr) {
+                $cur = $targetMap->get((int) $user->id);
+                $leaf['owner_target'] = (float) ($cur->owner_target ?? 0);
+                $leaf['remainder'] = max(0, round((float) ($leaf['set_target'] ?? 0) - (float) $leaf['owner_target'], 2));
+            }
+            $oid = (int) ($user->goal_org_unit_id ?: 0);
+            if ($oid > 0) {
+                $peopleByOrg[$oid][] = $leaf;
+            } else {
+                $unassignedPeople[] = $leaf;
+            }
         }
-
-        $tree = [];
-        foreach ($roots as $child) {
-            $tree[] = $this->buildNode($child, $byParent, $targetMap, $prevMap, $editable, 0);
-        }
+        $tree = $this->buildOrgHierarchyTree($users, $peopleByOrg, $unassignedPeople);
 
         $selfTargetMap = $this->targetsMap($period, $metric, [(int) $actor->id]);
         $selfPrevMap = $this->targetsMap($prev, $metric, [(int) $actor->id]);
@@ -164,7 +202,11 @@ class GoalSetTargetsService
         $mySet = $receivesTarget ? (float) ($selfTarget->base_target ?? 0) : 0.0;
         $myOwner = $receivesTarget ? (float) ($selfTarget->owner_target ?? 0) : 0.0;
         $remainder = max(0, round($mySet - $myOwner, 2));
-        $distributed = array_sum(array_map(static fn ($n) => (float) ($n['set_target'] ?? 0), $tree));
+        // Remainder check uses direct reports only (not full org rollup)
+        $distributed = 0.0;
+        foreach ($byParent->get((int) $actor->id, collect()) as $direct) {
+            $distributed += (float) ($targetMap->get((int) $direct->id)->base_target ?? 0);
+        }
         $left = round($remainder - $distributed, 2);
 
         // Cascade rule: you only must finish YOUR direct reports.
@@ -208,8 +250,8 @@ class GoalSetTargetsService
                 'remainder' => $remainder,
                 'distributed' => $distributed,
                 'left_to_distribute' => $left,
-                // Opening shortfall for this period = previous period's closing shortfall
-                'last_month' => $receivesTarget ? $this->openingFromPrevious($selfPrev) : 0.0,
+                // Last month target = previous period's assigned total (base)
+                'last_month' => $receivesTarget ? $this->lastMonthTarget($selfPrev) : 0.0,
                 'status' => (string) ($selfTarget->status ?? GoalTarget::STATUS_DRAFT),
                 'editable' => false,
             ],
@@ -404,12 +446,44 @@ class GoalSetTargetsService
                 return;
             }
             $method = (string) ($methods[$levelKey] ?? $methodDefault);
-            $editable = array_values(array_filter($nodes, fn ($n) => ($n['editable'] ?? false) && ($n['row_source'] ?? 'auto') !== 'edited'));
+
+            $orgLevelKey = static function (array $n, string $fallback) use ($levelKey): string {
+                return match ((string) ($n['org_type'] ?? '')) {
+                    GoalOrgUnit::TYPE_REGION => 'l1',
+                    GoalOrgUnit::TYPE_CLUSTER => 'l2',
+                    GoalOrgUnit::TYPE_BRANCH => 'l3',
+                    default => $fallback !== '' ? $fallback : $levelKey,
+                };
+            };
+
+            // Editable people + linked RD/CD on Region/Cluster org rows
+            $editable = [];
+            foreach ($nodes as $n) {
+                if (($n['row_source'] ?? 'auto') === 'edited' || ! ($n['editable'] ?? false)) {
+                    continue;
+                }
+                if (! empty($n['is_org_group'])) {
+                    if (! empty($n['linked_user_id'])) {
+                        $copy = $n;
+                        $copy['id'] = (int) $n['linked_user_id'];
+                        $editable[] = $copy;
+                    }
+
+                    continue;
+                }
+                $editable[] = $n;
+            }
+
             if ($editable === []) {
                 foreach ($nodes as &$n) {
                     if (! empty($n['children'])) {
-                        $childPool = max(0, (float) ($n['set_target'] ?? 0) - (float) ($n['owner_target'] ?? 0));
-                        $walk($n['children'], $childPool, $this->nextLevelKey($levelKey));
+                        $childPool = (! empty($n['is_org_group']) && empty($n['linked_user_id']))
+                            ? $parentPool
+                            : max(0, (float) ($n['set_target'] ?? 0) - (float) ($n['owner_target'] ?? 0));
+                        $next = ! empty($n['is_org_group'])
+                            ? $orgLevelKey($n, $this->nextLevelKey($levelKey))
+                            : $this->nextLevelKey($levelKey);
+                        $walk($n['children'], $childPool, $next);
                     }
                 }
                 unset($n);
@@ -419,24 +493,27 @@ class GoalSetTargetsService
 
             $shares = $this->computeShares($editable, $parentPool, $method, $weights);
             foreach ($nodes as &$n) {
-                if (! ($n['editable'] ?? false) || ($n['row_source'] ?? 'auto') === 'edited') {
-                    if (! empty($n['children'])) {
-                        $childPool = max(0, (float) ($n['set_target'] ?? 0) - (float) ($n['owner_target'] ?? 0));
-                        $walk($n['children'], $childPool, $this->nextLevelKey($levelKey));
-                    }
+                $shareId = ! empty($n['is_org_group']) && ! empty($n['linked_user_id'])
+                    ? (int) $n['linked_user_id']
+                    : (int) ($n['id'] ?? 0);
+                $canTake = ($n['editable'] ?? false) && ($n['row_source'] ?? 'auto') !== 'edited'
+                    && (empty($n['is_org_group']) || ! empty($n['linked_user_id']));
 
-                    continue;
-                }
-                $id = (int) $n['id'];
-                if (isset($shares[$id])) {
-                    $n['set_target'] = $shares[$id];
+                if ($canTake && isset($shares[$shareId])) {
+                    $n['set_target'] = $shares[$shareId];
                     $n['row_source'] = 'auto';
                     $n['chip'] = 'Auto';
                     $applied++;
                 }
+
                 if (! empty($n['children'])) {
-                    $childPool = max(0, (float) ($n['set_target'] ?? 0) - (float) ($n['owner_target'] ?? 0));
-                    $walk($n['children'], $childPool, $this->nextLevelKey($levelKey));
+                    $childPool = (! empty($n['is_org_group']) && empty($n['linked_user_id']))
+                        ? $parentPool
+                        : max(0, (float) ($n['set_target'] ?? 0) - (float) ($n['owner_target'] ?? 0));
+                    $next = ! empty($n['is_org_group'])
+                        ? $orgLevelKey($n, $this->nextLevelKey($levelKey))
+                        : $this->nextLevelKey($levelKey);
+                    $walk($n['children'], $childPool, $next);
                 }
             }
             unset($n);
@@ -540,7 +617,11 @@ class GoalSetTargetsService
 
         return User::query()
             ->whereIn('id', $ids)
-            ->with(['orgUnit:id,name,type'])
+            ->with([
+                'orgUnit:id,name,type,code,parent_id',
+                'orgUnit.parent:id,name,type,code,parent_id',
+                'orgUnit.parent.parent:id,name,type,code,parent_id',
+            ])
             ->orderBy('name')
             ->get(['id', 'name', 'job_role', 'crm_role_type', 'reports_to_user_id', 'assign_manager', 'goal_org_unit_id', 'status']);
     }
@@ -596,14 +677,8 @@ class GoalSetTargetsService
         $over = $hasTeam && ($teamSum - $remainder) > 0.05;
         $pending = $hasTeam && ! $over && abs($teamSum - $remainder) > 0.05;
         $checkOk = ! $hasTeam || abs($teamSum - $remainder) <= 0.05;
-        // Prefer stored opening on current row; else carry previous closing shortfall
-        $last = $cur
-            ? (float) ($cur->opening_shortfall ?? 0)
-            : $this->openingFromPrevious($prev);
-        if ($cur && (float) ($cur->opening_shortfall ?? 0) <= 0 && $prev) {
-            // Current draft/row exists but opening not set yet → still show carry-forward
-            $last = $this->openingFromPrevious($prev);
-        }
+        // Display column: previous period's total target (not opening shortfall)
+        $last = $this->lastMonthTarget($prev);
         $jumpPct = (float) config('goal.target_jump_pct', 15);
         $amber = $last > 0 && $set > ($last * (1 + ($jumpPct / 100)));
         $source = (string) ($cur->row_source ?? 'auto');
@@ -622,6 +697,7 @@ class GoalSetTargetsService
         $area = $user->orgUnit?->name ?: $user->name;
         $isStaff = ! $hasTeam;
         $leftForManager = max(0, round($remainder - $teamSum, 2));
+        $region = $this->resolveRegionMeta($user->orgUnit);
 
         return [
             'id' => $id,
@@ -629,6 +705,14 @@ class GoalSetTargetsService
             'area' => $area,
             'role' => $this->roleLabel($user),
             'job_role' => (string) ($user->job_role ?? ''),
+            'crm_role_type' => (int) ($user->crm_role_type ?? -1),
+            'org_type' => (string) ($user->orgUnit?->type ?? ''),
+            'org_name' => (string) ($user->orgUnit?->name ?? ''),
+            'org_code' => (string) ($user->orgUnit?->code ?? ''),
+            'region_id' => $region['id'],
+            'region_name' => $region['name'],
+            'region_code' => $region['code'],
+            'is_org_group' => false,
             'depth' => $depth,
             'last_month' => $last,
             'set_target' => $set,
@@ -670,6 +754,255 @@ class GoalSetTargetsService
     }
 
     /**
+     * @return array{id: int|null, name: string, code: string}
+     */
+    protected function resolveRegionMeta(?GoalOrgUnit $unit): array
+    {
+        if (! $unit) {
+            return ['id' => null, 'name' => 'Unassigned', 'code' => ''];
+        }
+
+        $cursor = $unit;
+        $guard = 0;
+        while ($cursor && $guard < 6) {
+            if ($cursor->type === GoalOrgUnit::TYPE_REGION) {
+                return [
+                    'id' => (int) $cursor->id,
+                    'name' => (string) $cursor->name,
+                    'code' => (string) ($cursor->code ?? ''),
+                ];
+            }
+            $cursor = $cursor->parent;
+            $guard++;
+        }
+
+        return [
+            'id' => (int) $unit->id,
+            'name' => (string) $unit->name,
+            'code' => (string) ($unit->code ?? ''),
+        ];
+    }
+
+    /**
+     * Target Allocation style: Region → Cluster → Branch → people.
+     *
+     * @param  Collection<int, User>  $users
+     * @param  array<int, list<array<string, mixed>>>  $peopleByOrg
+     * @param  list<array<string, mixed>>  $unassignedPeople
+     * @return list<array<string, mixed>>
+     */
+    protected function buildOrgHierarchyTree(Collection $users, array $peopleByOrg, array $unassignedPeople): array
+    {
+        $orgIds = [];
+        foreach ($users as $user) {
+            $unit = $user->orgUnit;
+            $guard = 0;
+            while ($unit && $guard < 6) {
+                $orgIds[(int) $unit->id] = true;
+                $unit = $unit->parent;
+                $guard++;
+            }
+        }
+
+        if ($orgIds === []) {
+            return $unassignedPeople;
+        }
+
+        $units = GoalOrgUnit::query()
+            ->whereIn('id', array_keys($orgIds))
+            ->orderBy('name')
+            ->get(['id', 'name', 'type', 'code', 'parent_id']);
+
+        $byParent = $units->groupBy(fn (GoalOrgUnit $u) => (int) ($u->parent_id ?: 0));
+        $unitsById = $units->keyBy(fn (GoalOrgUnit $u) => (int) $u->id);
+
+        $build = function (GoalOrgUnit $unit, int $depth) use (&$build, $byParent, $peopleByOrg): array {
+            $people = $peopleByOrg[(int) $unit->id] ?? [];
+            usort($people, function (array $a, array $b) {
+                $rank = static function (array $n): int {
+                    $crm = (int) ($n['crm_role_type'] ?? -1);
+                    if (in_array($crm, [6, 7, 8], true)) {
+                        return $crm;
+                    }
+
+                    return 100;
+                };
+
+                return $rank($a) <=> $rank($b) ?: strcmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
+            });
+
+            $children = [];
+            foreach ($byParent->get((int) $unit->id, collect()) as $childUnit) {
+                $children[] = $build($childUnit, $depth + 1);
+            }
+
+            $linked = null;
+            $type = (string) $unit->type;
+            if ($type === GoalOrgUnit::TYPE_BRANCH) {
+                // People as child rows; surface BM name on the Branch org line
+                foreach ($people as $person) {
+                    $person['depth'] = $depth + 1;
+                    $children[] = $person;
+                }
+            } else {
+                // Region / Cluster: bind lead RD/CD target onto this row (no extra person row)
+                foreach ($people as $p) {
+                    $crm = (int) ($p['crm_role_type'] ?? -1);
+                    if (in_array($crm, [6, 7, 8], true) || empty($p['is_staff'])) {
+                        $linked = $p;
+                        break;
+                    }
+                }
+                if ($linked === null && $people !== []) {
+                    $linked = $people[0];
+                }
+            }
+
+            $node = $this->makeOrgGroupNode($unit, $children, $depth, null, $linked);
+
+            // Branch: show BM (or first lead) name on the org row without binding targets
+            if ($type === GoalOrgUnit::TYPE_BRANCH && empty($node['linked_user_name'])) {
+                foreach ($people as $p) {
+                    $crm = (int) ($p['crm_role_type'] ?? -1);
+                    if ($crm === 8 || empty($p['is_staff'])) {
+                        $node['linked_user_name'] = (string) ($p['name'] ?? '');
+                        break;
+                    }
+                }
+                if (empty($node['linked_user_name']) && $people !== []) {
+                    $node['linked_user_name'] = (string) ($people[0]['name'] ?? '');
+                }
+            }
+
+            return $node;
+        };
+
+        $regionRoots = $units->where('type', GoalOrgUnit::TYPE_REGION)->values();
+        if ($regionRoots->isEmpty()) {
+            $regionRoots = $units->filter(function (GoalOrgUnit $u) use ($unitsById) {
+                $pid = (int) ($u->parent_id ?: 0);
+
+                return $pid === 0 || ! $unitsById->has($pid);
+            })->values();
+        }
+
+        $tree = $regionRoots->map(fn (GoalOrgUnit $u) => $build($u, 0))->values()->all();
+
+        if ($unassignedPeople !== []) {
+            $tree[] = $this->makeOrgGroupNode(null, $unassignedPeople, 0, 'Unassigned');
+        }
+
+        return $tree;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $children
+     * @param  array<string, mixed>|null  $linked  Lead person whose target is edited on this org row (Region/Cluster)
+     * @return array<string, mixed>
+     */
+    protected function makeOrgGroupNode(
+        ?GoalOrgUnit $unit,
+        array $children,
+        int $depth,
+        ?string $fallbackName = null,
+        ?array $linked = null
+    ): array {
+        $this->rollupOrgGroup($children);
+        $childSet = round(array_sum(array_map(static fn ($c) => (float) ($c['set_target'] ?? 0), $children)), 2);
+        $childOpen = round(array_sum(array_map(static fn ($c) => (float) ($c['last_month'] ?? 0), $children)), 2);
+
+        $type = $unit?->type ?: GoalOrgUnit::TYPE_REGION;
+        $name = $fallbackName ?: (string) ($unit?->name ?? 'Org');
+        $code = (string) ($unit?->code ?? '');
+        $label = $code !== '' ? $name.' ('.$code.')' : $name;
+        $id = $unit ? (-100000 - (int) $unit->id) : -1;
+
+        $role = match ($type) {
+            GoalOrgUnit::TYPE_CLUSTER => 'Cluster',
+            GoalOrgUnit::TYPE_BRANCH => 'Branch',
+            default => 'Region',
+        };
+        $job = match ($type) {
+            GoalOrgUnit::TYPE_CLUSTER => 'cluster',
+            GoalOrgUnit::TYPE_BRANCH => 'bm',
+            default => 'rd',
+        };
+        $crm = match ($type) {
+            GoalOrgUnit::TYPE_CLUSTER => 7,
+            GoalOrgUnit::TYPE_BRANCH => 8,
+            default => 6,
+        };
+
+        $region = $unit ? $this->resolveRegionMeta($unit) : ['id' => null, 'name' => $name, 'code' => ''];
+
+        $hasLinked = is_array($linked) && ! empty($linked['id']);
+        $set = $hasLinked ? round((float) ($linked['set_target'] ?? 0), 2) : $childSet;
+        $open = $hasLinked ? round((float) ($linked['last_month'] ?? 0), 2) : $childOpen;
+        $owner = $hasLinked ? round((float) ($linked['owner_target'] ?? 0), 2) : 0.0;
+
+        return [
+            'id' => $id,
+            'name' => $label,
+            'area' => $name,
+            'role' => $role,
+            'job_role' => $job,
+            'crm_role_type' => $crm,
+            'org_type' => $type,
+            'org_name' => $name,
+            'org_code' => $code,
+            'region_id' => $region['id'],
+            'region_name' => $region['name'],
+            'region_code' => $region['code'],
+            'is_org_group' => true,
+            'linked_user_id' => $hasLinked ? (int) $linked['id'] : null,
+            'linked_user_name' => $hasLinked ? (string) ($linked['name'] ?? '') : null,
+            'depth' => $depth,
+            'last_month' => $open,
+            'set_target' => $set,
+            'owner_target' => $owner,
+            'remainder' => max(0, round($set - $owner, 2)),
+            'total_target' => $childSet,
+            'is_staff' => false,
+            'editable' => $hasLinked ? (bool) ($linked['editable'] ?? false) : false,
+            'row_source' => $hasLinked ? (string) ($linked['row_source'] ?? 'auto') : 'auto',
+            'status' => $hasLinked ? (string) ($linked['status'] ?? GoalTarget::STATUS_DRAFT) : GoalTarget::STATUS_DRAFT,
+            'chip' => $role,
+            'amber' => $hasLinked ? (bool) ($linked['amber'] ?? false) : false,
+            'check_ok' => true,
+            'over_allocated' => false,
+            'pending_distribution' => false,
+            'check_label' => null,
+            'children' => $children,
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $nodes
+     */
+    protected function rollupOrgGroup(array &$nodes): void
+    {
+        foreach ($nodes as &$n) {
+            if (! empty($n['is_org_group']) && ! empty($n['children']) && is_array($n['children'])) {
+                $this->rollupOrgGroup($n['children']);
+                $childSet = round(array_sum(array_map(static fn ($c) => (float) ($c['set_target'] ?? 0), $n['children'])), 2);
+                $childOpen = round(array_sum(array_map(static fn ($c) => (float) ($c['last_month'] ?? 0), $n['children'])), 2);
+                $n['total_target'] = $childSet;
+                // Keep RD/CD amounts bound to Region/Cluster; only plain rollup rows sum children.
+                if (empty($n['linked_user_id'])) {
+                    $n['set_target'] = $childSet;
+                    $n['last_month'] = $childOpen;
+                    $n['remainder'] = $childSet;
+                } else {
+                    $set = (float) ($n['set_target'] ?? 0);
+                    $owner = (float) ($n['owner_target'] ?? 0);
+                    $n['remainder'] = max(0, round($set - $owner, 2));
+                }
+            }
+        }
+        unset($n);
+    }
+
+    /**
      * @param  list<array>  $tree
      * @return list<array{id:int, label:string, ok:bool, over:bool}>
      */
@@ -679,13 +1012,15 @@ class GoalSetTargetsService
         $walk = function (array $nodes) use (&$walk, &$out) {
             foreach ($nodes as $n) {
                 if (! empty($n['children'])) {
-                    $out[] = [
-                        'id' => (int) $n['id'],
-                        'label' => (string) ($n['check_label'] ?? $n['name']),
-                        'ok' => (bool) ($n['check_ok'] ?? false),
-                        'over' => (bool) ($n['over_allocated'] ?? false),
-                        'pending' => (bool) ($n['pending_distribution'] ?? false),
-                    ];
+                    if (empty($n['is_org_group'])) {
+                        $out[] = [
+                            'id' => (int) $n['id'],
+                            'label' => (string) ($n['check_label'] ?? $n['name']),
+                            'ok' => (bool) ($n['check_ok'] ?? false),
+                            'over' => (bool) ($n['over_allocated'] ?? false),
+                            'pending' => (bool) ($n['pending_distribution'] ?? false),
+                        ];
+                    }
                     $walk($n['children']);
                 }
             }
@@ -693,6 +1028,17 @@ class GoalSetTargetsService
         $walk($tree);
 
         return $out;
+    }
+
+    protected function isHierarchyManager(User $user): bool
+    {
+        $crm = (int) ($user->crm_role_type ?? -1);
+        if (in_array($crm, [6, 7, 8], true)) {
+            return true;
+        }
+        $job = strtolower(preg_replace('/[\s_-]+/', '', (string) ($user->job_role ?? '')) ?? '');
+
+        return in_array($job, ['rd', 'regionaldirector', 'cluster', 'clusterhead', 'cd', 'bm', 'branchmanager'], true);
     }
 
     /**
@@ -704,6 +1050,25 @@ class GoalSetTargetsService
             if (! empty($n['children'])) {
                 $this->recomputeTotals($n['children']);
                 $team = array_sum(array_map(static fn ($c) => (float) ($c['set_target'] ?? 0), $n['children']));
+                if (! empty($n['is_org_group'])) {
+                    $n['total_target'] = round($team, 2);
+                    if (empty($n['linked_user_id'])) {
+                        $open = array_sum(array_map(static fn ($c) => (float) ($c['last_month'] ?? 0), $n['children']));
+                        $n['set_target'] = round($team, 2);
+                        $n['last_month'] = round($open, 2);
+                        $n['owner_target'] = 0.0;
+                        $n['remainder'] = round($team, 2);
+                    } else {
+                        $owner = (float) ($n['owner_target'] ?? 0);
+                        $set = (float) ($n['set_target'] ?? 0);
+                        $n['remainder'] = max(0, round($set - $owner, 2));
+                    }
+                    $n['check_ok'] = true;
+                    $n['over_allocated'] = false;
+                    $n['pending_distribution'] = false;
+                    $n['check_label'] = null;
+                    continue;
+                }
                 $owner = (float) ($n['owner_target'] ?? 0);
                 $set = (float) ($n['set_target'] ?? 0);
                 $remainder = max(0, round($set - $owner, 2));

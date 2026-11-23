@@ -169,6 +169,12 @@ Route::prefix('goal')->name('goal.')->group(function () {
 
     Route::get('targets', [GoalTargetController::class, 'index'])->name('targets.index');
     Route::get('targets/export', [GoalTargetController::class, 'export'])->name('targets.export');
+    Route::get('targets/activity', [GoalTargetController::class, 'activity'])->name('targets.activity');
+    Route::get('targets/summary', [GoalTargetController::class, 'summary'])->name('targets.summary');
+    Route::get('targets/achievement', [GoalTargetController::class, 'achievement'])->name('targets.achievement');
+    Route::get('targets/carry-forward', [GoalTargetController::class, 'carryForward'])->name('targets.carry-forward');
+    Route::post('targets/carry-forward/approve', [GoalTargetController::class, 'approveCarryForward'])->name('targets.carry-forward.approve');
+    Route::post('targets/carry-forward/reject', [GoalTargetController::class, 'rejectCarryForward'])->name('targets.carry-forward.reject');
     Route::get('targets/set', [GoalSetTargetsController::class, 'show'])->name('targets.set');
     Route::get('targets/tree', [GoalSetTargetsController::class, 'tree'])->name('targets.tree');
     Route::get('targets/audit-log', [GoalSetTargetsController::class, 'auditLog'])->name('targets.audit-log');

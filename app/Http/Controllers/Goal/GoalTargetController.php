@@ -8,6 +8,8 @@ use App\Models\GoalOrgUnit;
 use App\Models\GoalTarget;
 use App\Models\GoalTargetAuditLog;
 use App\Models\User;
+use App\Services\Goal\GoalCarryForwardService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -54,6 +56,7 @@ class GoalTargetController extends Controller
         $totalBase = (float) $rows->sum('base_target');
         $totalOpening = (float) $rows->sum('opening_shortfall');
         $totalAdjustments = (float) $rows->sum('adjustments');
+        $surplus = max(0.0, $totalActual - $totalEffective);
         $stats = [
             'count' => $rows->count(),
             'approved' => $rows->where('status', 'Approved')->count(),
@@ -64,8 +67,10 @@ class GoalTargetController extends Controller
             'total_base' => $totalBase,
             'total_opening' => $totalOpening,
             'total_adjustments' => $totalAdjustments,
+            'surplus' => round($surplus, 2),
+            'remaining' => round(max(0.0, $totalEffective - $totalActual), 2),
             'achievement_pct' => $totalEffective > 0
-                ? round(min(100, ($totalActual / $totalEffective) * 100), 1)
+                ? round(($totalActual / $totalEffective) * 100, 1)
                 : 0,
         ];
 
@@ -98,24 +103,34 @@ class GoalTargetController extends Controller
                 $eff = (float) $r->effective_sum;
                 $act = (float) $r->actual_sum;
 
-                return $eff > 0 ? round(min(100, ($act / $eff) * 100), 1) : 0;
+                return $eff > 0 ? round(($act / $eff) * 100, 1) : 0;
             })->values()->all(),
         ];
 
-        // Achievement by region (donut)
+        // Achievement by region (donut + drill-down)
         $regionBuckets = [];
         foreach ($rows as $t) {
-            $regionName = $this->resolveRegionName($t);
+            $regionMeta = $this->resolveRegionMeta($t);
+            $regionName = $regionMeta['name'];
             if (! isset($regionBuckets[$regionName])) {
-                $regionBuckets[$regionName] = ['actual' => 0.0, 'effective' => 0.0];
+                $regionBuckets[$regionName] = [
+                    'actual' => 0.0,
+                    'effective' => 0.0,
+                    'org_id' => $regionMeta['id'],
+                ];
             }
             $regionBuckets[$regionName]['actual'] += (float) $t->actual;
             $regionBuckets[$regionName]['effective'] += $t->effectiveTarget();
+            if (! $regionBuckets[$regionName]['org_id'] && $regionMeta['id']) {
+                $regionBuckets[$regionName]['org_id'] = $regionMeta['id'];
+            }
         }
-        arsort($regionBuckets);
+        uasort($regionBuckets, fn ($a, $b) => $b['actual'] <=> $a['actual']);
         $regionChart = [
             'labels' => array_keys($regionBuckets),
             'values' => array_map(fn ($r) => round($r['actual'], 2), array_values($regionBuckets)),
+            'effective' => array_map(fn ($r) => round($r['effective'], 2), array_values($regionBuckets)),
+            'org_ids' => array_map(fn ($r) => $r['org_id'], array_values($regionBuckets)),
             'total_actual' => round($totalActual, 2),
         ];
 
@@ -170,26 +185,18 @@ class GoalTargetController extends Controller
             'branches' => $branchUnits->count(),
         ];
 
-        $recentActivity = GoalTargetAuditLog::query()
-            ->with(['employee:id,name', 'changer:id,name'])
+        $activityQuery = GoalTargetAuditLog::query()->with(['employee:id,name', 'changer:id,name']);
+        if (! empty($filters['period'])) {
+            $activityQuery->where('period', $filters['period']);
+        }
+        if (! empty($filters['metric'])) {
+            $activityQuery->where('metric', $filters['metric']);
+        }
+        $recentActivity = $activityQuery
             ->latest('id')
             ->limit(8)
             ->get()
-            ->map(function (GoalTargetAuditLog $l) {
-                $action = (string) ($l->action ?? 'update');
-                $title = match ($action) {
-                    'assign' => 'Target assigned to '.($l->employee?->name ?? 'team member'),
-                    'revision_request' => 'Revision requested for '.($l->employee?->name ?? 'target'),
-                    default => 'Target updated for '.($l->employee?->name ?? 'team member'),
-                };
-
-                return [
-                    'title' => $title,
-                    'by' => $l->changer?->name ?? 'System',
-                    'at' => optional($l->created_at)->diffForHumans() ?? '',
-                    'action' => $action,
-                ];
-            })
+            ->map(fn (GoalTargetAuditLog $l) => $this->mapAuditActivity($l))
             ->values()
             ->all();
 
@@ -311,7 +318,7 @@ class GoalTargetController extends Controller
     {
         $m = $this->allocationMetricsFromTarget($t);
         $effective = $m['base'] + $m['opening'] + $m['adjustments'];
-        $pct = $effective > 0 ? round(min(100, ($m['actual'] / $effective) * 100), 1) : 0.0;
+        $pct = $effective > 0 ? round(($m['actual'] / $effective) * 100, 1) : 0.0;
 
         return [
             'key' => 'user-'.$t->user_id.'-'.$t->id,
@@ -371,7 +378,7 @@ class GoalTargetController extends Controller
         }
 
         $effective = round($base + $opening + $adj, 2);
-        $pct = $effective > 0 ? round(min(100, ($actual / $effective) * 100), 1) : 0.0;
+        $pct = $effective > 0 ? round(($actual / $effective) * 100, 1) : 0.0;
 
         $counts = ['cluster' => 0, 'branch' => 0, 'employee' => 0];
         $countWalk = function (array $nodes) use (&$countWalk, &$counts): void {
@@ -412,25 +419,257 @@ class GoalTargetController extends Controller
 
     protected function resolveRegionName(GoalTarget $t): string
     {
+        return $this->resolveRegionMeta($t)['name'];
+    }
+
+    /**
+     * @return array{name: string, id: int|null}
+     */
+    protected function resolveRegionMeta(GoalTarget $t): array
+    {
         $unit = $t->orgUnit;
         if (! $unit && $t->user) {
             $unit = $t->user->orgUnit;
         }
         if (! $unit) {
-            return 'Unassigned';
+            return ['name' => 'Unassigned', 'id' => null];
         }
 
         $cursor = $unit;
         $guard = 0;
         while ($cursor && $guard < 6) {
             if ($cursor->type === GoalOrgUnit::TYPE_REGION) {
-                return $cursor->name;
+                return ['name' => (string) $cursor->name, 'id' => (int) $cursor->id];
             }
             $cursor = $cursor->parent;
             $guard++;
         }
 
-        return $unit->name;
+        return ['name' => (string) $unit->name, 'id' => (int) $unit->id];
+    }
+
+    /**
+     * @return array{title: string, by: string, at: string, action: string, entity: string, field: string, old_value: float, new_value: float, when: string}
+     */
+    protected function mapAuditActivity(GoalTargetAuditLog $l): array
+    {
+        $action = (string) ($l->action ?? 'update');
+        $entity = $l->employee?->name ?? 'team member';
+        $title = match ($action) {
+            'assign' => 'Target assigned to '.$entity,
+            'revision_request' => 'Revision requested for '.$entity,
+            'import' => 'Targets imported from Excel',
+            'carry_forward' => 'Opening shortfall carried forward',
+            'carry_forward_reject' => 'Carry-forward rejected for '.$entity,
+            default => 'Target updated for '.$entity,
+        };
+
+        return [
+            'title' => $title,
+            'by' => $l->changer?->name ?? 'System',
+            'at' => optional($l->created_at)->diffForHumans() ?? '',
+            'when' => optional($l->created_at)->format('d M Y, h:i A') ?? '',
+            'action' => $action,
+            'entity' => $entity,
+            'field' => (string) ($l->field ?? ''),
+            'old_value' => (float) ($l->old_value ?? 0),
+            'new_value' => (float) ($l->new_value ?? 0),
+            'period' => (string) ($l->period ?? ''),
+            'metric' => (string) ($l->metric ?? ''),
+        ];
+    }
+
+    public function activity(Request $request)
+    {
+        $this->requireGoalPermission('view_targets_guard');
+
+        $period = trim((string) $request->get('period', ''));
+        $metric = trim((string) $request->get('metric', ''));
+
+        $query = GoalTargetAuditLog::query()->with(['employee:id,name', 'changer:id,name']);
+        if ($period !== '') {
+            $query->where('period', $period);
+        }
+        if ($metric !== '') {
+            $query->where('metric', $metric);
+        }
+
+        $logs = $query->latest('id')->limit(100)->get()
+            ->map(fn (GoalTargetAuditLog $l) => $this->mapAuditActivity($l))
+            ->values()
+            ->all();
+
+        return response()->json(['ok' => true, 'data' => $logs]);
+    }
+
+    public function summary(Request $request)
+    {
+        $this->requireGoalPermission('view_targets_guard');
+        $actor = auth()->user();
+        $filters = $this->dashboardFilters($request);
+        $rows = $this->filteredTargetRows($actor, $filters);
+        $stats = $this->aggregateStats($rows);
+        $table = $rows->map(fn (GoalTarget $t) => $this->summaryRow($t))->values()->all();
+        $periods = $this->availablePeriods($actor);
+        $canManage = $actor->hasCrmPermission('manage_targets_guard');
+
+        return view('goal.targets.summary', compact('filters', 'stats', 'table', 'periods', 'canManage'));
+    }
+
+    public function achievement(Request $request)
+    {
+        $this->requireGoalPermission('view_targets_guard');
+        $actor = auth()->user();
+        $filters = $this->dashboardFilters($request);
+        $rows = $this->filteredTargetRows($actor, $filters);
+        $stats = $this->aggregateStats($rows);
+
+        $ranked = $rows->map(function (GoalTarget $t) {
+            $eff = $t->effectiveTarget();
+            $act = (float) $t->actual;
+            $pct = $eff > 0 ? round(($act / $eff) * 100, 1) : 0.0;
+
+            return [
+                'owner' => $t->user_id
+                    ? ($t->user?->name ?? ('User #'.$t->user_id))
+                    : ($t->orgUnit?->name ?? 'Org unit'),
+                'owner_type' => $t->user_id ? 'employee' : 'org_unit',
+                'metric' => $t->metric,
+                'period' => $t->period,
+                'effective' => round($eff, 2),
+                'achieved' => round($act, 2),
+                'shortfall' => round(max(0, $eff - $act), 2),
+                'surplus' => round(max(0, $act - $eff), 2),
+                'pct' => $pct,
+                'status' => $t->status,
+            ];
+        })->sortByDesc('pct')->values()->all();
+
+        $top = array_slice($ranked, 0, 5);
+        $lowest = array_slice(array_reverse($ranked), 0, 5);
+        $periods = $this->availablePeriods($actor);
+        $canManage = $actor->hasCrmPermission('manage_targets_guard');
+
+        return view('goal.targets.achievement', compact(
+            'filters', 'stats', 'ranked', 'top', 'lowest', 'periods', 'canManage'
+        ));
+    }
+
+    public function carryForward(Request $request, GoalCarryForwardService $carry)
+    {
+        $this->requireGoalPermission('view_targets_guard');
+        $actor = auth()->user();
+        $sourcePeriod = trim((string) $request->get('period', ''));
+        if ($sourcePeriod === '' || ! preg_match('/^\d{4}-\d{2}$/', $sourcePeriod)) {
+            $sourcePeriod = Carbon::now()->subMonthNoOverflow()->format('Y-m');
+        }
+        $metric = trim((string) $request->get('metric', ''));
+        $candidates = $carry->candidates(
+            $actor,
+            $sourcePeriod,
+            $metric !== '' ? $metric : null,
+            fn ($q, $user) => $this->applyScope($q, $user)
+        );
+        $nextPeriod = $carry->nextPeriod($sourcePeriod);
+        $periods = $this->availablePeriods($actor);
+        if (! $periods->contains($sourcePeriod)) {
+            $periods = $periods->prepend($sourcePeriod)->unique()->values();
+        }
+        $canManage = $actor->hasCrmPermission('manage_targets_guard');
+        $canApprove = $this->canApproveTargets($actor);
+        $pending = collect($candidates)->where('status', 'pending')->count();
+        $applied = collect($candidates)->where('status', 'applied')->count();
+        $rejected = collect($candidates)->where('status', 'rejected')->count();
+
+        return view('goal.targets.carry-forward', compact(
+            'candidates', 'sourcePeriod', 'nextPeriod', 'metric', 'periods',
+            'canManage', 'canApprove', 'pending', 'applied', 'rejected'
+        ));
+    }
+
+    public function approveCarryForward(Request $request, GoalCarryForwardService $carry)
+    {
+        $this->requireGoalPermission('manage_targets_guard');
+        $actor = auth()->user();
+        if (! $this->canApproveTargets($actor)) {
+            abort(403, 'Not authorized to approve carry-forward.');
+        }
+
+        $data = $request->validate([
+            'source_ids' => ['required', 'array', 'min:1'],
+            'source_ids.*' => ['integer'],
+            'reason' => ['nullable', 'string', 'max:500'],
+            'period' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}$/'],
+            'metric' => ['nullable', 'string', 'max:30'],
+        ]);
+
+        $ok = 0;
+        $errors = [];
+        foreach ($data['source_ids'] as $id) {
+            $src = GoalTarget::query()->find($id);
+            if (! $src) {
+                $errors[] = "Target #{$id} not found.";
+                continue;
+            }
+            try {
+                $this->assertCanAccessTarget($actor, $src);
+                $carry->apply($src, $actor, $data['reason'] ?? null);
+                $ok++;
+            } catch (\Throwable $e) {
+                $errors[] = ($src->user?->name ?? $src->orgUnit?->name ?? "#{$id}").': '.$e->getMessage();
+            }
+        }
+
+        $redirect = redirect()->route('goal.targets.carry-forward', array_filter([
+            'period' => $data['period'] ?? null,
+            'metric' => $data['metric'] ?? null,
+        ]));
+
+        if ($ok > 0) {
+            $redirect->with('success', "Approved carry-forward for {$ok} target(s).");
+        }
+        if ($errors) {
+            $redirect->with('error', implode(' ', array_slice($errors, 0, 3)));
+        }
+
+        return $redirect;
+    }
+
+    public function rejectCarryForward(Request $request, GoalCarryForwardService $carry)
+    {
+        $this->requireGoalPermission('manage_targets_guard');
+        $actor = auth()->user();
+        if (! $this->canApproveTargets($actor)) {
+            abort(403, 'Not authorized to reject carry-forward.');
+        }
+
+        $data = $request->validate([
+            'source_ids' => ['required', 'array', 'min:1'],
+            'source_ids.*' => ['integer'],
+            'reason' => ['nullable', 'string', 'max:500'],
+            'period' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}$/'],
+            'metric' => ['nullable', 'string', 'max:30'],
+        ]);
+
+        $ok = 0;
+        foreach ($data['source_ids'] as $id) {
+            $src = GoalTarget::query()->find($id);
+            if (! $src) {
+                continue;
+            }
+            try {
+                $this->assertCanAccessTarget($actor, $src);
+                $carry->reject($src, $actor, $data['reason'] ?? null);
+                $ok++;
+            } catch (\Throwable $e) {
+                // skip unauthorized
+            }
+        }
+
+        return redirect()->route('goal.targets.carry-forward', array_filter([
+            'period' => $data['period'] ?? null,
+            'metric' => $data['metric'] ?? null,
+        ]))->with('success', "Rejected carry-forward for {$ok} target(s). Opening shortfall will not be applied.");
     }
 
     public function export(Request $request): StreamedResponse
@@ -714,6 +953,94 @@ class GoalTargetController extends Controller
                 'period' => 'An approved/existing target already exists for this owner, period and metric.',
             ]);
         }
+    }
+
+    protected function dashboardFilters(Request $request): array
+    {
+        return [
+            'period' => trim((string) $request->get('period', '')),
+            'metric' => trim((string) $request->get('metric', '')),
+            'status' => trim((string) $request->get('status', '')),
+            'goal_org_unit_id' => $request->get('goal_org_unit_id'),
+            'owner_type' => trim((string) $request->get('owner_type', '')),
+            'user_id' => $request->get('user_id'),
+            'per_page' => (int) $request->get('per_page', 10),
+        ];
+    }
+
+    protected function filteredTargetRows(User $actor, array $filters)
+    {
+        $query = GoalTarget::query()->with(['orgUnit', 'user']);
+        $this->applyScope($query, $actor);
+        $this->applyFilters($query, $filters);
+
+        return $query->orderByDesc('period')->orderBy('metric')->orderBy('id')->get();
+    }
+
+    protected function aggregateStats($rows): array
+    {
+        $totalEffective = $rows->sum(fn (GoalTarget $t) => $t->effectiveTarget());
+        $totalActual = (float) $rows->sum('actual');
+        $totalClosing = (float) $rows->sum('closing_shortfall');
+        $totalBase = (float) $rows->sum('base_target');
+        $totalOpening = (float) $rows->sum('opening_shortfall');
+        $totalAdjustments = (float) $rows->sum('adjustments');
+        $surplus = max(0.0, $totalActual - $totalEffective);
+
+        return [
+            'count' => $rows->count(),
+            'approved' => $rows->where('status', 'Approved')->count(),
+            'draft' => $rows->where('status', 'Draft')->count(),
+            'total_effective' => $totalEffective,
+            'total_actual' => $totalActual,
+            'total_closing' => $totalClosing,
+            'total_base' => $totalBase,
+            'total_opening' => $totalOpening,
+            'total_adjustments' => $totalAdjustments,
+            'surplus' => round($surplus, 2),
+            'remaining' => round(max(0.0, $totalEffective - $totalActual), 2),
+            'achievement_pct' => $totalEffective > 0
+                ? round(($totalActual / $totalEffective) * 100, 1)
+                : 0,
+        ];
+    }
+
+    protected function summaryRow(GoalTarget $t): array
+    {
+        $eff = $t->effectiveTarget();
+        $act = (float) $t->actual;
+
+        return [
+            'id' => $t->id,
+            'period' => $t->period,
+            'metric' => $t->metric,
+            'owner' => $t->user_id
+                ? ($t->user?->name ?? ('User #'.$t->user_id))
+                : ($t->orgUnit?->name ?? 'Org unit'),
+            'owner_type' => $t->user_id ? 'employee' : 'org_unit',
+            'base' => round((float) $t->base_target, 2),
+            'opening' => round((float) $t->opening_shortfall, 2),
+            'adjustments' => round((float) $t->adjustments, 2),
+            'effective' => round($eff, 2),
+            'achieved' => round($act, 2),
+            'remaining' => round(max(0, $eff - $act), 2),
+            'pct' => $eff > 0 ? round(($act / $eff) * 100, 1) : 0.0,
+            'status' => $t->status,
+        ];
+    }
+
+    protected function availablePeriods(User $actor)
+    {
+        $periods = GoalTarget::query()
+            ->tap(fn ($q) => $this->applyScope($q, $actor))
+            ->distinct()
+            ->orderByDesc('period')
+            ->pluck('period');
+
+        $extra = collect(range(0, 2))->map(fn ($i) => now()->startOfMonth()->addMonths($i)->format('Y-m'));
+        $prev = now()->subMonthNoOverflow()->format('Y-m');
+
+        return $periods->merge($extra)->push($prev)->unique()->sortDesc()->values();
     }
 
     protected function assertCanAccessTarget(User $actor, GoalTarget $target): void

@@ -9,7 +9,8 @@
     $regions = $regions ?? collect();
     $clusters = $clusters ?? collect();
     $branchUnits = $branchUnits ?? collect();
-    $regionChart = $regionChart ?? ['labels' => [], 'values' => [], 'total_actual' => 0];
+    $regionChart = $regionChart ?? ['labels' => [], 'values' => [], 'effective' => [], 'org_ids' => [], 'total_actual' => 0];
+    $stats = $stats ?? [];
     $insights = $insights ?? ['employees' => 0, 'regions' => 0, 'clusters' => 0, 'branches' => 0];
     $recentActivity = $recentActivity ?? [];
     $allocationTree = $allocationTree ?? [];
@@ -79,23 +80,20 @@
 .goal-targets-page .btn-gt-ghost.is-active {
     border-color: var(--theme-primary); background: var(--theme-100, #ecfdf5); color: var(--theme-primary);
 }
-
-.goal-targets-page .gt-target-nav {
+.goal-targets-page .gt-subnav {
     display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--gt-gap);
-    padding: 4px; background: transparent;
 }
-.goal-targets-page .gt-nav-tab {
-    display: inline-flex; align-items: center; gap: 7px;
-    height: 40px; padding: 0 16px; border-radius: 10px;
-    font-size: .84rem; font-weight: 700; color: #1e293b;
-    text-decoration: none; border: 0; background: transparent;
+.goal-targets-page .gt-subnav a {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 36px; padding: 0 12px; border-radius: 9px;
+    font-size: .8rem; font-weight: 700; color: #334155; text-decoration: none;
+    background: #fff; border: 1px solid #e2e8f0;
 }
-.goal-targets-page .gt-nav-tab:hover { background: #eef2f7; color: #0f172a; }
-.goal-targets-page .gt-nav-tab.is-active {
-    background: var(--theme-primary); color: #fff;
-    box-shadow: 0 6px 14px var(--theme-primary-ring, rgba(5,150,105,.28));
+.goal-targets-page .gt-subnav a:hover { background: #f8fafc; color: #0f172a; }
+.goal-targets-page .gt-subnav a.is-active {
+    background: var(--gt-accent); color: #fff; border-color: var(--gt-accent);
+    box-shadow: 0 4px 12px rgba(5,150,105,.22);
 }
-.goal-targets-page .gt-nav-tab i { font-size: .95rem; }
 
 .goal-targets-page .kpi-grid {
     display: grid;
@@ -118,6 +116,10 @@
 .goal-targets-page .kpi-card.tone-sky { border-left-color: #16a34a; background: #fff; }
 .goal-targets-page .kpi-card.tone-violet { border-left-color: #3b82f6; background: #fff; }
 .goal-targets-page .kpi-card.tone-amber { border-left-color: #f59e0b; background: #fff; }
+.goal-targets-page button.kpi-card {
+    appearance: none; -webkit-appearance: none; border-top: 0; border-right: 0; border-bottom: 0;
+    text-align: left; width: 100%; font: inherit; color: inherit;
+}
 .goal-targets-page .kpi-ico {
     width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0;
     display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem;
@@ -135,39 +137,91 @@
     line-height: 1.15; letter-spacing: -.025em; font-variant-numeric: tabular-nums;
 }
 .goal-targets-page .kpi-meta { margin: 6px 0 0; font-size: .74rem; color: #94a3b8; line-height: 1.35; }
+.goal-targets-page .kpi-card.is-clickable { cursor: pointer; transition: box-shadow .15s, transform .15s; }
+.goal-targets-page .kpi-card.is-clickable:hover {
+    box-shadow: 0 10px 22px rgba(148,163,184,.16); transform: translateY(-1px);
+}
+.goal-targets-page .kpi-card .kpi-hint {
+    margin-top: 6px; font-size: .68rem; font-weight: 650; color: var(--gt-accent);
+    display: inline-flex; align-items: center; gap: 4px;
+}
 
 .goal-targets-page .charts-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(260px, .9fr);
-    gap: 1.1rem;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.05fr) minmax(220px, .72fr);
+    gap: .85rem;
     margin-bottom: var(--gt-gap);
     align-items: stretch;
 }
-@media (max-width: 1199.98px) { .goal-targets-page .charts-grid { grid-template-columns: 1fr 1fr; gap: 1rem; } }
+@media (max-width: 1199.98px) { .goal-targets-page .charts-grid { grid-template-columns: 1fr 1fr; gap: .85rem; } }
 @media (max-width: 991.98px) { .goal-targets-page .charts-grid { grid-template-columns: 1fr; } }
-.goal-targets-page .charts-grid .panel-insights { min-height: 100%; }
+.goal-targets-page .charts-grid .panel-actions { min-height: 100%; }
 @media (max-width: 1199.98px) and (min-width: 992px) {
-    .goal-targets-page .charts-grid .panel-insights { grid-column: 1 / -1; }
+    .goal-targets-page .charts-grid .panel-actions { grid-column: 1 / -1; }
 }
-.goal-targets-page .donut-wrap { position: relative; min-height: 280px; }
+.goal-targets-page .charts-grid .panel-head {
+    padding: .7rem .9rem; align-items: center;
+}
+.goal-targets-page .charts-grid .panel-head h5 {
+    font-size: .88rem; font-weight: 800; display: inline-flex; align-items: center; gap: 7px;
+}
+.goal-targets-page .charts-grid .panel-head h5 i { color: var(--gt-accent); font-size: .95rem; }
+.goal-targets-page .charts-grid .panel-sub { display: none; }
+.goal-targets-page .charts-grid .panel-body {
+    padding: .55rem .85rem .85rem; flex: 1; min-height: 0;
+}
+.goal-targets-page .donut-layout {
+    display: flex; align-items: center; gap: 12px; height: 100%; min-height: 0;
+}
+.goal-targets-page .donut-wrap {
+    position: relative; flex: 0 0 46%; max-width: 180px; height: 180px; min-height: 180px;
+}
 .goal-targets-page .donut-center {
-    position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
-    text-align: center; pointer-events: none; z-index: 3; max-width: 46%;
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    text-align: center; pointer-events: none; z-index: 3; max-width: 58%;
 }
-.goal-targets-page .donut-center .dc-label { font-size: .68rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; }
-.goal-targets-page .donut-center .dc-value { font-size: 1rem; font-weight: 800; color: #0f172a; margin-top: 2px; font-variant-numeric: tabular-nums; line-height: 1.2; }
-.goal-targets-page .insights-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; flex: 1; justify-content: center; }
-.goal-targets-page .insights-list li {
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    padding: 12px 14px; border-radius: 12px; background: #f8fafc; border: 1px solid #eef2f7;
-    font-size: .86rem; color: #334155;
+.goal-targets-page .donut-center .dc-value {
+    font-size: .95rem; font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; line-height: 1.15;
 }
-.goal-targets-page .insights-list li .il-left { display: flex; align-items: center; gap: 10px; font-weight: 600; }
-.goal-targets-page .insights-list li .il-left i {
-    width: 28px; height: 28px; border-radius: 8px; background: #ecfdf5; color: var(--gt-accent);
-    display: inline-flex; align-items: center; justify-content: center;
+.goal-targets-page .donut-center .dc-label {
+    font-size: .65rem; font-weight: 650; color: #94a3b8; margin-top: 2px;
 }
-.goal-targets-page .insights-list li strong { font-size: 1.05rem; font-weight: 800; color: #0f172a; }
+.goal-targets-page .donut-legend {
+    list-style: none; margin: 0; padding: 0; flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.goal-targets-page .donut-legend li {
+    display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 8px; align-items: start;
+}
+.goal-targets-page .donut-legend .dl-dot {
+    width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0;
+}
+.goal-targets-page .donut-legend .dl-name {
+    font-size: .72rem; font-weight: 700; color: #0f172a; line-height: 1.25;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.goal-targets-page .donut-legend .dl-meta {
+    font-size: .68rem; color: #64748b; font-weight: 600; margin-top: 1px;
+    font-variant-numeric: tabular-nums;
+}
+.goal-targets-page .qa-box {
+    background: #f0fdf4; border: 1px solid #dcfce7; border-radius: 12px;
+    padding: 6px; display: flex; flex-direction: column; gap: 4px; height: 100%;
+}
+.goal-targets-page .qa-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 10px; text-decoration: none;
+    color: #0f172a; background: transparent; border: 0; width: 100%;
+    font-size: .8rem; font-weight: 700; cursor: pointer; transition: background .15s;
+}
+.goal-targets-page .qa-item:hover { background: #fff; color: #059669; }
+.goal-targets-page .qa-item .qa-ico {
+    width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+    background: #dcfce7; color: #059669;
+    display: inline-flex; align-items: center; justify-content: center; font-size: .85rem;
+}
+.goal-targets-page .qa-item span { flex: 1; text-align: left; }
+.goal-targets-page .qa-item .qa-chev { color: #94a3b8; font-size: .75rem; }
 .goal-targets-page .dashboard-lower {
     display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: 1.1rem; align-items: start;
 }
@@ -190,13 +244,16 @@
 .goal-targets-page .metric-tabs {
     display: inline-flex; gap: 6px; padding: 0; background: transparent; border-radius: 0;
 }
-.goal-targets-page .metric-tabs a {
+.goal-targets-page .metric-tabs a,
+.goal-targets-page .metric-tabs .metric-tab-btn {
     display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px;
     font-size: .78rem; font-weight: 700; color: #0f172a; text-decoration: none; line-height: 1.2;
-    background: #fff; border: 1px solid #e2e8f0;
+    background: #fff; border: 1px solid #e2e8f0; cursor: pointer;
 }
-.goal-targets-page .metric-tabs a:hover { background: #f8fafc; color: #0f172a; }
-.goal-targets-page .metric-tabs a.is-active {
+.goal-targets-page .metric-tabs a:hover,
+.goal-targets-page .metric-tabs .metric-tab-btn:hover { background: #f8fafc; color: #0f172a; }
+.goal-targets-page .metric-tabs a.is-active,
+.goal-targets-page .metric-tabs .metric-tab-btn.is-active {
     background: var(--gt-accent); color: #fff; border-color: var(--gt-accent);
     box-shadow: 0 3px 10px rgba(5, 150, 105, .22);
 }
@@ -212,8 +269,8 @@
 .goal-targets-page .panel-head h5 { margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a; line-height: 1.25; }
 .goal-targets-page .panel-sub { font-size: .78rem; color: #94a3b8; margin-top: 3px; line-height: 1.3; }
 .goal-targets-page .panel-body { padding: 1rem 1.15rem 1.15rem; flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.goal-targets-page .chart-wrap { position: relative; height: 300px; width: 100%; flex: 1; min-height: 280px; }
-.goal-targets-page .chart-wrap.sm { height: 300px; min-height: 280px; }
+.goal-targets-page .chart-wrap { position: relative; height: 200px; width: 100%; flex: 1; min-height: 180px; }
+.goal-targets-page .chart-wrap.sm { height: 180px; min-height: 160px; }
 .goal-targets-page .chart-empty{
     position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
     color:#94a3b8;font-size:.86rem;pointer-events:none;z-index:2;text-align:center;padding:12px;
@@ -721,28 +778,22 @@
                     <i class="bi bi-plus-lg"></i> Set Targets
                 </a>
             @endif
+            <a href="{{ route('goal.targets.summary', request()->only('period', 'metric')) }}" class="btn-gt-ghost">
+                <i class="bi bi-clipboard-data"></i> Summary
+            </a>
+            <a href="{{ route('goal.targets.achievement', request()->only('period', 'metric')) }}" class="btn-gt-ghost">
+                <i class="bi bi-graph-up-arrow"></i> Achievement
+            </a>
+            <a href="{{ route('goal.targets.carry-forward', request()->only('period', 'metric')) }}" class="btn-gt-ghost">
+                <i class="bi bi-arrow-repeat"></i> Carry Forward
+            </a>
             <a href="{{ route('goal.targets.export', request()->query()) }}" class="btn-gt-ghost">
                 <i class="bi bi-download"></i> Export
             </a>
         </div>
     </div>
 
-    <nav class="gt-target-nav" aria-label="Target sections">
-        @if($canManage)
-            <a href="{{ route('goal.targets.set', request()->only('period', 'metric')) }}" class="gt-nav-tab">
-                <i class="bi bi-bullseye"></i> Set Targets
-            </a>
-        @endif
-        <a href="{{ route('goal.targets.index', request()->query()) }}" class="gt-nav-tab is-active" aria-current="page">
-            <i class="bi bi-grid"></i> Target Summary
-        </a>
-        <a href="#gtTrendSection" class="gt-nav-tab">
-            <i class="bi bi-graph-up-arrow"></i> Achievement
-        </a>
-        <a href="#gtShortfallKpi" class="gt-nav-tab">
-            <i class="bi bi-arrow-repeat"></i> Shortfall Carry Forward
-        </a>
-    </nav>
+    @include('goal.targets._subnav', ['active' => 'dashboard', 'canManage' => $canManage])
 
     <form method="GET" action="{{ route('goal.targets.index') }}" class="filters-bar" id="gtFiltersForm">
         <input type="hidden" name="per_page" value="{{ $filters['per_page'] ?? 10 }}">
@@ -824,46 +875,72 @@
     </form>
 
     <div class="kpi-grid">
-        <div class="kpi-card tone-green">
+        <button type="button" class="kpi-card tone-green is-clickable" data-kpi="effective" data-bs-toggle="modal" data-bs-target="#gtKpiModal">
             <span class="kpi-ico" aria-hidden="true"><i class="bi bi-bullseye"></i></span>
             <div class="kpi-body">
                 <div class="kpi-label">Effective Target</div>
                 <div class="kpi-value">{{ $fmt($stats['total_effective']) }}</div>
-                <div class="kpi-meta">Base: {{ $fmt($stats['total_base']) }} | Opening: {{ $fmt($stats['total_opening']) }}</div>
+                <div class="kpi-meta">Base {{ $fmt($stats['total_base']) }} + Opening {{ $fmt($stats['total_opening']) }}</div>
+                <div class="kpi-hint"><i class="bi bi-info-circle"></i> View breakdown</div>
             </div>
-        </div>
-        <div class="kpi-card tone-sky">
+        </button>
+        <button type="button" class="kpi-card tone-sky is-clickable" data-kpi="achieved" data-bs-toggle="modal" data-bs-target="#gtKpiModal">
             <span class="kpi-ico" aria-hidden="true"><i class="bi bi-cash-stack"></i></span>
             <div class="kpi-body">
                 <div class="kpi-label">Achieved</div>
                 <div class="kpi-value">{{ $fmt($stats['total_actual']) }}</div>
                 <div class="kpi-meta">{{ number_format($stats['count']) }} target{{ $stats['count'] === 1 ? '' : 's' }} in view</div>
+                <div class="kpi-hint"><i class="bi bi-info-circle"></i> View details</div>
             </div>
-        </div>
-        <div class="kpi-card tone-violet">
+        </button>
+        <button type="button" class="kpi-card tone-violet is-clickable" data-kpi="pct" data-bs-toggle="modal" data-bs-target="#gtKpiModal">
             <span class="kpi-ico" aria-hidden="true"><i class="bi bi-trophy"></i></span>
             <div class="kpi-body">
                 <div class="kpi-label">Achievement %</div>
                 <div class="kpi-value">{{ number_format((float) $stats['achievement_pct'], 1) }}%</div>
-                <div class="kpi-meta">Against effective target</div>
+                <div class="kpi-meta">Achieved ÷ Effective target</div>
+                <div class="kpi-hint"><i class="bi bi-info-circle"></i> Hierarchy breakdown</div>
             </div>
-        </div>
-        <div class="kpi-card tone-amber" id="gtShortfallKpi">
+        </button>
+        <button type="button" class="kpi-card tone-amber is-clickable" id="gtShortfallKpi" data-kpi="shortfall" data-bs-toggle="modal" data-bs-target="#gtKpiModal">
             <span class="kpi-ico" aria-hidden="true"><i class="bi bi-exclamation-triangle"></i></span>
             <div class="kpi-body">
                 <div class="kpi-label">Closing Shortfall</div>
                 <div class="kpi-value">{{ $fmt($stats['total_closing']) }}</div>
-                <div class="kpi-meta">Carry-forward to next period</div>
+                @if(($stats['surplus'] ?? 0) > 0)
+                    <div class="kpi-meta">Surplus {{ $fmt($stats['surplus']) }} · period remaining only</div>
+                @else
+                    <div class="kpi-meta">Remaining for selected period</div>
+                @endif
+                <div class="kpi-hint"><i class="bi bi-info-circle"></i> Shortfall detail</div>
             </div>
-        </div>
+        </button>
     </div>
 
+    @php
+        $compactAmt = function ($n) use ($currency) {
+            $n = (float) $n;
+            $abs = abs($n);
+            if ($abs >= 10000000) {
+                return $currency . ' ' . rtrim(rtrim(number_format($n / 10000000, 2, '.', ''), '0'), '.') . 'Cr';
+            }
+            if ($abs >= 100000) {
+                return $currency . ' ' . rtrim(rtrim(number_format($n / 100000, 2, '.', ''), '0'), '.') . 'L';
+            }
+            if ($abs >= 1000) {
+                return $currency . ' ' . rtrim(rtrim(number_format($n / 1000, 1, '.', ''), '0'), '.') . 'K';
+            }
+            return $currency . ' ' . number_format($n, 0, '.', ',');
+        };
+        $regionPalette = ['#15803d', '#22d3ee', '#eab308', '#16a34a', '#0ea5e9', '#a78bfa', '#f59e0b', '#64748b'];
+        $regionTotal = (float) ($regionChart['total_actual'] ?? 0);
+        $setUrl = route('goal.targets.set', request()->only('period', 'metric'));
+    @endphp
     <div class="charts-grid">
         <div class="panel" id="gtTrendSection">
             <div class="panel-head">
                 <div>
-                    <h5>Monthly Performance</h5>
-                    <div class="panel-sub">Target vs actual achievement by period</div>
+                    <h5>Target vs Achievement (Monthly Trend)</h5>
                 </div>
             </div>
             <div class="panel-body">
@@ -878,50 +955,85 @@
         <div class="panel">
             <div class="panel-head">
                 <div>
-                    <h5>Regional Performance</h5>
-                    <div class="panel-sub">Region-wise achievement distribution</div>
+                    <h5>Achievement by Region</h5>
                 </div>
             </div>
             <div class="panel-body">
-                <div class="chart-wrap sm donut-wrap">
-                    @if(empty($regionChart['labels'] ?? []))
+                @if(empty($regionChart['labels'] ?? []))
+                    <div class="chart-wrap sm">
                         <div class="chart-empty"><i class="bi bi-pie-chart"></i>No regional data yet</div>
-                    @else
-                        <div class="donut-center" id="gtRegionCenter" aria-hidden="true">
-                            <div class="dc-label">Achieved</div>
-                            <div class="dc-value">{{ $fmt($regionChart['total_actual'] ?? 0) }}</div>
+                        <canvas id="gtRegionChart" aria-label="Achievement by region chart" class="d-none"></canvas>
+                    </div>
+                @else
+                    <div class="donut-layout">
+                        <div class="donut-wrap">
+                            <div class="donut-center" id="gtRegionCenter" aria-hidden="true">
+                                <div class="dc-value">{{ $compactAmt($regionTotal) }}</div>
+                                <div class="dc-label">Achieved</div>
+                            </div>
+                            <canvas id="gtRegionChart" aria-label="Achievement by region chart"></canvas>
                         </div>
-                    @endif
-                    <canvas id="gtRegionChart" aria-label="Achievement by region chart"></canvas>
-                </div>
+                        <ul class="donut-legend" id="gtRegionLegend">
+                            @foreach(($regionChart['labels'] ?? []) as $i => $label)
+                                @php
+                                    $val = (float) ($regionChart['values'][$i] ?? 0);
+                                    $pct = $regionTotal > 0 ? round(($val / $regionTotal) * 100, 1) : 0;
+                                    $color = $regionPalette[$i % count($regionPalette)];
+                                @endphp
+                                <li>
+                                    <span class="dl-dot" style="background:{{ $color }}"></span>
+                                    <div>
+                                        <div class="dl-name">{{ $label }}</div>
+                                        <div class="dl-meta">{{ $compactAmt($val) }} · {{ $pct }}%</div>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
             </div>
         </div>
-        <div class="panel panel-insights">
+        <div class="panel panel-actions">
             <div class="panel-head">
                 <div>
-                    <h5>Quick Insights</h5>
-                    <div class="panel-sub">Coverage across teams and hierarchy</div>
+                    <h5><i class="bi bi-bar-chart-line"></i> Quick Actions</h5>
                 </div>
             </div>
             <div class="panel-body">
-                <ul class="insights-list">
-                    <li>
-                        <span class="il-left"><i class="bi bi-people"></i> Teams / Employees</span>
-                        <strong>{{ number_format((int) ($insights['employees'] ?? 0)) }}</strong>
-                    </li>
-                    <li>
-                        <span class="il-left"><i class="bi bi-globe2"></i> Regions</span>
-                        <strong>{{ number_format((int) ($insights['regions'] ?? 0)) }}</strong>
-                    </li>
-                    <li>
-                        <span class="il-left"><i class="bi bi-diagram-3"></i> Clusters</span>
-                        <strong>{{ number_format((int) ($insights['clusters'] ?? 0)) }}</strong>
-                    </li>
-                    <li>
-                        <span class="il-left"><i class="bi bi-building"></i> Branches</span>
-                        <strong>{{ number_format((int) ($insights['branches'] ?? 0)) }}</strong>
-                    </li>
-                </ul>
+                <div class="qa-box">
+                    @if($canManage)
+                        <a href="{{ $setUrl }}" class="qa-item">
+                            <span class="qa-ico"><i class="bi bi-pencil"></i></span>
+                            <span>Edit Targets</span>
+                            <i class="bi bi-chevron-right qa-chev"></i>
+                        </a>
+                        <a href="{{ $setUrl }}" class="qa-item">
+                            <span class="qa-ico"><i class="bi bi-layers"></i></span>
+                            <span>Reallocate Target</span>
+                            <i class="bi bi-chevron-right qa-chev"></i>
+                        </a>
+                    @endif
+                    <a href="{{ route('goal.targets.summary', request()->only('period', 'metric')) }}" class="qa-item">
+                        <span class="qa-ico"><i class="bi bi-clipboard-data"></i></span>
+                        <span>Target Summary</span>
+                        <i class="bi bi-chevron-right qa-chev"></i>
+                    </a>
+                    <a href="{{ route('goal.targets.achievement', request()->only('period', 'metric')) }}" class="qa-item">
+                        <span class="qa-ico"><i class="bi bi-trophy"></i></span>
+                        <span>Achievement ranking</span>
+                        <i class="bi bi-chevron-right qa-chev"></i>
+                    </a>
+                    <a href="{{ route('goal.targets.carry-forward', request()->only('period', 'metric')) }}" class="qa-item">
+                        <span class="qa-ico"><i class="bi bi-arrow-repeat"></i></span>
+                        <span>Carry Forward</span>
+                        <i class="bi bi-chevron-right qa-chev"></i>
+                    </a>
+                    <a href="#gtActivityPanel" class="qa-item" id="gtQaHistory">
+                        <span class="qa-ico"><i class="bi bi-clock-history"></i></span>
+                        <span>Target History</span>
+                        <i class="bi bi-chevron-right qa-chev"></i>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -934,12 +1046,12 @@
                     <div class="gt-table-meta">Expand Region → Cluster → Branch → Employee. Figures follow filters above.</div>
                 </div>
                 <nav class="metric-tabs" aria-label="Target metric">
-                    <a href="{{ route('goal.targets.index', $tabQuery('revenue')) }}" class="{{ $tableMetric === 'revenue' ? 'is-active' : '' }}">
+                    <button type="button" class="metric-tab-btn {{ $tableMetric === 'revenue' ? 'is-active' : '' }}" data-metric-switch="revenue">
                         <i class="bi bi-cash-stack"></i> Revenue Target
-                    </a>
-                    <a href="{{ route('goal.targets.index', $tabQuery('disbursement')) }}" class="{{ $tableMetric === 'disbursement' ? 'is-active' : '' }}">
+                    </button>
+                    <button type="button" class="metric-tab-btn {{ $tableMetric === 'disbursement' ? 'is-active' : '' }}" data-metric-switch="disbursement">
                         <i class="bi bi-cash-stack"></i> Disbursement Target
-                    </a>
+                    </button>
                 </nav>
             </div>
 
@@ -987,12 +1099,15 @@
             </div>
         </div>
 
-        <div class="panel activity-panel">
+        <div class="panel activity-panel" id="gtActivityPanel">
             <div class="panel-head">
                 <div>
                     <h5>Recent Activity</h5>
                     <div class="panel-sub">Latest target changes and assignments</div>
                 </div>
+                <button type="button" class="btn-gt-ghost" id="gtViewAllActivity" data-bs-toggle="modal" data-bs-target="#gtActivityModal">
+                    View all
+                </button>
             </div>
             <div class="panel-body">
                 @if(empty($recentActivity))
@@ -1010,6 +1125,92 @@
                         @endforeach
                     </ul>
                 @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- KPI / Month / Activity drill-down modals --}}
+<div class="modal fade gt-modal" id="gtKpiModal" tabindex="-1" aria-labelledby="gtKpiModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <span class="modal-icon"><i class="bi bi-pie-chart"></i></span>
+                    <div>
+                        <h5 class="modal-title" id="gtKpiModalLabel">KPI breakdown</h5>
+                        <div class="modal-sub" id="gtKpiModalSub">Figures follow filters above.</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="gtKpiModalBody"></div>
+            <div class="modal-footer">
+                <a href="#targetsAllocationTable" class="btn-cancel" data-bs-dismiss="modal" id="gtKpiGotoTable">View allocation</a>
+                @if($canManage)
+                    <a href="{{ route('goal.targets.set', request()->only('period', 'metric')) }}" class="btn-save"><i class="bi bi-bullseye"></i> Manage targets</a>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade gt-modal" id="gtMonthModal" tabindex="-1" aria-labelledby="gtMonthModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <span class="modal-icon"><i class="bi bi-calendar3"></i></span>
+                    <div>
+                        <h5 class="modal-title" id="gtMonthModalLabel">Month performance</h5>
+                        <div class="modal-sub">Click Apply on filters to load this period on the dashboard.</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="gtMonthModalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn-save" id="gtMonthApply"><i class="bi bi-funnel"></i> Filter to this period</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade gt-modal" id="gtActivityModal" tabindex="-1" aria-labelledby="gtActivityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <span class="modal-icon"><i class="bi bi-clock-history"></i></span>
+                    <div>
+                        <h5 class="modal-title" id="gtActivityModalLabel">Target activity history</h5>
+                        <div class="modal-sub">Who changed what, and when.</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date &amp; Time</th>
+                                <th>Activity</th>
+                                <th>Entity</th>
+                                <th class="text-end">Previous</th>
+                                <th class="text-end">New</th>
+                                <th>By</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gtActivityModalBody">
+                            <tr><td colspan="6" class="text-center text-muted py-4">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -1121,17 +1322,33 @@
     const trend = @json($chart);
     const regionChart = @json($regionChart);
     const allocationTree = @json($allocationTree);
+    const dashStats = @json($stats);
     const canManage = @json((bool) $canManage);
     const updateRouteTpl = @json($canManage ? route('goal.targets.update', ['target' => '__ID__']) : '');
+    const activityUrl = @json(route('goal.targets.activity'));
     const openAdd = @json($openAddModal);
     const openEdit = @json($openEditModal);
     let collapsed = new Set();
+    let pendingPeriod = '';
 
     function money(n) {
         return currency + ' ' + (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
     function amt(n) {
         return (Number(n) || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    }
+    function submitFilters() {
+        const form = document.getElementById('gtFiltersForm');
+        if (form) form.submit();
+    }
+    function setSelectValueNative(id, value) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = value == null ? '' : String(value);
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        if (window.jQuery && jQuery.fn.select2 && jQuery(el).hasClass('select2-hidden-accessible')) {
+            jQuery(el).val(el.value).trigger('change');
+        }
     }
 
     function escapeHtml(s) {
@@ -1346,8 +1563,7 @@
                 return;
             }
             if (act === 'details' || act === 'history') {
-                const history = document.getElementById('gtTrendSection') || document.querySelector('.activity-panel');
-                history?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                document.getElementById('gtActivityPanel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 return;
             }
             if (act === 'remove') {
@@ -1583,6 +1799,129 @@
         return ok;
     }
 
+    document.getElementById('gtQaHistory')?.addEventListener('click', function (e) {
+        e.preventDefault();
+        document.getElementById('gtActivityPanel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    document.querySelectorAll('[data-metric-switch]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const metric = btn.getAttribute('data-metric-switch') || '';
+            setSelectValueNative('filter_metric', metric);
+            submitFilters();
+        });
+    });
+
+    function kpiBreakdownHtml(kind) {
+        const s = dashStats || {};
+        const rows = (regionChart.labels || []).map(function (label, i) {
+            const act = Number(regionChart.values?.[i] || 0);
+            const eff = Number(regionChart.effective?.[i] || 0);
+            const pct = eff > 0 ? ((act / eff) * 100).toFixed(1) : '0.0';
+            return `<tr>
+                <td>${escapeHtml(label)}</td>
+                <td class="text-end">${money(eff)}</td>
+                <td class="text-end">${money(act)}</td>
+                <td class="text-end">${pct}%</td>
+            </tr>`;
+        }).join('');
+        const regionTable = rows
+            ? `<div class="table-responsive mt-3"><table class="table table-sm mb-0"><thead><tr><th>Region</th><th class="text-end">Effective</th><th class="text-end">Achieved</th><th class="text-end">%</th></tr></thead><tbody>${rows}</tbody></table></div>`
+            : '<p class="text-muted mb-0 mt-2">No regional rows in the current filter.</p>';
+
+        if (kind === 'effective') {
+            return `<table class="table table-sm mb-0">
+                <tr><td>Base Target</td><td class="text-end fw-semibold">${money(s.total_base)}</td></tr>
+                <tr><td>Opening Shortfall</td><td class="text-end fw-semibold">${money(s.total_opening)}</td></tr>
+                <tr><td>Approved Adjustments</td><td class="text-end fw-semibold">${money(s.total_adjustments)}</td></tr>
+                <tr class="table-success"><th>Effective Target</th><th class="text-end">${money(s.total_effective)}</th></tr>
+            </table>
+            <p class="small text-muted mt-3 mb-0">ET = Base + Opening Shortfall + Adjustments.</p>`;
+        }
+        if (kind === 'achieved') {
+            return `<table class="table table-sm mb-0">
+                <tr><td>Achieved</td><td class="text-end fw-semibold">${money(s.total_actual)}</td></tr>
+                <tr><td>Targets in view</td><td class="text-end fw-semibold">${Number(s.count || 0).toLocaleString('en-IN')}</td></tr>
+                <tr><td>Approved</td><td class="text-end">${Number(s.approved || 0).toLocaleString('en-IN')}</td></tr>
+                <tr><td>Draft</td><td class="text-end">${Number(s.draft || 0).toLocaleString('en-IN')}</td></tr>
+            </table>${regionTable}`;
+        }
+        if (kind === 'pct') {
+            return `<p class="mb-2">Achievement % = Achieved ÷ Effective × 100</p>
+            <table class="table table-sm mb-0">
+                <tr><td>Achieved</td><td class="text-end">${money(s.total_actual)}</td></tr>
+                <tr><td>Effective</td><td class="text-end">${money(s.total_effective)}</td></tr>
+                <tr class="table-success"><th>Achievement</th><th class="text-end">${Number(s.achievement_pct || 0).toFixed(1)}%</th></tr>
+            </table>${regionTable}`;
+        }
+        return `<table class="table table-sm mb-0">
+            <tr><td>Effective Target</td><td class="text-end">${money(s.total_effective)}</td></tr>
+            <tr><td>Achieved</td><td class="text-end">${money(s.total_actual)}</td></tr>
+            <tr><td>Remaining (period)</td><td class="text-end fw-semibold">${money(s.remaining ?? s.total_closing)}</td></tr>
+            <tr><td>Closing Shortfall</td><td class="text-end fw-semibold">${money(s.total_closing)}</td></tr>
+            <tr><td>Surplus (over-achievement)</td><td class="text-end">${money(s.surplus || 0)}</td></tr>
+        </table>
+        <p class="small text-muted mt-3 mb-0">Closing shortfall is for the selected period only. Carry-forward to the next period requires an approved workflow.</p>`;
+    }
+
+    document.querySelectorAll('[data-kpi]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const kind = btn.getAttribute('data-kpi') || 'effective';
+            const titles = {
+                effective: 'Effective Target breakdown',
+                achieved: 'Achievement details',
+                pct: 'Achievement % by region',
+                shortfall: 'Closing shortfall detail'
+            };
+            document.getElementById('gtKpiModalLabel').textContent = titles[kind] || 'KPI breakdown';
+            document.getElementById('gtKpiModalBody').innerHTML = kpiBreakdownHtml(kind);
+        });
+    });
+
+    document.getElementById('gtMonthApply')?.addEventListener('click', function () {
+        if (!pendingPeriod) return;
+        setSelectValueNative('filter_period', pendingPeriod);
+        const modalEl = document.getElementById('gtMonthModal');
+        const inst = bootstrap.Modal.getInstance(modalEl);
+        inst?.hide();
+        submitFilters();
+    });
+
+    async function loadActivityModal() {
+        const body = document.getElementById('gtActivityModalBody');
+        if (!body) return;
+        body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Loading…</td></tr>';
+        const params = new URLSearchParams();
+        const period = document.getElementById('filter_period')?.value || '';
+        const metric = document.getElementById('filter_metric')?.value || '';
+        if (period) params.set('period', period);
+        if (metric) params.set('metric', metric);
+        try {
+            const res = await fetch(activityUrl + (params.toString() ? ('?' + params.toString()) : ''), {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const json = await res.json();
+            const rows = json.data || [];
+            if (!rows.length) {
+                body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No activity for current filters.</td></tr>';
+                return;
+            }
+            body.innerHTML = rows.map(function (r) {
+                return `<tr>
+                    <td>${escapeHtml(r.when || r.at || '')}</td>
+                    <td>${escapeHtml(r.title || r.action || '')}</td>
+                    <td>${escapeHtml(r.entity || '')}</td>
+                    <td class="text-end">${money(r.old_value)}</td>
+                    <td class="text-end">${money(r.new_value)}</td>
+                    <td>${escapeHtml(r.by || '')}</td>
+                </tr>`;
+            }).join('');
+        } catch (err) {
+            body.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Could not load activity.</td></tr>';
+        }
+    }
+    document.getElementById('gtActivityModal')?.addEventListener('show.bs.modal', loadActivityModal);
+
     // Charts — Goal theme greens
     const css = getComputedStyle(document.documentElement);
     const themePrimary = (css.getPropertyValue('--theme-primary').trim() || '#0f766e');
@@ -1600,10 +1939,10 @@
                             label: 'Target',
                             data: trend.effective,
                             backgroundColor: '#86efac',
-                            borderRadius: 5,
-                            maxBarThickness: 22,
-                            categoryPercentage: 0.65,
-                            barPercentage: 0.85,
+                            borderRadius: 4,
+                            maxBarThickness: 14,
+                            categoryPercentage: 0.7,
+                            barPercentage: 0.9,
                             yAxisID: 'y',
                             order: 2
                         },
@@ -1611,10 +1950,10 @@
                             label: 'Achieved',
                             data: trend.actual,
                             backgroundColor: '#15803d',
-                            borderRadius: 5,
-                            maxBarThickness: 22,
-                            categoryPercentage: 0.65,
-                            barPercentage: 0.85,
+                            borderRadius: 4,
+                            maxBarThickness: 14,
+                            categoryPercentage: 0.7,
+                            barPercentage: 0.9,
                             yAxisID: 'y',
                             order: 2
                         },
@@ -1623,12 +1962,12 @@
                             data: trend.pct || [],
                             type: 'line',
                             borderColor: '#166534',
-                            backgroundColor: 'rgba(22,101,52,.1)',
+                            backgroundColor: 'transparent',
                             pointBackgroundColor: '#fff',
                             pointBorderColor: '#166534',
                             pointBorderWidth: 2,
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
+                            pointRadius: 3,
+                            pointHoverRadius: 5,
                             tension: .35,
                             yAxisID: 'y1',
                             order: 1
@@ -1638,8 +1977,35 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: { padding: { top: 4, bottom: 0 } },
+                    onClick: function (evt, elements) {
+                        if (!elements || !elements.length) return;
+                        const idx = elements[0].index;
+                        const period = (trend.periods || [])[idx] || '';
+                        const label = (trend.labels || [])[idx] || period;
+                        const target = Number((trend.effective || [])[idx] || 0);
+                        const achieved = Number((trend.actual || [])[idx] || 0);
+                        const shortfall = Math.max(0, target - achieved);
+                        const pct = Number((trend.pct || [])[idx] || 0);
+                        pendingPeriod = period;
+                        document.getElementById('gtMonthModalLabel').textContent = label + ' performance';
+                        document.getElementById('gtMonthModalBody').innerHTML = `<table class="table table-sm mb-0">
+                            <tr><td>Period</td><td class="text-end fw-semibold">${escapeHtml(period)}</td></tr>
+                            <tr><td>Target</td><td class="text-end">${money(target)}</td></tr>
+                            <tr><td>Achieved</td><td class="text-end">${money(achieved)}</td></tr>
+                            <tr><td>Shortfall</td><td class="text-end">${money(shortfall)}</td></tr>
+                            <tr class="table-success"><th>Achievement</th><th class="text-end">${pct.toFixed(1)}%</th></tr>
+                        </table>`;
+                        new bootstrap.Modal(document.getElementById('gtMonthModal')).show();
+                    },
                     plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: 'rectRounded',
+                                font: { size: 11 }, padding: 12, color: '#475569'
+                            }
+                        },
                         tooltip: {
                             callbacks: {
                                 label: function (ctx) {
@@ -1652,17 +2018,21 @@
                         }
                     },
                     scales: {
-                        x: { grid: { display: false } },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 10 }, color: '#94a3b8', maxRotation: 0 }
+                        },
                         y: {
                             type: 'linear',
                             position: 'left',
                             beginAtZero: true,
                             ticks: {
+                                font: { size: 10 }, color: '#94a3b8',
                                 callback: function (v) {
-                                    if (v >= 10000000) return (v / 10000000).toFixed(1) + 'Cr';
-                                    if (v >= 100000) return (v / 100000).toFixed(1) + 'L';
-                                    if (v >= 1000) return (v / 1000).toFixed(0) + 'K';
-                                    return v;
+                                    if (v >= 10000000) return '₹ ' + (v / 10000000).toFixed(0) + ' Cr';
+                                    if (v >= 100000) return '₹ ' + (v / 100000).toFixed(0) + ' L';
+                                    if (v >= 1000) return '₹ ' + (v / 1000).toFixed(0) + ' K';
+                                    return '₹ ' + v;
                                 }
                             }
                         },
@@ -1672,7 +2042,10 @@
                             beginAtZero: true,
                             suggestedMax: 100,
                             grid: { drawOnChartArea: false },
-                            ticks: { callback: function (v) { return v + '%'; } }
+                            ticks: {
+                                font: { size: 10 }, color: '#94a3b8',
+                                callback: function (v) { return v + '%'; }
+                            }
                         }
                     }
                 }
@@ -1692,21 +2065,39 @@
                     datasets: [{
                         data: regionChart.values,
                         backgroundColor: regionChart.labels.map(function (_, i) { return palette[i % palette.length]; }),
-                        borderWidth: 0,
-                        hoverOffset: 6
+                        borderWidth: 2,
+                        borderColor: '#fff',
+                        hoverOffset: 4
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '62%',
+                    cutout: '68%',
+                    onClick: function (evt, elements) {
+                        if (!elements || !elements.length) return;
+                        const idx = elements[0].index;
+                        const orgId = (regionChart.org_ids || [])[idx];
+                        if (!orgId) return;
+                        const regionSel = document.getElementById('filter_region');
+                        if (regionSel) {
+                            regionSel.value = String(orgId);
+                            regionSel.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        document.getElementById('filter_goal_org_unit_id').value = String(orgId);
+                        setSelectValueNative('filter_cluster', '');
+                        setSelectValueNative('filter_branch_unit', '');
+                        submitFilters();
+                    },
                     plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
+                        legend: { display: false },
                         tooltip: {
                             callbacks: {
                                 label: function (ctx) {
                                     const val = ctx.parsed || 0;
-                                    return ' ' + ctx.label + ': ' + money(val);
+                                    const total = (regionChart.values || []).reduce(function (s, n) { return s + Number(n || 0); }, 0);
+                                    const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0';
+                                    return ' ' + ctx.label + ': ' + money(val) + ' (' + pct + '%)';
                                 }
                             }
                         }
