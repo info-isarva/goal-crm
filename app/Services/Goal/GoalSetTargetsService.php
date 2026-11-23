@@ -75,8 +75,21 @@ class GoalSetTargetsService
             13 => 80,
             14 => 80,
         ];
+        $crm = (int) ($user->crm_role_type ?? -1);
+        if (isset($map[$crm])) {
+            return $map[$crm];
+        }
 
-        return $map[(int) ($user->crm_role_type ?? -1)] ?? 999;
+        // Fallback when crm_role_type is missing / non-standard
+        $job = strtolower(preg_replace('/[\s_-]+/', '', (string) ($user->job_role ?? '')) ?: '');
+
+        return match (true) {
+            in_array($job, ['rd', 'regionaldirector', 'region'], true) => 30,
+            in_array($job, ['cluster', 'clusterhead', 'clusterdirector', 'cd'], true) => 40,
+            in_array($job, ['bm', 'branchmanager', 'branch'], true) => 50,
+            in_array($job, ['ssm', 'seniorsalesmanager', 'sm', 'salesmanager', 'jsm', 'juniorsales', 'vrm'], true) => 60,
+            default => 999,
+        };
     }
 
     public function isGlobalTargetAuthority(User $actor): bool
@@ -94,8 +107,25 @@ class GoalSetTargetsService
      */
     public function editableEmployeeIds(User $actor): array
     {
+        $actor->loadMissing('orgUnit');
         $team = $actor->goalTeamUserIds();
         $self = (int) $actor->id;
+
+        // Ensure org-subtree staff are included even if reporting links are incomplete
+        $crm = (int) ($actor->crm_role_type ?? -1);
+        if (in_array($crm, [6, 7, 8], true) || $this->roleRank($actor) <= 50) {
+            $orgIds = $actor->goalScopedOrgUnitIds();
+            if ($orgIds !== []) {
+                $orgUserIds = User::query()
+                    ->whereIn('goal_org_unit_id', $orgIds)
+                    ->where('crm_role_type', '!=', 0)
+                    ->pluck('id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+                $team = array_values(array_unique(array_merge($team, $orgUserIds)));
+            }
+        }
+
         $ids = array_values(array_filter(
             array_map('intval', $team),
             static fn (int $id) => $id !== $self
@@ -365,13 +395,14 @@ class GoalSetTargetsService
         $crm = (int) ($actor->crm_role_type ?? -1);
 
         if ($type === GoalOrgUnit::TYPE_REGION || $crm === 6) {
-            return ['key' => 'region', 'label' => 'your region', 'default_apply' => 'rd'];
+            return ['key' => 'region', 'label' => 'your region', 'default_apply' => 'cluster'];
         }
         if ($type === GoalOrgUnit::TYPE_CLUSTER || $crm === 7) {
-            return ['key' => 'cluster', 'label' => 'your cluster', 'default_apply' => 'cluster'];
+            // Land on Branch view so CD can set BM / staff targets under them
+            return ['key' => 'cluster', 'label' => 'your cluster', 'default_apply' => 'bm'];
         }
         if ($type === GoalOrgUnit::TYPE_BRANCH || $crm === 8) {
-            return ['key' => 'branch', 'label' => 'your branch', 'default_apply' => 'bm'];
+            return ['key' => 'branch', 'label' => 'your branch', 'default_apply' => 'staff'];
         }
 
         return ['key' => 'team', 'label' => 'your team', 'default_apply' => 'staff'];
@@ -1104,7 +1135,7 @@ class GoalSetTargetsService
             'last_month' => $open,
             'set_target' => $set,
             'owner_target' => $owner,
-            'remainder' => max(0, round($set - $owner, 2)),
+            'remainder' => max(0, round(max(0, $set - $owner) - $childSet, 2)),
             'total_target' => $childSet,
             'is_staff' => false,
             'editable' => $hasLinked ? (bool) ($linked['editable'] ?? false) : false,
@@ -1135,11 +1166,12 @@ class GoalSetTargetsService
                 if (empty($n['linked_user_id'])) {
                     $n['set_target'] = $childSet;
                     $n['last_month'] = $childOpen;
-                    $n['remainder'] = $childSet;
+                    $n['remainder'] = 0.0;
                 } else {
                     $set = (float) ($n['set_target'] ?? 0);
                     $owner = (float) ($n['owner_target'] ?? 0);
-                    $n['remainder'] = max(0, round($set - $owner, 2));
+                    $pool = max(0, round($set - $owner, 2));
+                    $n['remainder'] = max(0, round($pool - $childSet, 2));
                 }
             }
         }
@@ -1156,10 +1188,11 @@ class GoalSetTargetsService
         $walk = function (array $nodes) use (&$walk, &$out) {
             foreach ($nodes as $n) {
                 if (! empty($n['children'])) {
-                    if (empty($n['is_org_group'])) {
+                    // Include linked Region/Cluster rows in cascade checks
+                    if (empty($n['is_org_group']) || ! empty($n['linked_user_id'])) {
                         $out[] = [
-                            'id' => (int) $n['id'],
-                            'label' => (string) ($n['check_label'] ?? $n['name']),
+                            'id' => (int) ($n['linked_user_id'] ?? $n['id']),
+                            'label' => (string) ($n['check_label'] ?? $n['linked_user_name'] ?? $n['name']),
                             'ok' => (bool) ($n['check_ok'] ?? false),
                             'over' => (bool) ($n['over_allocated'] ?? false),
                             'pending' => (bool) ($n['pending_distribution'] ?? false),
@@ -1194,54 +1227,51 @@ class GoalSetTargetsService
             if (! empty($n['children'])) {
                 $this->recomputeTotals($n['children']);
                 $team = array_sum(array_map(static fn ($c) => (float) ($c['set_target'] ?? 0), $n['children']));
-                if (! empty($n['is_org_group'])) {
+                if (! empty($n['is_org_group']) && empty($n['linked_user_id'])) {
+                    $open = array_sum(array_map(static fn ($c) => (float) ($c['last_month'] ?? 0), $n['children']));
+                    $n['set_target'] = round($team, 2);
+                    $n['last_month'] = round($open, 2);
+                    $n['owner_target'] = 0.0;
                     $n['total_target'] = round($team, 2);
-                    if (empty($n['linked_user_id'])) {
-                        $open = array_sum(array_map(static fn ($c) => (float) ($c['last_month'] ?? 0), $n['children']));
-                        $n['set_target'] = round($team, 2);
-                        $n['last_month'] = round($open, 2);
-                        $n['owner_target'] = 0.0;
-                        $n['remainder'] = round($team, 2);
-                    } else {
-                        $owner = (float) ($n['owner_target'] ?? 0);
-                        $set = (float) ($n['set_target'] ?? 0);
-                        $n['remainder'] = max(0, round($set - $owner, 2));
-                    }
+                    $n['remainder'] = 0.0; // rollup row — nothing left to assign at this level
                     $n['check_ok'] = true;
                     $n['over_allocated'] = false;
                     $n['pending_distribution'] = false;
                     $n['check_label'] = null;
                     continue;
                 }
+
+                // Linked org (RD/CD) or person manager: pool = Total − Owner; Remaining = pool − children
                 $owner = (float) ($n['owner_target'] ?? 0);
                 $set = (float) ($n['set_target'] ?? 0);
-                $remainder = max(0, round($set - $owner, 2));
-                $over = ($team - $remainder) > 0.05;
-                $pending = ! $over && abs($team - $remainder) > 0.05;
-                $leftForManager = max(0, round($remainder - $team, 2));
-                $n['total_target'] = $team;
-                $n['remainder'] = $remainder;
-                $n['check_ok'] = abs($team - $remainder) <= 0.05;
+                $pool = max(0, round($set - $owner, 2));
+                $left = round($pool - $team, 2);
+                $over = ($team - $pool) > 0.05;
+                $pending = ! $over && abs($team - $pool) > 0.05;
+                $n['total_target'] = round($team, 2);
+                $n['remainder'] = max(0, $left);
+                $n['check_ok'] = abs($team - $pool) <= 0.05;
                 $n['over_allocated'] = $over;
                 $n['pending_distribution'] = $pending;
+                $label = (string) ($n['linked_user_name'] ?? $n['area'] ?? $n['name'] ?? 'Row');
                 $n['check_label'] = $over
                     ? sprintf(
-                        '%s: over-allocated — distributed %s but remainder is only %s ✗',
-                        $n['area'] ?? $n['name'],
+                        '%s: over-allocated — children total %s but only %s remaining (Total − Owner) ✗',
+                        $label,
                         $this->n($team),
-                        $this->n($remainder)
+                        $this->n($pool)
                     )
                     : ($pending
                         ? sprintf(
-                            '%s: %s left for this manager to distribute later',
-                            $n['area'] ?? $n['name'],
-                            $this->n($leftForManager)
+                            '%s: %s still left to distribute below',
+                            $label,
+                            $this->n(max(0, $left))
                         )
                         : sprintf(
-                            '%s: distributed %s of remainder %s ✓',
-                            $n['area'] ?? $n['name'],
+                            '%s: distributed %s of %s ✓',
+                            $label,
                             $this->n($team),
-                            $this->n($remainder)
+                            $this->n($pool)
                         ));
             } else {
                 $n['total_target'] = null;

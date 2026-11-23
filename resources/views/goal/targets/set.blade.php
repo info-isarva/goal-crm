@@ -940,7 +940,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                         <th class="num">Last Month Target ({{ $unit }}) <i class="bi bi-info-circle th-info" title="Previous period’s assigned total target (read-only)"></i></th>
                         <th class="num">Total Target ({{ $unit }}) <i class="bi bi-info-circle th-info" title="This period’s total target to assign"></i></th>
                         <th class="num">Owner Target ({{ $unit }}) <i class="bi bi-info-circle th-info" title="Personal share kept by this person — must be within Total Target (not extra)"></i></th>
-                        <th class="num col-eff">Remaining ({{ $unit }}) <i class="bi bi-info-circle th-info" title="Amount left to distribute below = Total Target − Owner Target"></i></th>
+                        <th class="num col-eff">Remaining ({{ $unit }}) <i class="bi bi-info-circle th-info" title="Still left to give below = (Total − Owner) − children Total Targets"></i></th>
                         <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
@@ -987,7 +987,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             <div>
                 <div class="st-tip">
                     <i class="bi bi-info-circle-fill"></i>
-                    <span id="stAuthTip"><strong>Owner Target</strong> is within <strong>Total Target</strong>. Your own target is set by your reporting authority only — you edit people below your level.</span>
+                    <span id="stAuthTip"><strong>Remaining</strong> = (Total − Owner) − already given to children. Owner is within Total. Your own target is set by your authority only.</span>
                 </div>
                 <div id="stCheckSummary" class="ok">Ready</div>
             </div>
@@ -1158,32 +1158,30 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                 recompute(n.children);
                 const teamRollup = n.children.reduce((s, c) => s + Number(c.set_target || 0), 0);
                 const openRollup = n.children.reduce((s, c) => s + Number(c.last_month || 0), 0);
-                if (n.is_org_group) {
+                if (n.is_org_group && !n.linked_user_id) {
+                    n.set_target = Math.round(teamRollup * 100) / 100;
+                    n.last_month = Math.round(openRollup * 100) / 100;
+                    n.owner_target = 0;
                     n.total_target = teamRollup;
-                    if (!n.linked_user_id) {
-                        n.set_target = Math.round(teamRollup * 100) / 100;
-                        n.last_month = Math.round(openRollup * 100) / 100;
-                        n.owner_target = 0;
-                        n.remainder = n.set_target;
-                    } else {
-                        const owner = Number(n.owner_target || 0);
-                        const set = Number(n.set_target || 0);
-                        n.remainder = Math.max(0, Math.round((set - owner) * 100) / 100);
-                    }
+                    n.remainder = 0;
                     n.over_allocated = false;
                     n.pending_distribution = false;
                     n.check_ok = true;
+                    n.check_label = null;
                     return;
                 }
                 const owner = Number(n.owner_target || 0);
                 const set = Number(n.set_target || 0);
-                const rem = Math.max(0, set - owner);
-                n.remainder = rem;
+                const pool = Math.max(0, set - owner);
+                const left = Math.round((pool - teamRollup) * 100) / 100;
+                n.remainder = Math.max(0, left);
                 n.total_target = teamRollup;
-                n.over_allocated = (teamRollup - rem) > 0.05;
-                n.pending_distribution = !n.over_allocated && Math.abs(teamRollup - rem) > 0.05;
-                n.check_ok = Math.abs(teamRollup - rem) <= 0.05;
-                n.check_label = n.over_allocated ? 'Over limit' : (n.pending_distribution ? 'For them later' : 'Fully set');
+                n.over_allocated = (teamRollup - pool) > 0.05;
+                n.pending_distribution = !n.over_allocated && Math.abs(teamRollup - pool) > 0.05;
+                n.check_ok = Math.abs(teamRollup - pool) <= 0.05;
+                n.check_label = n.over_allocated
+                    ? `Over by ${fmt(teamRollup - pool)} — children exceed Remaining pool`
+                    : (n.pending_distribution ? `${fmt(Math.max(0, left))} left to distribute` : 'Fully set');
             } else {
                 n.owner_target = Number(n.set_target || 0);
                 n.remainder = 0;
@@ -1203,10 +1201,10 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     function collectChecks(nodes, out = []) {
         (nodes || []).forEach((n) => {
             if (n.children?.length) {
-                if (!n.is_org_group) {
+                if (!n.is_org_group || n.linked_user_id) {
                     out.push({
-                        id: n.id,
-                        label: n.check_label || n.name,
+                        id: n.linked_user_id || n.id,
+                        label: n.check_label || n.linked_user_name || n.name,
                         ok: !!n.check_ok,
                         over: !!n.over_allocated,
                         pending: !!n.pending_distribution,
@@ -1340,18 +1338,30 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         return Number(n.owner_target || 0);
     }
 
+    /** Direct children Total Targets (what was already given below). */
+    function childrenTotal(n) {
+        return (n.children || []).reduce((s, c) => s + Number(c.set_target || 0), 0);
+    }
+
     /**
-     * Remaining to distribute below = Total Target − Owner Target.
-     * Owner is a share of Total (not an extra add-on). Last Month is reference only.
+     * Remaining left to distribute below =
+     * (Total Target − Owner Target) − sum(children Total Targets).
+     * Owner is within Total (not extra). Last Month is reference only.
      */
     function effectiveOf(n) {
         const total = Number(n.set_target || 0);
         const owner = ownerDisplayed(n);
+        const pool = Math.max(0, total - owner);
         // Leaf staff: nothing left to push down
         if (!n.is_org_group && !(n.children && n.children.length)) {
             return 0;
         }
-        return Math.max(0, Math.round((total - owner) * 100) / 100);
+        // Plain org rollup (no linked lead): fully represented by children
+        if (n.is_org_group && !n.linked_user_id) {
+            return 0;
+        }
+        const left = Math.round((pool - childrenTotal(n)) * 100) / 100;
+        return Math.max(0, left);
     }
 
     function entityTitle(n) {
@@ -1671,9 +1681,10 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         if (!canEdit) {
             sum.className = 'warn';
             sum.innerHTML = '<i class="bi bi-lock-fill"></i> View only — your authority sets your target';
-        } else if (overs.length) {
+        } else                 if (overs.length) {
             sum.className = 'warn';
-            sum.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> Over limit — reduce targets';
+            const overMsg = overs[0]?.label || 'Children exceed Remaining pool';
+            sum.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> ' + escapeHtml(overMsg);
         } else if (receivesTarget() && blocking.some((b) => !b.ok)) {
             sum.className = 'warn';
             sum.innerHTML = '<i class="bi bi-share"></i> Finish assigning your remainder to unlock Assign';
