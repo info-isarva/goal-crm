@@ -32,7 +32,7 @@ class GoalSetTargetsController extends Controller
                 'disbursement' => 'Disbursement',
                 'deals' => 'Deals closed',
             ],
-            'canManage' => true,
+            'canManage' => (bool) ($payload['can_edit'] ?? false),
         ]);
     }
 

@@ -987,7 +987,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             <div>
                 <div class="st-tip">
                     <i class="bi bi-info-circle-fill"></i>
-                    <span><strong>Owner Target</strong> is within <strong>Total Target</strong> (not extra). <strong>Remaining</strong> = Total − Owner (to distribute below).</span>
+                    <span id="stAuthTip"><strong>Owner Target</strong> is within <strong>Total Target</strong>. Your own target is set by your reporting authority only — you edit people below your level.</span>
                 </div>
                 <div id="stCheckSummary" class="ok">Ready</div>
             </div>
@@ -1016,7 +1016,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     let collapsed = new Set();
     let searchQ = '';
     let levelFilter = 'all';
-    let applyFilter = 'rd';
+    let applyFilter = String(state.authority?.default_apply || 'rd');
     let showHierarchy = true;
 
     const $ = (id) => document.getElementById(id);
@@ -1290,18 +1290,32 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         if (applyFilter === 'all') return tree;
         if (applyFilter === 'rd') {
             const regions = tree.filter((n) => n.is_org_group && n.org_type === 'region');
-            return regions.length ? regions : collectOrgByType(tree, 'region');
+            if (regions.length) return regions;
+            const found = collectOrgByType(tree, 'region');
+            // Scoped users (e.g. Cluster Director) may not have Region in tree — keep their root
+            return found.length ? found : tree;
         }
         if (applyFilter === 'cluster') {
             const clusters = collectOrgByType(tree, 'cluster');
-            return clusters.length ? clusters : collectByRole(tree, 'cluster');
+            if (clusters.length) return clusters;
+            const byRole = collectByRole(tree, 'cluster');
+            return byRole.length ? byRole : tree;
         }
         if (applyFilter === 'bm') {
             const branches = collectOrgByType(tree, 'branch');
-            return branches.length ? branches : collectByRole(tree, 'bm');
+            if (branches.length) return branches;
+            const byRole = collectByRole(tree, 'bm');
+            return byRole.length ? byRole : tree;
         }
         // Employee → people leaves
-        return collectByRole(tree, 'staff');
+        const staff = collectByRole(tree, 'staff');
+        return staff.length ? staff : tree;
+    }
+
+    function syncApplyToButtons() {
+        document.querySelectorAll('#stApplyTo [data-apply]').forEach((b) => {
+            b.classList.toggle('is-active', b.getAttribute('data-apply') === applyFilter);
+        });
     }
 
     function inputHtml(n, cls, value, disabled, label) {
@@ -1629,7 +1643,8 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         const nested = collectChecks(state.tree || []);
         const overs = nested.filter((c) => c.over);
 
-        let canAssign = (state.tree || []).length > 0 && overs.length === 0;
+        const canEdit = state.can_edit !== false && state.authority?.can_edit !== false;
+        let canAssign = canEdit && (state.tree || []).length > 0 && overs.length === 0;
         const blocking = [];
         if (receivesTarget() && state.self) {
             const left = Number(state.self.left_to_distribute || 0);
@@ -1640,6 +1655,12 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
         state.checks = blocking;
         state.can_assign = canAssign;
+        state.can_edit = canEdit;
+
+        const tip = $('stAuthTip');
+        if (tip && state.authority?.message) {
+            tip.textContent = state.authority.message;
+        }
 
         const sum = $('stCheckSummary');
         const saveBtn = $('stSaveDraft');
@@ -1647,7 +1668,10 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         const assignBtn = $('stAssign');
         const assignTop = $('stAssignTop');
 
-        if (overs.length) {
+        if (!canEdit) {
+            sum.className = 'warn';
+            sum.innerHTML = '<i class="bi bi-lock-fill"></i> View only — your authority sets your target';
+        } else if (overs.length) {
             sum.className = 'warn';
             sum.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> Over limit — reduce targets';
         } else if (receivesTarget() && blocking.some((b) => !b.ok)) {
@@ -1655,25 +1679,26 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             sum.innerHTML = '<i class="bi bi-share"></i> Finish assigning your remainder to unlock Assign';
         } else if (!(state.tree || []).length) {
             sum.className = 'warn';
-            sum.textContent = 'No team below you';
+            sum.textContent = 'No team below you in your authorized scope';
         } else {
             sum.className = 'ok';
             sum.innerHTML = '<i class="bi bi-check-circle-fill"></i> Ready to save or assign';
         }
 
         const assignDisabled = !state.can_assign;
+        const saveDisabled = !canEdit;
         if (assignBtn) {
             assignBtn.disabled = assignDisabled;
             assignBtn.classList.toggle('st-btn-primary', !assignDisabled);
         }
         if (assignTop) assignTop.disabled = assignDisabled;
         if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.classList.toggle('st-btn-primary', assignDisabled);
+            saveBtn.disabled = saveDisabled;
+            saveBtn.classList.toggle('st-btn-primary', canEdit && assignDisabled);
         }
         if (saveTop) {
-            saveTop.disabled = false;
-            saveTop.classList.toggle('st-btn-primary', assignDisabled);
+            saveTop.disabled = saveDisabled;
+            saveTop.classList.toggle('st-btn-primary', canEdit && assignDisabled);
         }
         updateKpis();
     }
@@ -1741,6 +1766,10 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         state = json.data || state;
         state.period = period;
         state.metric = metric;
+        if (state.authority?.default_apply) {
+            applyFilter = String(state.authority.default_apply);
+            syncApplyToButtons();
+        }
         collapsed = new Set();
         if (showHierarchy) {
             const collapseDeep = (nodes, depth = 0) => {
@@ -2154,6 +2183,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
     document.addEventListener('click', () => closeRowMenus());
 
+    syncApplyToButtons();
     if (showHierarchy) {
         const collapseDeep = (nodes, depth = 0) => {
             (nodes || []).forEach((n) => {

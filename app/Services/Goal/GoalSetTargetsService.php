@@ -56,7 +56,39 @@ class GoalSetTargetsService
     }
 
     /**
-     * Employee IDs the actor may SET/EDIT (subtree excluding self and target-exempt roles).
+     * Hierarchy rank (lower number = higher authority). Used so you only edit people below you.
+     */
+    public function roleRank(User $user): int
+    {
+        $map = [
+            0 => 0,   // Super Admin
+            1 => 5,   // Admin
+            4 => 10,  // MD
+            5 => 20,  // CEO
+            6 => 30,  // RD
+            7 => 40,  // Cluster
+            8 => 50,  // BM
+            9 => 60,  // SM / sales
+            10 => 70,
+            11 => 70,
+            12 => 70,
+            13 => 80,
+            14 => 80,
+        ];
+
+        return $map[(int) ($user->crm_role_type ?? -1)] ?? 999;
+    }
+
+    public function isGlobalTargetAuthority(User $actor): bool
+    {
+        return $actor->isSuperAdmin()
+            || in_array((int) ($actor->crm_role_type ?? -1), [0, 1, 4, 5], true);
+    }
+
+    /**
+     * Employee IDs the actor may SET/EDIT.
+     * Never self. Never peers/managers. Only people strictly below in authority,
+     * within the actor’s reporting / org team. Exempt roles (MD/CEO/accounts/PMS) excluded.
      *
      * @return list<int>
      */
@@ -73,24 +105,52 @@ class GoalSetTargetsService
             return [];
         }
 
-        $exemptIds = User::query()
+        $users = User::query()
             ->whereIn('id', $ids)
-            ->get(['id', 'crm_role_type', 'job_role'])
-            ->filter(fn (User $u) => $this->isExemptFromTargets($u))
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
+            ->get(['id', 'crm_role_type', 'job_role']);
 
-        $exemptLookup = array_flip($exemptIds);
+        $actorRank = $this->roleRank($actor);
+        $isAuthority = $this->isGlobalTargetAuthority($actor);
+        $out = [];
 
-        return array_values(array_filter($ids, static fn (int $id) => ! isset($exemptLookup[$id])));
+        foreach ($users as $u) {
+            if ($this->isExemptFromTargets($u)) {
+                continue;
+            }
+            $r = $this->roleRank($u);
+            // Global authority sets RD and below only. Managers set only strictly lower ranks.
+            if ($isAuthority) {
+                if ($r >= 30) {
+                    $out[] = (int) $u->id;
+                }
+            } elseif ($r > $actorRank) {
+                $out[] = (int) $u->id;
+            }
+        }
+
+        return array_values(array_unique($out));
+    }
+
+    /**
+     * Users shown in the Set Targets tree (editable team + self for read-only own row).
+     *
+     * @return list<int>
+     */
+    public function visibleEmployeeIds(User $actor): array
+    {
+        $ids = $this->editableEmployeeIds($actor);
+        if ($this->actorReceivesTarget($actor)) {
+            $ids[] = (int) $actor->id;
+        }
+
+        return array_values(array_unique($ids));
     }
 
     public function assertCanEdit(User $actor, int $employeeId): void
     {
         if ($employeeId === (int) $actor->id) {
             throw ValidationException::withMessages([
-                'employee_id' => 'You cannot set or edit your own target.',
+                'employee_id' => 'You cannot set or edit your own target. Only your reporting authority can.',
             ]);
         }
 
@@ -101,9 +161,15 @@ class GoalSetTargetsService
             ]);
         }
 
+        if ($employee && $this->roleRank($employee) <= $this->roleRank($actor) && ! $this->isGlobalTargetAuthority($actor)) {
+            throw ValidationException::withMessages([
+                'employee_id' => 'You can only set targets for people below your role level.',
+            ]);
+        }
+
         if (! in_array($employeeId, $this->editableEmployeeIds($actor), true)) {
             throw ValidationException::withMessages([
-                'employee_id' => 'You can only set targets for employees in your reporting line.',
+                'employee_id' => 'You can only set targets for employees in your authorized reporting line.',
             ]);
         }
     }
@@ -162,7 +228,13 @@ class GoalSetTargetsService
         $period = $this->normalizePeriod($period);
         $metric = $this->normalizeMetric($metric);
         $prev = $this->previousPeriod($period);
-        $editable = array_flip($this->editableEmployeeIds($actor));
+        $actor->loadMissing([
+            'orgUnit:id,name,type,code,parent_id',
+            'orgUnit.parent:id,name,type,code,parent_id',
+            'orgUnit.parent.parent:id,name,type,code,parent_id',
+        ]);
+        $editableIds = $this->editableEmployeeIds($actor);
+        $editable = array_flip($editableIds);
 
         $users = $this->loadSubtreeUsers($actor);
         $byParent = $users->groupBy(fn (User $u) => (int) ($u->reports_to_user_id ?: $u->assign_manager ?: 0));
@@ -170,7 +242,7 @@ class GoalSetTargetsService
         $targetMap = $this->targetsMap($period, $metric, $users->pluck('id')->all());
         $prevMap = $this->targetsMap($prev, $metric, $users->pluck('id')->all());
 
-        // Build leaf person nodes (editable), then nest under org Region → Cluster → Branch
+        // Build leaf person nodes, then nest under org Region → Cluster → Branch
         $peopleByOrg = [];
         $unassignedPeople = [];
         foreach ($users as $user) {
@@ -191,7 +263,7 @@ class GoalSetTargetsService
                 $unassignedPeople[] = $leaf;
             }
         }
-        $tree = $this->buildOrgHierarchyTree($users, $peopleByOrg, $unassignedPeople);
+        $tree = $this->buildOrgHierarchyTree($users, $peopleByOrg, $unassignedPeople, $actor);
 
         $selfTargetMap = $this->targetsMap($period, $metric, [(int) $actor->id]);
         $selfPrevMap = $this->targetsMap($prev, $metric, [(int) $actor->id]);
@@ -229,10 +301,13 @@ class GoalSetTargetsService
 
         $pending = $this->collectChecks($tree);
         $hasOver = collect($pending)->contains(fn ($c) => ($c['over'] ?? false) === true);
-        $canAssign = count($tree) > 0 && ! $hasOver;
+        $canEdit = $editableIds !== [];
+        $canAssign = $canEdit && count($tree) > 0 && ! $hasOver;
         if ($receivesTarget) {
             $canAssign = $canAssign && abs($left) <= 0.05;
         }
+
+        $scopeMeta = $this->authorityScopeMeta($actor);
 
         return [
             'period' => $period,
@@ -259,6 +334,16 @@ class GoalSetTargetsService
             'checks' => $checks,
             'pending' => $pending,
             'can_assign' => $canAssign,
+            'can_edit' => $canEdit,
+            'authority' => [
+                'scope' => $scopeMeta['label'],
+                'scope_key' => $scopeMeta['key'],
+                'default_apply' => $scopeMeta['default_apply'],
+                'can_edit' => $canEdit,
+                'message' => $canEdit
+                    ? 'You can set targets for people below your level in '.$scopeMeta['label'].'. Your own target is set by your reporting authority only.'
+                    : 'Your own target is view-only. Only your reporting authority can add or edit it.',
+            ],
             'split_options' => [
                 'by_last_month' => "By last month's target",
                 'equal' => 'Equal split',
@@ -266,6 +351,30 @@ class GoalSetTargetsService
                 'role_weights' => 'Role weights (set by admin)',
             ],
         ];
+    }
+
+    /**
+     * @return array{key: string, label: string, default_apply: string}
+     */
+    protected function authorityScopeMeta(User $actor): array
+    {
+        if ($this->isGlobalTargetAuthority($actor)) {
+            return ['key' => 'company', 'label' => 'company', 'default_apply' => 'rd'];
+        }
+        $type = (string) ($actor->orgUnit?->type ?? '');
+        $crm = (int) ($actor->crm_role_type ?? -1);
+
+        if ($type === GoalOrgUnit::TYPE_REGION || $crm === 6) {
+            return ['key' => 'region', 'label' => 'your region', 'default_apply' => 'rd'];
+        }
+        if ($type === GoalOrgUnit::TYPE_CLUSTER || $crm === 7) {
+            return ['key' => 'cluster', 'label' => 'your cluster', 'default_apply' => 'cluster'];
+        }
+        if ($type === GoalOrgUnit::TYPE_BRANCH || $crm === 8) {
+            return ['key' => 'branch', 'label' => 'your branch', 'default_apply' => 'bm'];
+        }
+
+        return ['key' => 'team', 'label' => 'your team', 'default_apply' => 'staff'];
     }
 
     /**
@@ -610,7 +719,7 @@ class GoalSetTargetsService
      */
     protected function loadSubtreeUsers(User $actor): Collection
     {
-        $ids = $this->editableEmployeeIds($actor);
+        $ids = $this->visibleEmployeeIds($actor);
         if ($ids === []) {
             return collect();
         }
@@ -785,14 +894,19 @@ class GoalSetTargetsService
 
     /**
      * Target Allocation style: Region → Cluster → Branch → people.
+     * Roots are scoped to the actor’s authorized org level (company / region / cluster / branch).
      *
      * @param  Collection<int, User>  $users
      * @param  array<int, list<array<string, mixed>>>  $peopleByOrg
      * @param  list<array<string, mixed>>  $unassignedPeople
      * @return list<array<string, mixed>>
      */
-    protected function buildOrgHierarchyTree(Collection $users, array $peopleByOrg, array $unassignedPeople): array
-    {
+    protected function buildOrgHierarchyTree(
+        Collection $users,
+        array $peopleByOrg,
+        array $unassignedPeople,
+        ?User $actor = null
+    ): array {
         $orgIds = [];
         foreach ($users as $user) {
             $unit = $user->orgUnit;
@@ -800,6 +914,17 @@ class GoalSetTargetsService
             while ($unit && $guard < 6) {
                 $orgIds[(int) $unit->id] = true;
                 $unit = $unit->parent;
+                $guard++;
+            }
+        }
+
+        // Ensure actor’s own org unit is in the scaffold (for read-only self display)
+        if ($actor && (int) ($actor->goal_org_unit_id ?: 0) > 0) {
+            $own = $actor->orgUnit;
+            $guard = 0;
+            while ($own && $guard < 6) {
+                $orgIds[(int) $own->id] = true;
+                $own = $own->parent;
                 $guard++;
             }
         }
@@ -877,22 +1002,41 @@ class GoalSetTargetsService
             return $node;
         };
 
+        $roots = $this->resolveOrgTreeRoots($actor, $units, $unitsById);
+        $tree = $roots->map(fn (GoalOrgUnit $u) => $build($u, 0))->values()->all();
+
+        // Unassigned people only for global authority (avoid leaking outside scope)
+        if ($unassignedPeople !== [] && ($actor === null || $this->isGlobalTargetAuthority($actor))) {
+            $tree[] = $this->makeOrgGroupNode(null, $unassignedPeople, 0, 'Unassigned');
+        }
+
+        return $tree;
+    }
+
+    /**
+     * @param  Collection<int, GoalOrgUnit>  $units
+     * @param  Collection<int, GoalOrgUnit>  $unitsById
+     * @return Collection<int, GoalOrgUnit>
+     */
+    protected function resolveOrgTreeRoots(?User $actor, Collection $units, Collection $unitsById): Collection
+    {
+        if ($actor && ! $this->isGlobalTargetAuthority($actor)) {
+            $oid = (int) ($actor->goal_org_unit_id ?: 0);
+            if ($oid > 0 && $unitsById->has($oid)) {
+                return collect([$unitsById->get($oid)]);
+            }
+        }
+
         $regionRoots = $units->where('type', GoalOrgUnit::TYPE_REGION)->values();
         if ($regionRoots->isEmpty()) {
-            $regionRoots = $units->filter(function (GoalOrgUnit $u) use ($unitsById) {
+            return $units->filter(function (GoalOrgUnit $u) use ($unitsById) {
                 $pid = (int) ($u->parent_id ?: 0);
 
                 return $pid === 0 || ! $unitsById->has($pid);
             })->values();
         }
 
-        $tree = $regionRoots->map(fn (GoalOrgUnit $u) => $build($u, 0))->values()->all();
-
-        if ($unassignedPeople !== []) {
-            $tree[] = $this->makeOrgGroupNode(null, $unassignedPeople, 0, 'Unassigned');
-        }
-
-        return $tree;
+        return $regionRoots;
     }
 
     /**
