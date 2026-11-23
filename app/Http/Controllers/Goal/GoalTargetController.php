@@ -121,11 +121,7 @@ class GoalTargetController extends Controller
 
         $metricQuery = GoalTarget::query();
         $this->applyScope($metricQuery, $actor);
-        $metricQuery
-            ->when($filters['period'] !== '', fn ($q) => $q->where('period', $filters['period']))
-            ->when($filters['status'] !== '', fn ($q) => $q->where('status', $filters['status']))
-            ->when($filters['goal_org_unit_id'], fn ($q) => $q->where('goal_org_unit_id', $filters['goal_org_unit_id']))
-            ->when($filters['user_id'], fn ($q) => $q->where('user_id', $filters['user_id']));
+        $this->applyFilters($metricQuery, array_merge($filters, ['metric' => '']));
         $metricSplit = $metricQuery
             ->selectRaw('metric')
             ->selectRaw('SUM(base_target + opening_shortfall + adjustments) as effective_sum')
@@ -200,6 +196,12 @@ class GoalTargetController extends Controller
         $canManage = $actor->hasCrmPermission('manage_targets_guard');
         $canApprove = $this->canApproveTargets($actor);
 
+        $allocationTree = $this->buildAllocationTree(
+            $branches,
+            $rows,
+            $filters['goal_org_unit_id'] ?? null
+        );
+
         return view('goal.targets.index', compact(
             'targets',
             'branches',
@@ -215,9 +217,197 @@ class GoalTargetController extends Controller
             'regionChart',
             'insights',
             'recentActivity',
+            'allocationTree',
             'canManage',
             'canApprove'
         ));
+    }
+
+    /**
+     * Hierarchical Region → Cluster → Branch → Employee rows for the allocation table.
+     *
+     * @param  \Illuminate\Support\Collection<int, GoalOrgUnit>  $orgUnits
+     * @param  \Illuminate\Support\Collection<int, GoalTarget>  $rows
+     * @return list<array<string, mixed>>
+     */
+    protected function buildAllocationTree($orgUnits, $rows, $filterOrgId = null): array
+    {
+        $unitsById = $orgUnits->keyBy(fn (GoalOrgUnit $u) => (int) $u->id);
+        $byParent = $orgUnits->groupBy(fn (GoalOrgUnit $u) => (int) ($u->parent_id ?: 0));
+
+        $empByOrg = [];
+        $orgOwn = [];
+        foreach ($rows as $t) {
+            if ($t->user_id) {
+                $oid = (int) ($t->user?->goal_org_unit_id ?: 0);
+                if ($oid <= 0) {
+                    continue;
+                }
+                $empByOrg[$oid][] = $this->allocationLeafFromTarget($t, 'employee');
+            } elseif ($t->goal_org_unit_id) {
+                $orgOwn[(int) $t->goal_org_unit_id] = $this->allocationMetricsFromTarget($t);
+            }
+        }
+
+        $build = function (GoalOrgUnit $unit) use (&$build, $byParent, $empByOrg, $orgOwn): array {
+            $children = [];
+            foreach ($byParent->get((int) $unit->id, collect()) as $child) {
+                $children[] = $build($child);
+            }
+            if ($unit->type === GoalOrgUnit::TYPE_BRANCH) {
+                foreach ($empByOrg[(int) $unit->id] ?? [] as $emp) {
+                    $children[] = $emp;
+                }
+            }
+
+            return $this->rollupAllocationNode([
+                'key' => 'org-'.$unit->id,
+                'name' => $unit->name.($unit->code ? ' ('.$unit->code.')' : ''),
+                'type' => (string) $unit->type,
+                'children' => $children,
+            ], $orgOwn[(int) $unit->id] ?? null);
+        };
+
+        if ($filterOrgId && $unitsById->has((int) $filterOrgId)) {
+            return [$build($unitsById->get((int) $filterOrgId))];
+        }
+
+        $roots = $orgUnits->where('type', GoalOrgUnit::TYPE_REGION)->values();
+        if ($roots->isEmpty()) {
+            $roots = $orgUnits->filter(function (GoalOrgUnit $u) use ($unitsById) {
+                $pid = (int) ($u->parent_id ?: 0);
+
+                return $pid === 0 || ! $unitsById->has($pid);
+            })->values();
+        }
+
+        return $roots->map(fn (GoalOrgUnit $u) => $build($u))->values()->all();
+    }
+
+    /**
+     * @return array{base: float, opening: float, adjustments: float, actual: float, closing: float, target_id: int|null, period: string|null, metric: string|null, status: string|null, user_id: int|null, org_id: int|null}
+     */
+    protected function allocationMetricsFromTarget(GoalTarget $t): array
+    {
+        return [
+            'base' => (float) $t->base_target,
+            'opening' => (float) $t->opening_shortfall,
+            'adjustments' => (float) $t->adjustments,
+            'actual' => (float) $t->actual,
+            'closing' => (float) $t->closing_shortfall,
+            'target_id' => (int) $t->id,
+            'period' => (string) $t->period,
+            'metric' => (string) $t->metric,
+            'status' => (string) $t->status,
+            'user_id' => $t->user_id ? (int) $t->user_id : null,
+            'org_id' => $t->goal_org_unit_id ? (int) $t->goal_org_unit_id : null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function allocationLeafFromTarget(GoalTarget $t, string $type): array
+    {
+        $m = $this->allocationMetricsFromTarget($t);
+        $effective = $m['base'] + $m['opening'] + $m['adjustments'];
+        $pct = $effective > 0 ? round(min(100, ($m['actual'] / $effective) * 100), 1) : 0.0;
+
+        return [
+            'key' => 'user-'.$t->user_id.'-'.$t->id,
+            'name' => $t->user?->name ?? ('User #'.$t->user_id),
+            'type' => $type,
+            'meta' => $t->period.' · '.ucfirst((string) $t->metric),
+            'base' => $m['base'],
+            'opening' => $m['opening'],
+            'adjustments' => $m['adjustments'],
+            'effective' => round($effective, 2),
+            'actual' => $m['actual'],
+            'closing' => $m['closing'],
+            'pct' => $pct,
+            'children' => [],
+            'target_id' => $m['target_id'],
+            'period' => $m['period'],
+            'metric' => $m['metric'],
+            'status' => $m['status'],
+            'user_id' => $m['user_id'],
+            'org_id' => $m['org_id'],
+            'owner_type' => 'employee',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $node
+     * @param  array<string, mixed>|null  $own
+     * @return array<string, mixed>
+     */
+    protected function rollupAllocationNode(array $node, ?array $own = null): array
+    {
+        $children = $node['children'] ?? [];
+        if ($own) {
+            $base = $own['base'];
+            $opening = $own['opening'];
+            $adj = $own['adjustments'];
+            $actual = $own['actual'];
+            $closing = $own['closing'];
+            $node['target_id'] = $own['target_id'];
+            $node['period'] = $own['period'];
+            $node['metric'] = $own['metric'];
+            $node['status'] = $own['status'];
+            $node['user_id'] = $own['user_id'];
+            $node['org_id'] = $own['org_id'];
+            $node['owner_type'] = 'org_unit';
+        } else {
+            $base = $opening = $adj = $actual = $closing = 0.0;
+            foreach ($children as $c) {
+                $base += (float) ($c['base'] ?? 0);
+                $opening += (float) ($c['opening'] ?? 0);
+                $adj += (float) ($c['adjustments'] ?? 0);
+                $actual += (float) ($c['actual'] ?? 0);
+                $closing += (float) ($c['closing'] ?? 0);
+            }
+            $node['owner_type'] = 'org_unit';
+            $node['target_id'] = null;
+        }
+
+        $effective = round($base + $opening + $adj, 2);
+        $pct = $effective > 0 ? round(min(100, ($actual / $effective) * 100), 1) : 0.0;
+
+        $counts = ['cluster' => 0, 'branch' => 0, 'employee' => 0];
+        $countWalk = function (array $nodes) use (&$countWalk, &$counts): void {
+            foreach ($nodes as $n) {
+                $t = (string) ($n['type'] ?? '');
+                if (isset($counts[$t])) {
+                    $counts[$t]++;
+                }
+                if (! empty($n['children'])) {
+                    $countWalk($n['children']);
+                }
+            }
+        };
+        $countWalk($children);
+        $metaParts = [];
+        if ($counts['cluster']) {
+            $metaParts[] = $counts['cluster'].' Cluster'.($counts['cluster'] > 1 ? 's' : '');
+        }
+        if ($counts['branch']) {
+            $metaParts[] = $counts['branch'].' Branch'.($counts['branch'] > 1 ? 'es' : '');
+        }
+        if ($counts['employee']) {
+            $metaParts[] = $counts['employee'].' Emp';
+        }
+
+        $node['base'] = round($base, 2);
+        $node['opening'] = round($opening, 2);
+        $node['adjustments'] = round($adj, 2);
+        $node['effective'] = $effective;
+        $node['actual'] = round($actual, 2);
+        $node['closing'] = round($closing, 2);
+        $node['pct'] = $pct;
+        $node['meta'] = implode(' · ', $metaParts);
+        $node['children'] = $children;
+
+        return $node;
     }
 
     protected function resolveRegionName(GoalTarget $t): string
@@ -418,10 +608,15 @@ class GoalTargetController extends Controller
         if ($filters['status'] !== '' && in_array($filters['status'], ['Draft', 'Approved'], true)) {
             $query->where('status', $filters['status']);
         }
-        if (!empty($filters['goal_org_unit_id'])) {
-            $query->where('goal_org_unit_id', $filters['goal_org_unit_id']);
+        if (! empty($filters['goal_org_unit_id'])) {
+            $unit = GoalOrgUnit::query()->find((int) $filters['goal_org_unit_id']);
+            $orgIds = $unit ? $unit->descendantIds() : [(int) $filters['goal_org_unit_id']];
+            $query->where(function ($q) use ($orgIds) {
+                $q->whereIn('goal_org_unit_id', $orgIds)
+                    ->orWhereHas('user', fn ($uq) => $uq->whereIn('goal_org_unit_id', $orgIds));
+            });
         }
-        if (!empty($filters['user_id'])) {
+        if (! empty($filters['user_id'])) {
             $query->where('user_id', $filters['user_id']);
         }
         if (($filters['owner_type'] ?? '') === 'employee') {

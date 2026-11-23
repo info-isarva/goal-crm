@@ -1,17 +1,61 @@
 <?php
     $currency = config('app.currency_symbol', '₹');
-    $fmt = fn ($n) => $currency . ' ' . number_format((float) $n, 2);
+    $fmt = fn ($n) => $currency . ' ' . number_format((float) $n, 2, '.', ',');
     $openAddModal = $errors->any() && old('_form') === 'create';
     $openEditModal = $errors->any() && old('_form') === 'edit';
+
+    $regions = $regions ?? collect();
+    $clusters = $clusters ?? collect();
+    $branchUnits = $branchUnits ?? collect();
+    $regionChart = $regionChart ?? ['labels' => [], 'values' => [], 'total_actual' => 0];
+    $insights = $insights ?? ['employees' => 0, 'regions' => 0, 'clusters' => 0, 'branches' => 0];
+    $recentActivity = $recentActivity ?? [];
+    $allocationTree = $allocationTree ?? [];
+
+    $filterRegionId = '';
+    $filterClusterId = '';
+    $filterBranchId = '';
+    $selOrgId = $filters['goal_org_unit_id'] ?? null;
+    if ($selOrgId && isset($branches)) {
+        $unit = $branches->firstWhere('id', (int) $selOrgId);
+        if ($unit) {
+            if ($unit->type === \App\Models\GoalOrgUnit::TYPE_BRANCH) {
+                $filterBranchId = (string) $unit->id;
+                $parent = $branches->firstWhere('id', (int) $unit->parent_id);
+                if ($parent) {
+                    if ($parent->type === \App\Models\GoalOrgUnit::TYPE_CLUSTER) {
+                        $filterClusterId = (string) $parent->id;
+                        $filterRegionId = $parent->parent_id ? (string) $parent->parent_id : '';
+                    } elseif ($parent->type === \App\Models\GoalOrgUnit::TYPE_REGION) {
+                        $filterRegionId = (string) $parent->id;
+                    }
+                }
+            } elseif ($unit->type === \App\Models\GoalOrgUnit::TYPE_CLUSTER) {
+                $filterClusterId = (string) $unit->id;
+                $filterRegionId = $unit->parent_id ? (string) $unit->parent_id : '';
+            } elseif ($unit->type === \App\Models\GoalOrgUnit::TYPE_REGION) {
+                $filterRegionId = (string) $unit->id;
+            }
+        }
+    }
+
+    $tableMetric = in_array($filters['metric'] ?? '', ['revenue', 'disbursement'], true)
+        ? $filters['metric']
+        : 'revenue';
+    $tabQuery = fn (string $metric) => array_merge(request()->except(['page']), ['metric' => $metric]);
 ?>
 
 <?php $__env->startPush('styles'); ?>
 <?php echo $__env->make('goal.partials.pd_hub_styles', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 <style>
 .goal-targets-page {
-    --gt-gap: .85rem;
+    --gt-gap: 1.25rem;
     --gt-control-h: 38px;
+    --gt-accent: var(--theme-primary, #059669);
     color: #1e293b;
+    background: #f4f6f9;
+    min-height: 100%;
+    padding-bottom: 1.5rem;
 }
 .goal-targets-page.pd-page .pd-hero {
     align-items: center;
@@ -30,11 +74,31 @@
     line-height: 1; white-space: nowrap;
 }
 .goal-targets-page .btn-gt-ghost:hover { background: #f8fafc; color: #0f172a; }
+.goal-targets-page .btn-gt-ghost.is-active {
+    border-color: var(--theme-primary); background: var(--theme-100, #ecfdf5); color: var(--theme-primary);
+}
+
+.goal-targets-page .gt-target-nav {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--gt-gap);
+    padding: 4px; background: transparent;
+}
+.goal-targets-page .gt-nav-tab {
+    display: inline-flex; align-items: center; gap: 7px;
+    height: 40px; padding: 0 16px; border-radius: 10px;
+    font-size: .84rem; font-weight: 700; color: #1e293b;
+    text-decoration: none; border: 0; background: transparent;
+}
+.goal-targets-page .gt-nav-tab:hover { background: #eef2f7; color: #0f172a; }
+.goal-targets-page .gt-nav-tab.is-active {
+    background: var(--theme-primary); color: #fff;
+    box-shadow: 0 6px 14px var(--theme-primary-ring, rgba(5,150,105,.28));
+}
+.goal-targets-page .gt-nav-tab i { font-size: .95rem; }
 
 .goal-targets-page .kpi-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
+    gap: 1.1rem;
     margin-bottom: var(--gt-gap);
     align-items: stretch;
 }
@@ -42,27 +106,97 @@
 @media (max-width: 575.98px) { .goal-targets-page .kpi-grid { grid-template-columns: 1fr; } }
 
 .goal-targets-page .kpi-card {
-    background: #fff; border: 1px solid #e8edf5; border-radius: 12px; padding: .85rem 1rem;
-    box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 14px rgba(148,163,184,.08);
-    border-left: 3px solid var(--theme-primary);
-    display: flex; flex-direction: column; justify-content: center; min-height: 88px;
+    display: flex; align-items: center; gap: 14px;
+    background: #fff; border: 1px solid #e8edf5; border-radius: 14px;
+    padding: 1.05rem 1.15rem; min-height: 108px;
+    box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 8px 18px rgba(148,163,184,.1);
+    border-left: 4px solid #86efac;
 }
-.goal-targets-page .kpi-card.tone-sky { border-left-color: var(--theme-primary); }
-.goal-targets-page .kpi-card.tone-emerald { border-left-color: #16a34a; }
-.goal-targets-page .kpi-card.tone-amber { border-left-color: #ea580c; }
-.goal-targets-page .kpi-card.tone-rose { border-left-color: #dc2626; }
-.goal-targets-page .kpi-label { font-size: .68rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .03em; margin: 0; }
-.goal-targets-page .kpi-value { margin: .25rem 0 0; font-size: 1.35rem; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -.02em; }
-.goal-targets-page .kpi-meta { margin: 4px 0 0; font-size: .75rem; color: #94a3b8; line-height: 1.3; min-height: 1.3em; }
+.goal-targets-page .kpi-card.tone-green { border-left-color: #16a34a; background: #fff; }
+.goal-targets-page .kpi-card.tone-sky { border-left-color: #16a34a; background: #fff; }
+.goal-targets-page .kpi-card.tone-violet { border-left-color: #3b82f6; background: #fff; }
+.goal-targets-page .kpi-card.tone-amber { border-left-color: #f59e0b; background: #fff; }
+.goal-targets-page .kpi-ico {
+    width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem;
+}
+.goal-targets-page .kpi-card.tone-green .kpi-ico { background: #dcfce7; color: #15803d; }
+.goal-targets-page .kpi-card.tone-sky .kpi-ico { background: #dcfce7; color: #15803d; }
+.goal-targets-page .kpi-card.tone-violet .kpi-ico { background: #dbeafe; color: #2563eb; }
+.goal-targets-page .kpi-card.tone-amber .kpi-ico { background: #ffedd5; color: #ea580c; }
+.goal-targets-page .kpi-body { min-width: 0; flex: 1; }
+.goal-targets-page .kpi-label {
+    font-size: .78rem; font-weight: 700; color: #64748b; margin: 0; line-height: 1.25;
+}
+.goal-targets-page .kpi-value {
+    margin: 6px 0 0; font-size: 1.45rem; font-weight: 800; color: #0f172a;
+    line-height: 1.15; letter-spacing: -.025em; font-variant-numeric: tabular-nums;
+}
+.goal-targets-page .kpi-meta { margin: 6px 0 0; font-size: .74rem; color: #94a3b8; line-height: 1.35; }
 
 .goal-targets-page .charts-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-    gap: 12px;
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(260px, .9fr);
+    gap: 1.1rem;
     margin-bottom: var(--gt-gap);
     align-items: stretch;
 }
+@media (max-width: 1199.98px) { .goal-targets-page .charts-grid { grid-template-columns: 1fr 1fr; gap: 1rem; } }
 @media (max-width: 991.98px) { .goal-targets-page .charts-grid { grid-template-columns: 1fr; } }
+.goal-targets-page .charts-grid .panel-insights { min-height: 100%; }
+@media (max-width: 1199.98px) and (min-width: 992px) {
+    .goal-targets-page .charts-grid .panel-insights { grid-column: 1 / -1; }
+}
+.goal-targets-page .donut-wrap { position: relative; min-height: 280px; }
+.goal-targets-page .donut-center {
+    position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
+    text-align: center; pointer-events: none; z-index: 3; max-width: 46%;
+}
+.goal-targets-page .donut-center .dc-label { font-size: .68rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; }
+.goal-targets-page .donut-center .dc-value { font-size: 1rem; font-weight: 800; color: #0f172a; margin-top: 2px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.goal-targets-page .insights-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; flex: 1; justify-content: center; }
+.goal-targets-page .insights-list li {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 12px 14px; border-radius: 12px; background: #f8fafc; border: 1px solid #eef2f7;
+    font-size: .86rem; color: #334155;
+}
+.goal-targets-page .insights-list li .il-left { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.goal-targets-page .insights-list li .il-left i {
+    width: 28px; height: 28px; border-radius: 8px; background: #ecfdf5; color: var(--gt-accent);
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.goal-targets-page .insights-list li strong { font-size: 1.05rem; font-weight: 800; color: #0f172a; }
+.goal-targets-page .dashboard-lower {
+    display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: 1.1rem; align-items: start;
+}
+@media (max-width: 991.98px) { .goal-targets-page .dashboard-lower { grid-template-columns: 1fr; } }
+.goal-targets-page .activity-panel .panel-body { max-height: 520px; overflow-y: auto; }
+.goal-targets-page .activity-timeline { list-style: none; margin: 0; padding: 0; }
+.goal-targets-page .activity-timeline li {
+    position: relative; padding: 0 0 16px 22px; border-left: 2px solid #e2e8f0; margin-left: 6px;
+}
+.goal-targets-page .activity-timeline li:last-child { padding-bottom: 0; border-left-color: transparent; }
+.goal-targets-page .activity-timeline li::before {
+    content: ''; position: absolute; left: -5px; top: 4px; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--gt-accent); box-shadow: 0 0 0 3px #ecfdf5;
+}
+.goal-targets-page .activity-timeline .at-title { font-size: .84rem; font-weight: 650; color: #0f172a; line-height: 1.35; margin: 0; }
+.goal-targets-page .activity-timeline .at-meta { font-size: .74rem; color: #94a3b8; margin-top: 3px; }
+.goal-targets-page .btn-gt-ghost.is-active {
+    border-color: var(--gt-accent); color: var(--gt-accent); background: #ecfdf5;
+}
+.goal-targets-page .metric-tabs {
+    display: inline-flex; gap: 6px; padding: 4px; background: #f1f5f9; border-radius: 10px;
+}
+.goal-targets-page .metric-tabs a {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px;
+    font-size: .8rem; font-weight: 700; color: #64748b; text-decoration: none; line-height: 1.2;
+}
+.goal-targets-page .metric-tabs a:hover { color: #0f172a; background: #fff; }
+.goal-targets-page .metric-tabs a.is-active {
+    background: #fff; color: var(--gt-accent); box-shadow: 0 1px 3px rgba(15,23,42,.08);
+}
+.goal-targets-page .gt-table { min-width: 1080px; }
 .goal-targets-page .panel {
     background: #fff; border: 1px solid #e8edf5; border-radius: 14px;
     box-shadow: 0 6px 16px rgba(148,163,184,.08); overflow: hidden;
@@ -70,13 +204,13 @@
 }
 .goal-targets-page .panel-head {
     display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
-    padding: .85rem 1.1rem; border-bottom: 1px solid #eef2f7; flex-shrink: 0;
+    padding: 1rem 1.2rem; border-bottom: 1px solid #eef2f7; flex-shrink: 0;
 }
-.goal-targets-page .panel-head h5 { margin: 0; font-size: 1.02rem; font-weight: 800; color: #0f172a; line-height: 1.25; }
-.goal-targets-page .panel-sub { font-size: .78rem; color: #94a3b8; margin-top: 2px; line-height: 1.3; }
-.goal-targets-page .panel-body { padding: 14px 16px; flex: 1; display: flex; flex-direction: column; }
-.goal-targets-page .chart-wrap { position: relative; height: 240px; width: 100%; flex: 1; }
-.goal-targets-page .chart-wrap.sm { height: 240px; }
+.goal-targets-page .panel-head h5 { margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a; line-height: 1.25; }
+.goal-targets-page .panel-sub { font-size: .78rem; color: #94a3b8; margin-top: 3px; line-height: 1.3; }
+.goal-targets-page .panel-body { padding: 1rem 1.15rem 1.15rem; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.goal-targets-page .chart-wrap { position: relative; height: 300px; width: 100%; flex: 1; min-height: 280px; }
+.goal-targets-page .chart-wrap.sm { height: 300px; min-height: 280px; }
 .goal-targets-page .chart-empty{
     position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
     color:#94a3b8;font-size:.86rem;pointer-events:none;z-index:2;text-align:center;padding:12px;
@@ -152,6 +286,35 @@
     background: var(--theme-primary);
 }
 .goal-targets-page .gt-progress-pct { font-size: .78rem; font-weight: 700; color: #64748b; min-width: 42px; }
+.goal-targets-page .gt-tree-toggle {
+    width: 22px; height: 22px; border: 0; background: transparent; color: #94a3b8;
+    display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;
+    padding: 0; flex-shrink: 0; cursor: pointer;
+}
+.goal-targets-page .gt-tree-toggle:hover { background: #e2e8f0; color: #0f172a; }
+.goal-targets-page .gt-tree-toggle.is-leaf { visibility: hidden; }
+.goal-targets-page .gt-entity {
+    display: inline-flex; align-items: center; gap: 8px; min-width: 0;
+}
+.goal-targets-page .gt-ent-ico {
+    width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center; font-size: .85rem;
+}
+.goal-targets-page .gt-ent-ico.region { background: #dcfce7; color: #059669; }
+.goal-targets-page .gt-ent-ico.cluster { background: #dbeafe; color: #2563eb; }
+.goal-targets-page .gt-ent-ico.branch { background: #ede9fe; color: #7c3aed; }
+.goal-targets-page .gt-ent-ico.employee { background: #f1f5f9; color: #475569; }
+.goal-targets-page .gt-type-pill {
+    display: inline-flex; align-items: center; height: 22px; padding: 0 9px;
+    border-radius: 999px; font-size: .68rem; font-weight: 750; white-space: nowrap;
+}
+.goal-targets-page .gt-type-pill.region { background: #dcfce7; color: #059669; }
+.goal-targets-page .gt-type-pill.cluster { background: #dbeafe; color: #2563eb; }
+.goal-targets-page .gt-type-pill.branch { background: #ede9fe; color: #7c3aed; }
+.goal-targets-page .gt-type-pill.employee { background: #f1f5f9; color: #475569; }
+.goal-targets-page .gt-table tfoot td {
+    background: #ecfdf5; font-weight: 800; color: #14532d; border-top: 1px solid #86efac;
+}
 .goal-targets-page .metric-pill {
     display: inline-flex; border-radius: 999px; padding: 5px 12px; font-size: .72rem; font-weight: 700; line-height: 1.2;
 }
@@ -266,18 +429,18 @@
 
 .goal-targets-page .filters-bar {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr)) max-content;
-    gap: 12px;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) max-content;
+    gap: 14px;
     align-items: end;
     margin-bottom: var(--gt-gap);
-    padding: 1rem 1.1rem;
+    padding: 1.05rem 1.2rem;
     background: #fff; border: 1px solid #e8edf5; border-radius: 14px;
     box-shadow: 0 6px 16px rgba(148,163,184,.08);
     overflow: visible;
 }
 @media (max-width: 1399.98px) {
     .goal-targets-page .filters-bar {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
     .goal-targets-page .filters-bar .filter-actions {
         grid-column: 1 / -1;
@@ -490,81 +653,55 @@
                 <li class="sep">›</li>
                 <li>Targets</li>
             </ul>
-            <h1 class="pd-title">Targets & Carry-forward</h1>
-            <p class="pd-sub">Track branch period targets, actuals and shortfall carry-forward.</p>
+            <h1 class="pd-title">Targets Dashboard</h1>
+            <p class="pd-sub">Overview of revenue and disbursement targets, achievement and shortfall.</p>
         </div>
-        <div class="pd-hero-actions">
-            <a href="<?php echo e(route('goal.targets.export', request()->query())); ?>" class="pd-link-btn">
-                <i class="bi bi-download"></i> Export CSV
-            </a>
+        <div class="pd-hero-actions d-flex flex-wrap gap-2">
             <?php if($canManage): ?>
-                <a href="<?php echo e(route('goal.targets.set', request()->only('period', 'metric'))); ?>" class="pd-link-btn primary">
-                    <i class="bi bi-diagram-3"></i> Set Targets
+                <a href="<?php echo e(route('goal.targets.set', request()->only('period', 'metric'))); ?>" class="btn-gt-primary">
+                    <i class="bi bi-plus-lg"></i> Set Targets
                 </a>
             <?php endif; ?>
+            <a href="<?php echo e(route('goal.targets.export', request()->query())); ?>" class="btn-gt-ghost">
+                <i class="bi bi-download"></i> Export
+            </a>
         </div>
     </div>
 
-    <div class="kpi-grid">
-        <div class="kpi-card tone-sky">
-            <div class="kpi-label">Targets</div>
-            <div class="kpi-value"><?php echo e(number_format($stats['count'])); ?></div>
-            <div class="kpi-meta"><?php echo e($stats['approved']); ?> approved · <?php echo e($stats['draft']); ?> draft</div>
-        </div>
-        <div class="kpi-card tone-emerald">
-            <div class="kpi-label">Effective Target</div>
-            <div class="kpi-value"><?php echo e($fmt($stats['total_effective'])); ?></div>
-            <div class="kpi-meta">Base + opening SF + adjustments</div>
-        </div>
-        <div class="kpi-card tone-amber">
-            <div class="kpi-label">Actual Achieved</div>
-            <div class="kpi-value"><?php echo e($fmt($stats['total_actual'])); ?></div>
-            <div class="kpi-meta"><?php echo e($stats['achievement_pct']); ?>% of effective</div>
-        </div>
-        <div class="kpi-card tone-rose">
-            <div class="kpi-label">Closing Shortfall</div>
-            <div class="kpi-value"><?php echo e($fmt($stats['total_closing'])); ?></div>
-            <div class="kpi-meta">Carry-forward to next period</div>
-        </div>
-    </div>
+    <nav class="gt-target-nav" aria-label="Target sections">
+        <?php if($canManage): ?>
+            <a href="<?php echo e(route('goal.targets.set', request()->only('period', 'metric'))); ?>" class="gt-nav-tab">
+                <i class="bi bi-bullseye"></i> Set Targets
+            </a>
+        <?php endif; ?>
+        <a href="<?php echo e(route('goal.targets.index', request()->query())); ?>" class="gt-nav-tab is-active" aria-current="page">
+            <i class="bi bi-grid"></i> Target Summary
+        </a>
+        <a href="#gtTrendSection" class="gt-nav-tab">
+            <i class="bi bi-graph-up-arrow"></i> Achievement
+        </a>
+        <a href="#gtShortfallKpi" class="gt-nav-tab">
+            <i class="bi bi-arrow-repeat"></i> Shortfall Carry Forward
+        </a>
+    </nav>
 
-    <div class="charts-grid">
-        <div class="panel">
-            <div class="panel-head">
-                <div>
-                    <h5>Target vs Actual by Period</h5>
-                    <div class="panel-sub">Effective target compared with recorded actuals</div>
-                </div>
-            </div>
-            <div class="panel-body">
-                <div class="chart-wrap">
-                    <?php if(empty($chart['labels'] ?? [])): ?>
-                        <div class="chart-empty"><i class="bi bi-bar-chart"></i>No period data yet</div>
-                    <?php endif; ?>
-                    <canvas id="gtTrendChart" aria-label="Target vs actual chart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="panel">
-            <div class="panel-head">
-                <div>
-                    <h5>Effective by Metric</h5>
-                    <div class="panel-sub">Revenue vs disbursement mix</div>
-                </div>
-            </div>
-            <div class="panel-body">
-                <div class="chart-wrap sm">
-                    <?php if(empty($metricChart['labels'] ?? [])): ?>
-                        <div class="chart-empty"><i class="bi bi-pie-chart"></i>No metric mix yet</div>
-                    <?php endif; ?>
-                    <canvas id="gtMetricChart" aria-label="Metric mix chart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <form method="GET" action="<?php echo e(route('goal.targets.index')); ?>" class="filters-bar">
+    <form method="GET" action="<?php echo e(route('goal.targets.index')); ?>" class="filters-bar" id="gtFiltersForm">
         <input type="hidden" name="per_page" value="<?php echo e($filters['per_page'] ?? 10); ?>">
+        <input type="hidden" name="goal_org_unit_id" id="filter_goal_org_unit_id" value="<?php echo e($filters['goal_org_unit_id'] ?? ''); ?>">
+        <?php if(($filters['status'] ?? '') !== ''): ?>
+            <input type="hidden" name="status" value="<?php echo e($filters['status']); ?>">
+        <?php endif; ?>
+        <?php if(!empty($filters['user_id'])): ?>
+            <input type="hidden" name="user_id" value="<?php echo e($filters['user_id']); ?>">
+        <?php endif; ?>
+        <div class="gt-filter-field">
+            <label class="form-label" for="filter_metric">Target Type</label>
+            <select name="metric" id="filter_metric" class="form-select" data-search="false" data-allow-clear="false" data-placeholder="All types">
+                <option value="">All types</option>
+                <option value="revenue" <?php if($filters['metric'] === 'revenue'): echo 'selected'; endif; ?>>Revenue</option>
+                <option value="disbursement" <?php if($filters['metric'] === 'disbursement'): echo 'selected'; endif; ?>>Disbursement</option>
+            </select>
+        </div>
         <div class="gt-filter-field">
             <label class="form-label" for="filter_period">Period</label>
             <select name="period" id="filter_period" class="form-select" data-search="true" data-allow-clear="false" data-placeholder="All periods">
@@ -575,48 +712,47 @@
             </select>
         </div>
         <div class="gt-filter-field">
-            <label class="form-label" for="filter_metric">Metric</label>
-            <select name="metric" id="filter_metric" class="form-select" data-search="false" data-allow-clear="false" data-placeholder="All metrics">
-                <option value="">All metrics</option>
-                <option value="revenue" <?php if($filters['metric'] === 'revenue'): echo 'selected'; endif; ?>>Revenue</option>
-                <option value="disbursement" <?php if($filters['metric'] === 'disbursement'): echo 'selected'; endif; ?>>Disbursement</option>
-            </select>
-        </div>
-        <div class="gt-filter-field">
-            <label class="form-label" for="filter_owner_type">Owner type</label>
-            <select name="owner_type" id="filter_owner_type" class="form-select" data-search="false" data-allow-clear="false" data-placeholder="All owners">
-                <option value="">All owners</option>
-                <option value="employee" <?php if(($filters['owner_type'] ?? '') === 'employee'): echo 'selected'; endif; ?>>Team member</option>
+            <label class="form-label" for="filter_owner_type">View By</label>
+            <select name="owner_type" id="filter_owner_type" class="form-select" data-search="false" data-allow-clear="false" data-placeholder="Overall">
+                <option value="">Overall</option>
+                <option value="employee" <?php if(($filters['owner_type'] ?? '') === 'employee'): echo 'selected'; endif; ?>>Employee</option>
                 <option value="org_unit" <?php if(($filters['owner_type'] ?? '') === 'org_unit'): echo 'selected'; endif; ?>>Org unit</option>
             </select>
         </div>
         <div class="gt-filter-field">
-            <label class="form-label" for="filter_branch">Org unit</label>
-            <select name="goal_org_unit_id" id="filter_branch" class="form-select" data-search="true" data-allow-clear="false" data-placeholder="All org units">
-                <option value="">All org units</option>
-                <?php $__currentLoopData = $branches; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $b): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <option value="<?php echo e($b->id); ?>" <?php if((string) $filters['goal_org_unit_id'] === (string) $b->id): echo 'selected'; endif; ?>>
-                        <?php echo e(strtoupper($b->type)); ?> · <?php echo e($b->name); ?>
-
-                    </option>
+            <label class="form-label" for="filter_region">Region</label>
+            <select id="filter_region" class="form-select gt-org-filter" data-search="true" data-allow-clear="false" data-placeholder="All regions">
+                <option value="">All regions</option>
+                <?php $__currentLoopData = $regions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $r): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <option value="<?php echo e($r->id); ?>" <?php if($filterRegionId === (string) $r->id): echo 'selected'; endif; ?>><?php echo e($r->name); ?></option>
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </select>
         </div>
         <div class="gt-filter-field">
-            <label class="form-label" for="filter_user">Team member</label>
-            <select name="user_id" id="filter_user" class="form-select" data-search="true" data-allow-clear="false" data-placeholder="All people">
-                <option value="">All people</option>
-                <?php $__currentLoopData = $teamUsers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $u): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <option value="<?php echo e($u->id); ?>" <?php if((string) ($filters['user_id'] ?? '') === (string) $u->id): echo 'selected'; endif; ?>><?php echo e($u->name); ?></option>
+            <label class="form-label" for="filter_cluster">Cluster</label>
+            <select id="filter_cluster" class="form-select gt-org-filter" data-search="true" data-allow-clear="false" data-placeholder="All clusters">
+                <option value="">All clusters</option>
+                <?php $__currentLoopData = $clusters; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $c): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <option value="<?php echo e($c->id); ?>" data-parent="<?php echo e($c->parent_id); ?>" <?php if($filterClusterId === (string) $c->id): echo 'selected'; endif; ?>><?php echo e($c->name); ?></option>
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </select>
         </div>
         <div class="gt-filter-field">
-            <label class="form-label" for="filter_status">Status</label>
-            <select name="status" id="filter_status" class="form-select" data-search="false" data-allow-clear="false" data-placeholder="All status">
-                <option value="">All status</option>
-                <option value="Draft" <?php if($filters['status'] === 'Draft'): echo 'selected'; endif; ?>>Draft</option>
-                <option value="Approved" <?php if($filters['status'] === 'Approved'): echo 'selected'; endif; ?>>Approved</option>
+            <label class="form-label" for="filter_branch_unit">Branch</label>
+            <select id="filter_branch_unit" class="form-select gt-org-filter" data-search="true" data-allow-clear="false" data-placeholder="All branches">
+                <option value="">All branches</option>
+                <?php $__currentLoopData = $branchUnits; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $b): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <?php
+                        $bParent = $branches->firstWhere('id', (int) $b->parent_id);
+                        $bRegionId = '';
+                        if ($bParent) {
+                            $bRegionId = $bParent->type === \App\Models\GoalOrgUnit::TYPE_REGION
+                                ? (string) $bParent->id
+                                : (($bParent->parent_id ?? '') !== '' ? (string) $bParent->parent_id : '');
+                        }
+                    ?>
+                    <option value="<?php echo e($b->id); ?>" data-parent="<?php echo e($b->parent_id); ?>" data-region="<?php echo e($bRegionId); ?>" <?php if($filterBranchId === (string) $b->id): echo 'selected'; endif; ?>><?php echo e($b->name); ?></option>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </select>
         </div>
         <div class="filter-actions">
@@ -628,142 +764,197 @@
         </div>
     </form>
 
+    <div class="kpi-grid">
+        <div class="kpi-card tone-green">
+            <span class="kpi-ico" aria-hidden="true"><i class="bi bi-bullseye"></i></span>
+            <div class="kpi-body">
+                <div class="kpi-label">Effective Target</div>
+                <div class="kpi-value"><?php echo e($fmt($stats['total_effective'])); ?></div>
+                <div class="kpi-meta">Base: <?php echo e($fmt($stats['total_base'])); ?> | Opening: <?php echo e($fmt($stats['total_opening'])); ?></div>
+            </div>
+        </div>
+        <div class="kpi-card tone-sky">
+            <span class="kpi-ico" aria-hidden="true"><i class="bi bi-cash-stack"></i></span>
+            <div class="kpi-body">
+                <div class="kpi-label">Achieved</div>
+                <div class="kpi-value"><?php echo e($fmt($stats['total_actual'])); ?></div>
+                <div class="kpi-meta"><?php echo e(number_format($stats['count'])); ?> target<?php echo e($stats['count'] === 1 ? '' : 's'); ?> in view</div>
+            </div>
+        </div>
+        <div class="kpi-card tone-violet">
+            <span class="kpi-ico" aria-hidden="true"><i class="bi bi-trophy"></i></span>
+            <div class="kpi-body">
+                <div class="kpi-label">Achievement %</div>
+                <div class="kpi-value"><?php echo e(number_format((float) $stats['achievement_pct'], 1)); ?>%</div>
+                <div class="kpi-meta">Against effective target</div>
+            </div>
+        </div>
+        <div class="kpi-card tone-amber" id="gtShortfallKpi">
+            <span class="kpi-ico" aria-hidden="true"><i class="bi bi-exclamation-triangle"></i></span>
+            <div class="kpi-body">
+                <div class="kpi-label">Closing Shortfall</div>
+                <div class="kpi-value"><?php echo e($fmt($stats['total_closing'])); ?></div>
+                <div class="kpi-meta">Carry-forward to next period</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="charts-grid">
+        <div class="panel" id="gtTrendSection">
+            <div class="panel-head">
+                <div>
+                    <h5>Monthly Performance</h5>
+                    <div class="panel-sub">Target vs actual achievement by period</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="chart-wrap">
+                    <?php if(empty($chart['labels'] ?? [])): ?>
+                        <div class="chart-empty"><i class="bi bi-bar-chart"></i>No period data yet</div>
+                    <?php endif; ?>
+                    <canvas id="gtTrendChart" aria-label="Target vs achievement chart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel-head">
+                <div>
+                    <h5>Regional Performance</h5>
+                    <div class="panel-sub">Region-wise achievement distribution</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="chart-wrap sm donut-wrap">
+                    <?php if(empty($regionChart['labels'] ?? [])): ?>
+                        <div class="chart-empty"><i class="bi bi-pie-chart"></i>No regional data yet</div>
+                    <?php else: ?>
+                        <div class="donut-center" id="gtRegionCenter" aria-hidden="true">
+                            <div class="dc-label">Achieved</div>
+                            <div class="dc-value"><?php echo e($fmt($regionChart['total_actual'] ?? 0)); ?></div>
+                        </div>
+                    <?php endif; ?>
+                    <canvas id="gtRegionChart" aria-label="Achievement by region chart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="panel panel-insights">
+            <div class="panel-head">
+                <div>
+                    <h5>Quick Insights</h5>
+                    <div class="panel-sub">Coverage across teams and hierarchy</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <ul class="insights-list">
+                    <li>
+                        <span class="il-left"><i class="bi bi-people"></i> Teams / Employees</span>
+                        <strong><?php echo e(number_format((int) ($insights['employees'] ?? 0))); ?></strong>
+                    </li>
+                    <li>
+                        <span class="il-left"><i class="bi bi-globe2"></i> Regions</span>
+                        <strong><?php echo e(number_format((int) ($insights['regions'] ?? 0))); ?></strong>
+                    </li>
+                    <li>
+                        <span class="il-left"><i class="bi bi-diagram-3"></i> Clusters</span>
+                        <strong><?php echo e(number_format((int) ($insights['clusters'] ?? 0))); ?></strong>
+                    </li>
+                    <li>
+                        <span class="il-left"><i class="bi bi-building"></i> Branches</span>
+                        <strong><?php echo e(number_format((int) ($insights['branches'] ?? 0))); ?></strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-lower">
         <div class="gt-table-card">
             <div class="gt-table-head">
-                <h3 class="gt-table-title"><i class="bi bi-list-ul"></i> Target Register (<?php echo e($targets->total()); ?>)</h3>
-                <span class="gt-table-meta">Period targets · carry-forward</span>
+                <div>
+                    <h3 class="gt-table-title"><i class="bi bi-diagram-3"></i> Target Allocation</h3>
+                    <div class="gt-table-meta">Expand Region → Cluster → Branch → Employee. Figures follow filters above.</div>
+                </div>
+                <nav class="metric-tabs" aria-label="Target metric">
+                    <a href="<?php echo e(route('goal.targets.index', $tabQuery('revenue'))); ?>" class="<?php echo e($tableMetric === 'revenue' ? 'is-active' : ''); ?>">
+                        <i class="bi bi-currency-rupee"></i> Revenue
+                    </a>
+                    <a href="<?php echo e(route('goal.targets.index', $tabQuery('disbursement'))); ?>" class="<?php echo e($tableMetric === 'disbursement' ? 'is-active' : ''); ?>">
+                        <i class="bi bi-bank"></i> Disbursement
+                    </a>
+                </nav>
             </div>
 
             <div class="table-responsive gt-table-wrap">
-                <table class="table align-middle mb-0 gt-table" id="targetsRegisterTable">
+                <table class="table align-middle mb-0 gt-table" id="targetsAllocationTable">
                     <thead>
                         <tr>
                             <th class="col-num">#</th>
-                            <th>Period</th>
-                            <th>Metric</th>
-                            <th>Owner</th>
-                            <th class="col-amt">Effective</th>
-                            <th class="col-amt">Actual</th>
-                            <th>Progress</th>
-                            <th class="col-amt">Closing SF</th>
-                            <th>Status</th>
+                            <th style="min-width:240px">Entity (Hierarchy)</th>
+                            <th>Type</th>
+                            <th class="col-amt">Base Target (₹)</th>
+                            <th class="col-amt">Opening Shortfall (₹)</th>
+                            <th class="col-amt">Adjustments (₹)</th>
+                            <th class="col-amt">Effective Target (₹)</th>
+                            <th class="col-amt">Achieved (₹)</th>
+                            <th>Achievement %</th>
                             <?php if($canManage): ?><th class="col-actions">Actions</th><?php endif; ?>
                         </tr>
                     </thead>
-                    <tbody>
-                    <?php $__empty_1 = true; $__currentLoopData = $targets; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $t): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                        <?php
-                            $effective = $t->effectiveTarget();
-                            $pct = $effective > 0 ? min(100, round(((float) $t->actual / $effective) * 100, 1)) : 0;
-                            $ownerType = $t->user_id ? 'employee' : 'org_unit';
-                            $ownerLabel = $t->user_id
-                                ? ($t->user?->name ?? ('User #'.$t->user_id))
-                                : ($t->orgUnit?->name ?? '—');
-                        ?>
-                        <tr>
-                            <td class="col-num"><?php echo e($targets->firstItem() + $loop->index); ?></td>
-                            <td><span class="fw-semibold text-dark"><?php echo e($t->period); ?></span></td>
-                            <td>
-                                <span class="metric-pill is-<?php echo e($t->metric); ?>"><?php echo e(ucfirst($t->metric)); ?></span>
-                            </td>
-                            <td>
-                                <div class="gt-owner-name"><?php echo e($ownerLabel); ?></div>
-                                <div class="gt-owner-sub"><?php echo e($ownerType === 'employee' ? 'Team member' : 'Org unit'); ?></div>
-                            </td>
-                            <td class="col-amt"><?php echo e(number_format($effective, 2)); ?></td>
-                            <td class="col-amt"><?php echo e(number_format((float) $t->actual, 2)); ?></td>
-                            <td>
-                                <div class="gt-progress-wrap" title="<?php echo e($pct); ?>%">
-                                    <div class="gt-progress"><span style="width: <?php echo e($pct); ?>%"></span></div>
-                                    <span class="gt-progress-pct"><?php echo e($pct); ?>%</span>
-                                </div>
-                            </td>
-                            <td class="col-amt <?php echo e((float) $t->closing_shortfall > 0 ? 'is-sf' : ''); ?>">
-                                <?php echo e(number_format((float) $t->closing_shortfall, 2)); ?>
-
-                            </td>
-                            <td>
-                                <span class="badge-status <?php echo e($t->status === 'Approved' ? 'is-approved' : 'is-draft'); ?>">
-                                    <span class="dot"></span><?php echo e($t->status); ?>
-
-                                </span>
-                            </td>
-                            <?php if($canManage): ?>
-                            <td class="col-actions">
-                                <button type="button"
-                                    class="gt-action-btn btn-edit-target"
-                                    title="Edit target"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#editTargetModal"
-                                    data-id="<?php echo e($t->id); ?>"
-                                    data-action="<?php echo e(route('goal.targets.update', $t)); ?>"
-                                    data-owner-type="<?php echo e($ownerType); ?>"
-                                    data-period="<?php echo e($t->period); ?>"
-                                    data-metric="<?php echo e($t->metric); ?>"
-                                    data-org="<?php echo e($t->goal_org_unit_id); ?>"
-                                    data-user="<?php echo e($t->user_id); ?>"
-                                    data-base="<?php echo e($t->base_target); ?>"
-                                    data-opening="<?php echo e($t->opening_shortfall); ?>"
-                                    data-adjustments="<?php echo e($t->adjustments); ?>"
-                                    data-actual="<?php echo e($t->actual); ?>"
-                                    data-status="<?php echo e($t->status); ?>">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                            </td>
-                            <?php endif; ?>
-                        </tr>
-                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                        <tr>
-                            <td colspan="<?php echo e($canManage ? 10 : 9); ?>" class="text-center">
-                                <div class="gt-empty">
-                                    <i class="bi bi-inbox"></i>
-                                    <div>No targets match your filters.</div>
-                                    <?php if($canManage): ?>
-                                        <a href="<?php echo e(route('goal.targets.set')); ?>" class="btn-gt-primary mt-3">
-                                            <i class="bi bi-diagram-3"></i> Set Targets
-                                        </a>
-                                    <?php else: ?>
-                                        <a href="<?php echo e(route('goal.targets.index')); ?>" class="btn-gt-reset mt-2 d-inline-flex">Reset filters</a>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endif; ?>
+                    <tbody id="gtAllocBody">
+                        <tr><td colspan="<?php echo e($canManage ? 10 : 9); ?>" class="text-center"><div class="gt-empty"><i class="bi bi-hourglass-split"></i>Loading hierarchy…</div></td></tr>
                     </tbody>
+                    <tfoot id="gtAllocFoot" class="d-none">
+                        <tr>
+                            <td colspan="3"><strong>Total</strong></td>
+                            <td class="col-amt" id="gtFootBase">0</td>
+                            <td class="col-amt" id="gtFootOpen">0</td>
+                            <td class="col-amt" id="gtFootAdj">0</td>
+                            <td class="col-amt" id="gtFootEff">0</td>
+                            <td class="col-amt" id="gtFootAct">0</td>
+                            <td id="gtFootPct">—</td>
+                            <?php if($canManage): ?><td></td><?php endif; ?>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
-
-            <?php if($targets->total() > 0): ?>
-                <div class="gt-table-foot">
-                    <div class="gt-showing">
-                        Showing <?php echo e($targets->firstItem()); ?> to <?php echo e($targets->lastItem()); ?> of <?php echo e($targets->total()); ?> results
-                    </div>
-                    <div class="gt-foot-right">
-                        <form method="GET" action="<?php echo e(route('goal.targets.index')); ?>" class="gt-rows-label" id="gtRowsForm">
-                            <?php $__currentLoopData = request()->except(['per_page', 'page']); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $val): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                <?php if(is_array($val)): ?>
-                                    <?php $__currentLoopData = $val; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $v): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                        <input type="hidden" name="<?php echo e($key); ?>[]" value="<?php echo e($v); ?>">
-                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                                <?php else: ?>
-                                    <input type="hidden" name="<?php echo e($key); ?>" value="<?php echo e($val); ?>">
-                                <?php endif; ?>
-                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                            <span>Rows per page:</span>
-                            <select name="per_page" class="form-select-compact" data-select2-skip="1" onchange="this.form.submit()" aria-label="Rows per page">
-                                <?php $__currentLoopData = [10, 25, 50, 100]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $n): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                    <option value="<?php echo e($n); ?>" <?php if((int) ($filters['per_page'] ?? 10) === $n): echo 'selected'; endif; ?>><?php echo e($n); ?></option>
-                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                            </select>
-                        </form>
-                        <div class="gt-pager">
-                            <?php echo e($targets->onEachSide(1)->links('vendor.pagination.users')); ?>
-
-                        </div>
-                    </div>
+            <div class="gt-table-foot">
+                <div class="gt-showing" id="gtAllocHint">Click a region to expand clusters, then branches and employees.</div>
+                <div class="gt-foot-right">
+                    <?php if($canManage): ?>
+                        <a href="<?php echo e(route('goal.targets.set', request()->only('period', 'metric'))); ?>" class="btn-gt-primary">
+                            <i class="bi bi-bullseye"></i> Manage targets
+                        </a>
+                    <?php endif; ?>
                 </div>
-            <?php endif; ?>
+            </div>
         </div>
+
+        <div class="panel activity-panel">
+            <div class="panel-head">
+                <div>
+                    <h5>Recent Activity</h5>
+                    <div class="panel-sub">Latest target changes and assignments</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <?php if(empty($recentActivity)): ?>
+                    <div class="gt-empty py-4">
+                        <i class="bi bi-clock-history"></i>
+                        <div>No recent activity yet.</div>
+                    </div>
+                <?php else: ?>
+                    <ul class="activity-timeline">
+                        <?php $__currentLoopData = $recentActivity; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <li>
+                                <p class="at-title"><?php echo e($item['title'] ?? 'Target updated'); ?></p>
+                                <div class="at-meta"><?php echo e($item['by'] ?? 'System'); ?> · <?php echo e($item['at'] ?? ''); ?></div>
+                            </li>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php if($canManage): ?>
@@ -870,13 +1061,213 @@
 (function () {
     const currency = <?php echo json_encode($currency, 15, 512) ?>;
     const trend = <?php echo json_encode($chart, 15, 512) ?>;
-    const metricChart = <?php echo json_encode($metricChart, 15, 512) ?>;
+    const regionChart = <?php echo json_encode($regionChart, 15, 512) ?>;
+    const allocationTree = <?php echo json_encode($allocationTree, 15, 512) ?>;
+    const canManage = <?php echo json_encode((bool) $canManage, 15, 512) ?>;
+    const updateRouteTpl = <?php echo json_encode($canManage ? route('goal.targets.update', ['target' => '__ID__']) : '', 512) ?>;
     const openAdd = <?php echo json_encode($openAddModal, 15, 512) ?>;
     const openEdit = <?php echo json_encode($openEditModal, 15, 512) ?>;
+    let collapsed = new Set();
 
     function money(n) {
-        return currency + ' ' + (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return currency + ' ' + (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
+
+    function escapeHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, function (c) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+        });
+    }
+
+    function typeMeta(type) {
+        const t = String(type || '').toLowerCase();
+        if (t === 'region') return { label: 'Region', icon: 'bi-building', cls: 'region' };
+        if (t === 'cluster') return { label: 'Cluster', icon: 'bi-diagram-3', cls: 'cluster' };
+        if (t === 'branch') return { label: 'Branch', icon: 'bi-bank', cls: 'branch' };
+        return { label: 'Employee', icon: 'bi-person', cls: 'employee' };
+    }
+
+    function defaultCollapse(nodes, depth) {
+        (nodes || []).forEach(function (n) {
+            if (n.children && n.children.length) {
+                if (depth >= 0) collapsed.add(n.key);
+                defaultCollapse(n.children, depth + 1);
+            }
+        });
+    }
+
+    function renderAllocRows(nodes, depth, parentCollapsed, pathPrefix, rows) {
+        (nodes || []).forEach(function (n, i) {
+            const num = pathPrefix ? pathPrefix + '.' + (i + 1) : String(i + 1);
+            const hasKids = !!(n.children && n.children.length);
+            const isCollapsed = collapsed.has(n.key);
+            const hidden = parentCollapsed;
+            if (!hidden) {
+                const tm = typeMeta(n.type);
+                const pad = depth * 20;
+                const pct = Number(n.pct || 0);
+                let actions = '';
+                if (canManage && n.target_id) {
+                    const actionUrl = updateRouteTpl.replace('__ID__', String(n.target_id));
+                    actions = `<td class="col-actions">
+                        <button type="button" class="gt-action-btn btn-edit-target" title="Edit target"
+                            data-bs-toggle="modal" data-bs-target="#editTargetModal"
+                            data-id="${n.target_id}" data-action="${escapeHtml(actionUrl)}"
+                            data-owner-type="${escapeHtml(n.owner_type || (n.type === 'employee' ? 'employee' : 'org_unit'))}"
+                            data-period="${escapeHtml(n.period || '')}" data-metric="${escapeHtml(n.metric || 'revenue')}"
+                            data-org="${n.org_id || ''}" data-user="${n.user_id || ''}"
+                            data-base="${n.base || 0}" data-opening="${n.opening || 0}"
+                            data-adjustments="${n.adjustments || 0}" data-actual="${n.actual || 0}"
+                            data-status="${escapeHtml(n.status || 'Draft')}">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </td>`;
+                } else if (canManage) {
+                    actions = '<td class="col-actions"></td>';
+                }
+                rows.push(`<tr data-key="${escapeHtml(n.key)}" data-depth="${depth}">
+                    <td class="col-num">${num}</td>
+                    <td>
+                        <div class="gt-entity" style="padding-left:${pad}px">
+                            <button type="button" class="gt-tree-toggle ${hasKids ? '' : 'is-leaf'}" data-toggle-key="${escapeHtml(n.key)}" aria-label="${isCollapsed ? 'Expand' : 'Collapse'}">
+                                <i class="bi ${isCollapsed ? 'bi-chevron-right' : 'bi-chevron-down'}"></i>
+                            </button>
+                            <span class="gt-ent-ico ${tm.cls}"><i class="bi ${tm.icon}"></i></span>
+                            <div style="min-width:0">
+                                <div class="gt-owner-name">${escapeHtml(n.name)}</div>
+                                <div class="gt-owner-sub">${escapeHtml(n.meta || '')}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="gt-type-pill ${tm.cls}">${tm.label}</span></td>
+                    <td class="col-amt">${money(n.base)}</td>
+                    <td class="col-amt">${money(n.opening)}</td>
+                    <td class="col-amt">${money(n.adjustments)}</td>
+                    <td class="col-amt">${money(n.effective)}</td>
+                    <td class="col-amt">${money(n.actual)}</td>
+                    <td>
+                        <div class="gt-progress-wrap" title="${pct}%">
+                            <div class="gt-progress"><span style="width:${pct}%"></span></div>
+                            <span class="gt-progress-pct">${pct}%</span>
+                        </div>
+                    </td>
+                    ${actions}
+                </tr>`);
+            }
+            if (hasKids) {
+                renderAllocRows(n.children, depth + 1, hidden || isCollapsed, num, rows);
+            }
+        });
+        return rows;
+    }
+
+    function renderAllocationTable() {
+        const body = document.getElementById('gtAllocBody');
+        const foot = document.getElementById('gtAllocFoot');
+        if (!body) return;
+        const tree = allocationTree || [];
+        if (!tree.length) {
+            body.innerHTML = `<tr><td colspan="${canManage ? 10 : 9}" class="text-center">
+                <div class="gt-empty"><i class="bi bi-inbox"></i><div>No hierarchy / targets for these filters.</div>
+                ${canManage ? `<a href="<?php echo e(route('goal.targets.set')); ?>" class="btn-gt-primary mt-3 d-inline-flex"><i class="bi bi-bullseye"></i> Set Targets</a>` : ''}
+                </div></td></tr>`;
+            if (foot) foot.classList.add('d-none');
+            return;
+        }
+        body.innerHTML = renderAllocRows(tree, 0, false, '', []).join('');
+        let base = 0, open = 0, adj = 0, eff = 0, act = 0;
+        tree.forEach(function (n) {
+            base += Number(n.base || 0);
+            open += Number(n.opening || 0);
+            adj += Number(n.adjustments || 0);
+            eff += Number(n.effective || 0);
+            act += Number(n.actual || 0);
+        });
+        const pct = eff > 0 ? Math.round(Math.min(100, (act / eff) * 1000)) / 10 : 0;
+        if (document.getElementById('gtFootBase')) document.getElementById('gtFootBase').textContent = money(base);
+        if (document.getElementById('gtFootOpen')) document.getElementById('gtFootOpen').textContent = money(open);
+        if (document.getElementById('gtFootAdj')) document.getElementById('gtFootAdj').textContent = money(adj);
+        if (document.getElementById('gtFootEff')) document.getElementById('gtFootEff').textContent = money(eff);
+        if (document.getElementById('gtFootAct')) document.getElementById('gtFootAct').textContent = money(act);
+        if (document.getElementById('gtFootPct')) document.getElementById('gtFootPct').textContent = pct + '%';
+        if (foot) foot.classList.remove('d-none');
+    }
+
+    defaultCollapse(allocationTree, 0);
+    // Keep top-level regions expanded by default
+    (allocationTree || []).forEach(function (n) { collapsed.delete(n.key); });
+    renderAllocationTable();
+
+    document.getElementById('gtAllocBody')?.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-toggle-key]');
+        if (!btn) return;
+        const key = btn.getAttribute('data-toggle-key');
+        if (collapsed.has(key)) collapsed.delete(key);
+        else collapsed.add(key);
+        renderAllocationTable();
+    });
+
+    function syncOrgUnitFilterHidden() {
+        const hidden = document.getElementById('filter_goal_org_unit_id');
+        const branch = document.getElementById('filter_branch_unit');
+        const cluster = document.getElementById('filter_cluster');
+        const region = document.getElementById('filter_region');
+        if (!hidden) return;
+        const pick = (branch && branch.value) || (cluster && cluster.value) || (region && region.value) || '';
+        hidden.value = pick;
+    }
+
+    function filterOrgOptions(selectEl, parentId, regionId) {
+        if (!selectEl) return;
+        const wantParent = parentId ? String(parentId) : '';
+        const wantRegion = regionId ? String(regionId) : '';
+        Array.from(selectEl.options).forEach(function (opt, idx) {
+            if (idx === 0) {
+                opt.hidden = false;
+                return;
+            }
+            const p = opt.getAttribute('data-parent');
+            const r = opt.getAttribute('data-region');
+            if (p == null && r == null) {
+                opt.hidden = false;
+                return;
+            }
+            if (wantParent === '' && wantRegion === '') {
+                opt.hidden = false;
+                return;
+            }
+            const matchParent = wantParent !== '' && String(p) === wantParent;
+            const matchRegion = wantRegion !== '' && r != null && String(r) === wantRegion;
+            opt.hidden = !(matchParent || matchRegion);
+        });
+        if (selectEl.value) {
+            const selected = selectEl.options[selectEl.selectedIndex];
+            if (selected && selected.hidden) {
+                selectEl.value = '';
+                if (window.jQuery && window.jQuery(selectEl).hasClass('select2-hidden-accessible')) {
+                    window.jQuery(selectEl).val('').trigger('change');
+                }
+            }
+        }
+    }
+
+    function cascadeOrgFilters() {
+        const region = document.getElementById('filter_region');
+        const cluster = document.getElementById('filter_cluster');
+        const branch = document.getElementById('filter_branch_unit');
+        const regionVal = region?.value || '';
+        const clusterVal = cluster?.value || '';
+        filterOrgOptions(cluster, regionVal, '');
+        filterOrgOptions(branch, clusterVal, clusterVal ? '' : regionVal);
+        syncOrgUnitFilterHidden();
+    }
+
+    ['filter_region', 'filter_cluster', 'filter_branch_unit'].forEach(function (id) {
+        const el = document.getElementById(id);
+        el?.addEventListener('change', cascadeOrgFilters);
+    });
+    cascadeOrgFilters();
+    document.getElementById('gtFiltersForm')?.addEventListener('submit', syncOrgUnitFilterHidden);
 
     function num(el) {
         if (!el) return 0;
@@ -1034,27 +1425,41 @@
                     labels: trend.labels,
                     datasets: [
                         {
-                            label: 'Effective',
+                            label: 'Target',
                             data: trend.effective,
-                            backgroundColor: themePrimary,
-                            borderRadius: 6,
-                            maxBarThickness: 28
+                            backgroundColor: '#86efac',
+                            borderRadius: 5,
+                            maxBarThickness: 22,
+                            categoryPercentage: 0.65,
+                            barPercentage: 0.85,
+                            yAxisID: 'y',
+                            order: 2
                         },
                         {
-                            label: 'Actual',
+                            label: 'Achieved',
                             data: trend.actual,
-                            backgroundColor: '#16a34a',
-                            borderRadius: 6,
-                            maxBarThickness: 28
+                            backgroundColor: '#15803d',
+                            borderRadius: 5,
+                            maxBarThickness: 22,
+                            categoryPercentage: 0.65,
+                            barPercentage: 0.85,
+                            yAxisID: 'y',
+                            order: 2
                         },
                         {
-                            label: 'Closing SF',
-                            data: trend.closing,
+                            label: 'Achievement %',
+                            data: trend.pct || [],
                             type: 'line',
-                            borderColor: '#ea580c',
-                            backgroundColor: 'rgba(234,88,12,.12)',
+                            borderColor: '#166534',
+                            backgroundColor: 'rgba(22,101,52,.1)',
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: '#166534',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
                             tension: .35,
-                            yAxisID: 'y'
+                            yAxisID: 'y1',
+                            order: 1
                         }
                     ]
                 },
@@ -1065,13 +1470,20 @@
                         legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
                         tooltip: {
                             callbacks: {
-                                label: function (ctx) { return ctx.dataset.label + ': ' + money(ctx.parsed.y); }
+                                label: function (ctx) {
+                                    if (ctx.dataset.yAxisID === 'y1') {
+                                        return ctx.dataset.label + ': ' + (ctx.parsed.y ?? 0) + '%';
+                                    }
+                                    return ctx.dataset.label + ': ' + money(ctx.parsed.y);
+                                }
                             }
                         }
                     },
                     scales: {
                         x: { grid: { display: false } },
                         y: {
+                            type: 'linear',
+                            position: 'left',
                             beginAtZero: true,
                             ticks: {
                                 callback: function (v) {
@@ -1081,6 +1493,14 @@
                                     return v;
                                 }
                             }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            suggestedMax: 100,
+                            grid: { drawOnChartArea: false },
+                            ticks: { callback: function (v) { return v + '%'; } }
                         }
                     }
                 }
@@ -1088,17 +1508,18 @@
         }
     }
 
-    const metricEl = document.getElementById('gtMetricChart');
-    if (metricEl && window.Chart) {
-        const hasMetric = (metricChart.labels || []).length > 0;
-        if (hasMetric) {
-            new Chart(metricEl, {
+    const regionEl = document.getElementById('gtRegionChart');
+    if (regionEl && window.Chart) {
+        const hasRegion = (regionChart.labels || []).length > 0;
+        if (hasRegion) {
+            const palette = ['#15803d', '#22d3ee', '#eab308', '#16a34a', '#0ea5e9', '#a78bfa', '#f59e0b', '#64748b'];
+            new Chart(regionEl, {
                 type: 'doughnut',
                 data: {
-                    labels: metricChart.labels,
+                    labels: regionChart.labels,
                     datasets: [{
-                        data: metricChart.values,
-                        backgroundColor: [themePrimary, themeHover, '#14b8a6'],
+                        data: regionChart.values,
+                        backgroundColor: regionChart.labels.map(function (_, i) { return palette[i % palette.length]; }),
                         borderWidth: 0,
                         hoverOffset: 6
                     }]
@@ -1127,29 +1548,29 @@
     bindCalc('add');
     bindCalc('edit');
 
-    document.querySelectorAll('.btn-edit-target').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            const form = document.getElementById('editTargetForm');
-            if (!form) return;
-            form.action = btn.getAttribute('data-action');
-            document.getElementById('edit_target_id').value = btn.getAttribute('data-id') || '';
-            const ownerType = btn.getAttribute('data-owner-type') || 'org_unit';
-            syncOwnerType('edit', ownerType);
-            setMonthValue(document.getElementById('edit_period'), btn.getAttribute('data-period') || '');
-            setSelectValue(document.getElementById('edit_metric'), btn.getAttribute('data-metric') || 'revenue');
-            setSelectValue(document.getElementById('edit_goal_org_unit_id'), btn.getAttribute('data-org') || '');
-            setSelectValue(document.getElementById('edit_user_id'), btn.getAttribute('data-user') || '');
-            document.getElementById('edit_base_target').value = btn.getAttribute('data-base') || '0';
-            document.getElementById('edit_opening_shortfall').value = btn.getAttribute('data-opening') || '0';
-            document.getElementById('edit_adjustments').value = btn.getAttribute('data-adjustments') || '0';
-            document.getElementById('edit_actual').value = btn.getAttribute('data-actual') || '0';
-            const statusEl = document.getElementById('edit_status');
-            if (statusEl && statusEl.tagName === 'SELECT') {
-                setSelectValue(statusEl, btn.getAttribute('data-status') || 'Draft');
-            }
-            form.querySelectorAll('.is-invalid').forEach(function (el) { el.classList.remove('is-invalid'); });
-            bindCalc('edit');
-        });
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.btn-edit-target');
+        if (!btn) return;
+        const form = document.getElementById('editTargetForm');
+        if (!form) return;
+        form.action = btn.getAttribute('data-action');
+        document.getElementById('edit_target_id').value = btn.getAttribute('data-id') || '';
+        const ownerType = btn.getAttribute('data-owner-type') || 'org_unit';
+        syncOwnerType('edit', ownerType);
+        setMonthValue(document.getElementById('edit_period'), btn.getAttribute('data-period') || '');
+        setSelectValue(document.getElementById('edit_metric'), btn.getAttribute('data-metric') || 'revenue');
+        setSelectValue(document.getElementById('edit_goal_org_unit_id'), btn.getAttribute('data-org') || '');
+        setSelectValue(document.getElementById('edit_user_id'), btn.getAttribute('data-user') || '');
+        document.getElementById('edit_base_target').value = btn.getAttribute('data-base') || '0';
+        document.getElementById('edit_opening_shortfall').value = btn.getAttribute('data-opening') || '0';
+        document.getElementById('edit_adjustments').value = btn.getAttribute('data-adjustments') || '0';
+        document.getElementById('edit_actual').value = btn.getAttribute('data-actual') || '0';
+        const statusEl = document.getElementById('edit_status');
+        if (statusEl && statusEl.tagName === 'SELECT') {
+            setSelectValue(statusEl, btn.getAttribute('data-status') || 'Draft');
+        }
+        form.querySelectorAll('.is-invalid').forEach(function (el) { el.classList.remove('is-invalid'); });
+        bindCalc('edit');
     });
 
     const addForm = document.getElementById('addTargetForm');
