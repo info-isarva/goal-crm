@@ -263,6 +263,22 @@
             'recognized' => (float) ($row['recognized'] ?? 0),
         ];
     }
+    $orgTree = [
+        'clusters' => collect($opts['clusters'] ?? [])->map(static function ($u) {
+            return [
+                'id' => (string) $u->id,
+                'name' => $u->name,
+                'parent_id' => $u->parent_id !== null ? (string) $u->parent_id : '',
+            ];
+        })->values()->all(),
+        'branches' => collect($opts['branches'] ?? [])->map(static function ($u) {
+            return [
+                'id' => (string) $u->id,
+                'name' => $u->name,
+                'parent_id' => $u->parent_id !== null ? (string) $u->parent_id : '',
+            ];
+        })->values()->all(),
+    ];
 @endphp
 <div class="container-fluid p-4 pd-page rev-page">
     <div class="pd-hero">
@@ -776,23 +792,19 @@
     }
     if (fyEl) fyEl.addEventListener('change', function () { applyFy(fyEl.value); });
 
-    // Region → Cluster → Branch cascade (keeps Select2 in sync)
+    // Region → Cluster → Branch cascade (Select2-safe)
     (function () {
+        const $ = window.jQuery;
         const regionEl = document.getElementById('revRegion');
         const clusterEl = document.getElementById('revCluster');
         const branchEl = document.getElementById('revBranch');
         if (!regionEl || !clusterEl || !branchEl) return;
 
-        const clusterAll = Array.from(clusterEl.querySelectorAll('option')).map(function (o) {
-            return { value: o.value, label: o.textContent, parent: o.getAttribute('data-parent') || '' };
-        });
-        const branchAll = Array.from(branchEl.querySelectorAll('option')).map(function (o) {
-            return { value: o.value, label: o.textContent, parent: o.getAttribute('data-parent') || '' };
-        });
+        const orgTree = @json($orgTree);
 
-        function refreshSelect(el) {
-            if (!(window.jQuery && window.jQuery.fn.select2)) return;
-            var $el = window.jQuery(el);
+        function reinitsSelect2(el) {
+            if (!$ || !$.fn || !$.fn.select2) return;
+            const $el = $(el);
             if ($el.hasClass('select2-hidden-accessible')) {
                 $el.select2('destroy');
             }
@@ -803,54 +815,86 @@
             }
         }
 
-        function fill(select, rows, selected) {
-            const keep = selected || '';
-            select.innerHTML = '';
-            rows.forEach(function (r) {
-                const opt = document.createElement('option');
-                opt.value = r.value;
-                opt.textContent = r.label;
-                if (r.parent) opt.setAttribute('data-parent', r.parent);
-                if (String(r.value) === String(keep)) opt.selected = true;
-                select.appendChild(opt);
+        function setOptions(select, items, blankLabel, selected) {
+            const keep = selected == null ? '' : String(selected);
+            const html = ['<option value="">' + blankLabel + '</option>'];
+            items.forEach(function (item) {
+                const sel = String(item.id) === keep ? ' selected' : '';
+                html.push(
+                    '<option value="' + item.id + '" data-parent="' + (item.parent_id || '') + '"' + sel + '>' +
+                    String(item.name).replace(/</g, '&lt;') + '</option>'
+                );
             });
-            refreshSelect(select);
+            select.innerHTML = html.join('');
+            if (!select.querySelector('option[selected]') && select.options.length) {
+                select.selectedIndex = 0;
+            }
+            reinitsSelect2(select);
         }
 
-        function syncClusters(keepBranch) {
-            const regionId = regionEl.value;
-            const rows = clusterAll.filter(function (r) {
-                return r.value === '' || !regionId || String(r.parent) === String(regionId);
-            });
-            const keep = rows.some(function (r) { return String(r.value) === String(clusterEl.value); }) ? clusterEl.value : '';
-            fill(clusterEl, rows, keep);
-            syncBranches(keepBranch);
+        function clustersForRegion(regionId) {
+            if (!regionId) return orgTree.clusters.slice();
+            return orgTree.clusters.filter(function (c) { return String(c.parent_id) === String(regionId); });
         }
 
-        function syncBranches(forceKeep) {
-            const clusterId = clusterEl.value;
-            const regionId = regionEl.value;
-            const allowedClusterIds = clusterAll
-                .filter(function (r) { return r.value && (!regionId || String(r.parent) === String(regionId)); })
-                .map(function (r) { return String(r.value); });
-            const rows = branchAll.filter(function (r) {
-                if (r.value === '') return true;
-                if (clusterId) return String(r.parent) === String(clusterId);
-                if (regionId) return allowedClusterIds.indexOf(String(r.parent)) !== -1;
-                return true;
-            });
-            const keep = forceKeep || (rows.some(function (r) { return String(r.value) === String(branchEl.value); }) ? branchEl.value : '');
-            fill(branchEl, rows, keep);
+        function branchesFor(regionId, clusterId) {
+            if (clusterId) {
+                return orgTree.branches.filter(function (b) { return String(b.parent_id) === String(clusterId); });
+            }
+            if (regionId) {
+                const clusterIds = clustersForRegion(regionId).map(function (c) { return String(c.id); });
+                return orgTree.branches.filter(function (b) { return clusterIds.indexOf(String(b.parent_id)) !== -1; });
+            }
+            return orgTree.branches.slice();
         }
 
-        regionEl.addEventListener('change', function () { syncClusters(''); });
-        clusterEl.addEventListener('change', function () { syncBranches(''); });
-        // Run after global Select2 init so rebuild keeps widgets in sync
-        function bootCascade() { syncClusters(branchEl.value); }
-        if (window.jQuery) {
-            window.jQuery(bootCascade);
+        function syncFromRegion(resetDownstream) {
+            const regionId = regionEl.value || '';
+            const clusterKeep = resetDownstream ? '' : (clusterEl.value || '');
+            const validClusters = clustersForRegion(regionId);
+            const keepCluster = validClusters.some(function (c) { return String(c.id) === String(clusterKeep); }) ? clusterKeep : '';
+            setOptions(clusterEl, validClusters, 'All Clusters', keepCluster);
+            syncFromCluster(true);
+        }
+
+        function syncFromCluster(resetBranch) {
+            const regionId = regionEl.value || '';
+            const clusterId = clusterEl.value || '';
+            const branchKeep = resetBranch ? '' : (branchEl.value || '');
+            const validBranches = branchesFor(regionId, clusterId);
+            const keepBranch = validBranches.some(function (b) { return String(b.id) === String(branchKeep); }) ? branchKeep : '';
+            setOptions(branchEl, validBranches, 'All Branches', keepBranch);
+        }
+
+        function bind() {
+            if ($) {
+                $(regionEl).off('.revCascade').on('change.revCascade select2:select.revCascade', function () {
+                    syncFromRegion(true);
+                });
+                $(clusterEl).off('.revCascade').on('change.revCascade select2:select.revCascade', function () {
+                    syncFromCluster(true);
+                });
+            } else {
+                regionEl.addEventListener('change', function () { syncFromRegion(true); });
+                clusterEl.addEventListener('change', function () { syncFromCluster(true); });
+            }
+        }
+
+        function boot() {
+            bind();
+            // Normalize lists for any preselected region/cluster without wiping selection.
+            const regionId = regionEl.value || '';
+            const clusterId = clusterEl.value || '';
+            const branchId = branchEl.value || '';
+            setOptions(clusterEl, clustersForRegion(regionId), 'All Clusters', clusterId);
+            setOptions(branchEl, branchesFor(regionId, clusterEl.value || ''), 'All Branches', branchId);
+            bind(); // re-bind after Select2 re-init
+        }
+
+        if ($) {
+            $(boot);
         } else {
-            bootCascade();
+            boot();
         }
     })();
 
