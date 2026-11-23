@@ -188,17 +188,18 @@
     border-color: var(--gt-accent); color: var(--gt-accent); background: #ecfdf5;
 }
 .goal-targets-page .metric-tabs {
-    display: inline-flex; gap: 6px; padding: 4px; background: #f1f5f9; border-radius: 10px;
+    display: inline-flex; gap: 6px; padding: 0; background: transparent; border-radius: 0;
 }
 .goal-targets-page .metric-tabs a {
-    display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px;
-    font-size: .8rem; font-weight: 700; color: #64748b; text-decoration: none; line-height: 1.2;
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px;
+    font-size: .78rem; font-weight: 700; color: #0f172a; text-decoration: none; line-height: 1.2;
+    background: #fff; border: 1px solid #e2e8f0;
 }
-.goal-targets-page .metric-tabs a:hover { color: #0f172a; background: #fff; }
+.goal-targets-page .metric-tabs a:hover { background: #f8fafc; color: #0f172a; }
 .goal-targets-page .metric-tabs a.is-active {
-    background: #fff; color: var(--gt-accent); box-shadow: 0 1px 3px rgba(15,23,42,.08);
+    background: var(--gt-accent); color: #fff; border-color: var(--gt-accent);
+    box-shadow: 0 3px 10px rgba(5, 150, 105, .22);
 }
-.goal-targets-page .gt-table { min-width: 1080px; }
 .goal-targets-page .panel {
     background: #fff; border: 1px solid #e8edf5; border-radius: 14px;
     box-shadow: 0 6px 16px rgba(148,163,184,.08); overflow: hidden;
@@ -219,39 +220,41 @@
 }
 .goal-targets-page .chart-empty i{font-size:1.5rem;margin-bottom:6px;opacity:.7;display:block}
 
-/* Register table — aligned to Users list */
+/* Register table — compact density */
 .goal-targets-page .gt-table-card {
-    background: #fff; border: 1px solid #e8edf5; border-radius: 14px;
-    box-shadow: 0 6px 16px rgba(148,163,184,.08); overflow: hidden; margin-bottom: var(--gt-gap);
+    background: #fff; border: 1px solid #e8edf5; border-radius: 12px;
+    box-shadow: 0 6px 16px rgba(148,163,184,.08); overflow: visible; margin-bottom: var(--gt-gap);
 }
 .goal-targets-page .gt-table-head {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: .85rem 1.1rem; border-bottom: 1px solid #eef2f7;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: .65rem .9rem; border-bottom: 1px solid #eef2f7;
 }
 .goal-targets-page .gt-table-title {
-    margin: 0; font-size: 1.02rem; font-weight: 800; color: #0f172a;
-    display: inline-flex; align-items: center; gap: 10px; line-height: 1.25;
+    margin: 0; font-size: .95rem; font-weight: 800; color: #0f172a;
+    display: inline-flex; align-items: center; gap: 8px; line-height: 1.25;
 }
-.goal-targets-page .gt-table-title i { color: var(--theme-primary); font-size: 1.1rem; }
-.goal-targets-page .gt-table-meta { font-size: .78rem; color: #94a3b8; font-weight: 600; line-height: 1.3; }
+.goal-targets-page .gt-table-title i { color: var(--theme-primary); font-size: 1rem; }
+.goal-targets-page .gt-table-meta { font-size: .72rem; color: #94a3b8; font-weight: 600; line-height: 1.3; }
 .goal-targets-page .gt-table-wrap {
-    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch;
     padding: 0; width: 100%; max-width: 100%;
 }
 .goal-targets-page .gt-table {
-    font-size: .875rem; width: 100%; min-width: 920px; margin: 0;
-    border-collapse: separate; border-spacing: 0;
+    font-size: .8rem; width: 100%; min-width: 0; margin: 0;
+    table-layout: fixed; border-collapse: separate; border-spacing: 0;
 }
 .goal-targets-page .gt-table thead th {
-    background: #f5f6fb; color: #1a1c32; font-size: .78rem; font-weight: 700;
-    text-transform: none; letter-spacing: 0; border-bottom: 1px solid #eef0f6; border-top: 0;
-    white-space: nowrap; padding: 13px 14px; vertical-align: middle; text-align: left;
+    background: #f8f9fc; color: #1e293b; font-size: .68rem; font-weight: 750;
+    text-transform: none; letter-spacing: .01em; border-bottom: 1px solid #eef0f6; border-top: 0;
+    white-space: nowrap; padding: 8px 10px; vertical-align: middle; text-align: left;
 }
 .goal-targets-page .gt-table thead th.col-amt,
 .goal-targets-page .gt-table thead th.col-actions {
     text-align: right;
 }
-.goal-targets-page .gt-table thead th.col-num { text-align: left; }
+.goal-targets-page .gt-table thead th.col-num { text-align: left; width: 40px; }
+.goal-targets-page .gt-table thead th.col-entity { width: 22%; }
+.goal-targets-page .gt-table thead th.col-pct { width: 9%; }
 .goal-targets-page .gt-table thead,
 .goal-targets-page .gt-table tbody,
 .goal-targets-page .gt-table tr {
@@ -264,43 +267,58 @@
     display: table-cell !important;
 }
 .goal-targets-page .gt-table tbody td {
-    padding: 14px; border-bottom: 1px solid #eef0f6; border-top: 0;
+    padding: 7px 10px; border-bottom: 1px solid #eef0f6; border-top: 0;
     vertical-align: middle; color: #334155; background: #fff;
 }
 .goal-targets-page .gt-table tbody tr:last-child td { border-bottom: 0; }
 .goal-targets-page .gt-table tbody tr:hover td { background: #f8fafc; }
-.goal-targets-page .gt-table .col-num { width: 48px; color: #1a1c32; font-weight: 600; }
+.goal-targets-page .gt-table .col-num { width: 40px; color: #64748b; font-weight: 650; font-variant-numeric: tabular-nums; font-size: .75rem; }
 .goal-targets-page .gt-table .col-amt {
     text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
-    font-weight: 600; color: #1a1c32;
+    font-weight: 600; color: #1a1c32; font-size: .78rem;
 }
+.goal-targets-page .gt-table .col-amt.is-eff { font-weight: 800; color: #0f172a; }
 .goal-targets-page .gt-table .col-amt.is-sf { color: #c2410c; }
-.goal-targets-page .gt-table .col-actions { width: 72px; text-align: right; }
-.goal-targets-page .gt-table td:nth-child(4) { min-width: 160px; }
-.goal-targets-page .gt-owner-name { font-weight: 700; color: #1a1c32; line-height: 1.25; }
-.goal-targets-page .gt-owner-sub { font-size: .75rem; color: #94a3b8; margin-top: 2px; }
-.goal-targets-page .gt-progress-wrap { display: flex; align-items: center; gap: 10px; min-width: 120px; }
+.goal-targets-page .gt-table .col-actions {
+    width: 118px; text-align: right;
+    border-left: 1px solid #f1f5f9;
+}
+.goal-targets-page .gt-owner-name {
+    font-weight: 700; color: #1a1c32; line-height: 1.2; font-size: .8rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+.goal-targets-page .gt-owner-sub {
+    font-size: .66rem; color: #94a3b8; margin-top: 1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.goal-targets-page .gt-progress-wrap {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; width: 100%;
+}
 .goal-targets-page .gt-progress {
-    flex: 1; height: 7px; border-radius: 999px; background: #e2e8f0; overflow: hidden; min-width: 72px;
+    width: 100%; height: 5px; border-radius: 999px; background: #e2e8f0; overflow: hidden; min-width: 0;
 }
 .goal-targets-page .gt-progress > span {
     display: block; height: 100%; border-radius: inherit;
-    background: var(--theme-primary);
+    background: #16a34a;
 }
-.goal-targets-page .gt-progress-pct { font-size: .78rem; font-weight: 700; color: #64748b; min-width: 42px; }
+.goal-targets-page .gt-progress-pct {
+    font-size: .75rem; font-weight: 800; color: #15803d; line-height: 1;
+    order: -1;
+}
 .goal-targets-page .gt-tree-toggle {
-    width: 22px; height: 22px; border: 0; background: transparent; color: #94a3b8;
+    width: 18px; height: 18px; border: 0; background: transparent; color: #94a3b8;
     display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;
-    padding: 0; flex-shrink: 0; cursor: pointer;
+    padding: 0; flex-shrink: 0; cursor: pointer; font-size: .7rem;
 }
 .goal-targets-page .gt-tree-toggle:hover { background: #e2e8f0; color: #0f172a; }
 .goal-targets-page .gt-tree-toggle.is-leaf { visibility: hidden; }
 .goal-targets-page .gt-entity {
-    display: inline-flex; align-items: center; gap: 8px; min-width: 0;
+    display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%;
 }
+.goal-targets-page .gt-entity > div { min-width: 0; overflow: hidden; }
 .goal-targets-page .gt-ent-ico {
-    width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
-    display: inline-flex; align-items: center; justify-content: center; font-size: .85rem;
+    width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center; font-size: .7rem;
 }
 .goal-targets-page .gt-ent-ico.region { background: #dcfce7; color: #059669; }
 .goal-targets-page .gt-ent-ico.cluster { background: #dbeafe; color: #2563eb; }
@@ -315,8 +333,10 @@
 .goal-targets-page .gt-type-pill.branch { background: #ede9fe; color: #7c3aed; }
 .goal-targets-page .gt-type-pill.employee { background: #f1f5f9; color: #475569; }
 .goal-targets-page .gt-table tfoot td {
-    background: #ecfdf5; font-weight: 800; color: #14532d; border-top: 1px solid #86efac;
+    background: #e8f7ed; font-weight: 800; color: #14532d;
+    border-top: 2px solid #86efac; padding: 8px 10px; font-size: .78rem;
 }
+.goal-targets-page .gt-table tfoot .gt-progress-pct { color: #15803d; }
 .goal-targets-page .metric-pill {
     display: inline-flex; border-radius: 999px; padding: 5px 12px; font-size: .72rem; font-weight: 700; line-height: 1.2;
 }
@@ -332,14 +352,49 @@
     width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block;
 }
 .goal-targets-page .gt-action-btn {
-    width: 36px; height: 36px; border: 0; border-radius: 10px;
-    background: var(--theme-100); color: var(--theme-primary);
+    width: 28px; height: 28px; border: 0; border-radius: 7px;
+    background: #ecfdf5; color: #059669;
     display: inline-flex; align-items: center; justify-content: center;
 }
-.goal-targets-page .gt-action-btn:hover { background: var(--theme-200, var(--theme-100)); color: var(--theme-primary-hover); }
+.goal-targets-page .gt-action-btn:hover { background: #dcfce7; color: #047857; }
+.goal-targets-page .gt-row-actions {
+    display: inline-flex; align-items: center; gap: 4px; justify-content: flex-end;
+}
+.goal-targets-page .gt-btn-edit {
+    height: 26px; padding: 0 9px; border-radius: 999px;
+    border: 1px solid #86efac; background: #fff; color: #059669;
+    font-size: .68rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;
+    cursor: pointer; white-space: nowrap;
+}
+.goal-targets-page .gt-btn-edit:hover { background: #ecfdf5; }
+.goal-targets-page .gt-more-dd { position: relative; display: inline-flex; }
+.goal-targets-page .gt-btn-more {
+    width: 26px; height: 26px; border-radius: 7px; border: 1px solid #e2e8f0;
+    background: #fff; color: #64748b; display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; padding: 0; font-size: .8rem;
+}
+.goal-targets-page .gt-btn-more:hover { background: #f8fafc; color: #0f172a; }
+.goal-targets-page .gt-more-menu {
+    position: fixed; z-index: 1080;
+    min-width: 168px; margin: 0; padding: 4px; list-style: none;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(15,23,42,.14); display: none;
+}
+.goal-targets-page .gt-more-dd.is-open .gt-more-menu { display: block; }
+.goal-targets-page .gt-more-menu button {
+    display: flex; align-items: center; gap: 7px; width: 100%;
+    border: 0; background: transparent; text-align: left;
+    padding: 7px 9px; border-radius: 6px; font-size: .74rem; font-weight: 650;
+    color: #334155; cursor: pointer;
+}
+.goal-targets-page .gt-more-menu button:hover { background: #ecfdf5; color: #059669; }
+.goal-targets-page .gt-more-menu button.danger { color: #b91c1c; }
+.goal-targets-page .gt-more-menu button.danger:hover { background: #fef2f2; color: #991b1b; }
+.goal-targets-page .gt-more-menu button:disabled { opacity: .45; cursor: not-allowed; }
 .goal-targets-page .gt-table-foot {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-    gap: 12px 16px; padding: 16px 20px; border-top: 1px solid #e8edf5; background: #fff;
+    gap: 10px 14px; padding: 10px 14px; border-top: 1px solid #e8edf5; background: #fff;
+    border-radius: 0 0 12px 12px;
 }
 .goal-targets-page .gt-showing { font-size: .84rem; color: #64748b; font-weight: 500; }
 .goal-targets-page .gt-foot-right { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; }
@@ -394,7 +449,8 @@
         overflow: visible !important;
     }
     .goal-targets-page .gt-table-wrap.table-responsive > table.gt-table {
-        display: table !important; width: 100% !important; min-width: 920px !important;
+        display: table !important; width: 100% !important; min-width: 0 !important;
+        table-layout: fixed !important;
     }
     .goal-targets-page .gt-table-wrap.table-responsive > table.gt-table thead { display: table-header-group !important; }
     .goal-targets-page .gt-table-wrap.table-responsive > table.gt-table tbody { display: table-row-group !important; }
@@ -406,17 +462,18 @@
     .goal-targets-page .gt-table-wrap.table-responsive > table.gt-table td {
         display: table-cell !important;
         width: auto !important;
-        padding: 13px 14px !important;
+        padding: 7px 10px !important;
         border-bottom: 1px solid #eef0f6 !important;
         justify-content: initial !important;
         align-items: initial !important;
         gap: 0 !important;
     }
     .goal-targets-page .gt-table-wrap.table-responsive > table.gt-table thead th {
-        background: #f5f6fb !important;
-        padding: 13px 14px !important;
+        background: #f8f9fc !important;
+        padding: 8px 10px !important;
     }
-    .goal-targets-page .gt-table-wrap.table-responsive > table.gt-table tbody td { padding: 14px !important; }
+    .goal-targets-page .gt-table-wrap.table-responsive > table.gt-table tbody td { padding: 7px 10px !important; }
+    .goal-targets-page .gt-table-wrap.table-responsive > table.gt-table tfoot td { padding: 8px 10px !important; }
     .goal-targets-page .gt-table-wrap.table-responsive > table.gt-table td:before,
     .goal-targets-page .gt-table-wrap.table-responsive > table.gt-table td::before {
         content: none !important;
@@ -878,10 +935,10 @@
                 </div>
                 <nav class="metric-tabs" aria-label="Target metric">
                     <a href="{{ route('goal.targets.index', $tabQuery('revenue')) }}" class="{{ $tableMetric === 'revenue' ? 'is-active' : '' }}">
-                        <i class="bi bi-currency-rupee"></i> Revenue
+                        <i class="bi bi-cash-stack"></i> Revenue Target
                     </a>
                     <a href="{{ route('goal.targets.index', $tabQuery('disbursement')) }}" class="{{ $tableMetric === 'disbursement' ? 'is-active' : '' }}">
-                        <i class="bi bi-bank"></i> Disbursement
+                        <i class="bi bi-cash-stack"></i> Disbursement Target
                     </a>
                 </nav>
             </div>
@@ -891,30 +948,29 @@
                     <thead>
                         <tr>
                             <th class="col-num">#</th>
-                            <th style="min-width:240px">Entity (Hierarchy)</th>
-                            <th>Type</th>
-                            <th class="col-amt">Base Target (₹)</th>
-                            <th class="col-amt">Opening Shortfall (₹)</th>
-                            <th class="col-amt">Adjustments (₹)</th>
-                            <th class="col-amt">Effective Target (₹)</th>
+                            <th class="col-entity">Entity (Hierarchy)</th>
+                            <th class="col-amt">Base (₹)</th>
+                            <th class="col-amt">Opening (₹)</th>
+                            <th class="col-amt">Adj. (₹)</th>
+                            <th class="col-amt">Effective (₹)</th>
                             <th class="col-amt">Achieved (₹)</th>
-                            <th>Achievement %</th>
+                            <th class="col-pct">Ach. %</th>
                             @if($canManage)<th class="col-actions">Actions</th>@endif
                         </tr>
                     </thead>
                     <tbody id="gtAllocBody">
-                        <tr><td colspan="{{ $canManage ? 10 : 9 }}" class="text-center"><div class="gt-empty"><i class="bi bi-hourglass-split"></i>Loading hierarchy…</div></td></tr>
+                        <tr><td colspan="{{ $canManage ? 9 : 8 }}" class="text-center"><div class="gt-empty"><i class="bi bi-hourglass-split"></i>Loading hierarchy…</div></td></tr>
                     </tbody>
                     <tfoot id="gtAllocFoot" class="d-none">
                         <tr>
-                            <td colspan="3"><strong>Total</strong></td>
+                            <td colspan="2"><strong>Total</strong></td>
                             <td class="col-amt" id="gtFootBase">0</td>
                             <td class="col-amt" id="gtFootOpen">0</td>
                             <td class="col-amt" id="gtFootAdj">0</td>
-                            <td class="col-amt" id="gtFootEff">0</td>
+                            <td class="col-amt is-eff" id="gtFootEff">0</td>
                             <td class="col-amt" id="gtFootAct">0</td>
-                            <td id="gtFootPct">—</td>
-                            @if($canManage)<td></td>@endif
+                            <td id="gtFootPct"><span class="gt-progress-pct">—</span></td>
+                            @if($canManage)<td class="col-actions"></td>@endif
                         </tr>
                     </tfoot>
                 </table>
@@ -1074,6 +1130,9 @@
     function money(n) {
         return currency + ' ' + (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
+    function amt(n) {
+        return (Number(n) || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    }
 
     function escapeHtml(s) {
         return String(s ?? '').replace(/[&<>"']/g, function (c) {
@@ -1098,6 +1157,16 @@
         });
     }
 
+    function editAttrs(n, actionUrl) {
+        return `data-id="${n.target_id || ''}" data-action="${escapeHtml(actionUrl)}"
+            data-owner-type="${escapeHtml(n.owner_type || (n.type === 'employee' ? 'employee' : 'org_unit'))}"
+            data-period="${escapeHtml(n.period || '')}" data-metric="${escapeHtml(n.metric || 'revenue')}"
+            data-org="${n.org_id || ''}" data-user="${n.user_id || ''}"
+            data-base="${n.base || 0}" data-opening="${n.opening || 0}"
+            data-adjustments="${n.adjustments || 0}" data-actual="${n.actual || 0}"
+            data-status="${escapeHtml(n.status || 'Draft')}"`;
+    }
+
     function renderAllocRows(nodes, depth, parentCollapsed, pathPrefix, rows) {
         (nodes || []).forEach(function (n, i) {
             const num = pathPrefix ? pathPrefix + '.' + (i + 1) : String(i + 1);
@@ -1106,26 +1175,45 @@
             const hidden = parentCollapsed;
             if (!hidden) {
                 const tm = typeMeta(n.type);
-                const pad = depth * 20;
+                const pad = depth * 14;
                 const pct = Number(n.pct || 0);
                 let actions = '';
-                if (canManage && n.target_id) {
-                    const actionUrl = updateRouteTpl.replace('__ID__', String(n.target_id));
+                if (canManage) {
+                    const actionUrl = n.target_id ? updateRouteTpl.replace('__ID__', String(n.target_id)) : '';
+                    const editDisabled = n.target_id ? '' : 'disabled';
+                    const attrs = n.target_id ? editAttrs(n, actionUrl) : '';
                     actions = `<td class="col-actions">
-                        <button type="button" class="gt-action-btn btn-edit-target" title="Edit target"
-                            data-bs-toggle="modal" data-bs-target="#editTargetModal"
-                            data-id="${n.target_id}" data-action="${escapeHtml(actionUrl)}"
-                            data-owner-type="${escapeHtml(n.owner_type || (n.type === 'employee' ? 'employee' : 'org_unit'))}"
-                            data-period="${escapeHtml(n.period || '')}" data-metric="${escapeHtml(n.metric || 'revenue')}"
-                            data-org="${n.org_id || ''}" data-user="${n.user_id || ''}"
-                            data-base="${n.base || 0}" data-opening="${n.opening || 0}"
-                            data-adjustments="${n.adjustments || 0}" data-actual="${n.actual || 0}"
-                            data-status="${escapeHtml(n.status || 'Draft')}">
-                            <i class="bi bi-pencil"></i>
-                        </button>
+                        <div class="gt-row-actions">
+                            <button type="button" class="gt-btn-edit btn-edit-target" ${editDisabled}
+                                data-bs-toggle="modal" data-bs-target="#editTargetModal" ${attrs}
+                                title="Edit">
+                                <i class="bi bi-pencil"></i> Edit
+                            </button>
+                            <div class="gt-more-dd">
+                                <button type="button" class="gt-btn-more" data-more-toggle="${escapeHtml(n.key)}" title="More" aria-haspopup="true">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="gt-more-menu" role="menu">
+                                    <li><button type="button" class="btn-edit-target" ${editDisabled}
+                                        data-bs-toggle="modal" data-bs-target="#editTargetModal" ${attrs}>
+                                        <i class="bi bi-pencil"></i> Edit Target
+                                    </button></li>
+                                    <li><button type="button" data-alloc-act="allocate" data-key="${escapeHtml(n.key)}" ${hasKids ? '' : 'disabled'}>
+                                        <i class="bi bi-people"></i> Allocate to Child
+                                    </button></li>
+                                    <li><button type="button" data-alloc-act="details" data-key="${escapeHtml(n.key)}">
+                                        <i class="bi bi-file-text"></i> View Details
+                                    </button></li>
+                                    <li><button type="button" data-alloc-act="history" data-key="${escapeHtml(n.key)}">
+                                        <i class="bi bi-clock-history"></i> Target History
+                                    </button></li>
+                                    <li><button type="button" class="danger" data-alloc-act="remove" data-id="${n.target_id || ''}" ${n.target_id ? '' : 'disabled'}>
+                                        <i class="bi bi-trash"></i> Remove Target
+                                    </button></li>
+                                </ul>
+                            </div>
+                        </div>
                     </td>`;
-                } else if (canManage) {
-                    actions = '<td class="col-actions"></td>';
                 }
                 rows.push(`<tr data-key="${escapeHtml(n.key)}" data-depth="${depth}">
                     <td class="col-num">${num}</td>
@@ -1141,16 +1229,15 @@
                             </div>
                         </div>
                     </td>
-                    <td><span class="gt-type-pill ${tm.cls}">${tm.label}</span></td>
-                    <td class="col-amt">${money(n.base)}</td>
-                    <td class="col-amt">${money(n.opening)}</td>
-                    <td class="col-amt">${money(n.adjustments)}</td>
-                    <td class="col-amt">${money(n.effective)}</td>
-                    <td class="col-amt">${money(n.actual)}</td>
+                    <td class="col-amt">${amt(n.base)}</td>
+                    <td class="col-amt">${amt(n.opening)}</td>
+                    <td class="col-amt">${amt(n.adjustments)}</td>
+                    <td class="col-amt is-eff">${amt(n.effective)}</td>
+                    <td class="col-amt">${amt(n.actual)}</td>
                     <td>
                         <div class="gt-progress-wrap" title="${pct}%">
-                            <div class="gt-progress"><span style="width:${pct}%"></span></div>
                             <span class="gt-progress-pct">${pct}%</span>
+                            <div class="gt-progress"><span style="width:${Math.min(100, pct)}%"></span></div>
                         </div>
                     </td>
                     ${actions}
@@ -1169,7 +1256,7 @@
         if (!body) return;
         const tree = allocationTree || [];
         if (!tree.length) {
-            body.innerHTML = `<tr><td colspan="${canManage ? 10 : 9}" class="text-center">
+            body.innerHTML = `<tr><td colspan="${canManage ? 9 : 8}" class="text-center">
                 <div class="gt-empty"><i class="bi bi-inbox"></i><div>No hierarchy / targets for these filters.</div>
                 ${canManage ? `<a href="{{ route('goal.targets.set') }}" class="btn-gt-primary mt-3 d-inline-flex"><i class="bi bi-bullseye"></i> Set Targets</a>` : ''}
                 </div></td></tr>`;
@@ -1186,12 +1273,14 @@
             act += Number(n.actual || 0);
         });
         const pct = eff > 0 ? Math.round(Math.min(100, (act / eff) * 1000)) / 10 : 0;
-        if (document.getElementById('gtFootBase')) document.getElementById('gtFootBase').textContent = money(base);
-        if (document.getElementById('gtFootOpen')) document.getElementById('gtFootOpen').textContent = money(open);
-        if (document.getElementById('gtFootAdj')) document.getElementById('gtFootAdj').textContent = money(adj);
-        if (document.getElementById('gtFootEff')) document.getElementById('gtFootEff').textContent = money(eff);
-        if (document.getElementById('gtFootAct')) document.getElementById('gtFootAct').textContent = money(act);
-        if (document.getElementById('gtFootPct')) document.getElementById('gtFootPct').textContent = pct + '%';
+        if (document.getElementById('gtFootBase')) document.getElementById('gtFootBase').textContent = amt(base);
+        if (document.getElementById('gtFootOpen')) document.getElementById('gtFootOpen').textContent = amt(open);
+        if (document.getElementById('gtFootAdj')) document.getElementById('gtFootAdj').textContent = amt(adj);
+        if (document.getElementById('gtFootEff')) document.getElementById('gtFootEff').textContent = amt(eff);
+        if (document.getElementById('gtFootAct')) document.getElementById('gtFootAct').textContent = amt(act);
+        if (document.getElementById('gtFootPct')) {
+            document.getElementById('gtFootPct').innerHTML = `<span class="gt-progress-pct">${pct}%</span>`;
+        }
         if (foot) foot.classList.remove('d-none');
     }
 
@@ -1200,7 +1289,77 @@
     (allocationTree || []).forEach(function (n) { collapsed.delete(n.key); });
     renderAllocationTable();
 
+    function findAllocNode(nodes, key) {
+        for (let i = 0; i < (nodes || []).length; i++) {
+            const n = nodes[i];
+            if (n.key === key) return n;
+            const found = findAllocNode(n.children || [], key);
+            if (found) return found;
+        }
+        return null;
+    }
+
     document.getElementById('gtAllocBody')?.addEventListener('click', function (e) {
+        const moreToggle = e.target.closest('[data-more-toggle]');
+        if (moreToggle) {
+            e.preventDefault();
+            e.stopPropagation();
+            const dd = moreToggle.closest('.gt-more-dd');
+            const menu = dd.querySelector('.gt-more-menu');
+            const willOpen = !dd.classList.contains('is-open');
+            document.querySelectorAll('.gt-more-dd.is-open').forEach(function (el) {
+                el.classList.remove('is-open');
+                const m = el.querySelector('.gt-more-menu');
+                if (m) { m.style.top = ''; m.style.left = ''; m.style.right = ''; }
+            });
+            if (willOpen && menu) {
+                dd.classList.add('is-open');
+                const rect = moreToggle.getBoundingClientRect();
+                const menuW = 168;
+                const menuH = menu.offsetHeight || 200;
+                let top = rect.bottom + 4;
+                let left = rect.right - menuW;
+                if (top + menuH > window.innerHeight - 8) top = Math.max(8, rect.top - menuH - 4);
+                if (left < 8) left = 8;
+                if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+                menu.style.top = top + 'px';
+                menu.style.left = left + 'px';
+                menu.style.right = 'auto';
+            }
+            return;
+        }
+
+        const allocAct = e.target.closest('[data-alloc-act]');
+        if (allocAct && !allocAct.disabled) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeAllocMenus();
+            const act = allocAct.getAttribute('data-alloc-act');
+            const key = allocAct.getAttribute('data-key');
+            if (act === 'allocate' && key) {
+                collapsed.delete(key);
+                const node = findAllocNode(allocationTree, key);
+                (node?.children || []).forEach(function (c) {
+                    if (c.children && c.children.length) collapsed.add(c.key);
+                });
+                renderAllocationTable();
+                return;
+            }
+            if (act === 'details' || act === 'history') {
+                const history = document.getElementById('gtTrendSection') || document.querySelector('.activity-panel');
+                history?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                return;
+            }
+            if (act === 'remove') {
+                if (typeof showFlashSwal === 'function') {
+                    showFlashSwal('info', 'Use Set Targets to clear or reassign this row.');
+                } else if (window.Swal) {
+                    Swal.fire({ icon: 'info', title: 'Remove target', text: 'Use Set Targets to clear or reassign this row.', confirmButtonColor: '#059669' });
+                }
+                return;
+            }
+        }
+
         const btn = e.target.closest('[data-toggle-key]');
         if (!btn) return;
         const key = btn.getAttribute('data-toggle-key');
@@ -1208,6 +1367,17 @@
         else collapsed.add(key);
         renderAllocationTable();
     });
+
+    function closeAllocMenus() {
+        document.querySelectorAll('.gt-more-dd.is-open').forEach(function (el) {
+            el.classList.remove('is-open');
+            const m = el.querySelector('.gt-more-menu');
+            if (m) { m.style.top = ''; m.style.left = ''; m.style.right = ''; }
+        });
+    }
+    document.addEventListener('click', closeAllocMenus);
+    document.addEventListener('scroll', closeAllocMenus, true);
+    window.addEventListener('resize', closeAllocMenus);
 
     function syncOrgUnitFilterHidden() {
         const hidden = document.getElementById('filter_goal_org_unit_id');
