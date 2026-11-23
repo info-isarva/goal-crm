@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Goal\Concerns\AuthorizesGoal;
 use App\Models\GoalOrgUnit;
 use App\Models\GoalTarget;
+use App\Models\GoalTargetAuditLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -46,10 +47,13 @@ class GoalTargetController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        $rows = (clone $baseQuery)->get();
+        $rows = (clone $baseQuery)->with(['user.orgUnit.parent.parent', 'orgUnit.parent.parent'])->get();
         $totalEffective = $rows->sum(fn (GoalTarget $t) => $t->effectiveTarget());
         $totalActual = (float) $rows->sum('actual');
         $totalClosing = (float) $rows->sum('closing_shortfall');
+        $totalBase = (float) $rows->sum('base_target');
+        $totalOpening = (float) $rows->sum('opening_shortfall');
+        $totalAdjustments = (float) $rows->sum('adjustments');
         $stats = [
             'count' => $rows->count(),
             'approved' => $rows->where('status', 'Approved')->count(),
@@ -57,6 +61,9 @@ class GoalTargetController extends Controller
             'total_effective' => $totalEffective,
             'total_actual' => $totalActual,
             'total_closing' => $totalClosing,
+            'total_base' => $totalBase,
+            'total_opening' => $totalOpening,
+            'total_adjustments' => $totalAdjustments,
             'achievement_pct' => $totalEffective > 0
                 ? round(min(100, ($totalActual / $totalEffective) * 100), 1)
                 : 0,
@@ -72,14 +79,44 @@ class GoalTargetController extends Controller
             ->selectRaw('SUM(closing_shortfall) as closing_sum')
             ->groupBy('period')
             ->orderBy('period')
-            ->limit(8)
+            ->limit(12)
             ->get();
 
         $chart = [
-            'labels' => $periodBuckets->pluck('period')->values()->all(),
+            'labels' => $periodBuckets->map(function ($r) {
+                try {
+                    return \Carbon\Carbon::createFromFormat('Y-m', (string) $r->period)->format('M');
+                } catch (\Throwable $e) {
+                    return (string) $r->period;
+                }
+            })->values()->all(),
+            'periods' => $periodBuckets->pluck('period')->values()->all(),
             'effective' => $periodBuckets->map(fn ($r) => round((float) $r->effective_sum, 2))->values()->all(),
             'actual' => $periodBuckets->map(fn ($r) => round((float) $r->actual_sum, 2))->values()->all(),
             'closing' => $periodBuckets->map(fn ($r) => round((float) $r->closing_sum, 2))->values()->all(),
+            'pct' => $periodBuckets->map(function ($r) {
+                $eff = (float) $r->effective_sum;
+                $act = (float) $r->actual_sum;
+
+                return $eff > 0 ? round(min(100, ($act / $eff) * 100), 1) : 0;
+            })->values()->all(),
+        ];
+
+        // Achievement by region (donut)
+        $regionBuckets = [];
+        foreach ($rows as $t) {
+            $regionName = $this->resolveRegionName($t);
+            if (! isset($regionBuckets[$regionName])) {
+                $regionBuckets[$regionName] = ['actual' => 0.0, 'effective' => 0.0];
+            }
+            $regionBuckets[$regionName]['actual'] += (float) $t->actual;
+            $regionBuckets[$regionName]['effective'] += $t->effectiveTarget();
+        }
+        arsort($regionBuckets);
+        $regionChart = [
+            'labels' => array_keys($regionBuckets),
+            'values' => array_map(fn ($r) => round($r['actual'], 2), array_values($regionBuckets)),
+            'total_actual' => round($totalActual, 2),
         ];
 
         $metricQuery = GoalTarget::query();
@@ -101,17 +138,23 @@ class GoalTargetController extends Controller
         ];
 
         $scopedOrgIds = $actor->goalScopedOrgUnitIds();
-        $branches = GoalOrgUnit::query()
+        $orgUnitsQuery = GoalOrgUnit::query()
             ->active()
             ->whereIn('type', [
                 GoalOrgUnit::TYPE_BRANCH,
                 GoalOrgUnit::TYPE_CLUSTER,
                 GoalOrgUnit::TYPE_REGION,
             ])
-            ->when(!$this->isGlobalTargetViewer($actor), fn ($q) => $q->whereIn('id', $scopedOrgIds ?: [0]))
+            ->when(! $this->isGlobalTargetViewer($actor), fn ($q) => $q->whereIn('id', $scopedOrgIds ?: [0]))
+            ->orderBy('name');
+
+        $branches = (clone $orgUnitsQuery)
             ->orderByRaw("CASE type WHEN 'region' THEN 0 WHEN 'cluster' THEN 1 ELSE 2 END")
-            ->orderBy('name')
             ->get();
+
+        $regions = $branches->where('type', GoalOrgUnit::TYPE_REGION)->values();
+        $clusters = $branches->where('type', GoalOrgUnit::TYPE_CLUSTER)->values();
+        $branchUnits = $branches->where('type', GoalOrgUnit::TYPE_BRANCH)->values();
 
         $teamUsers = $this->manageableTeamUsers($actor);
         $periods = GoalTarget::query()
@@ -120,21 +163,84 @@ class GoalTargetController extends Controller
             ->orderByDesc('period')
             ->pluck('period');
 
+        // Ensure current + next 2 months appear even with no rows yet
+        $extraPeriods = collect(range(0, 2))->map(fn ($i) => now()->startOfMonth()->addMonths($i)->format('Y-m'));
+        $periods = $periods->merge($extraPeriods)->unique()->sortDesc()->values();
+
+        $insights = [
+            'employees' => max($teamUsers->count(), $rows->whereNotNull('user_id')->pluck('user_id')->unique()->count()),
+            'regions' => $regions->count(),
+            'clusters' => $clusters->count(),
+            'branches' => $branchUnits->count(),
+        ];
+
+        $recentActivity = GoalTargetAuditLog::query()
+            ->with(['employee:id,name', 'changer:id,name'])
+            ->latest('id')
+            ->limit(8)
+            ->get()
+            ->map(function (GoalTargetAuditLog $l) {
+                $action = (string) ($l->action ?? 'update');
+                $title = match ($action) {
+                    'assign' => 'Target assigned to '.($l->employee?->name ?? 'team member'),
+                    'revision_request' => 'Revision requested for '.($l->employee?->name ?? 'target'),
+                    default => 'Target updated for '.($l->employee?->name ?? 'team member'),
+                };
+
+                return [
+                    'title' => $title,
+                    'by' => $l->changer?->name ?? 'System',
+                    'at' => optional($l->created_at)->diffForHumans() ?? '',
+                    'action' => $action,
+                ];
+            })
+            ->values()
+            ->all();
+
         $canManage = $actor->hasCrmPermission('manage_targets_guard');
         $canApprove = $this->canApproveTargets($actor);
 
         return view('goal.targets.index', compact(
             'targets',
             'branches',
+            'regions',
+            'clusters',
+            'branchUnits',
             'teamUsers',
             'periods',
             'filters',
             'stats',
             'chart',
             'metricChart',
+            'regionChart',
+            'insights',
+            'recentActivity',
             'canManage',
             'canApprove'
         ));
+    }
+
+    protected function resolveRegionName(GoalTarget $t): string
+    {
+        $unit = $t->orgUnit;
+        if (! $unit && $t->user) {
+            $unit = $t->user->orgUnit;
+        }
+        if (! $unit) {
+            return 'Unassigned';
+        }
+
+        $cursor = $unit;
+        $guard = 0;
+        while ($cursor && $guard < 6) {
+            if ($cursor->type === GoalOrgUnit::TYPE_REGION) {
+                return $cursor->name;
+            }
+            $cursor = $cursor->parent;
+            $guard++;
+        }
+
+        return $unit->name;
     }
 
     public function export(Request $request): StreamedResponse

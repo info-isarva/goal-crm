@@ -2,9 +2,48 @@
 
 @php
     $currency = config('app.currency_symbol', '₹');
-    $fmt = fn ($n) => $currency . ' ' . number_format((float) $n, 2);
+    $fmt = fn ($n) => $currency . ' ' . number_format((float) $n, 2, '.', ',');
     $openAddModal = $errors->any() && old('_form') === 'create';
     $openEditModal = $errors->any() && old('_form') === 'edit';
+
+    $regions = $regions ?? collect();
+    $clusters = $clusters ?? collect();
+    $branchUnits = $branchUnits ?? collect();
+    $regionChart = $regionChart ?? ['labels' => [], 'values' => [], 'total_actual' => 0];
+    $insights = $insights ?? ['employees' => 0, 'regions' => 0, 'clusters' => 0, 'branches' => 0];
+    $recentActivity = $recentActivity ?? [];
+
+    $filterRegionId = '';
+    $filterClusterId = '';
+    $filterBranchId = '';
+    $selOrgId = $filters['goal_org_unit_id'] ?? null;
+    if ($selOrgId && isset($branches)) {
+        $unit = $branches->firstWhere('id', (int) $selOrgId);
+        if ($unit) {
+            if ($unit->type === \App\Models\GoalOrgUnit::TYPE_BRANCH) {
+                $filterBranchId = (string) $unit->id;
+                $parent = $branches->firstWhere('id', (int) $unit->parent_id);
+                if ($parent) {
+                    if ($parent->type === \App\Models\GoalOrgUnit::TYPE_CLUSTER) {
+                        $filterClusterId = (string) $parent->id;
+                        $filterRegionId = $parent->parent_id ? (string) $parent->parent_id : '';
+                    } elseif ($parent->type === \App\Models\GoalOrgUnit::TYPE_REGION) {
+                        $filterRegionId = (string) $parent->id;
+                    }
+                }
+            } elseif ($unit->type === \App\Models\GoalOrgUnit::TYPE_CLUSTER) {
+                $filterClusterId = (string) $unit->id;
+                $filterRegionId = $unit->parent_id ? (string) $unit->parent_id : '';
+            } elseif ($unit->type === \App\Models\GoalOrgUnit::TYPE_REGION) {
+                $filterRegionId = (string) $unit->id;
+            }
+        }
+    }
+
+    $tableMetric = in_array($filters['metric'] ?? '', ['revenue', 'disbursement'], true)
+        ? $filters['metric']
+        : 'revenue';
+    $tabQuery = fn (string $metric) => array_merge(request()->except(['page']), ['metric' => $metric]);
 @endphp
 
 @push('styles')
@@ -13,7 +52,10 @@
 .goal-targets-page {
     --gt-gap: .85rem;
     --gt-control-h: 38px;
+    --gt-accent: var(--theme-primary, #059669);
     color: #1e293b;
+    background: #f4f6f9;
+    min-height: 100%;
 }
 .goal-targets-page.pd-page .pd-hero {
     align-items: center;
@@ -44,27 +86,88 @@
 @media (max-width: 575.98px) { .goal-targets-page .kpi-grid { grid-template-columns: 1fr; } }
 
 .goal-targets-page .kpi-card {
-    background: #fff; border: 1px solid #e8edf5; border-radius: 12px; padding: .85rem 1rem;
-    box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 14px rgba(148,163,184,.08);
-    border-left: 3px solid var(--theme-primary);
-    display: flex; flex-direction: column; justify-content: center; min-height: 88px;
+    display: flex; align-items: center; gap: 12px;
+    background: #fff; border: 1px solid #e8edf5; border-radius: 12px; padding: 12px 14px;
+    box-shadow: 0 1px 2px rgba(15,23,42,.03), 0 6px 14px rgba(148,163,184,.08);
+    min-height: 0;
 }
-.goal-targets-page .kpi-card.tone-sky { border-left-color: var(--theme-primary); }
-.goal-targets-page .kpi-card.tone-emerald { border-left-color: #16a34a; }
-.goal-targets-page .kpi-card.tone-amber { border-left-color: #ea580c; }
-.goal-targets-page .kpi-card.tone-rose { border-left-color: #dc2626; }
-.goal-targets-page .kpi-label { font-size: .68rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .03em; margin: 0; }
-.goal-targets-page .kpi-value { margin: .25rem 0 0; font-size: 1.35rem; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -.02em; }
-.goal-targets-page .kpi-meta { margin: 4px 0 0; font-size: .75rem; color: #94a3b8; line-height: 1.3; min-height: 1.3em; }
+.goal-targets-page .kpi-card.tone-green { background: #f3faf6; border-color: #d8eee0; }
+.goal-targets-page .kpi-card.tone-sky { background: #f3f8ff; border-color: #d7e6fb; }
+.goal-targets-page .kpi-card.tone-violet { background: #f7f4ff; border-color: #e4ddf8; }
+.goal-targets-page .kpi-card.tone-amber { background: #fff8f0; border-color: #f3e0c8; }
+.goal-targets-page .kpi-ico {
+    width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem;
+}
+.goal-targets-page .kpi-card.tone-green .kpi-ico { background: #dcfce7; color: #15803d; }
+.goal-targets-page .kpi-card.tone-sky .kpi-ico { background: #dbeafe; color: #2563eb; }
+.goal-targets-page .kpi-card.tone-violet .kpi-ico { background: #ede9fe; color: #7c3aed; }
+.goal-targets-page .kpi-card.tone-amber .kpi-ico { background: #ffedd5; color: #ea580c; }
+.goal-targets-page .kpi-body { min-width: 0; flex: 1; }
+.goal-targets-page .kpi-label { font-size: .72rem; font-weight: 750; color: #334155; margin: 0; line-height: 1.25; }
+.goal-targets-page .kpi-value { margin: 2px 0 0; font-size: 1.22rem; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.goal-targets-page .kpi-meta { margin: 2px 0 0; font-size: .7rem; color: #94a3b8; line-height: 1.3; }
 
 .goal-targets-page .charts-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr) minmax(0, .85fr);
     gap: 12px;
     margin-bottom: var(--gt-gap);
     align-items: stretch;
 }
+@media (max-width: 1199.98px) { .goal-targets-page .charts-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 991.98px) { .goal-targets-page .charts-grid { grid-template-columns: 1fr; } }
+.goal-targets-page .charts-grid .panel-insights { min-height: 100%; }
+@media (max-width: 1199.98px) and (min-width: 992px) {
+    .goal-targets-page .charts-grid .panel-insights { grid-column: 1 / -1; }
+}
+.goal-targets-page .donut-wrap { position: relative; }
+.goal-targets-page .donut-center {
+    position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%);
+    text-align: center; pointer-events: none; z-index: 3;
+}
+.goal-targets-page .donut-center .dc-label { font-size: .68rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; }
+.goal-targets-page .donut-center .dc-value { font-size: .95rem; font-weight: 800; color: #0f172a; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.goal-targets-page .insights-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.goal-targets-page .insights-list li {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 12px; border-radius: 10px; background: #f8fafc; border: 1px solid #eef2f7;
+    font-size: .84rem; color: #334155;
+}
+.goal-targets-page .insights-list li .il-left { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.goal-targets-page .insights-list li .il-left i { color: var(--gt-accent); }
+.goal-targets-page .insights-list li strong { font-size: 1rem; font-weight: 800; color: #0f172a; }
+.goal-targets-page .dashboard-lower {
+    display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 12px; align-items: start;
+}
+@media (max-width: 991.98px) { .goal-targets-page .dashboard-lower { grid-template-columns: 1fr; } }
+.goal-targets-page .activity-panel .panel-body { max-height: 520px; overflow-y: auto; }
+.goal-targets-page .activity-timeline { list-style: none; margin: 0; padding: 0; }
+.goal-targets-page .activity-timeline li {
+    position: relative; padding: 0 0 16px 22px; border-left: 2px solid #e2e8f0; margin-left: 6px;
+}
+.goal-targets-page .activity-timeline li:last-child { padding-bottom: 0; border-left-color: transparent; }
+.goal-targets-page .activity-timeline li::before {
+    content: ''; position: absolute; left: -5px; top: 4px; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--gt-accent); box-shadow: 0 0 0 3px #ecfdf5;
+}
+.goal-targets-page .activity-timeline .at-title { font-size: .84rem; font-weight: 650; color: #0f172a; line-height: 1.35; margin: 0; }
+.goal-targets-page .activity-timeline .at-meta { font-size: .74rem; color: #94a3b8; margin-top: 3px; }
+.goal-targets-page .btn-gt-ghost.is-active {
+    border-color: var(--gt-accent); color: var(--gt-accent); background: #ecfdf5;
+}
+.goal-targets-page .metric-tabs {
+    display: inline-flex; gap: 6px; padding: 4px; background: #f1f5f9; border-radius: 10px;
+}
+.goal-targets-page .metric-tabs a {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px;
+    font-size: .8rem; font-weight: 700; color: #64748b; text-decoration: none; line-height: 1.2;
+}
+.goal-targets-page .metric-tabs a:hover { color: #0f172a; background: #fff; }
+.goal-targets-page .metric-tabs a.is-active {
+    background: #fff; color: var(--gt-accent); box-shadow: 0 1px 3px rgba(15,23,42,.08);
+}
+.goal-targets-page .gt-table { min-width: 1080px; }
 .goal-targets-page .panel {
     background: #fff; border: 1px solid #e8edf5; border-radius: 14px;
     box-shadow: 0 6px 16px rgba(148,163,184,.08); overflow: hidden;
@@ -268,7 +371,7 @@
 
 .goal-targets-page .filters-bar {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr)) max-content;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) max-content;
     gap: 12px;
     align-items: end;
     margin-bottom: var(--gt-gap);
@@ -279,7 +382,7 @@
 }
 @media (max-width: 1399.98px) {
     .goal-targets-page .filters-bar {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
     .goal-targets-page .filters-bar .filter-actions {
         grid-column: 1 / -1;
@@ -492,81 +595,44 @@
                 <li class="sep">›</li>
                 <li>Targets</li>
             </ul>
-            <h1 class="pd-title">Targets & Carry-forward</h1>
-            <p class="pd-sub">Track branch period targets, actuals and shortfall carry-forward.</p>
+            <h1 class="pd-title">Targets Dashboard</h1>
+            <p class="pd-sub">Revenue and disbursement targets, achievement trends, and shortfall carry-forward at a glance.</p>
         </div>
-        <div class="pd-hero-actions">
-            <a href="{{ route('goal.targets.export', request()->query()) }}" class="pd-link-btn">
-                <i class="bi bi-download"></i> Export CSV
-            </a>
+        <div class="pd-hero-actions d-flex flex-wrap gap-2">
             @if($canManage)
-                <a href="{{ route('goal.targets.set', request()->only('period', 'metric')) }}" class="pd-link-btn primary">
-                    <i class="bi bi-diagram-3"></i> Set Targets
-                </a>
+                <button type="button" class="btn-gt-primary" data-bs-toggle="modal" data-bs-target="#addTargetModal">
+                    <i class="bi bi-plus-lg"></i> Set Targets
+                </button>
             @endif
+            <a href="{{ route('goal.targets.index', request()->query()) }}" class="btn-gt-ghost is-active" aria-current="page">
+                <i class="bi bi-grid"></i> Target Summary
+            </a>
+            <a href="#gtTrendChart" class="btn-gt-ghost">
+                <i class="bi bi-graph-up-arrow"></i> Achievement
+            </a>
+            <a href="#gtShortfallKpi" class="btn-gt-ghost">
+                <i class="bi bi-arrow-repeat"></i> Shortfall Carry Forward
+            </a>
         </div>
     </div>
 
-    <div class="kpi-grid">
-        <div class="kpi-card tone-sky">
-            <div class="kpi-label">Targets</div>
-            <div class="kpi-value">{{ number_format($stats['count']) }}</div>
-            <div class="kpi-meta">{{ $stats['approved'] }} approved · {{ $stats['draft'] }} draft</div>
-        </div>
-        <div class="kpi-card tone-emerald">
-            <div class="kpi-label">Effective Target</div>
-            <div class="kpi-value">{{ $fmt($stats['total_effective']) }}</div>
-            <div class="kpi-meta">Base + opening SF + adjustments</div>
-        </div>
-        <div class="kpi-card tone-amber">
-            <div class="kpi-label">Actual Achieved</div>
-            <div class="kpi-value">{{ $fmt($stats['total_actual']) }}</div>
-            <div class="kpi-meta">{{ $stats['achievement_pct'] }}% of effective</div>
-        </div>
-        <div class="kpi-card tone-rose">
-            <div class="kpi-label">Closing Shortfall</div>
-            <div class="kpi-value">{{ $fmt($stats['total_closing']) }}</div>
-            <div class="kpi-meta">Carry-forward to next period</div>
-        </div>
-    </div>
-
-    <div class="charts-grid">
-        <div class="panel">
-            <div class="panel-head">
-                <div>
-                    <h5>Target vs Actual by Period</h5>
-                    <div class="panel-sub">Effective target compared with recorded actuals</div>
-                </div>
-            </div>
-            <div class="panel-body">
-                <div class="chart-wrap">
-                    @if(empty($chart['labels'] ?? []))
-                        <div class="chart-empty"><i class="bi bi-bar-chart"></i>No period data yet</div>
-                    @endif
-                    <canvas id="gtTrendChart" aria-label="Target vs actual chart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="panel">
-            <div class="panel-head">
-                <div>
-                    <h5>Effective by Metric</h5>
-                    <div class="panel-sub">Revenue vs disbursement mix</div>
-                </div>
-            </div>
-            <div class="panel-body">
-                <div class="chart-wrap sm">
-                    @if(empty($metricChart['labels'] ?? []))
-                        <div class="chart-empty"><i class="bi bi-pie-chart"></i>No metric mix yet</div>
-                    @endif
-                    <canvas id="gtMetricChart" aria-label="Metric mix chart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <form method="GET" action="{{ route('goal.targets.index') }}" class="filters-bar">
+    <form method="GET" action="{{ route('goal.targets.index') }}" class="filters-bar" id="gtFiltersForm">
         <input type="hidden" name="per_page" value="{{ $filters['per_page'] ?? 10 }}">
+        <input type="hidden" name="goal_org_unit_id" id="filter_goal_org_unit_id" value="{{ $filters['goal_org_unit_id'] ?? '' }}">
+        @if(($filters['status'] ?? '') !== '')
+            <input type="hidden" name="status" value="{{ $filters['status'] }}">
+        @endif
+        @if(!empty($filters['user_id']))
+            <input type="hidden" name="user_id" value="{{ $filters['user_id'] }}">
+        @endif
+        <div class="gt-filter-field">
+            <label class="form-label" for="filter_metric">Target For</label>
+            <select name="metric" id="filter_metric" class="form-select" data-search="false" data-allow-clear="false" data-placeholder="All targets">
+                <option value="">All targets</option>
+                <option value="revenue" @selected($filters['metric'] === 'revenue')>Revenue</option>
+                <option value="disbursement" @selected($filters['metric'] === 'disbursement')>Disbursement</option>
+            </select>
+        </div>
         <div class="gt-filter-field">
             <label class="form-label" for="filter_period">Period</label>
             <select name="period" id="filter_period" class="form-select" data-search="true" data-allow-clear="false" data-placeholder="All periods">
@@ -577,47 +643,38 @@
             </select>
         </div>
         <div class="gt-filter-field">
-            <label class="form-label" for="filter_metric">Metric</label>
-            <select name="metric" id="filter_metric" class="form-select" data-search="false" data-allow-clear="false" data-placeholder="All metrics">
-                <option value="">All metrics</option>
-                <option value="revenue" @selected($filters['metric'] === 'revenue')>Revenue</option>
-                <option value="disbursement" @selected($filters['metric'] === 'disbursement')>Disbursement</option>
-            </select>
-        </div>
-        <div class="gt-filter-field">
-            <label class="form-label" for="filter_owner_type">Owner type</label>
-            <select name="owner_type" id="filter_owner_type" class="form-select" data-search="false" data-allow-clear="false" data-placeholder="All owners">
-                <option value="">All owners</option>
-                <option value="employee" @selected(($filters['owner_type'] ?? '') === 'employee')>Team member</option>
+            <label class="form-label" for="filter_owner_type">View By</label>
+            <select name="owner_type" id="filter_owner_type" class="form-select" data-search="false" data-allow-clear="false" data-placeholder="Overall">
+                <option value="">Overall</option>
+                <option value="employee" @selected(($filters['owner_type'] ?? '') === 'employee')>Employee</option>
                 <option value="org_unit" @selected(($filters['owner_type'] ?? '') === 'org_unit')>Org unit</option>
             </select>
         </div>
         <div class="gt-filter-field">
-            <label class="form-label" for="filter_branch">Org unit</label>
-            <select name="goal_org_unit_id" id="filter_branch" class="form-select" data-search="true" data-allow-clear="false" data-placeholder="All org units">
-                <option value="">All org units</option>
-                @foreach($branches as $b)
-                    <option value="{{ $b->id }}" @selected((string) $filters['goal_org_unit_id'] === (string) $b->id)>
-                        {{ strtoupper($b->type) }} · {{ $b->name }}
-                    </option>
+            <label class="form-label" for="filter_region">Region</label>
+            <select id="filter_region" class="form-select gt-org-filter" data-search="true" data-allow-clear="false" data-placeholder="All regions">
+                <option value="">All regions</option>
+                @foreach($regions as $r)
+                    <option value="{{ $r->id }}" @selected($filterRegionId === (string) $r->id)>{{ $r->name }}</option>
                 @endforeach
             </select>
         </div>
         <div class="gt-filter-field">
-            <label class="form-label" for="filter_user">Team member</label>
-            <select name="user_id" id="filter_user" class="form-select" data-search="true" data-allow-clear="false" data-placeholder="All people">
-                <option value="">All people</option>
-                @foreach($teamUsers as $u)
-                    <option value="{{ $u->id }}" @selected((string) ($filters['user_id'] ?? '') === (string) $u->id)>{{ $u->name }}</option>
+            <label class="form-label" for="filter_cluster">Cluster</label>
+            <select id="filter_cluster" class="form-select gt-org-filter" data-search="true" data-allow-clear="false" data-placeholder="All clusters">
+                <option value="">All clusters</option>
+                @foreach($clusters as $c)
+                    <option value="{{ $c->id }}" data-parent="{{ $c->parent_id }}" @selected($filterClusterId === (string) $c->id)>{{ $c->name }}</option>
                 @endforeach
             </select>
         </div>
         <div class="gt-filter-field">
-            <label class="form-label" for="filter_status">Status</label>
-            <select name="status" id="filter_status" class="form-select" data-search="false" data-allow-clear="false" data-placeholder="All status">
-                <option value="">All status</option>
-                <option value="Draft" @selected($filters['status'] === 'Draft')>Draft</option>
-                <option value="Approved" @selected($filters['status'] === 'Approved')>Approved</option>
+            <label class="form-label" for="filter_branch_unit">Branch</label>
+            <select id="filter_branch_unit" class="form-select gt-org-filter" data-search="true" data-allow-clear="false" data-placeholder="All branches">
+                <option value="">All branches</option>
+                @foreach($branchUnits as $b)
+                    <option value="{{ $b->id }}" data-parent="{{ $b->parent_id }}" @selected($filterBranchId === (string) $b->id)>{{ $b->name }}</option>
+                @endforeach
             </select>
         </div>
         <div class="filter-actions">
@@ -629,10 +686,121 @@
         </div>
     </form>
 
+    <div class="kpi-grid">
+        <div class="kpi-card tone-green">
+            <span class="kpi-ico" aria-hidden="true"><i class="bi bi-bullseye"></i></span>
+            <div class="kpi-body">
+                <div class="kpi-label">Effective Target</div>
+                <div class="kpi-value">{{ $fmt($stats['total_effective']) }}</div>
+                <div class="kpi-meta">Base {{ $fmt($stats['total_base']) }} · Opening {{ $fmt($stats['total_opening']) }}</div>
+            </div>
+        </div>
+        <div class="kpi-card tone-sky">
+            <span class="kpi-ico" aria-hidden="true"><i class="bi bi-check2-circle"></i></span>
+            <div class="kpi-body">
+                <div class="kpi-label">Achieved</div>
+                <div class="kpi-value">{{ $fmt($stats['total_actual']) }}</div>
+                <div class="kpi-meta">{{ number_format($stats['count']) }} target{{ $stats['count'] === 1 ? '' : 's' }} in view</div>
+            </div>
+        </div>
+        <div class="kpi-card tone-violet">
+            <span class="kpi-ico" aria-hidden="true"><i class="bi bi-percent"></i></span>
+            <div class="kpi-body">
+                <div class="kpi-label">Achievement %</div>
+                <div class="kpi-value">{{ number_format((float) $stats['achievement_pct'], 1) }}%</div>
+                <div class="kpi-meta">Against effective target</div>
+            </div>
+        </div>
+        <div class="kpi-card tone-amber" id="gtShortfallKpi">
+            <span class="kpi-ico" aria-hidden="true"><i class="bi bi-arrow-repeat"></i></span>
+            <div class="kpi-body">
+                <div class="kpi-label">Closing Shortfall</div>
+                <div class="kpi-value">{{ $fmt($stats['total_closing']) }}</div>
+                <div class="kpi-meta">Carry-forward to next period</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="charts-grid">
+        <div class="panel" id="gtTrendSection">
+            <div class="panel-head">
+                <div>
+                    <h5>Target vs Achievement</h5>
+                    <div class="panel-sub">Monthly effective target, achieved amount and achievement %</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="chart-wrap">
+                    @if(empty($chart['labels'] ?? []))
+                        <div class="chart-empty"><i class="bi bi-bar-chart"></i>No period data yet</div>
+                    @endif
+                    <canvas id="gtTrendChart" aria-label="Target vs achievement chart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel-head">
+                <div>
+                    <h5>Achievement by Region</h5>
+                    <div class="panel-sub">Achieved amount distribution</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="chart-wrap sm donut-wrap">
+                    @if(empty($regionChart['labels'] ?? []))
+                        <div class="chart-empty"><i class="bi bi-pie-chart"></i>No regional data yet</div>
+                    @else
+                        <div class="donut-center" id="gtRegionCenter" aria-hidden="true">
+                            <div class="dc-label">Achieved</div>
+                            <div class="dc-value">{{ $fmt($regionChart['total_actual'] ?? 0) }}</div>
+                        </div>
+                    @endif
+                    <canvas id="gtRegionChart" aria-label="Achievement by region chart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="panel panel-insights">
+            <div class="panel-head">
+                <div>
+                    <h5>Quick Insights</h5>
+                    <div class="panel-sub">Coverage across teams and hierarchy</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <ul class="insights-list">
+                    <li>
+                        <span class="il-left"><i class="bi bi-people"></i> Employees</span>
+                        <strong>{{ number_format((int) ($insights['employees'] ?? 0)) }}</strong>
+                    </li>
+                    <li>
+                        <span class="il-left"><i class="bi bi-globe2"></i> Regions</span>
+                        <strong>{{ number_format((int) ($insights['regions'] ?? 0)) }}</strong>
+                    </li>
+                    <li>
+                        <span class="il-left"><i class="bi bi-diagram-3"></i> Clusters</span>
+                        <strong>{{ number_format((int) ($insights['clusters'] ?? 0)) }}</strong>
+                    </li>
+                    <li>
+                        <span class="il-left"><i class="bi bi-building"></i> Branches</span>
+                        <strong>{{ number_format((int) ($insights['branches'] ?? 0)) }}</strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-lower">
         <div class="gt-table-card">
             <div class="gt-table-head">
-                <h3 class="gt-table-title"><i class="bi bi-list-ul"></i> Target Register ({{ $targets->total() }})</h3>
-                <span class="gt-table-meta">Period targets · carry-forward</span>
+                <motion class="metric-tabs" aria-label="Target metric">
+                    <a href="{{ route('goal.targets.index', $tabQuery('revenue')) }}" class="{{ $tableMetric === 'revenue' ? 'is-active' : '' }}">
+                        <i class="bi bi-currency-rupee"></i> Revenue Target
+                    </a>
+                    <a href="{{ route('goal.targets.index', $tabQuery('disbursement')) }}" class="{{ $tableMetric === 'disbursement' ? 'is-active' : '' }}">
+                        <i class="bi bi-bank"></i> Disbursement Target
+                    </a>
+                </div>
+                <span class="gt-table-meta">{{ $targets->total() }} row{{ $targets->total() === 1 ? '' : 's' }}</span>
             </div>
 
             <div class="table-responsive gt-table-wrap">
@@ -640,14 +808,13 @@
                     <thead>
                         <tr>
                             <th class="col-num">#</th>
-                            <th>Period</th>
-                            <th>Metric</th>
-                            <th>Owner</th>
+                            <th>Entity</th>
+                            <th class="col-amt">Base</th>
+                            <th class="col-amt">Opening</th>
+                            <th class="col-amt">Adj</th>
                             <th class="col-amt">Effective</th>
-                            <th class="col-amt">Actual</th>
-                            <th>Progress</th>
-                            <th class="col-amt">Closing SF</th>
-                            <th>Status</th>
+                            <th class="col-amt">Achieved</th>
+                            <th>Achievement %</th>
                             @if($canManage)<th class="col-actions">Actions</th>@endif
                         </tr>
                     </thead>
@@ -663,29 +830,20 @@
                         @endphp
                         <tr>
                             <td class="col-num">{{ $targets->firstItem() + $loop->index }}</td>
-                            <td><span class="fw-semibold text-dark">{{ $t->period }}</span></td>
-                            <td>
-                                <span class="metric-pill is-{{ $t->metric }}">{{ ucfirst($t->metric) }}</span>
-                            </td>
                             <td>
                                 <div class="gt-owner-name">{{ $ownerLabel }}</div>
-                                <div class="gt-owner-sub">{{ $ownerType === 'employee' ? 'Team member' : 'Org unit' }}</div>
+                                <div class="gt-owner-sub">{{ $ownerType === 'employee' ? 'Employee' : 'Org unit' }} · {{ $t->period }}</div>
                             </td>
-                            <td class="col-amt">{{ number_format($effective, 2) }}</td>
-                            <td class="col-amt">{{ number_format((float) $t->actual, 2) }}</td>
+                            <td class="col-amt">{{ $fmt($t->base_target) }}</td>
+                            <td class="col-amt">{{ $fmt($t->opening_shortfall) }}</td>
+                            <td class="col-amt">{{ $fmt($t->adjustments) }}</td>
+                            <td class="col-amt">{{ $fmt($effective) }}</td>
+                            <td class="col-amt">{{ $fmt($t->actual) }}</td>
                             <td>
                                 <div class="gt-progress-wrap" title="{{ $pct }}%">
                                     <div class="gt-progress"><span style="width: {{ $pct }}%"></span></div>
                                     <span class="gt-progress-pct">{{ $pct }}%</span>
                                 </div>
-                            </td>
-                            <td class="col-amt {{ (float) $t->closing_shortfall > 0 ? 'is-sf' : '' }}">
-                                {{ number_format((float) $t->closing_shortfall, 2) }}
-                            </td>
-                            <td>
-                                <span class="badge-status {{ $t->status === 'Approved' ? 'is-approved' : 'is-draft' }}">
-                                    <span class="dot"></span>{{ $t->status }}
-                                </span>
                             </td>
                             @if($canManage)
                             <td class="col-actions">
@@ -713,14 +871,14 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $canManage ? 10 : 9 }}" class="text-center">
+                            <td colspan="{{ $canManage ? 9 : 8 }}" class="text-center">
                                 <div class="gt-empty">
                                     <i class="bi bi-inbox"></i>
                                     <div>No targets match your filters.</div>
                                     @if($canManage)
-                                        <a href="{{ route('goal.targets.set') }}" class="btn-gt-primary mt-3">
-                                            <i class="bi bi-diagram-3"></i> Set Targets
-                                        </a>
+                                        <button type="button" class="btn-gt-primary mt-3" data-bs-toggle="modal" data-bs-target="#addTargetModal">
+                                            <i class="bi bi-plus-lg"></i> Set Targets
+                                        </button>
                                     @else
                                         <a href="{{ route('goal.targets.index') }}" class="btn-gt-reset mt-2 d-inline-flex">Reset filters</a>
                                     @endif
@@ -762,6 +920,33 @@
                 </div>
             @endif
         </div>
+
+        <div class="panel activity-panel">
+            <div class="panel-head">
+                <div>
+                    <h5>Recent Activity</h5>
+                    <div class="panel-sub">Latest target changes and assignments</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                @if(empty($recentActivity))
+                    <div class="gt-empty py-4">
+                        <i class="bi bi-clock-history"></i>
+                        <div>No recent activity yet.</div>
+                    </div>
+                @else
+                    <ul class="activity-timeline">
+                        @foreach($recentActivity as $item)
+                            <li>
+                                <p class="at-title">{{ $item['title'] ?? 'Target updated' }}</p>
+                                <div class="at-meta">{{ $item['by'] ?? 'System' }} · {{ $item['at'] ?? '' }}</div>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+        </div>
+    </div>
 </div>
 
 @if($canManage)
