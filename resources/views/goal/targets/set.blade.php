@@ -1659,6 +1659,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                     set_target: Number(n.set_target || 0),
                     owner_target: Number(n.owner_target || 0),
                     row_source: n.row_source === 'edited' ? 'edited' : 'auto',
+                    org_unit_id: n.org_unit_id ? Number(n.org_unit_id) : null,
                 });
             } else if (n.editable && !n.is_org_group) {
                 out.push({
@@ -1666,6 +1667,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                     set_target: Number(n.set_target || 0),
                     owner_target: Number(n.owner_target || 0),
                     row_source: n.row_source === 'edited' ? 'edited' : 'auto',
+                    org_unit_id: null,
                 });
             }
             if (n.children?.length) collectRows(n.children, out);

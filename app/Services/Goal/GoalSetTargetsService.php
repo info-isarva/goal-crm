@@ -463,14 +463,16 @@ class GoalSetTargetsService
                 $employee = User::query()->find($employeeId);
                 $set = round((float) ($row['set_target'] ?? 0), 2);
                 $owner = round((float) ($row['owner_target'] ?? 0), 2);
-                // Staff (no reports): whole target is personal.
+                // Staff leaf only: whole target is personal.
+                // RD / CD / BM keep Owner separate from Total even when reporting
+                // links are incomplete (downline often lives under org units only).
                 $hasReports = $employee && User::query()
                     ->where(function ($q) use ($employeeId) {
                         $q->where('reports_to_user_id', $employeeId)
                             ->orWhere('assign_manager', $employeeId);
                     })
                     ->exists();
-                if ($employee && ! $hasReports) {
+                if ($employee && ! $hasReports && ! $this->isHierarchyManager($employee)) {
                     $owner = $set;
                 }
                 if ($owner < 0 || $set < 0) {
@@ -540,6 +542,22 @@ class GoalSetTargetsService
                     $target = GoalTarget::create($payload);
                     $target->recalculateClosingShortfall();
                     $target->save();
+                }
+
+                // Keep linked Region/Cluster/Branch org-unit target in sync with the lead's amounts.
+                $orgUnitId = (int) ($row['org_unit_id'] ?? 0);
+                if ($orgUnitId > 0 && $this->isHierarchyManager($employee)) {
+                    $this->syncOrgUnitTargetFromLead(
+                        $actor,
+                        $period,
+                        $metric,
+                        $orgUnitId,
+                        $set,
+                        $owner,
+                        $source,
+                        $status,
+                        $assign
+                    );
                 }
 
                 if (abs($oldBase - $set) > 0.009 || abs($oldOwner - $owner) > 0.009) {
@@ -1321,6 +1339,66 @@ class GoalSetTargetsService
         $job = strtolower(preg_replace('/[\s_-]+/', '', (string) ($user->job_role ?? '')) ?? '');
 
         return in_array($job, ['rd', 'regionaldirector', 'cluster', 'clusterhead', 'cd', 'bm', 'branchmanager'], true);
+    }
+
+    /**
+     * Mirror linked RD/CD/BM person amounts onto the org-unit GoalTarget row.
+     */
+    protected function syncOrgUnitTargetFromLead(
+        User $actor,
+        string $period,
+        string $metric,
+        int $orgUnitId,
+        float $set,
+        float $owner,
+        string $source,
+        string $status,
+        bool $assign
+    ): void {
+        $unit = GoalOrgUnit::query()->find($orgUnitId);
+        if (! $unit || ! in_array($unit->type, [
+            GoalOrgUnit::TYPE_REGION,
+            GoalOrgUnit::TYPE_CLUSTER,
+            GoalOrgUnit::TYPE_BRANCH,
+        ], true)) {
+            return;
+        }
+
+        $existing = GoalTarget::query()
+            ->where('period', $period)
+            ->where('metric', $metric)
+            ->where('goal_org_unit_id', $orgUnitId)
+            ->whereNull('user_id')
+            ->first();
+
+        if ($existing && (string) $existing->status === GoalTarget::STATUS_LOCKED && ! $assign) {
+            return;
+        }
+
+        $payload = [
+            'period' => $period,
+            'metric' => $metric,
+            'user_id' => null,
+            'goal_org_unit_id' => $orgUnitId,
+            'base_target' => $set,
+            'owner_target' => $owner,
+            'opening_shortfall' => (float) ($existing->opening_shortfall ?? 0),
+            'row_source' => $source,
+            'set_by' => $actor->id,
+            'status' => $status,
+            'approved_by' => $assign ? $actor->id : ($existing->approved_by ?? null),
+            'assigned_at' => $assign ? now() : ($existing->assigned_at ?? null),
+        ];
+
+        if ($existing) {
+            $existing->fill($payload);
+            $existing->recalculateClosingShortfall();
+            $existing->save();
+        } else {
+            $created = GoalTarget::create($payload);
+            $created->recalculateClosingShortfall();
+            $created->save();
+        }
     }
 
     /**
