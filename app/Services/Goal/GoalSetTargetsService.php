@@ -994,43 +994,37 @@ class GoalSetTargetsService
 
             $linked = null;
             $type = (string) $unit->type;
-            if ($type === GoalOrgUnit::TYPE_BRANCH) {
-                // People as child rows; surface BM name on the Branch org line
-                foreach ($people as $person) {
-                    $person['depth'] = $depth + 1;
-                    $children[] = $person;
-                }
-            } else {
-                // Region / Cluster: bind lead RD/CD target onto this row (no extra person row)
-                foreach ($people as $p) {
-                    $crm = (int) ($p['crm_role_type'] ?? -1);
-                    if (in_array($crm, [6, 7, 8], true) || empty($p['is_staff'])) {
+
+            // Pick lead for this org row (RD / CD / BM) so higher authority can edit their target here
+            foreach ($people as $p) {
+                $crm = (int) ($p['crm_role_type'] ?? -1);
+                if ($type === GoalOrgUnit::TYPE_BRANCH) {
+                    if ($crm === 8 || empty($p['is_staff'])) {
                         $linked = $p;
                         break;
                     }
-                }
-                if ($linked === null && $people !== []) {
-                    $linked = $people[0];
+                } elseif (in_array($crm, [6, 7, 8], true) || empty($p['is_staff'])) {
+                    $linked = $p;
+                    break;
                 }
             }
+            if ($linked === null && $people !== []) {
+                $linked = $people[0];
+            }
 
-            $node = $this->makeOrgGroupNode($unit, $children, $depth, null, $linked);
-
-            // Branch: show BM (or first lead) name on the org row without binding targets
-            if ($type === GoalOrgUnit::TYPE_BRANCH && empty($node['linked_user_name'])) {
-                foreach ($people as $p) {
-                    $crm = (int) ($p['crm_role_type'] ?? -1);
-                    if ($crm === 8 || empty($p['is_staff'])) {
-                        $node['linked_user_name'] = (string) ($p['name'] ?? '');
-                        break;
+            if ($type === GoalOrgUnit::TYPE_BRANCH) {
+                // Staff under Branch only — BM target is on the Branch org row (linked)
+                $linkedId = $linked['id'] ?? null;
+                foreach ($people as $person) {
+                    if ($linkedId !== null && (int) ($person['id'] ?? 0) === (int) $linkedId) {
+                        continue;
                     }
-                }
-                if (empty($node['linked_user_name']) && $people !== []) {
-                    $node['linked_user_name'] = (string) ($people[0]['name'] ?? '');
+                    $person['depth'] = $depth + 1;
+                    $children[] = $person;
                 }
             }
 
-            return $node;
+            return $this->makeOrgGroupNode($unit, $children, $depth, null, $linked);
         };
 
         $roots = $this->resolveOrgTreeRoots($actor, $units, $unitsById);
@@ -1072,7 +1066,7 @@ class GoalSetTargetsService
 
     /**
      * @param  list<array<string, mixed>>  $children
-     * @param  array<string, mixed>|null  $linked  Lead person whose target is edited on this org row (Region/Cluster)
+     * @param  array<string, mixed>|null  $linked  Lead person whose target is edited on this org row (Region/Cluster/Branch)
      * @return array<string, mixed>
      */
     protected function makeOrgGroupNode(
