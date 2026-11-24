@@ -17,9 +17,22 @@ class GoalSetTargetsController extends Controller
 
     public function __construct(private GoalSetTargetsService $service) {}
 
+    /**
+     * Manage permission, or view + editable downline (RD / CD / BM).
+     */
+    protected function requireSetTargetsAccess(): void
+    {
+        $user = auth()->user();
+        if ($user && $this->service->canManageTargets($user)) {
+            return;
+        }
+
+        abort(403, 'Unauthorized action.');
+    }
+
     public function show(Request $request): View
     {
-        $this->requireGoalPermission('manage_targets_guard');
+        $this->requireSetTargetsAccess();
         $user = $request->user();
         $period = (string) $request->input('period', $this->service->defaultPeriod());
         $metric = (string) $request->input('metric', 'revenue');
@@ -38,7 +51,7 @@ class GoalSetTargetsController extends Controller
 
     public function tree(Request $request): JsonResponse
     {
-        $this->requireGoalPermission('manage_targets_guard');
+        $this->requireSetTargetsAccess();
         $data = $request->validate([
             'period' => 'nullable|string|regex:/^\d{4}-\d{2}$/',
             'metric' => 'nullable|string|max:30',
@@ -56,7 +69,7 @@ class GoalSetTargetsController extends Controller
 
     public function saveDraft(Request $request): JsonResponse
     {
-        $this->requireGoalPermission('manage_targets_guard');
+        $this->requireSetTargetsAccess();
         $data = $request->validate([
             'period' => 'required|string|regex:/^\d{4}-\d{2}$/',
             'metric' => 'required|string|max:30',
@@ -81,7 +94,7 @@ class GoalSetTargetsController extends Controller
 
     public function assign(Request $request): JsonResponse
     {
-        $this->requireGoalPermission('manage_targets_guard');
+        $this->requireSetTargetsAccess();
         $data = $request->validate([
             'period' => 'required|string|regex:/^\d{4}-\d{2}$/',
             'metric' => 'required|string|max:30',
@@ -114,7 +127,7 @@ class GoalSetTargetsController extends Controller
 
     public function autoSplit(Request $request): JsonResponse
     {
-        $this->requireGoalPermission('manage_targets_guard');
+        $this->requireSetTargetsAccess();
         $data = $request->validate([
             'period' => 'required|string|regex:/^\d{4}-\d{2}$/',
             'metric' => 'required|string|max:30',
@@ -140,7 +153,7 @@ class GoalSetTargetsController extends Controller
 
     public function requestRevision(Request $request, GoalTarget $target): JsonResponse
     {
-        $this->requireGoalPermission('manage_targets_guard');
+        $this->requireSetTargetsAccess();
         $data = $request->validate([
             'reason' => 'required|string|max:500',
         ]);
@@ -150,9 +163,57 @@ class GoalSetTargetsController extends Controller
         return response()->json(['ok' => true, 'data' => ['id' => $updated->id, 'status' => $updated->status]]);
     }
 
+    public function approveSubmitted(Request $request, GoalTarget $target): JsonResponse
+    {
+        $this->requireSetTargetsAccess();
+        $updated = $this->service->approveSubmitted($request->user(), (int) $target->id);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Target approved and team notified.',
+            'data' => [
+                'id' => $updated->id,
+                'status' => $updated->status,
+                'pending_approvals' => $this->service->pendingApprovalsFor(
+                    $request->user(),
+                    (string) $updated->period,
+                    (string) $updated->metric
+                ),
+            ],
+        ]);
+    }
+
+    public function rejectSubmitted(Request $request, GoalTarget $target): JsonResponse
+    {
+        $this->requireSetTargetsAccess();
+        $data = $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $updated = $this->service->rejectSubmitted(
+            $request->user(),
+            (int) $target->id,
+            $data['reason'] ?? null
+        );
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Target change rejected. Submitter was notified.',
+            'data' => [
+                'id' => $updated->id,
+                'status' => $updated->status,
+                'pending_approvals' => $this->service->pendingApprovalsFor(
+                    $request->user(),
+                    (string) $updated->period,
+                    (string) $updated->metric
+                ),
+            ],
+        ]);
+    }
+
     public function auditLog(Request $request): JsonResponse
     {
-        $this->requireGoalPermission('manage_targets_guard');
+        $this->requireSetTargetsAccess();
         $data = $request->validate([
             'period' => 'nullable|string|regex:/^\d{4}-\d{2}$/',
             'metric' => 'nullable|string|max:30',

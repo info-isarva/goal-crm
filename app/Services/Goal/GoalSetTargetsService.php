@@ -56,6 +56,23 @@ class GoalSetTargetsService
     }
 
     /**
+     * Who may open Set Targets / see the Set Targets CTA.
+     * Explicit manage permission, or view + at least one editable downline.
+     */
+    public function canManageTargets(User $actor): bool
+    {
+        if ($actor->hasCrmPermission('manage_targets_guard')) {
+            return true;
+        }
+
+        if (! $actor->hasCrmPermission('view_targets_guard')) {
+            return false;
+        }
+
+        return $this->editableEmployeeIds($actor) !== [];
+    }
+
+    /**
      * Hierarchy rank (lower number = higher authority). Used so you only edit people below you.
      */
     public function roleRank(User $user): int
@@ -322,6 +339,7 @@ class GoalSetTargetsService
             $orgPrevMap
         );
         $this->annotateAuthorityFlags($tree, $actor);
+        $this->annotatePendingApprovalDetails($tree, $actor, $period, $metric);
 
         $selfTargetMap = $this->targetsMap($period, $metric, [(int) $actor->id]);
         $selfPrevMap = $this->targetsMap($prev, $metric, [(int) $actor->id]);
@@ -360,10 +378,11 @@ class GoalSetTargetsService
         }
         $left = round($remainder - $distributed, 2);
 
-        // Cascade rule: you only must finish YOUR direct reports.
-        // Deeper remainders (e.g. RD → Cluster) are set later by that manager.
+        // Cascade rule: block Assign only when over-allocated.
+        // Under-distribution is allowed so managers can Assign what is set so far.
         $checks = [];
         if ($receivesTarget) {
+            $selfOk = $left >= -0.05;
             $checks[] = [
                 'id' => (int) $actor->id,
                 'label' => sprintf(
@@ -371,10 +390,10 @@ class GoalSetTargetsService
                     $this->n($distributed),
                     $this->n($remainder),
                     $this->n($left),
-                    abs($left) <= 0.05 ? '✓' : '✗'
+                    $selfOk ? ($left > 0.05 ? '(still open)' : '✓') : '✗ over'
                 ),
-                'ok' => abs($left) <= 0.05,
-                'blocks_assign' => true,
+                'ok' => $selfOk,
+                'blocks_assign' => ! $selfOk,
             ];
         }
 
@@ -383,7 +402,7 @@ class GoalSetTargetsService
         $canEdit = $editableIds !== [];
         $canAssign = $canEdit && count($tree) > 0 && ! $hasOver;
         if ($receivesTarget) {
-            $canAssign = $canAssign && abs($left) <= 0.05;
+            $canAssign = $canAssign && $left >= -0.05;
         }
 
         $scopeMeta = $this->authorityScopeMeta($actor);
@@ -415,6 +434,7 @@ class GoalSetTargetsService
             'tree' => $tree,
             'checks' => $checks,
             'pending' => $pending,
+            'pending_approvals' => $this->pendingApprovalsFor($actor, $period, $metric),
             'can_assign' => $canAssign,
             'can_edit' => $canEdit,
             'authority' => [
@@ -423,7 +443,7 @@ class GoalSetTargetsService
                 'default_apply' => $scopeMeta['default_apply'],
                 'can_edit' => $canEdit,
                 'message' => $canEdit
-                    ? 'You can set targets for people below your level in '.$scopeMeta['label'].'. Your own entity is view-only (set by higher authority). Editing amounts they already set will require their approval.'
+                    ? 'You can set targets for people below your level in '.$scopeMeta['label'].'. Your own entity is view-only. Only if you change an amount already set by higher authority does that change need their approval.'
                     : 'Your own target is view-only. Only your reporting authority can add or edit it.',
             ],
             'split_options' => [
@@ -532,14 +552,11 @@ class GoalSetTargetsService
                 $oldOwner = (float) ($existing->owner_target ?? 0);
                 $higherSet = $this->targetSetByHigherAuthority($actor, $existing);
                 $changed = abs($oldBase - $set) > 0.009 || abs($oldOwner - $owner) > 0.009;
-                // Lower managers cannot re-approve amounts originally set by higher authority.
-                // Save → Draft revision; Assign → Submitted for higher approval.
+                // Approval only when a lower manager changes amounts set by higher authority.
+                // Untouched higher-authority rows, and new/own amounts, assign normally.
+                $needsSubmit = $assign && $higherSet && $changed;
                 if ($assign) {
-                    $status = ($higherSet && ($changed || in_array((string) ($existing->status ?? ''), [
-                        GoalTarget::STATUS_APPROVED,
-                        GoalTarget::STATUS_LOCKED,
-                        GoalTarget::STATUS_SUBMITTED,
-                    ], true)))
+                    $status = $needsSubmit
                         ? GoalTarget::STATUS_SUBMITTED
                         : GoalTarget::STATUS_APPROVED;
                 } else {
@@ -560,6 +577,13 @@ class GoalSetTargetsService
                     $opening = $this->openingFromPrevious($prevTarget);
                 }
 
+                // On submit: set_by = submitter; approved_by = higher authority who must act
+                // (original setter, else reporting manager — works for RD / CD / BM, not only Super Admin).
+                $approverId = null;
+                if ($needsSubmit) {
+                    $approverId = $this->resolveApproverId($actor, $existing);
+                }
+
                 $payload = [
                     'period' => $period,
                     'metric' => $metric,
@@ -571,8 +595,13 @@ class GoalSetTargetsService
                     'row_source' => $source,
                     'set_by' => $actor->id,
                     'status' => $status,
-                    'approved_by' => $assign ? $actor->id : ($existing->approved_by ?? null),
+                    'approved_by' => $needsSubmit
+                        ? ($approverId > 0 ? $approverId : null)
+                        : ($assign ? $actor->id : ($existing->approved_by ?? null)),
                     'assigned_at' => $assign ? now() : ($existing->assigned_at ?? null),
+                    'revision_reason' => $needsSubmit
+                        ? ('Submitted by '.$actor->name.' for higher-authority approval')
+                        : ($assign ? null : ($existing->revision_reason ?? null)),
                 ];
 
                 if ($existing) {
@@ -598,11 +627,29 @@ class GoalSetTargetsService
                         $owner,
                         $source,
                         $status,
-                        $assign
+                        $assign,
+                        $needsSubmit ? ($approverId > 0 ? $approverId : null) : ($assign ? $actor->id : null)
                     );
                 }
 
-                if (abs($oldBase - $set) > 0.009 || abs($oldOwner - $owner) > 0.009) {
+                if ($status === GoalTarget::STATUS_SUBMITTED) {
+                    $submitted++;
+                    $this->audit($target, $actor, 'base_target', $oldBase, $set, 'submit', [
+                        'owner_old' => $oldOwner,
+                        'owner_new' => $owner,
+                        'approver_id' => $approverId,
+                    ]);
+                    $this->notifyHigherAuthorityOfSubmission(
+                        $actor,
+                        $target,
+                        $employeeId,
+                        $set,
+                        $owner,
+                        $oldBase,
+                        $oldOwner,
+                        $approverId
+                    );
+                } elseif (abs($oldBase - $set) > 0.009 || abs($oldOwner - $owner) > 0.009) {
                     $this->audit($target, $actor, 'base_target', $oldBase, $set, $assign ? 'assign' : 'update', [
                         'owner_old' => $oldOwner,
                         'owner_new' => $owner,
@@ -615,15 +662,11 @@ class GoalSetTargetsService
                         $employee,
                         'Target assigned',
                         'Your '.$metric.' target for '.$period.' was set to '.number_format($set, 2).'.',
-                        route('goal.targets.set'),
-                        'target_assigned_'.$target->id,
+                        route('goal.targets.set', ['period' => $period, 'metric' => $metric]),
+                        'target_assigned_'.$target->id.'_'.md5((string) $set.'_'.$owner),
                         'target',
                         $target->period
                     );
-                }
-
-                if ($status === GoalTarget::STATUS_SUBMITTED) {
-                    $submitted++;
                 }
 
                 $saved++;
@@ -656,9 +699,351 @@ class GoalSetTargetsService
                 'submitted' => $submitted,
                 'checks' => $payload['checks'],
                 'can_assign' => $payload['can_assign'],
+                'pending_approvals' => $payload['pending_approvals'] ?? [],
                 'tree' => $payload['tree'],
             ];
         });
+    }
+
+    /**
+     * Submitted rows waiting for this actor (or global authority) to approve.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function pendingApprovalsFor(User $actor, string $period, string $metric): array
+    {
+        $period = $this->normalizePeriod($period);
+        $metric = $this->normalizeMetric($metric);
+
+        $q = GoalTarget::query()
+            ->with([
+                'user:id,name,job_role,crm_role_type,goal_org_unit_id',
+                'user.orgUnit:id,name,type,code',
+                'setByUser:id,name',
+            ])
+            ->where('period', $period)
+            ->where('metric', $metric)
+            ->where('status', GoalTarget::STATUS_SUBMITTED)
+            ->whereNotNull('user_id')
+            ->orderByDesc('updated_at')
+            ->limit(40);
+
+        if (! $this->isGlobalTargetAuthority($actor)) {
+            $editable = $this->editableEmployeeIds($actor);
+            $q->where(function ($qq) use ($actor, $editable) {
+                $qq->where('approved_by', $actor->id);
+                if ($editable !== []) {
+                    $qq->orWhereIn('user_id', $editable);
+                }
+            });
+        }
+
+        return $q->get()
+            ->filter(fn (GoalTarget $t) => $this->canApproveTarget($actor, $t))
+            ->map(function (GoalTarget $t) {
+                $user = $t->user;
+                $delta = $this->latestSubmitDelta($t);
+                $oldSet = (float) ($delta['old_set'] ?? $t->base_target);
+                $oldOwner = (float) ($delta['old_owner'] ?? $t->owner_target);
+                $newSet = (float) $t->base_target;
+                $newOwner = (float) $t->owner_target;
+                $changes = [];
+                if (abs($oldSet - $newSet) > 0.009) {
+                    $changes[] = 'Total '.$this->n($oldSet).' → '.$this->n($newSet);
+                }
+                if (abs($oldOwner - $newOwner) > 0.009) {
+                    $changes[] = 'Owner '.$this->n($oldOwner).' → '.$this->n($newOwner);
+                }
+                if ($changes === []) {
+                    $changes[] = 'Total '.$this->n($newSet).' · Owner '.$this->n($newOwner);
+                }
+
+                return [
+                    'id' => (int) $t->id,
+                    'employee_id' => (int) $t->user_id,
+                    'employee' => (string) ($user?->name ?? 'Employee'),
+                    'role' => $user ? $this->roleLabel($user) : 'Employee',
+                    'org_name' => (string) ($user?->orgUnit?->name ?? ''),
+                    'org_type' => (string) ($user?->orgUnit?->type ?? ''),
+                    'submitted_by' => (string) ($t->setByUser?->name ?? 'Manager'),
+                    'set_target' => $newSet,
+                    'owner_target' => $newOwner,
+                    'old_set_target' => $oldSet,
+                    'old_owner_target' => $oldOwner,
+                    'change_summary' => implode(' · ', $changes),
+                    'period' => (string) $t->period,
+                    'metric' => (string) $t->metric,
+                    'metric_label' => match ((string) $t->metric) {
+                        'disbursement' => 'Disbursement',
+                        'deals' => 'Deals closed',
+                        default => 'Revenue',
+                    },
+                    'note' => (string) ($t->revision_reason ?? ''),
+                    'updated_at' => optional($t->updated_at)->diffForHumans(),
+                    'for_label' => trim(($user?->name ?? 'Employee').(
+                        $user?->orgUnit?->name ? ' · '.$user->orgUnit->name : ''
+                    )),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Old Total/Owner from the latest submit audit row.
+     *
+     * @return array{old_set: float, old_owner: float}|null
+     */
+    protected function latestSubmitDelta(GoalTarget $target): ?array
+    {
+        $log = GoalTargetAuditLog::query()
+            ->where('goal_target_id', $target->id)
+            ->where('action', 'submit')
+            ->latest('id')
+            ->first();
+
+        if (! $log) {
+            return null;
+        }
+
+        $meta = is_array($log->meta) ? $log->meta : [];
+
+        return [
+            'old_set' => (float) ($log->old_value ?? 0),
+            'old_owner' => (float) ($meta['owner_old'] ?? $log->old_value ?? 0),
+        ];
+    }
+
+    public function canApproveTarget(User $actor, GoalTarget $target): bool
+    {
+        if ((string) $target->status !== GoalTarget::STATUS_SUBMITTED) {
+            return false;
+        }
+
+        $actorId = (int) $actor->id;
+        $submitterId = (int) ($target->set_by ?? 0);
+        // Never approve your own submission.
+        if ($submitterId > 0 && $submitterId === $actorId) {
+            return false;
+        }
+
+        if ($this->isGlobalTargetAuthority($actor)) {
+            return true;
+        }
+
+        // Explicitly assigned approver (original higher authority / manager).
+        if ((int) ($target->approved_by ?? 0) === $actorId) {
+            return true;
+        }
+
+        $editable = $this->editableEmployeeIds($actor);
+        if (! in_array((int) $target->user_id, $editable, true)) {
+            return false;
+        }
+
+        // Reporting manager of the submitter may approve (RD / CD / BM chain).
+        if ($submitterId > 0) {
+            $submitter = User::query()->find($submitterId, [
+                'id', 'crm_role_type', 'job_role', 'reports_to_user_id', 'assign_manager',
+            ]);
+            if (! $submitter) {
+                return false;
+            }
+            if ((int) ($submitter->reports_to_user_id ?: 0) === $actorId
+                || (int) ($submitter->assign_manager ?: 0) === $actorId) {
+                return true;
+            }
+
+            // Any strictly higher-rank manager who can edit the employee.
+            return $this->roleRank($submitter) > $this->roleRank($actor);
+        }
+
+        $employee = User::query()->find((int) $target->user_id, ['id', 'crm_role_type', 'job_role']);
+
+        return $employee && $this->roleRank($actor) < $this->roleRank($employee);
+    }
+
+    /**
+     * Who should approve a re-approval submit: original higher setter, else reporting manager.
+     */
+    protected function resolveApproverId(User $actor, ?GoalTarget $existing): int
+    {
+        $actorId = (int) $actor->id;
+        $candidates = [];
+        if ($existing) {
+            $candidates[] = (int) ($existing->set_by ?? 0);
+            $candidates[] = (int) ($existing->approved_by ?? 0);
+        }
+        $candidates[] = (int) ($actor->reports_to_user_id ?: 0);
+        $candidates[] = (int) ($actor->assign_manager ?: 0);
+
+        $actorRank = $this->roleRank($actor);
+        foreach ($candidates as $id) {
+            if ($id <= 0 || $id === $actorId) {
+                continue;
+            }
+            $user = User::query()->find($id, ['id', 'crm_role_type', 'job_role']);
+            if (! $user) {
+                continue;
+            }
+            if ($this->isGlobalTargetAuthority($user) || $this->roleRank($user) < $actorRank) {
+                return $id;
+            }
+        }
+
+        return 0;
+    }
+
+    public function approveSubmitted(User $actor, int $targetId): GoalTarget
+    {
+        $target = GoalTarget::query()->findOrFail($targetId);
+        if (! $this->canApproveTarget($actor, $target)) {
+            throw ValidationException::withMessages(['target' => 'You cannot approve this target.']);
+        }
+
+        $submitterId = (int) ($target->set_by ?? 0);
+        $target->status = GoalTarget::STATUS_APPROVED;
+        $target->approved_by = $actor->id;
+        $target->assigned_at = now();
+        $target->revision_reason = null;
+        $target->save();
+
+        $this->audit($target, $actor, 'status', 0, 1, 'approve', [
+            'from' => GoalTarget::STATUS_SUBMITTED,
+            'to' => GoalTarget::STATUS_APPROVED,
+        ]);
+
+        $period = (string) $target->period;
+        $metric = (string) $target->metric;
+        $set = (float) $target->base_target;
+        $url = route('goal.targets.set', ['period' => $period, 'metric' => $metric]);
+
+        $employee = User::query()->find((int) $target->user_id);
+        GoalNotify::send(
+            $employee,
+            'Target approved',
+            'Your '.$metric.' target for '.$period.' was approved at '.number_format($set, 2).'.',
+            $url,
+            'target_approved_'.$target->id.'_'.md5((string) $set),
+            'target',
+            $period
+        );
+
+        if ($submitterId > 0 && $submitterId !== (int) $actor->id && $submitterId !== (int) ($employee?->id ?? 0)) {
+            GoalNotify::send(
+                User::query()->find($submitterId),
+                'Target change approved',
+                'Your proposed '.$metric.' target for '.($employee?->name ?? 'employee').' ('.$period.') was approved.',
+                $url,
+                'target_submit_approved_'.$target->id.'_'.md5((string) $set),
+                'target',
+                $period
+            );
+        }
+
+        return $target->fresh(['user', 'setByUser']);
+    }
+
+    public function rejectSubmitted(User $actor, int $targetId, ?string $reason = null): GoalTarget
+    {
+        $target = GoalTarget::query()->findOrFail($targetId);
+        if (! $this->canApproveTarget($actor, $target)) {
+            throw ValidationException::withMessages(['target' => 'You cannot reject this target.']);
+        }
+
+        $submitterId = (int) ($target->set_by ?? 0);
+        $reason = trim((string) $reason);
+        $target->status = GoalTarget::STATUS_DRAFT;
+        $target->revision_reason = $reason !== ''
+            ? ('Rejected: '.$reason)
+            : 'Rejected by higher authority — revise and resubmit';
+        $target->save();
+
+        $this->audit($target, $actor, 'status', 1, 0, 'reject', [
+            'from' => GoalTarget::STATUS_SUBMITTED,
+            'to' => GoalTarget::STATUS_DRAFT,
+            'reason' => $target->revision_reason,
+        ]);
+
+        $period = (string) $target->period;
+        $metric = (string) $target->metric;
+        $employee = User::query()->find((int) $target->user_id);
+        $url = route('goal.targets.set', ['period' => $period, 'metric' => $metric]);
+
+        if ($submitterId > 0) {
+            GoalNotify::send(
+                User::query()->find($submitterId),
+                'Target change rejected',
+                'Your proposed '.$metric.' target for '.($employee?->name ?? 'employee').' ('.$period.') was rejected'
+                    .($reason !== '' ? ': '.$reason : '.'),
+                $url,
+                'target_submit_rejected_'.$target->id.'_'.md5($target->revision_reason),
+                'target',
+                $period
+            );
+        }
+
+        return $target->fresh(['user', 'setByUser']);
+    }
+
+    /**
+     * Notify the higher authority who originally set the amount (or reporting manager).
+     */
+    protected function notifyHigherAuthorityOfSubmission(
+        User $submitter,
+        GoalTarget $target,
+        int $employeeId,
+        float $set,
+        float $owner,
+        float $oldSet,
+        float $oldOwner,
+        ?int $approverId
+    ): void {
+        $employee = User::query()->find($employeeId);
+        $period = (string) $target->period;
+        $metric = (string) $target->metric;
+        $url = route('goal.targets.set', [
+            'period' => $period,
+            'metric' => $metric,
+            'pending' => 1,
+            'focus' => $employeeId,
+        ]);
+
+        $ids = [];
+        if ($approverId && (int) $approverId !== (int) $submitter->id) {
+            $ids[] = (int) $approverId;
+        }
+        $mgr = (int) ($submitter->reports_to_user_id ?: $submitter->assign_manager ?: 0);
+        if ($mgr > 0 && $mgr !== (int) $submitter->id) {
+            $ids[] = $mgr;
+        }
+
+        $ids = array_values(array_unique(array_filter($ids)));
+        if ($ids === []) {
+            return;
+        }
+
+        $msg = sprintf(
+            '%s changed %s target for %s (%s): %s → %s. Open Set Targets to approve or reject.',
+            $submitter->name,
+            $metric,
+            $employee?->name ?? ('#'.$employeeId),
+            $period,
+            number_format($oldSet, 2),
+            number_format($set, 2)
+        );
+
+        foreach (User::query()->whereIn('id', $ids)->get() as $user) {
+            GoalNotify::send(
+                $user,
+                'Target approval needed',
+                $msg,
+                $url,
+                'target_approval_'.$target->id.'_'.md5($set.'|'.$owner.'|'.$submitter->id),
+                'target',
+                $period
+            );
+        }
     }
 
     /**
@@ -1409,11 +1794,18 @@ class GoalSetTargetsService
     }
 
     /**
-     * True when an existing target was last set/approved by someone above this actor.
+     * True when an existing target has real amounts last set/approved by someone above this actor.
+     * Zero / empty rows are free for the manager to assign (no approval).
      */
     protected function targetSetByHigherAuthority(User $actor, ?GoalTarget $existing): bool
     {
         if (! $existing || $this->isGlobalTargetAuthority($actor)) {
+            return false;
+        }
+
+        $hasAmount = (float) ($existing->base_target ?? 0) > 0.009
+            || (float) ($existing->owner_target ?? 0) > 0.009;
+        if (! $hasAmount) {
             return false;
         }
 
@@ -1435,7 +1827,8 @@ class GoalSetTargetsService
     }
 
     /**
-     * Flag rows set by higher authority so UI can warn and Assign submits for approval.
+     * Flag rows that already have amounts set by higher authority.
+     * Empty rows (0) never require approval — manager can Assign freely.
      *
      * @param  list<array<string, mixed>>  $nodes
      */
@@ -1447,10 +1840,12 @@ class GoalSetTargetsService
             $personId = ! empty($n['is_org_group']) ? $linkedId : (int) ($n['id'] ?? 0);
             $isOwn = $personId > 0 && $personId === $actorId;
             $n['is_own_entity'] = ! empty($n['is_own_entity']) || $isOwn;
+            $hasAmount = (float) ($n['set_target'] ?? 0) > 0.009
+                || (float) ($n['owner_target'] ?? 0) > 0.009;
 
             if ($isOwn) {
                 $n['editable'] = false;
-                $n['set_by_higher'] = (float) ($n['set_target'] ?? 0) > 0;
+                $n['set_by_higher'] = $hasAmount;
                 $n['requires_reapproval'] = false;
                 if (($n['chip'] ?? '') === '' || ($n['chip'] ?? '') === ($n['role'] ?? '')) {
                     $n['chip'] = 'Your entity';
@@ -1458,15 +1853,15 @@ class GoalSetTargetsService
             } else {
                 $setBy = (int) ($n['set_by'] ?? 0);
                 $higher = false;
-                if ($setBy > 0 && $setBy !== $actorId) {
+                if ($hasAmount && $setBy > 0 && $setBy !== $actorId) {
                     $setter = User::query()->find($setBy, ['id', 'crm_role_type', 'job_role']);
                     if ($setter) {
                         $higher = $this->isGlobalTargetAuthority($setter)
                             || $this->roleRank($setter) < $this->roleRank($actor);
                     }
                 }
-                // Approved/Locked without set_by still treat as higher-authority once actor is not global.
-                if (! $higher && ! $this->isGlobalTargetAuthority($actor)) {
+                // Approved/Locked with a real amount and no self set_by → treat as higher-set.
+                if ($hasAmount && ! $higher && ! $this->isGlobalTargetAuthority($actor)) {
                     $st = (string) ($n['status'] ?? '');
                     if (in_array($st, [GoalTarget::STATUS_APPROVED, GoalTarget::STATUS_LOCKED], true)
                         && $setBy !== $actorId) {
@@ -1477,8 +1872,66 @@ class GoalSetTargetsService
                 $n['requires_reapproval'] = $higher && ! empty($n['editable']);
             }
 
+            $isSubmitted = (string) ($n['status'] ?? '') === GoalTarget::STATUS_SUBMITTED;
+            $n['pending_approval'] = $isSubmitted && ! $isOwn;
+            if ($isSubmitted) {
+                $n['chip'] = 'Pending approval';
+            }
+
             if (! empty($n['children']) && is_array($n['children'])) {
                 $this->annotateAuthorityFlags($n['children'], $actor);
+            }
+        }
+        unset($n);
+    }
+
+    /**
+     * Attach previous Total/Owner onto Submitted rows for UI (old → new).
+     *
+     * @param  list<array<string, mixed>>  $nodes
+     */
+    protected function annotatePendingApprovalDetails(array &$nodes, User $actor, string $period, string $metric): void
+    {
+        foreach ($nodes as &$n) {
+            $n['can_approve_pending'] = false;
+            $isPending = ! empty($n['pending_approval'])
+                || (string) ($n['status'] ?? '') === GoalTarget::STATUS_SUBMITTED;
+            if ($isPending) {
+                $employeeId = ! empty($n['is_org_group'])
+                    ? (int) ($n['linked_user_id'] ?? 0)
+                    : (int) ($n['id'] ?? 0);
+                if ($employeeId > 0) {
+                    $target = GoalTarget::query()
+                        ->where('user_id', $employeeId)
+                        ->whereNull('goal_org_unit_id')
+                        ->where('period', $period)
+                        ->where('metric', $metric)
+                        ->where('status', GoalTarget::STATUS_SUBMITTED)
+                        ->first();
+                    if ($target) {
+                        $delta = $this->latestSubmitDelta($target);
+                        $n['pending_approval'] = true;
+                        $n['pending_from_set'] = (float) ($delta['old_set'] ?? $n['set_target'] ?? 0);
+                        $n['pending_from_owner'] = (float) ($delta['old_owner'] ?? $n['owner_target'] ?? 0);
+                        $n['pending_target_id'] = (int) $target->id;
+                        $n['can_approve_pending'] = $this->canApproveTarget($actor, $target);
+                        $parts = [];
+                        if (abs($n['pending_from_set'] - (float) ($n['set_target'] ?? 0)) > 0.009) {
+                            $parts[] = 'Total '.$this->n($n['pending_from_set']).' → '.$this->n((float) ($n['set_target'] ?? 0));
+                        }
+                        if (abs($n['pending_from_owner'] - (float) ($n['owner_target'] ?? 0)) > 0.009) {
+                            $parts[] = 'Owner '.$this->n($n['pending_from_owner']).' → '.$this->n((float) ($n['owner_target'] ?? 0));
+                        }
+                        $n['pending_change_summary'] = $parts !== []
+                            ? implode(' · ', $parts)
+                            : ('Total '.$this->n((float) ($n['set_target'] ?? 0)));
+                        $n['chip'] = 'Pending approval';
+                    }
+                }
+            }
+
+            if (! empty($n['children']) && is_array($n['children'])) {
+                $this->annotatePendingApprovalDetails($n['children'], $actor, $period, $metric);
             }
         }
         unset($n);
@@ -1496,7 +1949,8 @@ class GoalSetTargetsService
         float $owner,
         string $source,
         string $status,
-        bool $assign
+        bool $assign,
+        ?int $approvedById = null
     ): void {
         $unit = GoalOrgUnit::query()->find($orgUnitId);
         if (! $unit || ! in_array($unit->type, [
@@ -1518,6 +1972,10 @@ class GoalSetTargetsService
             return;
         }
 
+        if ($approvedById === null) {
+            $approvedById = $assign ? (int) $actor->id : (int) ($existing->approved_by ?? 0);
+        }
+
         $payload = [
             'period' => $period,
             'metric' => $metric,
@@ -1529,7 +1987,7 @@ class GoalSetTargetsService
             'row_source' => $source,
             'set_by' => $actor->id,
             'status' => $status,
-            'approved_by' => $assign ? $actor->id : ($existing->approved_by ?? null),
+            'approved_by' => $approvedById > 0 ? $approvedById : null,
             'assigned_at' => $assign ? now() : ($existing->assigned_at ?? null),
         ];
 

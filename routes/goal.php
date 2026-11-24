@@ -190,6 +190,12 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::post('targets/{target}/request-revision', [GoalSetTargetsController::class, 'requestRevision'])
         ->middleware(EnsureGoalTargetSubtree::class)
         ->name('targets.request-revision');
+    Route::post('targets/{target}/approve-submitted', [GoalSetTargetsController::class, 'approveSubmitted'])
+        ->middleware(EnsureGoalTargetSubtree::class)
+        ->name('targets.approve-submitted');
+    Route::post('targets/{target}/reject-submitted', [GoalSetTargetsController::class, 'rejectSubmitted'])
+        ->middleware(EnsureGoalTargetSubtree::class)
+        ->name('targets.reject-submitted');
     Route::post('targets', [GoalTargetController::class, 'store'])->name('targets.store');
     Route::put('targets/{target}', [GoalTargetController::class, 'update'])->name('targets.update');
 

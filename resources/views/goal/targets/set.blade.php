@@ -26,11 +26,16 @@
     --st-muted: #64748b;
     --st-text: #0f172a;
     color: var(--st-text);
-    padding-bottom: 96px;
+    /* Room for fixed bottom action bar (do not use overflow here — it traps position:fixed) */
+    padding-bottom: 88px;
     background: #f4f6f9;
     max-width: 100%;
-    overflow-x: clip;
     box-sizing: border-box;
+}
+.goal-set-targets .st-panel,
+.goal-set-targets .st-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 /* Hero */
@@ -57,35 +62,43 @@
 .goal-set-targets .st-sub { margin: 4px 0 0; color: #64748b; font-size: .88rem; max-width: 520px; line-height: 1.4; }
 .goal-set-targets .st-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
-.goal-set-targets .st-btn {
+.goal-set-targets .st-btn,
+.goal-set-targets-footer .st-btn {
     height: 38px; min-height: 38px; border-radius: 10px; padding: 0 14px;
     font-weight: 650; font-size: .82rem;
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
     border: 1px solid #dbe3f0; background: #fff; color: #334155;
     text-decoration: none; white-space: nowrap; cursor: pointer;
 }
-.goal-set-targets .st-btn:hover { background: #f8fafc; color: #0f172a; }
-.goal-set-targets .st-btn:disabled { opacity: .55; cursor: not-allowed; }
-.goal-set-targets .st-btn-primary {
+.goal-set-targets .st-btn:hover,
+.goal-set-targets-footer .st-btn:hover { background: #f8fafc; color: #0f172a; }
+.goal-set-targets .st-btn:disabled,
+.goal-set-targets-footer .st-btn:disabled { opacity: .55; cursor: not-allowed; }
+.goal-set-targets .st-btn-primary,
+.goal-set-targets-footer .st-btn-primary {
     border: 0 !important;
     background: #059669 !important;
     background: var(--st-accent, #059669) !important;
     color: #fff !important;
     box-shadow: 0 4px 14px rgba(5, 150, 105, .28);
 }
-.goal-set-targets .st-btn-primary:hover:not(:disabled) {
+.goal-set-targets .st-btn-primary:hover:not(:disabled),
+.goal-set-targets-footer .st-btn-primary:hover:not(:disabled) {
     filter: brightness(1.06);
     color: #fff !important;
 }
 .goal-set-targets .st-btn-primary:disabled,
-.goal-set-targets .st-btn-primary[disabled] {
+.goal-set-targets .st-btn-primary[disabled],
+.goal-set-targets-footer .st-btn-primary:disabled,
+.goal-set-targets-footer .st-btn-primary[disabled] {
     opacity: 1 !important;
     background: #94a3b8 !important;
     color: #fff !important;
     box-shadow: none;
     cursor: not-allowed;
 }
-.goal-set-targets .st-btn-primary i { color: inherit; }
+.goal-set-targets .st-btn-primary i,
+.goal-set-targets-footer .st-btn-primary i { color: inherit; }
 .goal-set-targets .st-btn-history {
     background: #e8f8ef; border-color: #9fd4b3; color: #166534; font-weight: 700;
 }
@@ -504,7 +517,7 @@
 }
 
 @media (max-width: 767.98px) {
-    .goal-set-targets { padding-bottom: 72px; }
+    .goal-set-targets { padding-bottom: 120px; }
     .goal-set-targets .st-filters {
         flex-direction: column;
         align-items: stretch;
@@ -827,12 +840,12 @@
 @media (max-width: 575.98px) {
     .goal-set-targets .st-kpi-grid { grid-template-columns: 1fr; }
     .goal-set-targets .st-hero-actions { grid-template-columns: 1fr 1fr; }
-    .goal-set-targets .st-footer-tip-short { display: inline; }
-    .goal-set-targets .st-footer-tip-full { display: none; }
+    .goal-set-targets-footer .st-footer-tip-short { display: inline; }
+    .goal-set-targets-footer .st-footer-tip-full { display: none; }
 }
 @media (min-width: 576px) {
-    .goal-set-targets .st-footer-tip-short { display: none; }
-    .goal-set-targets .st-footer-tip-full { display: inline; }
+    .goal-set-targets-footer .st-footer-tip-short { display: none; }
+    .goal-set-targets-footer .st-footer-tip-full { display: inline; }
 }
 @media (min-width: 768px) {
     .goal-set-targets .st-table-scroll-hint { display: none !important; }
@@ -1220,127 +1233,303 @@
     background: #f8fafc; font-size: .66rem; text-transform: uppercase; color: var(--st-muted);
 }
 
-/* Footer — single compact action bar */
-.goal-set-targets .st-footer {
+/* Footer — fixed to viewport bottom across content area (sidebar-aware) */
+.goal-set-targets-footer {
     position: fixed;
-    left: 270px;
+    left: var(--sb-width, 270px);
     right: 0;
     bottom: 0;
     z-index: 1046;
-    height: auto;
-    max-height: none;
     background: #fff;
     border-top: 1px solid #e2e8f0;
-    box-shadow: 0 -4px 18px rgba(15, 23, 42, .07);
-    padding: 10px 16px;
-    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -6px 24px rgba(15, 23, 42, .08);
+    padding: 12px 20px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
 }
-body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
-@media (max-width: 1023.98px) { .goal-set-targets .st-footer { left: 0; } }
-.goal-set-targets .st-footer-inner {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 14px;
-    align-items: center;
-    justify-content: space-between;
-    max-width: 1400px;
-    margin: 0 auto;
+body.sidebar-collapsed .goal-set-targets-footer {
+    left: var(--sb-collapsed-width, 76px);
 }
-.goal-set-targets .st-footer-meta {
-    display: flex;
-    flex-wrap: wrap;
+@media (max-width: 1023.98px) {
+    .goal-set-targets-footer { left: 0; }
+}
+.goal-set-targets-footer .st-footer-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px 12px;
+    column-gap: 20px;
+    row-gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+}
+.goal-set-targets-footer .st-footer-meta {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 12px 16px;
     min-width: 0;
-    flex: 1 1 auto;
 }
-.goal-set-targets .st-tip {
+.goal-set-targets-footer .st-tip {
     display: inline-flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     background: #f0f9ff;
     color: #075985;
     border: 1px solid #bae6fd;
     border-radius: 8px;
-    padding: 6px 10px;
+    padding: 8px 12px;
     font-size: .74rem;
-    line-height: 1.3;
-    max-width: min(560px, 100%);
+    line-height: 1.35;
+    min-width: 0;
+    flex: 1 1 auto;
+    max-width: 640px;
 }
-.goal-set-targets .st-tip i {
+.goal-set-targets-footer .st-tip i {
     flex-shrink: 0;
-    font-size: .85rem;
+    margin-top: 1px;
+    font-size: .9rem;
     color: #0284c7;
 }
-.goal-set-targets #stCheckSummary {
+.goal-set-targets-footer .st-tip span {
+    min-width: 0;
+}
+.goal-set-targets-footer #stCheckSummary {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: .78rem;
+    flex: 0 0 auto;
+    font-size: .8rem;
     font-weight: 700;
     margin: 0;
     white-space: nowrap;
+    padding: 8px 0;
 }
-.goal-set-targets #stCheckSummary.ok { color: #15803d; }
-.goal-set-targets #stCheckSummary.warn { color: #c2410c; }
-.goal-set-targets .st-footer-actions {
+.goal-set-targets-footer #stCheckSummary.ok { color: #15803d; }
+.goal-set-targets-footer #stCheckSummary.warn { color: #c2410c; }
+/* Back-compat if old class still present */
+.goal-set-targets .st-footer { display: none; }
+.goal-set-targets .st-btn-assign.is-submit {
+    border-color: #2563eb;
+    color: #1d4ed8;
+    background: #eff6ff;
+}
+.goal-set-targets .st-pending-approvals {
+    margin: 0 0 14px;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+.goal-set-targets .st-pending-approvals.is-empty { display: none !important; }
+.goal-set-targets .st-pending-head {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-    margin-left: auto;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
 }
-.goal-set-targets .st-footer-actions .st-btn {
-    min-width: 132px;
-    height: 40px;
-    padding: 0 16px;
+.goal-set-targets .st-pending-head h3 {
+    margin: 0;
+    font-size: .92rem;
     font-weight: 700;
+    color: #1e3a8a;
 }
-.goal-set-targets .st-footer-actions .st-btn-primary {
+.goal-set-targets .st-pending-head p {
+    margin: 2px 0 0;
+    font-size: .78rem;
+    color: #64748b;
+}
+.goal-set-targets .st-pending-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+}
+.goal-set-targets .st-pending-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px 14px;
+    background: #fff;
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+.goal-set-targets .st-pending-item .st-pending-main { flex: 1 1 260px; min-width: 0; }
+.goal-set-targets .st-pending-item strong { display: block; color: #0f172a; font-size: .9rem; }
+.goal-set-targets .st-pending-item .st-pending-who { font-size: .78rem; color: #475569; margin-top: 2px; }
+.goal-set-targets .st-pending-item .st-pending-meta { font-size: .74rem; color: #94a3b8; margin-top: 2px; }
+.goal-set-targets .st-pending-change {
+    flex: 1 1 220px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: .8rem;
+    color: #0f172a;
+}
+.goal-set-targets .st-pending-change .lbl {
+    display: block;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 2px;
+}
+.goal-set-targets .st-pending-change .vals { font-weight: 650; color: #1d4ed8; }
+.goal-set-targets .st-pending-actions { display: flex; gap: 6px; flex-wrap: wrap; align-self: center; }
+.goal-set-targets .st-pending-actions .st-btn { height: 34px; min-width: 0; padding: 0 12px; font-size: .8rem; }
+.goal-set-targets tr.st-pending-row,
+.goal-set-targets .st-mcard.st-pending-row {
+    background: #fffbeb !important;
+}
+.goal-set-targets tr.st-pending-row > td {
+    box-shadow: inset 3px 0 0 #f59e0b;
+    vertical-align: top;
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+.goal-set-targets tr.st-pending-row > td.idx,
+.goal-set-targets tr.st-pending-row > td.col-actions {
+    vertical-align: middle;
+    box-shadow: none;
+}
+.goal-set-targets tr.st-pending-row > td:first-child {
+    box-shadow: inset 3px 0 0 #f59e0b;
+}
+.goal-set-targets .st-pending-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    margin-top: 6px;
+}
+.goal-set-targets .st-pending-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    color: #b45309;
+    font-size: .68rem;
+    font-weight: 700;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+.goal-set-targets .st-amt-stack {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    width: 100%;
+}
+.goal-set-targets .st-pending-delta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    font-size: .68rem;
+    color: #c2410c;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+.goal-set-targets .st-cell-pending .st-cell-num,
+.goal-set-targets .st-cell-pending .st-input-wrap {
+    border-color: #fdba74;
+    background: #fff7ed;
+}
+.goal-set-targets .st-btn-assign {
+    min-width: 96px;
+    justify-content: center;
+}
+.goal-set-targets .st-btn-assign.is-pending {
+    border-color: #fcd34d;
+    background: #fffbeb;
+    color: #b45309;
+    opacity: 1;
+}
+.goal-set-targets .st-btn-assign.is-pending:not(:disabled) {
+    cursor: pointer;
+}
+.goal-set-targets .st-btn-assign.is-pending:disabled {
+    cursor: default;
+    opacity: .85;
+}
+.goal-set-targets .st-action-menu button .bi-check2-circle { color: #059669; }
+.goal-set-targets-footer .st-footer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-shrink: 0;
+}
+.goal-set-targets-footer .st-footer-actions .st-btn {
+    min-width: 140px;
+    height: 42px;
+    padding: 0 18px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.goal-set-targets-footer .st-footer-actions .st-btn-primary {
     min-width: 168px;
 }
 
-/* Mobile footer: tight bar — no empty “card” */
+/* Mobile footer */
 @media (max-width: 767.98px) {
-    .goal-set-targets { padding-bottom: 72px !important; }
-    .goal-set-targets .st-footer {
-        padding: 8px 12px;
-        padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    .goal-set-targets { padding-bottom: 120px !important; }
+    .goal-set-targets-footer {
+        padding: 10px 12px;
+        padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
     }
-    .goal-set-targets .st-footer-inner {
-        flex-direction: column;
-        align-items: stretch;
-        justify-content: flex-start;
+    .goal-set-targets-footer .st-footer-inner {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    .goal-set-targets-footer .st-footer-meta {
+        flex-wrap: wrap;
         gap: 8px;
     }
-    .goal-set-targets .st-footer-meta {
-        flex: 0 0 auto;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 6px 10px;
-    }
-    /* Tip is secondary on phone — keep one compact status line */
-    .goal-set-targets .st-tip {
+    .goal-set-targets-footer .st-tip {
         display: none;
     }
-    .goal-set-targets #stCheckSummary {
+    .goal-set-targets-footer #stCheckSummary {
         width: 100%;
         white-space: normal;
         font-size: .74rem;
-        line-height: 1.3;
+        line-height: 1.35;
         padding: 0;
     }
-    .goal-set-targets .st-footer-actions {
-        margin-left: 0;
+    .goal-set-targets-footer .st-footer-actions {
         width: 100%;
-        gap: 8px;
     }
-    .goal-set-targets .st-footer-actions .st-btn {
+    .goal-set-targets-footer .st-footer-actions .st-btn {
         flex: 1 1 0;
         min-width: 0;
-        height: 40px;
+        height: 42px;
         font-size: .78rem;
+    }
+}
+@media (min-width: 768px) and (max-width: 1100px) {
+    .goal-set-targets-footer .st-footer-meta {
+        flex-wrap: wrap;
+    }
+    .goal-set-targets-footer .st-tip {
+        max-width: 100%;
+        flex: 1 1 100%;
     }
 }
 </style>
@@ -1372,6 +1561,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     </div>
 
     <div id="stFlash" class="st-alert info d-none" role="status"></div>
+    <div id="stPendingApprovals" class="st-pending-approvals d-none" aria-live="polite"></div>
 
     @if($receives)
         <input type="hidden" id="stAreaTotal" value="{{ number_format((float) ($p['self']['remainder'] ?? 0), 2, '.', '') }}">
@@ -1602,28 +1792,30 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         </details>
     </section>
 
-    <div class="st-footer" role="region" aria-label="Save and assign">
-        <div class="st-footer-inner">
-            <div class="st-footer-meta">
-                <div class="st-tip">
-                    <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
-                    <span id="stAuthTip">
-                        <span class="st-footer-tip-full">You can set targets for people below your level. Your own target is set by your reporting authority only.</span>
-                        <span class="st-footer-tip-short">Edit team below you · own target is view-only</span>
-                    </span>
-                </div>
-                <div id="stCheckSummary" class="ok"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Ready to save or assign</div>
+</div>
+
+{{-- Outside overflow/clipped page shell so position:fixed sticks to the viewport bottom --}}
+<div class="goal-set-targets-footer" role="region" aria-label="Save and assign">
+    <div class="st-footer-inner">
+        <div class="st-footer-meta">
+            <div class="st-tip">
+                <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                <span id="stAuthTip">
+                    <span class="st-footer-tip-full">You can set targets for people below your level. Your own entity is view-only. Only if you change an amount already set by higher authority does that change need their approval.</span>
+                    <span class="st-footer-tip-short">Edit team below you · own target is view-only</span>
+                </span>
             </div>
-            <div class="st-footer-actions">
-                <button type="button" class="st-btn" id="stSaveDraft">
-                    <i class="bi bi-floppy"></i>
-                    <span>Save as Draft</span>
-                </button>
-                <button type="button" class="st-btn st-btn-primary" id="stAssign" disabled>
-                    <i class="bi bi-send-fill"></i>
-                    <span>Assign &amp; Notify</span>
-                </button>
-            </div>
+            <div id="stCheckSummary" class="ok"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Ready to save or assign</div>
+        </div>
+        <div class="st-footer-actions">
+            <button type="button" class="st-btn" id="stSaveDraft">
+                <i class="bi bi-floppy"></i>
+                <span>Save as Draft</span>
+            </button>
+            <button type="button" class="st-btn st-btn-primary" id="stAssign" disabled>
+                <i class="bi bi-send-fill"></i>
+                <span>Assign &amp; Notify</span>
+            </button>
         </div>
     </div>
 </div>
@@ -1638,6 +1830,8 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         saveDraft: @json(route('goal.targets.save-draft')),
         assign: @json(route('goal.targets.assign')),
         audit: @json(route('goal.targets.audit-log')),
+        approveSubmitted: @json(route('goal.targets.approve-submitted', ['target' => '__ID__'])),
+        rejectSubmitted: @json(route('goal.targets.reject-submitted', ['target' => '__ID__'])),
     };
     const jumpPct = {{ $jumpPct }};
     const unit = @json($unit);
@@ -1649,13 +1843,62 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     let showHierarchy = true;
 
     const $ = (id) => document.getElementById(id);
+    const themePrimary = getComputedStyle(document.documentElement).getPropertyValue('--theme-primary').trim() || '#059669';
     const flash = (msg, type = 'info') => {
+        const map = { ok: 'success', err: 'error', warn: 'warning', info: 'info', success: 'success', error: 'error', warning: 'warning' };
+        const kind = map[type] || 'info';
+        if (typeof showFlashSwal === 'function') {
+            showFlashSwal(kind, msg);
+            return;
+        }
+        if (window.toastr && typeof window.toastr[kind] === 'function') {
+            window.toastr[kind](msg);
+            return;
+        }
         const el = $('stFlash');
-        el.className = 'st-alert ' + type;
+        if (!el) return;
+        el.className = 'st-alert ' + (type === 'success' ? 'ok' : type);
         el.textContent = msg;
         el.classList.remove('d-none');
-        if (type !== 'err') setTimeout(() => el.classList.add('d-none'), 4500);
+        if (type !== 'err' && type !== 'error') setTimeout(() => el.classList.add('d-none'), 4500);
     };
+    async function stConfirm({ title, text, confirmText = 'Yes', icon = 'question', confirmColor = themePrimary } = {}) {
+        if (window.Swal && typeof window.Swal.fire === 'function') {
+            const result = await window.Swal.fire({
+                title: title || 'Confirm',
+                text: text || '',
+                icon,
+                showCancelButton: true,
+                confirmButtonColor: confirmColor,
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: confirmText,
+                cancelButtonText: 'Cancel',
+                reverseButtons: true,
+            });
+            return !!result.isConfirmed;
+        }
+        return window.confirm(text || title || 'Continue?');
+    }
+    async function stPrompt({ title, text, inputPlaceholder = '', confirmText = 'Submit', confirmColor = themePrimary } = {}) {
+        if (window.Swal && typeof window.Swal.fire === 'function') {
+            const result = await window.Swal.fire({
+                title: title || 'Enter details',
+                text: text || '',
+                input: 'textarea',
+                inputPlaceholder,
+                showCancelButton: true,
+                confirmButtonColor: confirmColor,
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: confirmText,
+                cancelButtonText: 'Cancel',
+                reverseButtons: true,
+            });
+            if (!result.isConfirmed) return null;
+            return String(result.value || '');
+        }
+        const v = window.prompt(text || title || '', '');
+        return v === null ? null : v;
+    }
     const fmt = (n) => {
         const v = Number(n || 0);
         return v.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -1727,8 +1970,45 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         return s;
     }
 
+    function isOwnEntityRoot(n) {
+        const selfId = Number(state.self?.id || 0);
+        const selfOrgId = Number(state.self?.org_unit_id || 0);
+        if (!n) return false;
+        if (n.is_own_entity) return true;
+        if (selfId > 0 && Number(n.linked_user_id || 0) === selfId) return true;
+        if (selfOrgId > 0 && n.is_org_group && Number(n.org_unit_id || 0) === selfOrgId) return true;
+        return false;
+    }
+
+    /** Amount given to direct reports — never count own-entity root Total (that is the pool). */
     function sumDirectAssigned(nodes) {
-        return (nodes || []).reduce((s, n) => s + Number(n.set_target || 0), 0);
+        return (nodes || []).reduce((s, n) => {
+            if (isOwnEntityRoot(n)) {
+                return s + (n.children || []).reduce((cs, c) => cs + Number(c.set_target || 0), 0);
+            }
+            return s + Number(n.set_target || 0);
+        }, 0);
+    }
+
+    function stampBaselines(nodes) {
+        (nodes || []).forEach((n) => {
+            n.baseline_set = Number(n.set_target || 0);
+            n.baseline_owner = Number(n.owner_target || 0);
+            if (n.children?.length) stampBaselines(n.children);
+        });
+    }
+
+    /**
+     * Submit for approval only when higher authority already set a real amount
+     * and this actor changed that amount. Blank/zero rows stay Assign & notify.
+     */
+    function isEditedHigherAuthority(n) {
+        if (!n || !n.set_by_higher || n.is_own_entity) return false;
+        const baseSet = Number(n.baseline_set ?? 0);
+        const baseOwner = Number(n.baseline_owner ?? 0);
+        if (baseSet <= 0.009 && baseOwner <= 0.009) return false;
+        return Math.abs(Number(n.set_target || 0) - baseSet) > 0.009
+            || Math.abs(Number(n.owner_target || 0) - baseOwner) > 0.009;
     }
 
     function countByRole(nodes, out = { rd: 0, cluster: 0, bm: 0, staff: 0 }) {
@@ -2031,6 +2311,41 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         return map[key] || job;
     }
 
+    function pendingBlockHtml(n) {
+        if (!n.pending_approval) return '';
+        return `<div class="st-pending-block">
+            <span class="st-pending-pill"><i class="bi bi-hourglass-split"></i> Pending approval</span>
+        </div>`;
+    }
+
+    /** GoalTarget id for a pending row if this actor can approve it. */
+    function pendingTargetIdForNode(n) {
+        if (!n?.pending_approval) return 0;
+        const direct = Number(n.pending_target_id || 0);
+        if (direct > 0 && (n.can_approve_pending || (state.pending_approvals || []).some((r) => Number(r.id) === direct))) {
+            return direct;
+        }
+        const empId = Number(n.linked_user_id || (!n.is_org_group ? n.id : 0) || 0);
+        if (empId <= 0) return 0;
+        const row = (state.pending_approvals || []).find((r) => Number(r.employee_id) === empId);
+        return row ? Number(row.id) : 0;
+    }
+
+    function canApprovePendingNode(n) {
+        if (!n?.pending_approval) return false;
+        if (n.can_approve_pending && Number(n.pending_target_id || 0) > 0) return true;
+        return pendingTargetIdForNode(n) > 0;
+    }
+
+    function pendingActionMenuHtml(n) {
+        const tid = pendingTargetIdForNode(n);
+        if (!tid) return '';
+        return `
+            <li><button type="button" data-row-act="approve-pending" data-target-id="${tid}" data-id="${n.id}"><i class="bi bi-check2-circle"></i> Approve</button></li>
+            <li><button type="button" data-row-act="reject-pending" data-target-id="${tid}" data-id="${n.id}" class="danger"><i class="bi bi-x-circle"></i> Reject</button></li>
+        `;
+    }
+
     function entityMeta(n) {
         if (n.is_own_entity) {
             const parts = ['View only · set by your reporting authority'];
@@ -2045,13 +2360,32 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                 const cls = roleMeta(n).cls || 'other';
                 parts.push(`<span class="st-ent-lead ${cls}">${escapeHtml(n.linked_user_name)}</span>`);
             }
-            if (n.requires_reapproval) parts.push('<span class="st-ent-lead other">Needs approval if edited</span>');
+            if (!n.pending_approval && n.requires_reapproval) {
+                parts.push('<span class="st-ent-lead other">Needs approval if edited</span>');
+            }
             return parts.join(' · ');
         }
-        // People: show job role under the name
         const role = escapeHtml(personRoleLabel(n));
-        if (n.requires_reapproval) return role + ' · <span class="st-ent-lead other">Needs approval if edited</span>';
+        if (!n.pending_approval && n.requires_reapproval) {
+            return role + ' · <span class="st-ent-lead other">Needs approval if edited</span>';
+        }
         return role;
+    }
+
+    /** Only show old → new under the amount field that actually changed. */
+    function amountCellHtml(n, kind) {
+        const val = kind === 'owner' ? ownerDisplayed(n) : Number(n.set_target || 0);
+        const fromKey = kind === 'owner' ? 'pending_from_owner' : 'pending_from_set';
+        const from = Number(n[fromKey] ?? NaN);
+        const showDelta = !!(n.pending_approval && Number.isFinite(from) && Math.abs(from - val) > 0.009);
+        const delta = showDelta
+            ? `<span class="st-pending-delta" title="Previous → proposed">${fmt(from)} → ${fmt(val)}</span>`
+            : '';
+        return {
+            delta,
+            pendingClass: showDelta ? 'st-cell-pending' : '',
+            wrap: (inner) => `<div class="st-amt-stack">${inner}${delta}</div>`,
+        };
     }
 
     function renderMobileCards(nodes, depth = 0, parentCollapsed = false, cards = [], pathPrefix = '', parentTitle = '') {
@@ -2074,18 +2408,38 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                 const meta = entityMeta(n);
                 const typeLabel = n.is_own_entity ? 'Your entity' : (n.is_org_group ? rm.label : personRoleLabel(n));
                 const linkedEditable = !!(n.is_org_group && n.linked_user_id && editable && !locked && !n.is_own_entity);
-                const canEditAdj = (((editable && !locked && !isStaff && !n.is_org_group) || linkedEditable) && !n.is_own_entity);
-                const canEditBase = (((editable && !locked && !n.is_org_group) || linkedEditable) && !n.is_own_entity);
-                const totalHtml = canEditBase
+                const canEditAdj = (((editable && !locked && !isStaff && !n.is_org_group) || linkedEditable) && !n.is_own_entity && !n.pending_approval);
+                const canEditBase = (((editable && !locked && !n.is_org_group) || linkedEditable) && !n.is_own_entity && !n.pending_approval);
+                const setCellM = amountCellHtml(n, 'set');
+                const ownerCellM = amountCellHtml(n, 'owner');
+                const totalHtml = setCellM.wrap(canEditBase
                     ? inputHtml(n, 'st-set', n.set_target, false, 'Total target for ' + escapeHtml(n.name))
                     : (n.is_org_group
                         ? `<span class="st-cell-num" data-set-for="${n.id}">${fmt(n.set_target)}</span>`
-                        : inputHtml(n, 'st-set', n.set_target, true, 'Total target for ' + escapeHtml(n.name)));
-                const ownerHtml = canEditAdj
+                        : inputHtml(n, 'st-set', n.set_target, true, 'Total target for ' + escapeHtml(n.name))));
+                const ownerHtml = ownerCellM.wrap(canEditAdj
                     ? inputHtml(n, 'st-owner', n.owner_target, false, 'Owner target for ' + escapeHtml(n.name))
-                    : `<span class="st-cell-num" data-owner-for="${n.id}">${fmt(ownerDisplayed(n))}</span>`;
+                    : `<span class="st-cell-num" data-owner-for="${n.id}">${fmt(ownerDisplayed(n))}</span>`);
+                const canApprM = canApprovePendingNode(n);
+                const assignClsM = [
+                    'st-btn-assign',
+                    isEditedHigherAuthority(n) ? 'is-submit' : '',
+                    n.pending_approval ? 'is-pending' : '',
+                ].filter(Boolean).join(' ');
+                const assignLabelM = n.pending_approval
+                    ? (canApprM ? 'Review' : 'Pending')
+                    : (isEditedHigherAuthority(n) ? 'Submit' : 'Assign');
+                const menuOpenM = (editable && !locked && !n.pending_approval) || canApprM;
+                const menuHtmlM = canApprM
+                    ? pendingActionMenuHtml(n)
+                    : `
+                        <li><button type="button" data-row-act="assign" data-id="${n.id}" ${editable && !locked && !n.pending_approval ? '' : 'disabled'}><i class="bi bi-send"></i> ${isEditedHigherAuthority(n) ? 'Submit for approval' : 'Assign &amp; notify'}</button></li>
+                        <li><button type="button" data-row-act="draft" data-id="${n.id}" ${editable && !locked && !n.pending_approval ? '' : 'disabled'}><i class="bi bi-floppy"></i> Save draft</button></li>
+                        <li><button type="button" data-row-act="copy-open" data-id="${n.id}" ${editable && !locked && !n.pending_approval ? '' : 'disabled'}><i class="bi bi-arrow-down-left-square"></i> Use last month as total</button></li>
+                        <li><button type="button" data-row-act="clear" data-id="${n.id}" class="danger" ${editable && !locked && !n.pending_approval ? '' : 'disabled'}><i class="bi bi-eraser"></i> Clear</button></li>
+                    `;
                 cards.push(`
-                    <article class="st-mcard ${n.amber ? 'st-amber' : ''} ${n.is_own_entity ? 'st-own' : ''} ${filteredOut ? 'is-filtered-out' : ''}" data-id="${n.id}" data-depth="${depth}">
+                    <article class="st-mcard ${n.amber ? 'st-amber' : ''} ${n.is_own_entity ? 'st-own' : ''} ${n.pending_approval ? 'st-pending-row' : ''} ${filteredOut ? 'is-filtered-out' : ''}" data-id="${n.id}" data-depth="${depth}">
                         <div class="st-mcard-top">
                             <button type="button" class="st-toggle ${hasKids && showHierarchy ? '' : 'is-leaf'}" data-toggle="${n.id}" aria-label="${isCollapsed ? 'Expand' : 'Collapse'}">
                                 <i class="bi ${isCollapsed ? 'bi-chevron-right' : 'bi-chevron-down'}"></i>
@@ -2098,17 +2452,15 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                                 </div>
                                 <div class="st-mcard-name">${escapeHtml(title)}</div>
                                 <div class="st-mcard-meta">${meta}</div>
+                                ${pendingBlockHtml(n)}
                             </div>
                             <div class="st-mcard-actions">
                                 <div class="st-action-dd" data-row-dd="${n.id}">
-                                    <button type="button" class="st-btn-assign" data-assign-toggle="${n.id}" ${editable && !locked ? '' : 'disabled'}>
-                                        Assign <i class="bi bi-chevron-down"></i>
+                                    <button type="button" class="${assignClsM}" data-assign-toggle="${n.id}" ${menuOpenM ? '' : 'disabled'} title="${canApprM ? 'Approve or reject this change' : (n.pending_approval ? 'Waiting for higher-authority approval' : 'Assign options')}">
+                                        ${assignLabelM} <i class="bi bi-chevron-down"></i>
                                     </button>
                                     <ul class="st-action-menu" role="menu">
-                                        <li><button type="button" data-row-act="assign" data-id="${n.id}" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-send"></i> Assign &amp; notify</button></li>
-                                        <li><button type="button" data-row-act="draft" data-id="${n.id}" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-floppy"></i> Save draft</button></li>
-                                        <li><button type="button" data-row-act="copy-open" data-id="${n.id}" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-arrow-down-left-square"></i> Use last month as total</button></li>
-                                        <li><button type="button" data-row-act="clear" data-id="${n.id}" class="danger" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-eraser"></i> Clear</button></li>
+                                        ${menuHtmlM}
                                     </ul>
                                 </div>
                             </div>
@@ -2118,11 +2470,11 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                                 <span class="st-mfield-label">Last</span>
                                 <span class="st-cell-num" data-open-for="${n.id}">${fmt(n.last_month)}</span>
                             </div>
-                            <div class="st-mfield">
+                            <div class="st-mfield ${setCellM.pendingClass}">
                                 <span class="st-mfield-label">Total</span>
                                 ${totalHtml}
                             </div>
-                            <div class="st-mfield">
+                            <div class="st-mfield ${ownerCellM.pendingClass}">
                                 <span class="st-mfield-label">Owner</span>
                                 ${ownerHtml}
                             </div>
@@ -2162,10 +2514,39 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                 const meta = entityMeta(n);
                 const typeLabel = n.is_own_entity ? 'Your entity' : (n.is_org_group ? rm.label : personRoleLabel(n));
                 const linkedEditable = !!(n.is_org_group && n.linked_user_id && editable && !locked && !n.is_own_entity);
-                const canEditAdj = (((editable && !locked && !isStaff && !n.is_org_group) || linkedEditable) && !n.is_own_entity);
-                const canEditBase = (((editable && !locked && !n.is_org_group) || linkedEditable) && !n.is_own_entity);
+                const canEditAdj = (((editable && !locked && !isStaff && !n.is_org_group) || linkedEditable) && !n.is_own_entity && !n.pending_approval);
+                const canEditBase = (((editable && !locked && !n.is_org_group) || linkedEditable) && !n.is_own_entity && !n.pending_approval);
+                const setCell = amountCellHtml(n, 'set');
+                const ownerCell = amountCellHtml(n, 'owner');
+                const setInner = canEditBase
+                    ? inputHtml(n, 'st-set', n.set_target, false, 'Total target for ' + escapeHtml(n.name))
+                    : (n.is_org_group
+                        ? `<span class="st-cell-num" data-set-for="${n.id}">${fmt(n.set_target)}</span>`
+                        : inputHtml(n, 'st-set', n.set_target, true, 'Total target for ' + escapeHtml(n.name)));
+                const ownerInner = canEditAdj
+                    ? inputHtml(n, 'st-owner', n.owner_target, false, 'Owner target for ' + escapeHtml(n.name))
+                    : (n.is_org_group || isStaff
+                        ? `<span class="st-cell-num" data-owner-for="${n.id}">${fmt(ownerDisplayed(n))}</span>`
+                        : inputHtml(n, 'st-owner', n.owner_target, true, 'Owner target for ' + escapeHtml(n.name)));
+                const canAppr = canApprovePendingNode(n);
+                const assignCls = [
+                    'st-btn-assign',
+                    isEditedHigherAuthority(n) ? 'is-submit' : '',
+                    n.pending_approval ? 'is-pending' : '',
+                ].filter(Boolean).join(' ');
+                const assignLabel = n.pending_approval
+                    ? (canAppr ? 'Review' : 'Pending')
+                    : (isEditedHigherAuthority(n) ? 'Submit' : 'Assign');
+                const menuOpen = (editable && !locked && !n.pending_approval) || canAppr;
+                const menuHtml = canAppr
+                    ? pendingActionMenuHtml(n)
+                    : `
+                        <li><button type="button" data-row-act="assign" data-id="${n.id}" ${editable && !locked && !n.pending_approval ? '' : 'disabled'}><i class="bi bi-send"></i> ${isEditedHigherAuthority(n) ? 'Submit for approval' : 'Assign &amp; notify'}</button></li>
+                        <li><button type="button" data-row-act="draft" data-id="${n.id}" ${editable && !locked && !n.pending_approval ? '' : 'disabled'}><i class="bi bi-floppy"></i> Save draft</button></li>
+                        <li><button type="button" data-row-act="copy-open" data-id="${n.id}" ${editable && !locked && !n.pending_approval ? '' : 'disabled'}><i class="bi bi-arrow-down-left-square"></i> Use last month as total</button></li>
+                    `;
                 rows.push(`
-                    <tr class="${depth === 0 ? 'st-root' : ''} ${n.amber ? 'st-amber' : ''} ${n.is_own_entity ? 'st-own' : ''} ${filteredOut ? 'is-filtered-out' : ''}" data-id="${n.id}" data-depth="${depth}" data-role="${rm.cls}">
+                    <tr class="${depth === 0 ? 'st-root' : ''} ${n.amber ? 'st-amber' : ''} ${n.is_own_entity ? 'st-own' : ''} ${n.pending_approval ? 'st-pending-row' : ''} ${filteredOut ? 'is-filtered-out' : ''}" data-id="${n.id}" data-depth="${depth}" data-role="${rm.cls}">
                         <td class="idx">${num}</td>
                         <td>
                             <div class="st-entity" style="padding-left:${pad}px">
@@ -2176,24 +2557,17 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                                 <div style="min-width:0">
                                     <div class="st-ent-name">${escapeHtml(entityTitle(n))}</div>
                                     <div class="st-ent-meta">${meta}</div>
+                                    ${pendingBlockHtml(n)}
                                 </div>
                             </div>
                         </td>
                         <td><span class="st-type ${rm.cls}" title="${escapeHtml(typeLabel)}">${escapeHtml(typeLabel)}</span></td>
                         <td class="num"><span class="st-cell-num" data-open-for="${n.id}">${fmt(n.last_month)}</span></td>
-                        <td class="num">
-                            ${canEditBase
-                                ? inputHtml(n, 'st-set', n.set_target, false, 'Total target for ' + escapeHtml(n.name))
-                                : (n.is_org_group
-                                    ? `<span class="st-cell-num" data-set-for="${n.id}">${fmt(n.set_target)}</span>`
-                                    : inputHtml(n, 'st-set', n.set_target, true, 'Total target for ' + escapeHtml(n.name)))}
+                        <td class="num ${setCell.pendingClass}">
+                            ${setCell.wrap(setInner)}
                         </td>
-                        <td class="num">
-                            ${canEditAdj
-                                ? inputHtml(n, 'st-owner', n.owner_target, false, 'Owner target for ' + escapeHtml(n.name))
-                                : (n.is_org_group || isStaff
-                                    ? `<span class="st-cell-num" data-owner-for="${n.id}">${fmt(ownerDisplayed(n))}</span>`
-                                    : inputHtml(n, 'st-owner', n.owner_target, true, 'Owner target for ' + escapeHtml(n.name)))}
+                        <td class="num ${ownerCell.pendingClass}">
+                            ${ownerCell.wrap(ownerInner)}
                         </td>
                         <td class="num col-eff">
                             <div class="st-rem-stack">
@@ -2207,19 +2581,17 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                         <td class="col-actions">
                             <div class="st-row-actions">
                                 <div class="st-action-dd" data-row-dd="${n.id}">
-                                    <button type="button" class="st-btn-assign" data-assign-toggle="${n.id}" ${editable && !locked ? '' : 'disabled'} title="Assign options">
-                                        Assign <i class="bi bi-chevron-down"></i>
+                                    <button type="button" class="${assignCls}" data-assign-toggle="${n.id}" ${menuOpen ? '' : 'disabled'} title="${canAppr ? 'Approve or reject this change' : (n.pending_approval ? 'Waiting for higher-authority approval' : (isEditedHigherAuthority(n) ? 'Submit this change for higher-authority approval' : 'Assign options'))}">
+                                        ${assignLabel} <i class="bi bi-chevron-down"></i>
                                     </button>
                                     <ul class="st-action-menu" role="menu">
-                                        <li><button type="button" data-row-act="assign" data-id="${n.id}" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-send"></i> Assign &amp; notify</button></li>
-                                        <li><button type="button" data-row-act="draft" data-id="${n.id}" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-floppy"></i> Save draft</button></li>
-                                        <li><button type="button" data-row-act="copy-open" data-id="${n.id}" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-arrow-down-left-square"></i> Use last month as total</button></li>
+                                        ${menuHtml}
                                     </ul>
                                 </div>
                                 <div class="st-action-dd" data-more-dd="${n.id}">
-                                    <button type="button" class="st-btn st-btn-sm st-btn-icon" data-more-toggle="${n.id}" title="More" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-three-dots-vertical"></i></button>
+                                    <button type="button" class="st-btn st-btn-sm st-btn-icon" data-more-toggle="${n.id}" title="More" ${editable && !locked && !n.pending_approval ? '' : 'disabled'}><i class="bi bi-three-dots-vertical"></i></button>
                                     <ul class="st-action-menu" role="menu">
-                                        <li><button type="button" data-row-act="clear" data-id="${n.id}" class="danger" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-eraser"></i> Clear base &amp; adj</button></li>
+                                        <li><button type="button" data-row-act="clear" data-id="${n.id}" class="danger" ${editable && !locked && !n.pending_approval ? '' : 'disabled'}><i class="bi bi-eraser"></i> Clear base &amp; adj</button></li>
                                     </ul>
                                 </div>
                             </div>
@@ -2485,12 +2857,16 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
         const canEdit = state.can_edit !== false && state.authority?.can_edit !== false;
         let canAssign = canEdit && (state.tree || []).length > 0 && overs.length === 0;
+        const left = receivesTarget() && state.self
+            ? Number(state.self.left_to_distribute || 0)
+            : 0;
+        const selfOver = receivesTarget() && state.self && left < -0.05;
+        const selfPending = receivesTarget() && state.self && left > 0.05;
         const blocking = [];
         if (receivesTarget() && state.self) {
-            const left = Number(state.self.left_to_distribute || 0);
-            const ok = Math.abs(left) <= 0.05;
-            blocking.push({ id: state.self.id, ok });
-            if (!ok) canAssign = false;
+            // Only over-allocation blocks Assign. Under-distribution can still Assign & Notify.
+            blocking.push({ id: state.self.id, ok: !selfOver, pending: selfPending });
+            if (selfOver) canAssign = false;
         }
 
         state.checks = blocking;
@@ -2521,16 +2897,18 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         if (!canEdit) {
             sum.className = 'warn';
             sum.innerHTML = '<i class="bi bi-lock-fill" aria-hidden="true"></i> View only — your authority sets your target';
-        } else if (overs.length) {
+        } else if (overs.length || selfOver) {
             sum.className = 'warn';
-            const overMsg = overs[0]?.label || 'Children exceed Remaining pool';
+            const overMsg = selfOver
+                ? `Over-allocated by ${fmt(Math.abs(left))} — reduce downline totals`
+                : (overs[0]?.label || 'Children exceed Remaining pool');
             sum.innerHTML = '<i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i> ' + escapeHtml(overMsg);
-        } else if (receivesTarget() && blocking.some((b) => !b.ok)) {
-            sum.className = 'warn';
-            sum.innerHTML = '<i class="bi bi-share" aria-hidden="true"></i> Finish assigning your remainder to unlock Assign';
         } else if (!(state.tree || []).length) {
             sum.className = 'warn';
             sum.innerHTML = '<i class="bi bi-people" aria-hidden="true"></i> No team below you in your authorized scope';
+        } else if (selfPending) {
+            sum.className = 'ok';
+            sum.innerHTML = `<i class="bi bi-share" aria-hidden="true"></i> ${fmt(left)} still left to assign — you can Assign what is set`;
         } else {
             sum.className = 'ok';
             sum.innerHTML = '<i class="bi bi-check-circle-fill" aria-hidden="true"></i> Ready to save or assign';
@@ -2538,10 +2916,10 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
         const assignDisabled = !state.can_assign;
         const saveDisabled = !canEdit;
-        // Assign stays the primary CTA; never strip its label/styles when disabled.
+        // Only rows whose higher-authority amounts were actually changed need re-approval.
         const needsApproval = collectRows(state.tree || []).some((r) => {
             const n = findNodeByEmployeeId(Number(r.employee_id));
-            return !!(n && n.requires_reapproval);
+            return isEditedHigherAuthority(n);
         });
         if (assignBtn) {
             assignBtn.disabled = assignDisabled;
@@ -2550,9 +2928,9 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             const label = assignBtn.querySelector('span');
             if (label) label.textContent = needsApproval ? 'Submit for Approval' : 'Assign & Notify';
             assignBtn.title = assignDisabled
-                ? 'Finish valid distribution before assigning'
+                ? 'Fix over-allocation before assigning'
                 : (needsApproval
-                    ? 'Some rows were set by higher authority — submit for their approval'
+                    ? 'You changed amounts set by higher authority — those go for their approval'
                     : 'Assign targets and notify the team');
         }
         if (assignTop) assignTop.disabled = assignDisabled;
@@ -2593,8 +2971,39 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             });
         };
         walk(state.tree || []);
+        syncRowAssignLabels();
         updateCheckSummary();
         updateFooters();
+    }
+
+    /** Keep row Assign / Submit labels in sync while typing (without full re-render). */
+    function syncRowAssignLabels() {
+        document.querySelectorAll('.goal-set-targets [data-row-dd]').forEach((dd) => {
+            const id = Number(dd.getAttribute('data-row-dd'));
+            const n = findNode(state.tree, id);
+            if (!n) return;
+            const needs = isEditedHigherAuthority(n);
+            const toggle = dd.querySelector('[data-assign-toggle]');
+            const assignBtn = dd.querySelector('[data-row-act="assign"]');
+            if (toggle) {
+                const pending = !!n.pending_approval;
+                const canAppr = canApprovePendingNode(n);
+                toggle.classList.toggle('is-submit', needs && !pending);
+                toggle.classList.toggle('is-pending', pending);
+                if (pending) toggle.disabled = !canAppr;
+                toggle.innerHTML = `${pending ? (canAppr ? 'Review' : 'Pending') : (needs ? 'Submit' : 'Assign')} <i class="bi bi-chevron-down"></i>`;
+                toggle.title = canAppr
+                    ? 'Approve or reject this change'
+                    : (pending
+                        ? 'Waiting for higher-authority approval'
+                        : (needs ? 'Submit this change for higher-authority approval' : 'Assign options'));
+            }
+            if (assignBtn && !n.pending_approval) {
+                assignBtn.innerHTML = needs
+                    ? '<i class="bi bi-send"></i> Submit for approval'
+                    : '<i class="bi bi-send"></i> Assign &amp; notify';
+            }
+        });
     }
 
     function render() {
@@ -2625,7 +3034,87 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         if ($('stLastMonth')) $('stLastMonth').value = fmt(state.self?.last_month || 0);
         if ($('stMyTarget')) $('stMyTarget').value = fmt(state.self?.set_target || 0);
         if ($('stMyOwner')) $('stMyOwner').value = fmt(state.self?.owner_target || 0);
+        renderPendingApprovals();
         updateCheckSummary();
+    }
+
+    function renderPendingApprovals() {
+        const wrap = $('stPendingApprovals');
+        if (!wrap) return;
+        const rows = state.pending_approvals || [];
+        if (!rows.length) {
+            wrap.classList.add('d-none', 'is-empty');
+            wrap.innerHTML = '';
+            return;
+        }
+        wrap.classList.remove('d-none', 'is-empty');
+        wrap.innerHTML = `
+            <div class="st-pending-head">
+                <div>
+                    <h3><i class="bi bi-inboxes"></i> Pending your approval (${rows.length})</h3>
+                    <p>These are amount changes submitted by a lower manager. Review who, what changed, then Approve or Reject.</p>
+                </div>
+            </div>
+            <ul class="st-pending-list">
+                ${rows.map((r) => {
+                    const who = [r.role, r.org_name].filter(Boolean).join(' · ');
+                    const oldSet = Number(r.old_set_target ?? r.set_target);
+                    const oldOwner = Number(r.old_owner_target ?? r.owner_target);
+                    const setChanged = Math.abs(oldSet - Number(r.set_target)) > 0.009;
+                    const ownerChanged = Math.abs(oldOwner - Number(r.owner_target)) > 0.009;
+                    const changeHtml = r.change_summary
+                        ? escapeHtml(r.change_summary)
+                        : [
+                            setChanged ? `Total ${fmt(oldSet)} → ${fmt(r.set_target)}` : `Total ${fmt(r.set_target)}`,
+                            ownerChanged ? `Owner ${fmt(oldOwner)} → ${fmt(r.owner_target)}` : null,
+                        ].filter(Boolean).join(' · ');
+                    return `
+                    <li class="st-pending-item" data-pending-id="${r.id}">
+                        <div class="st-pending-main">
+                            <strong>For: ${escapeHtml(r.for_label || r.employee)}</strong>
+                            <div class="st-pending-who">${escapeHtml(who || 'Team member')}</div>
+                            <div class="st-pending-meta">Submitted by ${escapeHtml(r.submitted_by)} · ${escapeHtml(r.metric_label || r.metric || 'Revenue')} · ${escapeHtml(r.updated_at || '')}</div>
+                        </div>
+                        <div class="st-pending-change">
+                            <span class="lbl">What changed</span>
+                            <span class="vals">${changeHtml}</span>
+                        </div>
+                        <div class="st-pending-actions">
+                            <button type="button" class="st-btn st-btn-primary" data-pending-act="approve" data-id="${r.id}">Approve</button>
+                            <button type="button" class="st-btn" data-pending-act="reject" data-id="${r.id}">Reject</button>
+                        </div>
+                    </li>`;
+                }).join('')}
+            </ul>`;
+    }
+
+    async function handlePendingAction(act, id) {
+        const urlTpl = act === 'approve' ? routes.approveSubmitted : routes.rejectSubmitted;
+        const url = urlTpl.replace('__ID__', String(id));
+        let body = {};
+        if (act === 'reject') {
+            const reason = await stPrompt({
+                title: 'Reject target change',
+                text: 'Optional reason for the submitter.',
+                inputPlaceholder: 'Reason (optional)',
+                confirmText: 'Reject',
+                confirmColor: '#dc2626',
+            });
+            if (reason === null) return;
+            body = { reason: reason || '' };
+        } else {
+            const ok = await stConfirm({
+                title: 'Approve target change?',
+                text: 'This will approve the submitted amounts and notify the team.',
+                confirmText: 'Approve',
+                icon: 'question',
+            });
+            if (!ok) return;
+        }
+        const json = await api(url, { method: 'POST', body: JSON.stringify(body) });
+        if (json.data?.pending_approvals) state.pending_approvals = json.data.pending_approvals;
+        flash(json.message || (act === 'approve' ? 'Approved.' : 'Rejected.'), act === 'approve' ? 'ok' : 'warn');
+        await reloadTree();
     }
 
     async function reloadTree() {
@@ -2651,6 +3140,8 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
         const json = await api(`${routes.tree}?period=${encodeURIComponent(period)}&metric=${encodeURIComponent(metric)}`);
         state = json.data || state;
+        stampBaselines(state.tree || []);
+        state.pending_approvals = state.pending_approvals || [];
         state.period = period;
         state.metric = metric;
         if (state.authority?.default_apply) {
@@ -2843,6 +3334,19 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         const act = actBtn.getAttribute('data-row-act');
         const node = findNode(state.tree, id);
         closeRowMenus();
+
+        if (act === 'approve-pending' || act === 'reject-pending') {
+            const targetId = Number(actBtn.getAttribute('data-target-id') || 0)
+                || pendingTargetIdForNode(node);
+            if (!targetId) {
+                flash('This approval is no longer available.', 'warn');
+                return;
+            }
+            handlePendingAction(act === 'approve-pending' ? 'approve' : 'reject', targetId)
+                .catch((err) => flash(err.message, 'err'));
+            return;
+        }
+
         if (!node || !node.editable) return;
 
         if (act === 'copy-open') {
@@ -2874,8 +3378,27 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                 return;
             }
             const label = node.linked_user_name || node.name;
-            if (!confirm(`Assign target for ${label} and notify them?`)) return;
-            persist(true, [id]).catch((err) => flash(err.message, 'err'));
+            (async () => {
+                let ok = false;
+                if (isEditedHigherAuthority(node)) {
+                    ok = await stConfirm({
+                        title: 'Submit for approval?',
+                        text: `Submit change for ${label} to higher authority? Only this edited value needs approval.`,
+                        confirmText: 'Submit for approval',
+                        icon: 'warning',
+                        confirmColor: '#2563eb',
+                    });
+                } else {
+                    ok = await stConfirm({
+                        title: 'Assign & notify?',
+                        text: `Assign target for ${label} and notify them?`,
+                        confirmText: 'Assign & notify',
+                        icon: 'question',
+                    });
+                }
+                if (!ok) return;
+                await persist(true, [id], { skipConfirm: true });
+            })().catch((err) => flash(err.message, 'err'));
         }
     }
 
@@ -3071,7 +3594,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         return (rows || []).reduce((s, r) => s + Number(r.set_target || 0), 0);
     }
 
-    async function persist(assign, onlyIds = null) {
+    async function persist(assign, onlyIds = null, { skipConfirm = false } = {}) {
         const rows = onlyIds ? collectRowsForIds(onlyIds) : collectRows(state.tree || []);
         if (!rows.length) {
             flash('No editable rows to save.', 'warn');
@@ -3081,15 +3604,19 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             flash('Enter Total Target amounts before Assign. Last Month Target is from the previous period.', 'warn');
             return;
         }
-        if (assign) {
+        if (assign && !skipConfirm) {
             const needsApproval = rows.some((r) => {
                 const n = findNodeByEmployeeId(Number(r.employee_id));
-                return !!(n && n.requires_reapproval);
+                return isEditedHigherAuthority(n);
             });
             if (needsApproval) {
-                const ok = window.confirm(
-                    'Some of these targets were set by a higher authority. Your changes will be submitted for their approval — not applied immediately. Continue?'
-                );
+                const ok = await stConfirm({
+                    title: 'Submit for approval?',
+                    text: 'You changed amounts set by a higher authority. Only those changes go for their approval. Unchanged or your own new amounts are assigned normally.',
+                    confirmText: 'Submit for approval',
+                    icon: 'warning',
+                    confirmColor: '#2563eb',
+                });
                 if (!ok) return;
             }
         }
@@ -3105,8 +3632,19 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                     rows,
                 }),
             });
-            if (json.data?.tree) state.tree = json.data.tree;
-            flash(assign ? (json.message || 'Assigned.') : `Draft saved (${json.data?.saved || rows.length} rows).`, 'ok');
+            if (json.data?.tree) {
+                state.tree = json.data.tree;
+                stampBaselines(state.tree || []);
+            }
+            if (json.data?.pending_approvals) {
+                state.pending_approvals = json.data.pending_approvals;
+            }
+            const submitted = Number(json.data?.submitted || 0);
+            if (assign && submitted > 0) {
+                flash(json.message || 'Submitted for higher-authority approval.', 'ok');
+            } else {
+                flash(assign ? (json.message || 'Assigned and team notified.') : `Draft saved (${json.data?.saved || rows.length} rows).`, 'ok');
+            }
             render();
             loadAudit();
         } finally {
@@ -3123,16 +3661,36 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     function bindAssign(el) {
         if (!el) return;
         el.addEventListener('click', () => {
-            if (!state.can_assign) {
-                flash('Finish assigning to your direct reports first. You can still Save.', 'warn');
-                return;
-            }
-            if (totalBaseInRows(collectRows(state.tree || [])) <= 0) {
-                flash('This period’s Total Targets are still 0. Enter Total Target, then Assign. Last Month Target is from the previous period.', 'warn');
-                return;
-            }
-            if (!confirm('Assign these targets and notify the team?')) return;
-            persist(true).catch((err) => flash(err.message, 'err'));
+            (async () => {
+                if (!state.can_assign) {
+                    flash('Fix over-allocation before Assign. You can still Save as Draft.', 'warn');
+                    return;
+                }
+                if (totalBaseInRows(collectRows(state.tree || [])) <= 0) {
+                    flash('This period’s Total Targets are still 0. Enter Total Target, then Assign. Last Month Target is from the previous period.', 'warn');
+                    return;
+                }
+                const needsApproval = collectRows(state.tree || []).some((r) => {
+                    const n = findNodeByEmployeeId(Number(r.employee_id));
+                    return isEditedHigherAuthority(n);
+                });
+                const ok = await stConfirm(needsApproval
+                    ? {
+                        title: 'Submit for approval?',
+                        text: 'Some edited amounts were set by higher authority and need their approval. Continue?',
+                        confirmText: 'Submit for approval',
+                        icon: 'warning',
+                        confirmColor: '#2563eb',
+                    }
+                    : {
+                        title: 'Assign & notify?',
+                        text: 'Assign these targets and notify the team?',
+                        confirmText: 'Assign & notify',
+                        icon: 'question',
+                    });
+                if (!ok) return;
+                await persist(true, null, { skipConfirm: true });
+            })().catch((err) => flash(err.message, 'err'));
         });
     }
     bindSave($('stSaveDraft'));
@@ -3159,10 +3717,23 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         };
         collapseDeep(getDisplayRoots(), 0);
     }
+    stampBaselines(state.tree || []);
+    state.pending_approvals = state.pending_approvals || [];
     const focusId = applyFocusFromUrl();
     render();
     highlightFocus(focusId);
     loadAudit();
+    if (new URLSearchParams(window.location.search).get('pending') === '1') {
+        $('stPendingApprovals')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-pending-act]');
+        if (!btn) return;
+        e.preventDefault();
+        handlePendingAction(btn.getAttribute('data-pending-act'), Number(btn.getAttribute('data-id')))
+            .catch((err) => flash(err.message, 'err'));
+    });
 
     (function bindColumnTips() {
         let bubble = document.getElementById('stTipBubble');

@@ -9,6 +9,7 @@ use App\Models\GoalTarget;
 use App\Models\GoalTargetAuditLog;
 use App\Models\User;
 use App\Services\Goal\GoalCarryForwardService;
+use App\Services\Goal\GoalSetTargetsService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -201,7 +202,7 @@ class GoalTargetController extends Controller
             ->values()
             ->all();
 
-        $canManage = $actor->hasCrmPermission('manage_targets_guard');
+        $canManage = app(GoalSetTargetsService::class)->canManageTargets($actor);
         $canApprove = $this->canApproveTargets($actor);
 
         $allocationTree = $this->buildAllocationTree(
@@ -535,7 +536,7 @@ class GoalTargetController extends Controller
 
         $periods = $this->availablePeriods($actor);
         $branchUnits = $this->scopedBranchUnits($actor);
-        $canManage = $actor->hasCrmPermission('manage_targets_guard');
+        $canManage = app(GoalSetTargetsService::class)->canManageTargets($actor);
 
         return view('goal.targets.summary', compact(
             'filters', 'stats', 'table', 'periods', 'branchUnits', 'canManage'
@@ -595,7 +596,7 @@ class GoalTargetController extends Controller
 
         $periods = $this->availablePeriods($actor);
         $branchUnits = $this->scopedBranchUnits($actor);
-        $canManage = $actor->hasCrmPermission('manage_targets_guard');
+        $canManage = app(GoalSetTargetsService::class)->canManageTargets($actor);
 
         return view('goal.targets.achievement', compact(
             'filters', 'stats', 'table', 'top', 'lowest', 'periods', 'branchUnits', 'canManage'
@@ -636,7 +637,7 @@ class GoalTargetController extends Controller
             $periods = $periods->prepend($sourcePeriod)->unique()->values();
         }
         $branchUnits = $this->scopedBranchUnits($actor);
-        $canManage = $actor->hasCrmPermission('manage_targets_guard');
+        $canManage = app(GoalSetTargetsService::class)->canManageTargets($actor);
         $canApprove = $this->canApproveTargets($actor);
         $pending = $candidates->where('status', 'pending')->count();
         $applied = $candidates->where('status', 'applied')->count();
