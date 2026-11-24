@@ -882,7 +882,7 @@
 .st-tip-bubble {
     position: fixed;
     z-index: 3000;
-    max-width: 260px;
+    max-width: 320px;
     padding: 8px 11px;
     border-radius: 8px;
     background: #0f172a;
@@ -2530,17 +2530,17 @@ body.sidebar-collapsed .goal-set-targets-footer {
         const from = Number(n[fromKey] ?? NaN);
         const showDelta = !!(n.pending_approval && Number.isFinite(from) && Math.abs(from - val) > 0.009);
         const delta = showDelta
-            ? `<span class="st-pending-delta" title="Previous → proposed">${fmt(from)} → ${fmt(val)}</span>`
+            ? `<span class="st-pending-delta" data-st-tip="Previous → proposed">${fmt(from)} → ${fmt(val)}</span>`
             : '';
-        // Who set this amount (higher authority) — under Total / Owner fields
+        // Who set this amount (higher authority) — under Total / Owner fields; full name via st-tip
         const showSetter = !!(n.set_by_higher && String(n.set_by_name || '').trim() && val > 0.009);
-        const setterLabel = showSetter
+        const setterPlain = showSetter
             ? (String(n.set_by_role || '').trim()
-                ? `${escapeHtml(n.set_by_name)} (${escapeHtml(n.set_by_role)})`
-                : escapeHtml(n.set_by_name))
+                ? `Set by ${n.set_by_name} (${n.set_by_role})`
+                : `Set by ${n.set_by_name}`)
             : '';
         const setter = showSetter
-            ? `<span class="st-set-by" title="Target set by higher authority"><i class="bi bi-person-badge"></i><span class="st-set-by-name">Set by ${setterLabel}</span></span>`
+            ? `<span class="st-set-by" tabindex="0" data-st-tip="${escapeHtml(setterPlain)}"><i class="bi bi-person-badge" aria-hidden="true"></i><span class="st-set-by-name">${escapeHtml(setterPlain)}</span></span>`
             : '';
         return {
             delta,
@@ -3956,14 +3956,17 @@ body.sidebar-collapsed .goal-set-targets-footer {
             document.body.appendChild(bubble);
         }
         let hideTimer = null;
+        const tipTarget = (el) => el && el.closest ? el.closest('[data-st-tip]') : null;
         const showTip = (el) => {
-            const text = el.getAttribute('data-st-tip') || '';
+            const tipEl = tipTarget(el);
+            if (!tipEl) return;
+            const text = tipEl.getAttribute('data-st-tip') || '';
             if (!text) return;
             clearTimeout(hideTimer);
             bubble.textContent = text;
             bubble.classList.remove('is-below');
             bubble.classList.add('is-on');
-            const rect = el.getBoundingClientRect();
+            const rect = tipEl.getBoundingClientRect();
             const tipW = bubble.offsetWidth || 200;
             const tipH = bubble.offsetHeight || 40;
             let left = rect.left + (rect.width / 2) - (tipW / 2);
@@ -3980,11 +3983,20 @@ body.sidebar-collapsed .goal-set-targets-footer {
         const hideTip = () => {
             hideTimer = setTimeout(() => bubble.classList.remove('is-on'), 40);
         };
-        document.querySelectorAll('.goal-set-targets [data-st-tip]').forEach((el) => {
-            el.addEventListener('mouseenter', () => showTip(el));
-            el.addEventListener('mouseleave', hideTip);
-            el.addEventListener('focus', () => showTip(el));
-            el.addEventListener('blur', hideTip);
+        // Delegate so dynamically rendered "Set by …" badges also get the tip
+        const root = document.querySelector('.goal-set-targets') || document;
+        root.addEventListener('mouseover', (e) => {
+            const el = tipTarget(e.target);
+            if (el) showTip(el);
+        });
+        root.addEventListener('mouseout', (e) => {
+            const from = tipTarget(e.target);
+            const to = tipTarget(e.relatedTarget);
+            if (from && from !== to) hideTip();
+        });
+        root.addEventListener('focusin', (e) => showTip(e.target));
+        root.addEventListener('focusout', (e) => {
+            if (tipTarget(e.target)) hideTip();
         });
         document.addEventListener('scroll', () => bubble.classList.remove('is-on'), true);
         window.addEventListener('resize', () => bubble.classList.remove('is-on'));
