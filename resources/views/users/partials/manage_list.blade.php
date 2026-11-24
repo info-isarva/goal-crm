@@ -1,6 +1,7 @@
 @php
-    $filters = $filters ?? ['q' => '', 'crm_role_type' => '', 'status' => '', 'two_fa' => '', 'per_page' => 10, 'sort' => 'name', 'dir' => 'asc'];
+    $filters = $filters ?? ['q' => '', 'crm_role_type' => '', 'goal_org_unit_id' => '', 'status' => '', 'two_fa' => '', 'per_page' => 10, 'sort' => 'name', 'dir' => 'asc'];
     $listStats = $listStats ?? ['total' => 0, 'active' => 0, 'inactive' => 0, 'two_fa' => 0];
+    $branchOptions = $branchOptions ?? collect();
     $isGoalTenant = $isGoalTenant ?? \App\Services\Goal\GoalDashboardService::userUsesGoalDashboard(auth()->user());
     $canEdit = auth()->user()->hasCrmPermission('edit_crm_user_guard');
     $canDelete = auth()->user()->hasCrmPermission('delete_crm_user_guard');
@@ -73,6 +74,7 @@
         $kpiBaseQuery = array_filter([
             'q' => $filters['q'] ?? null,
             'crm_role_type' => $filters['crm_role_type'] ?? null,
+            'goal_org_unit_id' => $filters['goal_org_unit_id'] ?? null,
             'per_page' => $filters['per_page'] ?? 10,
             'sort' => $filters['sort'] ?? 'name',
             'dir' => $filters['dir'] ?? 'asc',
@@ -175,6 +177,18 @@
                     </select>
                 </div>
                 <div class="us-filter-field">
+                    <label class="us-filter-label" for="usFilterBranch">Branch</label>
+                    <select id="usFilterBranch" name="goal_org_unit_id" class="form-select js-select2 us-filter-select"
+                            data-placeholder="All branches" data-allow-clear="true" data-width="100%">
+                        <option value="">All branches</option>
+                        @foreach($branchOptions as $branch)
+                            <option value="{{ $branch->id }}" @selected((string) ($filters['goal_org_unit_id'] ?? '') === (string) $branch->id)>
+                                {{ $branch->name }}@if($branch->code) ({{ $branch->code }})@endif
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="us-filter-field">
                     <label class="us-filter-label" for="usFilterStatus">Status</label>
                     <select id="usFilterStatus" name="status" class="form-select js-select2 us-filter-select"
                             data-placeholder="All" data-allow-clear="true" data-search="false" data-width="100%">
@@ -253,6 +267,7 @@
                                 @if($filters['sort']==='email')<i class="bi bi-caret-{{ $filters['dir']==='asc' ? 'up' : 'down' }}-fill"></i>@endif
                             </a>
                         </th>
+                        <th class="col-branch">Branch</th>
                         <th class="col-role">
                             <a class="us-sort" href="{{ $sortUrl('crm_role_type') }}">CRM Role
                                 @if($filters['sort']==='crm_role_type')<i class="bi bi-caret-{{ $filters['dir']==='asc' ? 'up' : 'down' }}-fill"></i>@endif
@@ -315,6 +330,13 @@
                                 </div>
                             </td>
                             <td class="col-email" data-label="Email">{{ $user->email }}</td>
+                            <td class="col-branch" data-label="Branch">
+                                @if(optional($user->orgUnit)->name)
+                                    <span class="us-branch">{{ $user->orgUnit->name }}</span>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td class="col-role" data-label="CRM Role">
                                 <span class="us-role {{ $roleClass }}">{{ $roleName }}</span>
                             </td>
@@ -407,7 +429,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center py-5">
+                            <td colspan="{{ $isGoalTenant ? 9 : 10 }}" class="text-center py-5">
                                 <div class="us-empty">
                                     <i class="bi bi-people"></i>
                                     <div>No users match your filters.</div>

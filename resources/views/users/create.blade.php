@@ -666,7 +666,7 @@
                         </div>
                         @endunless
                         <div id="assign-manager-container" style="display: none;">
-                            <label for="assign_manager" class="form-label">Assign Manager</label>
+                            <label for="assign_manager" class="form-label">Assign Manager <span class="req">*</span></label>
                             <div class="input-icon">
                                 <i class="bi bi-person-check field-icn"></i>
                                 <select class="uc-dropdown" id="assign_manager" name="assign_manager" data-select2-skip="1">
@@ -711,7 +711,7 @@
                             @endif
                         </div>
                         <div class="form-text text-muted mt-1" id="orgUnitHint" style="font-size:.72rem;">
-                            Org units filter by CRM Role (e.g. BM → branches only).
+                            Org units filter by CRM Role. Hierarchy manager is set from this unit (branch → BM).
                         </div>
                         @error('goal_org_unit_id')<div class="field-error-text">{{ $message }}</div>@enderror
                     </div>
@@ -839,7 +839,9 @@
 
     function syncAssignManager() {
         if (!assignManagerContainer) return;
-        assignManagerContainer.style.display = parseInt(crmRoleSelect.value, 10) === 3 ? 'block' : 'none';
+        // Only classic Employee uses Assign Manager; Goal roles use Goal Org Unit → BM
+        var roleId = parseInt(crmRoleSelect.value, 10);
+        assignManagerContainer.style.display = roleId === 3 ? 'block' : 'none';
     }
 
     const orgUnitSelect = document.getElementById('goal_org_unit_id');
@@ -875,10 +877,12 @@
         if (orgUnitHint) {
             if (!roleId) {
                 orgUnitHint.textContent = 'Select a CRM Role to see matching org units.';
+            } else if (allowedTypes && allowedTypes.length === 1 && allowedTypes[0] === 'branch') {
+                orgUnitHint.textContent = 'Pick the branch — hierarchy links to that branch’s BM automatically.';
             } else if (allowedTypes && allowedTypes.length === 1) {
-                orgUnitHint.textContent = 'Showing ' + allowedTypes[0] + ' units for this role.';
+                orgUnitHint.textContent = 'Showing ' + allowedTypes[0] + ' units for this role. Manager is set from org unit.';
             } else if (allowedTypes) {
-                orgUnitHint.textContent = 'Showing: ' + allowedTypes.join(', ') + '.';
+                orgUnitHint.textContent = 'Showing: ' + allowedTypes.join(', ') + '. Manager is set from org unit.';
             }
         }
     }

@@ -105,7 +105,7 @@
         }
         .us-filters-row {
             display: grid;
-            grid-template-columns: minmax(180px,1.4fr) minmax(140px,1fr) minmax(110px,.75fr) minmax(100px,.7fr) auto;
+            grid-template-columns: minmax(160px,1.3fr) minmax(120px,.9fr) minmax(140px,1fr) minmax(100px,.7fr) minmax(90px,.65fr) auto;
             gap: 10px 12px;
             align-items: end;
         }
@@ -136,12 +136,33 @@
         .us-filters .select2-container--default .select2-selection--single {
             height: 40px; border: 1.5px solid #e2e8f0; border-radius: 10px;
             display: flex; align-items: center; background: #fff;
+            position: relative;
         }
         .us-filters .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 38px; padding-left: 12px; padding-right: 28px; font-size: .82rem; color: #334155;
+            line-height: 38px; padding-left: 12px; padding-right: 46px; font-size: .82rem; color: #334155;
+            width: 100%; box-sizing: border-box;
         }
         .us-filters .select2-container--default .select2-selection--single .select2-selection__arrow {
             height: 38px; right: 6px;
+        }
+        /* Clear (×) must sit left of the caret — flex layout breaks Select2's float:right */
+        .us-filters .select2-container--default .select2-selection--single .select2-selection__clear {
+            float: none !important;
+            position: absolute !important;
+            right: 26px !important;
+            top: 50% !important;
+            transform: translateY(-50%);
+            margin: 0 !important;
+            padding: 0 2px !important;
+            height: auto !important;
+            line-height: 1 !important;
+            font-size: 1rem !important;
+            color: #94a3b8 !important;
+            z-index: 2;
+            cursor: pointer;
+        }
+        .us-filters .select2-container--default .select2-selection--single .select2-selection__clear:hover {
+            color: #475569 !important;
         }
         .us-filters .select2-container--default.select2-container--focus .select2-selection--single,
         .us-filters .select2-container--default.select2-container--open .select2-selection--single {
@@ -220,7 +241,7 @@
         .us-table-wrap::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
         .us-table-wrap::-webkit-scrollbar-track { background: transparent; }
         .us-table {
-            font-size: .76rem; width: 100%; min-width: 980px; margin: 0;
+            font-size: .76rem; width: 100%; min-width: 1080px; margin: 0;
             border-collapse: separate; border-spacing: 0;
             table-layout: auto;
         }
@@ -247,15 +268,31 @@
         }
         .us-table .col-name,
         .us-table .col-email,
+        .us-table .col-branch,
         .us-table .col-role,
         .us-table .col-2fa,
         .us-table .col-status,
         .us-table thead th.col-name,
         .us-table thead th.col-email,
+        .us-table thead th.col-branch,
         .us-table thead th.col-role,
         .us-table thead th.col-2fa,
         .us-table thead th.col-status {
             text-align: left !important;
+        }
+        .us-table .col-branch,
+        .us-table thead th.col-branch {
+            min-width: 120px;
+            white-space: nowrap;
+        }
+        .us-branch {
+            display: inline-block;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 600;
+            color: #334155;
         }
         .us-table .col-target,
         .us-table thead th.col-target {
@@ -573,7 +610,7 @@
                 height: auto !important;
                 overflow: visible !important;
             }
-            .us-table-wrap.table-responsive > table.us-table { display: table !important; width: 100% !important; min-width: 980px !important; }
+            .us-table-wrap.table-responsive > table.us-table { display: table !important; width: 100% !important; min-width: 1080px !important; }
             .us-table-wrap.table-responsive > table.us-table thead { display: table-header-group !important; }
             .us-table-wrap.table-responsive > table.us-table tbody { display: table-row-group !important; }
             .us-table-wrap.table-responsive > table.us-table tr { display: table-row !important; margin: 0 !important; border: 0 !important; border-radius: 0 !important; padding: 0 !important; background: transparent !important; }
@@ -615,6 +652,7 @@
             }
             .us-table-wrap.table-responsive > table.us-table .col-name,
             .us-table-wrap.table-responsive > table.us-table .col-email,
+            .us-table-wrap.table-responsive > table.us-table .col-branch,
             .us-table-wrap.table-responsive > table.us-table .col-role,
             .us-table-wrap.table-responsive > table.us-table .col-2fa,
             .us-table-wrap.table-responsive > table.us-table .col-status {
@@ -804,14 +842,16 @@
             min-width: max-content; padding: 4px 8px 16px; width: max-content; margin: 0 auto;
         }
 
-        /* Compact dynamic org chart */
+        /* Compact dynamic org chart — single-row sibling rails (no wrap) so BM lines stay intact */
         .uh-org {
             display: flex; justify-content: center; align-items: flex-start;
+            flex-wrap: nowrap;
             list-style: none; margin: 0; padding: 0; position: relative;
         }
         .uh-org-item {
             display: flex; flex-direction: column; align-items: center;
             position: relative; padding: 0 6px;
+            flex: 0 0 auto;
         }
 
         /* Sibling horizontal rail */
@@ -881,6 +921,12 @@
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .uh-node-role { color: #64748b; font-size: .82rem; margin-top: 2px; line-height: 1.2; font-weight: 500; }
+        .uh-node-mgr {
+            margin-top: 3px; font-size: .72rem; color: #0f766e; font-weight: 650;
+            display: flex; align-items: center; gap: 4px; line-height: 1.2;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;
+        }
+        .uh-node-mgr i { font-size: .72rem; flex-shrink: 0; }
         .uh-node-meta {
             margin-top: 4px; font-size: .78rem; color: #009B80; font-weight: 700;
             display: inline-flex; align-items: center; gap: 4px;
@@ -1190,10 +1236,27 @@
         });
 
         function rolePriority(roleId) {
-            // Goal hierarchy order: MD→CEO→RD→CH→BM→VRM→JSM→SM→SSM→PMS→Accounts
-            var order = { 4: 0, 5: 1, 6: 2, 7: 3, 8: 4, 9: 5, 10: 6, 11: 7, 12: 8, 13: 9, 14: 10 };
+            // Goal hierarchy: MD→CEO→RD→CH→BM→(VRM team | Sales team peers)→PMS→Accounts
+            // VRM/JSM/SM/SSM share level 5 — many of each may report to the same BM.
+            var order = { 4: 0, 5: 1, 6: 2, 7: 3, 8: 4, 9: 5, 10: 5, 11: 5, 12: 5, 13: 9, 14: 10 };
             roleId = parseInt(roleId, 10);
             return order[roleId] != null ? order[roleId] : 50;
+        }
+
+        function sortFieldPeers(a, b) {
+            // Display order among peer field roles: VRM → JSM → SM → SSM, then name
+            var sub = { 9: 0, 10: 1, 11: 2, 12: 3 };
+            var sa = sub[parseInt(a.role_id, 10)] != null ? sub[parseInt(a.role_id, 10)] : 9;
+            var sb = sub[parseInt(b.role_id, 10)] != null ? sub[parseInt(b.role_id, 10)] : 9;
+            return sa - sb || String(a.name).localeCompare(String(b.name));
+        }
+
+        function managerLabel(list, u) {
+            if (!u || !u.reports_to) return '';
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].id === u.reports_to) return list[i].name || '';
+            }
+            return '';
         }
 
         function activeOrgIds() {
@@ -1231,7 +1294,7 @@
                 }
                 return u.reports_to === parentId;
             }).sort(function (a, b) {
-                return rolePriority(a.role_id) - rolePriority(b.role_id) || String(a.name).localeCompare(String(b.name));
+                return rolePriority(a.role_id) - rolePriority(b.role_id) || sortFieldPeers(a, b);
             });
         }
 
@@ -1285,7 +1348,9 @@
             });
         }
 
-        function cardHtml(u, isRoot, childCount) {
+        function cardHtml(u, isRoot, childCount, managerName) {
+            var roleId = parseInt(u.role_id, 10);
+            var showMgr = !isRoot && managerName && (roleId >= 9 && roleId <= 12);
             return ''
                 + '<div class="uh-node-card' + (isRoot ? ' is-root-card' : '') + '"'
                 + ' data-id="' + u.id + '" data-name="' + escapeHtml((u.name || '').toLowerCase()) + '"'
@@ -1294,27 +1359,31 @@
                 +   '<div class="uh-node-body">'
                 +     '<div class="uh-node-name">' + escapeHtml(u.name) + '</div>'
                 +     '<div class="uh-node-role">' + escapeHtml(u.role) + '</div>'
+                +     (showMgr
+                        ? '<div class="uh-node-mgr" title="Reports to"><i class="bi bi-person-up"></i> ' + escapeHtml(managerName) + '</div>'
+                        : '')
                 +     '<div class="uh-node-meta"><i class="bi bi-people-fill"></i> ' + childCount + ' Users</div>'
                 +   '</div>'
                 + '</div>';
         }
 
         function renderNode(u, list, isRoot) {
-            var kids = childrenOf(list, u.id);
             // Only true children that report to this user (not orphan promotion)
             var trueKids = list.filter(function (c) { return c.reports_to === u.id; });
             var hasKids = trueKids.length > 0;
             var html = '<li class="uh-org-item' + (isRoot ? ' is-root' : '') + (hasKids ? ' has-kids' : '') + '">';
             html += '<div class="uh-node-wrap">';
-            html += cardHtml(u, isRoot, trueKids.length);
+            html += cardHtml(u, isRoot, trueKids.length, managerLabel(list, u));
             if (hasKids) {
                 html += '<div class="uh-stem"></div><div class="uh-dot"></div>';
             }
             html += '</div>';
             if (hasKids) {
+                // Flat siblings under manager (many VRM/JSM/SM/SSM OK) — keeps BM connector lines intact
                 html += '<ul class="uh-org">';
                 trueKids.sort(function (a, b) {
-                    return rolePriority(a.role_id) - rolePriority(b.role_id) || String(a.name).localeCompare(String(b.name));
+                    return rolePriority(a.role_id) - rolePriority(b.role_id)
+                        || sortFieldPeers(a, b);
                 }).forEach(function (k) { html += renderNode(k, list, false); });
                 html += '</ul>';
             }

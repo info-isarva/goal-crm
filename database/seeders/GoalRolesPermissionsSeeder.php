@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\ParentPermission;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -186,16 +187,20 @@ class GoalRolesPermissionsSeeder extends Seeder
         $matrix = [
             4 => '__ALL_MODULES__', // MD
             5 => '__ALL_MODULES__', // CEO
-            6 => [ // RD
+            6 => [ // RD — can create/open cases across region
                 'goal_analytics_guard', 'mis_reports_guard', 'scheduled_reports_guard',
-                'view_leads_guard', 'view_loan_cases_guard', 'view_targets_guard',
+                'view_leads_guard', 'view_loan_cases_guard', 'edit_case_workspace_guard',
+                'case_documents_guard', 'bank_processing_guard', 'sanction_disbursement_guard',
+                'view_targets_guard',
                 'branch_mis_guard', 'revenue_ledger_guard', 'manage_users_guard', 'manage_org_units_guard',
                 'manage_company_guard', 'view_audit_logs_guard',
                 'manage_products_guard', 'manage_dispositions_guard', 'manage_sources_guard', 'manage_purposes_guard',
             ],
-            7 => [ // Cluster
+            7 => [ // Cluster Head — can create/open cases in cluster
                 'goal_analytics_guard', 'mis_reports_guard',
-                'view_leads_guard', 'view_loan_cases_guard', 'view_targets_guard', 'manage_targets_guard',
+                'view_leads_guard', 'view_loan_cases_guard', 'edit_case_workspace_guard',
+                'case_documents_guard', 'bank_processing_guard', 'sanction_disbursement_guard',
+                'view_targets_guard', 'manage_targets_guard',
                 'branch_mis_guard', 'revenue_ledger_guard', 'manage_users_guard', 'view_audit_logs_guard',
                 'manage_products_guard', 'manage_dispositions_guard', 'manage_sources_guard', 'manage_purposes_guard',
             ],
@@ -321,6 +326,44 @@ class GoalRolesPermissionsSeeder extends Seeder
             }
         }
 
+        // Push Goal matrix guards into existing users' crm_page_right (Create Case, etc.).
+        $syncedUsers = 0;
+        foreach ($matrix as $roleId => $guards) {
+            if ($guards === '__ALL_MODULES__' || ! is_array($guards)) {
+                continue;
+            }
+            $extra = [];
+            foreach ($guards as $goalGuard) {
+                $extra[] = $goalGuard;
+                foreach ($classicBridge[$goalGuard] ?? [] as $classicGuard) {
+                    $extra[] = $classicGuard;
+                }
+            }
+            $extra = array_values(array_unique($extra));
+
+            $users = User::query()->where('crm_role_type', (int) $roleId)->get(['id', 'crm_page_right']);
+            foreach ($users as $user) {
+                $rights = json_decode($user->crm_page_right ?? '[]', true);
+                if (! is_array($rights)) {
+                    $rights = [];
+                }
+                if (in_array('all', $rights, true)) {
+                    continue;
+                }
+                $merged = array_values(array_unique(array_merge($rights, $extra)));
+                sort($rights);
+                $sortedMerged = $merged;
+                sort($sortedMerged);
+                if ($sortedMerged === $rights) {
+                    continue;
+                }
+                $user->crm_page_right = json_encode($merged);
+                $user->save();
+                $syncedUsers++;
+            }
+        }
+
         $this->command?->info('Goal role ↔ permission matrix synced (MD/CEO = all modules).');
+        $this->command?->info("Synced crm_page_right on {$syncedUsers} Goal user(s).");
     }
 }

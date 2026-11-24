@@ -178,9 +178,10 @@ class User extends Authenticatable implements MustVerifyEmail
         if (in_array($role, [6, 7, 8], true)) {
             $orgIds = $this->goalScopedOrgUnitIds();
             if ($orgIds !== []) {
+                // Field staff (VRM/JSM/SM/SSM) share one peer rank — multiples per branch/BM.
                 $rankMap = [
                     4 => 10, 5 => 20, 6 => 30, 7 => 40, 8 => 50,
-                    9 => 60, 10 => 70, 11 => 70, 12 => 70, 13 => 80, 14 => 80,
+                    9 => 60, 10 => 60, 11 => 60, 12 => 60, 13 => 80, 14 => 80,
                 ];
                 $actorRank = $rankMap[$role] ?? 999;
                 $orgUsers = User::query()

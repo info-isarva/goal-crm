@@ -122,9 +122,13 @@ class GoalHierarchyUsersSeeder extends Seeder
         $make('sm.halasuru@isarva.test', 'Rohan Das', 11, 'sm', $halasuru->id, $bmHal, 70000);
         $make('ssm.halasuru@isarva.test', 'Imran Khan', 12, 'ssm', $halasuru->id, $bmHal, 65000);
 
+        // Multiple VRM / sales peers under the same BM (not one-of-each seats)
         $make('vrm.indiranagar@isarva.test', 'Anjali Mehta', 9, 'vrm', $indiranagar->id, $bmInd, 75000);
-        $make('sm.indiranagar@isarva.test', 'Deepak Nair', 11, 'sm', $indiranagar->id, $bmInd, 65000);
+        $make('vrm2.indiranagar@isarva.test', 'Nisha Rao', 9, 'vrm', $indiranagar->id, $bmInd, 72000);
         $make('jsm.indiranagar@isarva.test', 'Pooja Shetty', 10, 'jsm', $indiranagar->id, $bmInd, 55000);
+        $make('sm.indiranagar@isarva.test', 'Deepak Nair', 11, 'sm', $indiranagar->id, $bmInd, 65000);
+        $make('sm2.indiranagar@isarva.test', 'Karthik Rao', 11, 'sm', $indiranagar->id, $bmInd, 62000);
+        $make('ssm.indiranagar@isarva.test', 'Farhan Ali', 12, 'ssm', $indiranagar->id, $bmInd, 58000);
 
         $make('vrm.mysore@isarva.test', 'Arjun Pillai', 9, 'vrm', $mysoreMain->id, $bmMys, 70000);
         $make('ssm.mysore@isarva.test', 'Lakshmi Devi', 12, 'ssm', $mysoreMain->id, $bmMys, 55000);

@@ -142,10 +142,11 @@ class UserController extends Controller
             6 => 60,  // RD
             7 => 70,  // Cluster Head
             8 => 80,  // BM
+            // Level 6 peers under BM — many of each allowed (VRM team + sales team)
             9 => 90,  // VRM
-            10 => 100, // JSM
-            11 => 110, // SM
-            12 => 120, // SSM
+            10 => 90, // JSM
+            11 => 90, // SM
+            12 => 90, // SSM
             13 => 130, // PMS
             14 => 140, // Accounts
         ];
@@ -163,6 +164,99 @@ class UserController extends Controller
             ->get()
             ->sortBy(fn ($role) => $rank[(int) $role->id] ?? (1000 + (int) $role->id))
             ->values();
+    }
+
+    /**
+     * Classic Employee (3) still uses the Assign Manager field.
+     * Goal roles derive manager from Goal Org Unit (one BM per branch, etc.).
+     */
+    protected function roleRequiresManager(?int $roleId): bool
+    {
+        return (int) $roleId === 3;
+    }
+
+    /**
+     * Resolve reports_to from org unit: branch staff → that branch's BM,
+     * BM → Cluster Head, CH → RD, RD → CEO, CEO → MD, PMS/Accounts → CEO.
+     */
+    protected function resolveManagerFromOrgUnit(int $roleId, $orgUnitId, ?int $excludeUserId = null): ?int
+    {
+        if (!$orgUnitId) {
+            return null;
+        }
+
+        $orgUnitId = (int) $orgUnitId;
+        $unit = \App\Models\GoalOrgUnit::query()->find($orgUnitId);
+
+        $findInUnits = function (int $managerRole, array $orgIds) use ($excludeUserId): ?int {
+            if ($orgIds === []) {
+                return null;
+            }
+            $id = User::query()
+                ->where('crm_role_type', $managerRole)
+                ->whereIn('goal_org_unit_id', $orgIds)
+                ->where('status', 1)
+                ->when($excludeUserId, fn ($q) => $q->where('id', '!=', $excludeUserId))
+                ->orderBy('id')
+                ->value('id');
+
+            return $id ? (int) $id : null;
+        };
+
+        $findAny = function (int $managerRole) use ($excludeUserId): ?int {
+            $id = User::query()
+                ->where('crm_role_type', $managerRole)
+                ->where('status', 1)
+                ->when($excludeUserId, fn ($q) => $q->where('id', '!=', $excludeUserId))
+                ->orderBy('id')
+                ->value('id');
+
+            return $id ? (int) $id : null;
+        };
+
+        // VRM / JSM / SM / SSM → BM of the same branch
+        if (in_array($roleId, [9, 10, 11, 12], true)) {
+            return $findInUnits(8, [$orgUnitId]);
+        }
+
+        // BM → Cluster Head on parent cluster (fallback RD)
+        if ($roleId === 8) {
+            $parentId = $unit?->parent_id ? (int) $unit->parent_id : null;
+            if ($parentId) {
+                return $findInUnits(7, [$parentId])
+                    ?? $findInUnits(6, array_filter([(int) optional($unit?->parent)->parent_id]))
+                    ?? $findAny(6);
+            }
+
+            return $findAny(7) ?? $findAny(6);
+        }
+
+        // Cluster Head → RD on parent region
+        if ($roleId === 7) {
+            $parentId = $unit?->parent_id ? (int) $unit->parent_id : null;
+            if ($parentId) {
+                return $findInUnits(6, [$parentId]) ?? $findAny(6);
+            }
+
+            return $findAny(6);
+        }
+
+        // RD → CEO
+        if ($roleId === 6) {
+            return $findAny(5) ?? $findAny(4);
+        }
+
+        // CEO → MD
+        if ($roleId === 5) {
+            return $findAny(4);
+        }
+
+        // PMS / Accounts → CEO (then MD)
+        if (in_array($roleId, [13, 14], true)) {
+            return $findAny(5) ?? $findAny(4);
+        }
+
+        return null;
     }
 
     /**
@@ -187,10 +281,10 @@ class UserController extends Controller
         return match ($role) {
             6 => [7, 8, 9, 10, 11, 12],          // RD → Cluster + BM + sales
             7 => [8, 9, 10, 11, 12],             // Cluster → BM + sales
-            8 => [9, 10, 11, 12],                // BM → VRM + sales team
-            9 => [10, 11, 12],                   // VRM → JSM/SM/SSM
-            10 => [11, 12],                      // JSM → SM/SSM
-            11 => [12],                          // SM → SSM
+            8 => [9, 10, 11, 12],                // BM → many VRM + many JSM/SM/SSM
+            9 => [10, 11, 12],                   // VRM may also lead sales reports
+            10 => [11, 12],                      // JSM may lead SM/SSM reports
+            11 => [12],                          // SM may lead SSM reports
             default => [],
         };
     }
@@ -507,12 +601,12 @@ class UserController extends Controller
         }
 
         $format = strtolower((string) $request->get('format', 'csv'));
-        [$query] = $this->applyUserListFilters($this->manageableUsersQuery(), $request);
+        [$query] = $this->applyUserListFilters($this->manageableUsersQuery()->with(['orgUnit']), $request);
         $rows = $query->get();
         $roles = $this->crmRolesByHierarchy()->pluck('name', 'id');
         $includeSalesTarget = !$this->usesGoalTargets();
 
-        $header = ['#', 'Name', 'Email', 'Mobile', 'CRM Role', 'Status', '2FA'];
+        $header = ['#', 'Name', 'Email', 'Mobile', 'Branch', 'CRM Role', 'Status', '2FA'];
         if ($includeSalesTarget) {
             $header[] = 'Sales Target';
         }
@@ -526,6 +620,7 @@ class UserController extends Controller
                 $u->name,
                 $u->email,
                 $u->mobile ?? '',
+                optional($u->orgUnit)->name ?? '',
                 $role,
                 (int) $u->status === 1 ? 'Active' : 'Inactive',
                 $u->{"2fa_enabled"} ? 'Enabled' : 'Disabled',
@@ -620,6 +715,10 @@ class UserController extends Controller
             $query->where('2fa_enabled', (int) $request->two_fa === 1 ? 1 : 0);
         }
 
+        if ($request->filled('goal_org_unit_id') && $request->goal_org_unit_id !== '') {
+            $query->where('goal_org_unit_id', (int) $request->goal_org_unit_id);
+        }
+
         $sort = in_array($request->get('sort'), ['name', 'email', 'crm_role_type', 'status', 'sales_target', 'created_at'], true)
             ? $request->get('sort')
             : 'name';
@@ -664,12 +763,18 @@ class UserController extends Controller
         $filters = [
             'q' => $request->get('q', ''),
             'crm_role_type' => $request->get('crm_role_type', ''),
+            'goal_org_unit_id' => $request->get('goal_org_unit_id', ''),
             'status' => $request->get('status', ''),
             'two_fa' => $request->get('two_fa', ''),
             'per_page' => $perPage,
             'sort' => $sort,
             'dir' => $dir,
         ];
+
+        $branchOptions = $this->assignableGoalOrgUnits($currentUser)
+            ->where('type', \App\Models\GoalOrgUnit::TYPE_BRANCH)
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
 
         // Hierarchy view: Goal Loan roles only (MD→CEO→RD→CH→BM→VRM/Sales + PMS/Accounts).
         $goalHierarchyRoles = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
@@ -721,6 +826,7 @@ class UserController extends Controller
             'maxUsers',
             'listStats',
             'filters',
+            'branchOptions',
             'hierarchyUsers',
             'hierarchyRoles',
             'orgUnits',
@@ -776,7 +882,7 @@ class UserController extends Controller
         $groupedPermissions = $permissions->groupBy(function ($item) {
             return $item->parentPermission ? $item->parentPermission->name : 'No Parent';
         });
-        $managers = $this->reportingUsersQuery()->get();
+        $managers = $this->reportingUsersQuery()->with(['orgUnit'])->get();
         if (!$this->isSuperAdmin($actor) && !in_array((int) ($actor->crm_role_type ?? -1), [1, 4, 5], true)) {
             $scopeIds = $actor->goalScopedOrgUnitIds();
             $managers = $managers->filter(function ($m) use ($scopeIds, $actor) {
@@ -787,6 +893,7 @@ class UserController extends Controller
                 $managers = $managers->prepend($actor);
             }
         }
+        $managerRoleLabels = $this->crmRolesByHierarchy()->pluck('name', 'id');
         $company = Company::current();
         $userCount = User::countNonSuperAdmins();
         $maxUsers = $company->maxUsersLimit();
@@ -806,6 +913,7 @@ class UserController extends Controller
             'defaultPermissions',
             'groupedPermissions',
             'managers',
+            'managerRoleLabels',
             'userCount',
             'maxUsers',
             'goalOrgUnits',
@@ -844,7 +952,7 @@ class UserController extends Controller
             'password_confirmation' => 'required_with:password|same:password',
             'crm_role_type' => $this->roleTypeRules(),
             'assign_manager' => [
-                Rule::requiredIf($request->crm_role_type == 3),
+                Rule::requiredIf(fn () => $this->roleRequiresManager((int) $request->crm_role_type)),
                 'nullable',
                 'exists:users,id',
             ],
@@ -857,6 +965,7 @@ class UserController extends Controller
         ], array_merge([
             'name.regex' => 'Name must start with a letter and may only contain letters, spaces, dots, apostrophes, and hyphens.',
             'email.regex' => 'Please enter a valid email address.',
+            'assign_manager.required' => 'Assign Manager is required when the role is Employee.',
             'assign_manager' => 'Assign Manager is required when the role is Employee.',
             'goal_org_unit_id.required' => 'Goal Org Unit is required.',
             'avatar.image' => 'The avatar must be an image file.',
@@ -883,18 +992,21 @@ class UserController extends Controller
             ? 0
             : ($validated['sales_target'] ?? 0);
         $user->crm_page_right = json_encode($pageRights);
-        $user->assign_manager = $validated['assign_manager'] ?? null;
         $user->goal_org_unit_id = $validated['goal_org_unit_id'] ?? null;
-        // Reports To is not on the form — auto-set to creator for hierarchy users, else Assign Manager.
+        // Goal roles: manager comes from Goal Org Unit (branch → BM). Classic Employee uses Assign Manager.
         $actor = auth()->user();
         $actorRole = (int) ($actor->crm_role_type ?? -1);
-        if (!empty($validated['assign_manager'])) {
-            $user->reports_to_user_id = $validated['assign_manager'];
-        } elseif (!$this->isSuperAdmin($actor) && !in_array($actorRole, [1], true)) {
-            $user->reports_to_user_id = $actor->id;
+        $roleId = (int) $validated['crm_role_type'];
+        if ($this->roleRequiresManager($roleId)) {
+            $managerId = !empty($validated['assign_manager']) ? (int) $validated['assign_manager'] : null;
         } else {
-            $user->reports_to_user_id = null;
+            $managerId = $this->resolveManagerFromOrgUnit($roleId, $validated['goal_org_unit_id'] ?? null);
+            if (!$managerId && !$this->isSuperAdmin($actor) && !in_array($actorRole, [1, 4], true)) {
+                $managerId = (int) $actor->id;
+            }
         }
+        $user->assign_manager = $this->roleRequiresManager($roleId) ? $managerId : null;
+        $user->reports_to_user_id = $managerId;
         // Job role is derived from CRM Role (single role field in UI).
         $user->job_role = $this->jobRoleFromCrmRole((int) $validated['crm_role_type']);
         $user->status = $validated['status'] ?? 1;
@@ -963,7 +1075,7 @@ class UserController extends Controller
         $groupedPermissions = $permissions->groupBy(function ($item) {
             return $item->parentPermission ? $item->parentPermission->name : 'No Parent';
         });
-        $managers = $this->reportingUsersQuery($user->id)->get();
+        $managers = $this->reportingUsersQuery($user->id)->with(['orgUnit'])->get();
         if (!$this->isSuperAdmin($actor) && !in_array((int) ($actor->crm_role_type ?? -1), [1, 4, 5], true)) {
             $scopeIds = $actor->goalScopedOrgUnitIds();
             $managers = $managers->filter(function ($m) use ($scopeIds, $actor) {
@@ -971,6 +1083,7 @@ class UserController extends Controller
                     || ($m->goal_org_unit_id && in_array((int) $m->goal_org_unit_id, $scopeIds, true));
             })->values();
         }
+        $managerRoleLabels = $this->crmRolesByHierarchy()->pluck('name', 'id');
         $goalOrgUnits = $this->assignableGoalOrgUnits($actor);
         $orgUnitTypesByRole = $this->orgUnitTypesByRoleMap();
         $defaultOrgUnitId = (int) ($user->goal_org_unit_id ?: 0) ?: null;
@@ -988,6 +1101,7 @@ class UserController extends Controller
             'defaultPermissions',
             'groupedPermissions',
             'managers',
+            'managerRoleLabels',
             'goalOrgUnits',
             'orgUnitTypesByRole',
             'defaultOrgUnitId',
@@ -1026,7 +1140,7 @@ class UserController extends Controller
             'crm_role_type' => $this->roleTypeRules($user),
             'crm_page_right' => 'array',
             'assign_manager' => [
-                Rule::requiredIf($request->crm_role_type == 3),
+                Rule::requiredIf(fn () => $this->roleRequiresManager((int) $request->crm_role_type)),
                 'nullable',
                 'exists:users,id',
             ],
@@ -1038,6 +1152,7 @@ class UserController extends Controller
         ], array_merge([
             'name.regex' => 'Name must start with a letter and may only contain letters, spaces, dots, apostrophes, and hyphens.',
             'email.regex' => 'Please enter a valid email address.',
+            'assign_manager.required' => 'Assign Manager is required when the role is Employee.',
             'assign_manager' => 'Assign Manager is required when the role is Employee.',
             'goal_org_unit_id.required' => 'Goal Org Unit is required.',
             'avatar.image' => 'The avatar must be an image file.',
@@ -1082,15 +1197,19 @@ class UserController extends Controller
         }
         $user->crm_role_type = $validated['crm_role_type'];
         $user->crm_page_right = json_encode($pageRights);
-        if ($validated['crm_role_type'] == 3) {
-            $user->assign_manager = $validated['assign_manager'] ?? $user->assign_manager;
-        } else {
-            $user->assign_manager = null;
-        }
         $user->goal_org_unit_id = $validated['goal_org_unit_id'] ?? null;
-        // Keep existing Reports To (field removed from form); Employee still uses Assign Manager.
-        if (!empty($validated['assign_manager'])) {
-            $user->reports_to_user_id = $validated['assign_manager'];
+        $roleId = (int) $validated['crm_role_type'];
+        if ($this->roleRequiresManager($roleId)) {
+            $managerId = !empty($validated['assign_manager']) ? (int) $validated['assign_manager'] : null;
+            $user->assign_manager = $managerId;
+            if ($managerId) {
+                $user->reports_to_user_id = $managerId;
+            }
+        } else {
+            // Goal ladder: reports_to from Goal Org Unit (e.g. branch → that branch's BM)
+            $managerId = $this->resolveManagerFromOrgUnit($roleId, $validated['goal_org_unit_id'] ?? null, (int) $user->id);
+            $user->assign_manager = null;
+            $user->reports_to_user_id = $managerId;
         }
         // Job role is derived from CRM Role (single role field in UI).
         $user->job_role = $this->jobRoleFromCrmRole((int) $validated['crm_role_type']);
