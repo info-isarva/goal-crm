@@ -220,27 +220,99 @@ class GoalSetTargetsController extends Controller
         ]);
         $period = $data['period'] ?? $this->service->defaultPeriod();
         $metric = $data['metric'] ?? 'revenue';
-        $editable = $this->service->editableEmployeeIds($request->user());
+        $actor = $request->user();
+        $editable = $this->service->editableEmployeeIds($actor);
+        $actorId = (int) $actor->id;
 
         $logs = GoalTargetAuditLog::query()
-            ->with(['employee:id,name', 'changer:id,name'])
+            ->with(['employee:id,name,job_role,crm_role_type', 'changer:id,name'])
             ->where('period', $period)
             ->where('metric', $metric)
-            ->whereIn('employee_id', $editable ?: [-1])
+            ->where(function ($q) use ($editable, $actorId) {
+                if ($editable !== []) {
+                    $q->whereIn('employee_id', $editable);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+                // Include rows this user changed (e.g. their own submissions).
+                $q->orWhere('changed_by', $actorId);
+            })
             ->latest('id')
-            ->limit(50)
+            ->limit(60)
             ->get()
-            ->map(fn (GoalTargetAuditLog $l) => [
-                'id' => $l->id,
-                'employee' => $l->employee?->name,
-                'changed_by' => $l->changer?->name,
-                'field' => $l->field,
-                'old_value' => (float) $l->old_value,
-                'new_value' => (float) $l->new_value,
-                'action' => $l->action,
-                'at' => optional($l->created_at)->format('d M Y H:i'),
-            ]);
+            ->map(function (GoalTargetAuditLog $l) {
+                $meta = is_array($l->meta) ? $l->meta : [];
+                $action = (string) ($l->action ?? 'update');
+                $field = (string) ($l->field ?? '');
+                $old = (float) ($l->old_value ?? 0);
+                $new = (float) ($l->new_value ?? 0);
+                $ownerOld = array_key_exists('owner_old', $meta) ? (float) $meta['owner_old'] : null;
+                $ownerNew = array_key_exists('owner_new', $meta) ? (float) $meta['owner_new'] : null;
 
-        return response()->json(['ok' => true, 'data' => $logs]);
+                $actionMeta = match ($action) {
+                    'submit' => ['label' => 'Submitted for approval', 'tone' => 'submit'],
+                    'approve' => ['label' => 'Approved', 'tone' => 'approve'],
+                    'reject' => ['label' => 'Rejected', 'tone' => 'reject'],
+                    'assign' => ['label' => 'Assigned', 'tone' => 'assign'],
+                    'revision_request' => ['label' => 'Revision requested', 'tone' => 'warn'],
+                    default => ['label' => $field === 'status' ? 'Status change' : 'Updated', 'tone' => 'update'],
+                };
+
+                $changes = [];
+                if ($field === 'base_target' || $field === '') {
+                    if (abs($old - $new) > 0.009) {
+                        $changes[] = [
+                            'label' => 'Total',
+                            'old' => $old,
+                            'new' => $new,
+                        ];
+                    }
+                    if ($ownerOld !== null && $ownerNew !== null && abs($ownerOld - $ownerNew) > 0.009) {
+                        $changes[] = [
+                            'label' => 'Owner',
+                            'old' => $ownerOld,
+                            'new' => $ownerNew,
+                        ];
+                    }
+                    if ($changes === [] && ($field === 'base_target' || $action === 'submit')) {
+                        $changes[] = [
+                            'label' => 'Total',
+                            'old' => $old,
+                            'new' => $new,
+                        ];
+                    }
+                } elseif ($field === 'status') {
+                    $from = (string) ($meta['from'] ?? $meta['old_status'] ?? '');
+                    $to = (string) ($meta['to'] ?? $meta['new_status'] ?? '');
+                    if ($from !== '' || $to !== '') {
+                        $changes[] = [
+                            'label' => 'Status',
+                            'old_text' => $from !== '' ? $from : '—',
+                            'new_text' => $to !== '' ? $to : '—',
+                        ];
+                    }
+                }
+
+                $reason = (string) ($meta['reason'] ?? '');
+
+                return [
+                    'id' => $l->id,
+                    'employee' => (string) ($l->employee?->name ?? '—'),
+                    'changed_by' => (string) ($l->changer?->name ?? '—'),
+                    'field' => $field,
+                    'old_value' => $old,
+                    'new_value' => $new,
+                    'owner_old' => $ownerOld,
+                    'owner_new' => $ownerNew,
+                    'action' => $action,
+                    'action_label' => $actionMeta['label'],
+                    'action_tone' => $actionMeta['tone'],
+                    'changes' => $changes,
+                    'reason' => $reason,
+                    'at' => optional($l->created_at)->format('d M Y · H:i'),
+                ];
+            });
+
+        return response()->json(['ok' => true, 'data' => $logs->values()]);
     }
 }

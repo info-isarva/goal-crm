@@ -1213,24 +1213,142 @@
 .goal-set-targets .st-action-menu button:disabled { opacity: .45; cursor: not-allowed; }
 .goal-set-targets .st-action-menu button.danger:hover { background: #fef2f2; color: #b91c1c; }
 
-.goal-set-targets details.st-more { border-top: 1px solid #eef2f7; }
+.goal-set-targets details.st-more {
+    border-top: 1px solid #eef2f7;
+    background: #fff;
+}
 .goal-set-targets details.st-more > summary {
-    cursor: pointer; list-style: none; padding: 10px 14px;
-    font-weight: 650; font-size: .8rem; color: #64748b;
-    display: flex; align-items: center; gap: 6px;
+    cursor: pointer;
+    list-style: none;
+    padding: 12px 16px;
+    font-weight: 700;
+    font-size: .84rem;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
 }
 .goal-set-targets details.st-more > summary::-webkit-details-marker { display: none; }
-.goal-set-targets details.st-more .st-more-body { padding: 0 14px 12px; }
-.goal-set-targets .st-audit {
-    max-height: 160px; overflow: auto; font-size: .78rem;
-    border: 1px solid var(--st-border); border-radius: 8px;
+.goal-set-targets details.st-more > summary .st-history-count {
+    margin-left: auto;
+    font-size: .72rem;
+    font-weight: 700;
+    color: #64748b;
+    background: #f1f5f9;
+    border-radius: 999px;
+    padding: 2px 8px;
 }
-.goal-set-targets .st-audit table { width: 100%; border-collapse: collapse; }
-.goal-set-targets .st-audit th, .goal-set-targets .st-audit td {
-    padding: 7px 10px; border-bottom: 1px solid #f1f5f9; text-align: left;
+.goal-set-targets details.st-more .st-more-body { padding: 0 14px 14px; }
+.goal-set-targets .st-history {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
 }
-.goal-set-targets .st-audit th {
-    background: #f8fafc; font-size: .66rem; text-transform: uppercase; color: var(--st-muted);
+.goal-set-targets .st-history-scroll {
+    max-height: 280px;
+    overflow: auto;
+}
+.goal-set-targets .st-history-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    font-size: .78rem;
+}
+.goal-set-targets .st-history-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 9px 12px;
+    font-size: .66rem;
+    font-weight: 750;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #64748b;
+    text-align: left;
+    white-space: nowrap;
+}
+.goal-set-targets .st-history-table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+    color: #0f172a;
+}
+.goal-set-targets .st-history-table tbody tr:last-child td { border-bottom: 0; }
+.goal-set-targets .st-history-table tbody tr:hover td { background: #f8fafc; }
+.goal-set-targets .st-history-table .col-when { width: 132px; }
+.goal-set-targets .st-history-table .col-who { width: 22%; }
+.goal-set-targets .st-history-table .col-by { width: 18%; }
+.goal-set-targets .st-history-table .col-action { width: 160px; }
+.goal-set-targets .st-history-table .col-change { width: auto; }
+.goal-set-targets .st-history-table .st-hist-when {
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.goal-set-targets .st-history-table .st-hist-name {
+    font-weight: 650;
+    color: #0f172a;
+}
+.goal-set-targets .st-history-table .st-hist-by { color: #475569; }
+.goal-set-targets .st-hist-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: .68rem;
+    font-weight: 750;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+.goal-set-targets .st-hist-pill.is-submit { background: #dbeafe; color: #1d4ed8; }
+.goal-set-targets .st-hist-pill.is-approve { background: #dcfce7; color: #15803d; }
+.goal-set-targets .st-hist-pill.is-reject { background: #fee2e2; color: #b91c1c; }
+.goal-set-targets .st-hist-pill.is-assign { background: #d1fae5; color: #047857; }
+.goal-set-targets .st-hist-pill.is-update { background: #f1f5f9; color: #475569; }
+.goal-set-targets .st-hist-pill.is-warn { background: #ffedd5; color: #c2410c; }
+.goal-set-targets .st-hist-change {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.goal-set-targets .st-hist-delta {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    font-variant-numeric: tabular-nums;
+}
+.goal-set-targets .st-hist-delta .lbl {
+    font-size: .66rem;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: #94a3b8;
+}
+.goal-set-targets .st-hist-delta .old { color: #94a3b8; text-decoration: line-through; }
+.goal-set-targets .st-hist-delta .arrow { color: #cbd5e1; }
+.goal-set-targets .st-hist-delta .new { color: #0f172a; font-weight: 700; }
+.goal-set-targets .st-hist-reason {
+    margin-top: 2px;
+    font-size: .7rem;
+    color: #b45309;
+}
+.goal-set-targets .st-hist-empty {
+    text-align: center;
+    color: #94a3b8;
+    padding: 28px 12px !important;
+}
+@media (max-width: 767.98px) {
+    .goal-set-targets .st-history-table .col-when { width: 108px; }
+    .goal-set-targets .st-history-table .col-action { width: 120px; }
+    .goal-set-targets .st-history-table thead th,
+    .goal-set-targets .st-history-table tbody td { padding: 8px 10px; }
 }
 
 /* Footer — fixed to viewport bottom across content area (sidebar-aware) */
@@ -1769,24 +1887,35 @@ body.sidebar-collapsed .goal-set-targets-footer {
         <div class="st-mobile-list" id="stMobileList" aria-label="Targets list"></div>
 
         <details class="st-more" id="stHistory">
-            <summary><i class="bi bi-clock-history"></i> Target History</summary>
+            <summary>
+                <i class="bi bi-clock-history"></i> Target History
+                <span class="st-history-count" id="stHistoryCount">0</span>
+            </summary>
             <div class="st-more-body">
-                <div class="st-audit">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>When</th>
-                                <th>Who</th>
-                                <th>By</th>
-                                <th>Action</th>
-                                <th>Old</th>
-                                <th>New</th>
-                            </tr>
-                        </thead>
-                        <tbody id="stAuditBody">
-                            <tr><td colspan="6" style="color:#94a3b8">No changes yet.</td></tr>
-                        </tbody>
-                    </table>
+                <div class="st-history">
+                    <div class="st-history-scroll">
+                        <table class="st-history-table">
+                            <colgroup>
+                                <col class="col-when">
+                                <col class="col-who">
+                                <col class="col-by">
+                                <col class="col-action">
+                                <col class="col-change">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th class="col-when">When</th>
+                                    <th class="col-who">For</th>
+                                    <th class="col-by">By</th>
+                                    <th class="col-action">Action</th>
+                                    <th class="col-change">Change</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stAuditBody">
+                                <tr><td class="st-hist-empty" colspan="5">No history for this period yet.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </details>
@@ -3175,23 +3304,73 @@ body.sidebar-collapsed .goal-set-targets-footer {
         loadAudit();
     }
 
+    function historyChangeHtml(r) {
+        const changes = Array.isArray(r.changes) ? r.changes : [];
+        if (!changes.length) {
+            const oldV = Number(r.old_value || 0);
+            const newV = Number(r.new_value || 0);
+            if (Math.abs(oldV - newV) <= 0.009 && !r.reason) {
+                return '<span style="color:#94a3b8">—</span>';
+            }
+            return `<div class="st-hist-delta">
+                <span class="lbl">Total</span>
+                <span class="old">${fmt(oldV)}</span>
+                <span class="arrow">→</span>
+                <span class="new">${fmt(newV)}</span>
+            </div>`;
+        }
+        const lines = changes.map((c) => {
+            if (c.old_text != null || c.new_text != null) {
+                return `<div class="st-hist-delta">
+                    <span class="lbl">${escapeHtml(c.label || 'Status')}</span>
+                    <span class="old">${escapeHtml(c.old_text || '—')}</span>
+                    <span class="arrow">→</span>
+                    <span class="new">${escapeHtml(c.new_text || '—')}</span>
+                </div>`;
+            }
+            return `<div class="st-hist-delta">
+                <span class="lbl">${escapeHtml(c.label || 'Total')}</span>
+                <span class="old">${fmt(c.old)}</span>
+                <span class="arrow">→</span>
+                <span class="new">${fmt(c.new)}</span>
+            </div>`;
+        }).join('');
+        const reason = r.reason
+            ? `<div class="st-hist-reason">${escapeHtml(r.reason)}</div>`
+            : '';
+        return `<div class="st-hist-change">${lines}${reason}</div>`;
+    }
+
     async function loadAudit() {
-        const period = $('stPeriod').value;
-        const metric = $('stMetric').value;
+        const period = $('stPeriod')?.value;
+        const metric = $('stMetric')?.value || 'revenue';
+        const body = $('stAuditBody');
+        const countEl = $('stHistoryCount');
+        if (!body || !period) return;
+        body.innerHTML = '<tr><td class="st-hist-empty" colspan="5"><i class="bi bi-arrow-repeat"></i> Loading history…</td></tr>';
         try {
             const json = await api(`${routes.audit}?period=${encodeURIComponent(period)}&metric=${encodeURIComponent(metric)}`);
             const rows = json.data || [];
-            $('stAuditBody').innerHTML = rows.length
-                ? rows.map((r) => `<tr>
-                    <td>${escapeHtml(r.at)}</td>
-                    <td>${escapeHtml(r.employee)}</td>
-                    <td>${escapeHtml(r.changed_by)}</td>
-                    <td>${escapeHtml(r.action)}</td>
-                    <td>${fmt(r.old_value)}</td>
-                    <td>${fmt(r.new_value)}</td>
-                </tr>`).join('')
-                : '<tr><td colspan="6" style="color:#94a3b8">No entries yet.</td></tr>';
-        } catch (e) { /* ignore */ }
+            if (countEl) countEl.textContent = String(rows.length);
+            if (!rows.length) {
+                body.innerHTML = '<tr><td class="st-hist-empty" colspan="5">No history for this period yet.</td></tr>';
+                return;
+            }
+            body.innerHTML = rows.map((r) => {
+                const tone = escapeHtml(r.action_tone || 'update');
+                const label = escapeHtml(r.action_label || r.action || 'Updated');
+                return `<tr>
+                    <td class="col-when"><span class="st-hist-when">${escapeHtml(r.at || '')}</span></td>
+                    <td class="col-who"><span class="st-hist-name">${escapeHtml(r.employee || '—')}</span></td>
+                    <td class="col-by"><span class="st-hist-by">${escapeHtml(r.changed_by || '—')}</span></td>
+                    <td class="col-action"><span class="st-hist-pill is-${tone}">${label}</span></td>
+                    <td class="col-change">${historyChangeHtml(r)}</td>
+                </tr>`;
+            }).join('');
+        } catch (e) {
+            if (countEl) countEl.textContent = '0';
+            body.innerHTML = '<tr><td class="st-hist-empty" colspan="5">Could not load history.</td></tr>';
+        }
     }
 
     document.addEventListener('click', (e) => {
