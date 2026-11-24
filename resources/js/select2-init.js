@@ -139,11 +139,19 @@
         lockedScrollY = window.scrollY || window.pageYOffset || 0;
     });
 
-    $(document).on('select2:open', function () {
+    $(document).on('select2:open', function (e) {
         restoreScroll();
         window.requestAnimationFrame(restoreScroll);
         window.setTimeout(function () {
             restoreScroll();
+            var $select = $(e.target);
+            var inst = $select.data('select2');
+            // Re-anchor after scroll restore so the menu isn't left floating with a gap.
+            if (inst && inst.dropdown && typeof inst.dropdown._positionDropdown === 'function') {
+                try {
+                    inst.dropdown._positionDropdown();
+                } catch (err) { /* ignore */ }
+            }
             var $open = $('body > .select2-container--open').last();
             if (!$open.length) {
                 $open = $('.select2-container--open').last();

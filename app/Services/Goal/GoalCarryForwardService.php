@@ -2,6 +2,7 @@
 
 namespace App\Services\Goal;
 
+use App\Models\GoalOrgUnit;
 use App\Models\GoalTarget;
 use App\Models\GoalTargetAuditLog;
 use App\Models\User;
@@ -33,7 +34,7 @@ class GoalCarryForwardService
         $nextPeriod = $this->nextPeriod($sourcePeriod);
 
         $query = GoalTarget::query()
-            ->with(['orgUnit', 'user'])
+            ->with(['orgUnit.parent', 'user.orgUnit.parent'])
             ->where('period', $sourcePeriod)
             ->where('status', GoalTarget::STATUS_APPROVED)
             ->where('closing_shortfall', '>', 0);
@@ -70,13 +71,18 @@ class GoalCarryForwardService
                 $status = 'rejected';
             }
 
+            $ownerMeta = $this->ownerDisplayMeta($src);
+
             $rows[] = [
                 'source_id' => $src->id,
                 'next_id' => $existing?->id,
-                'owner' => $src->user_id
-                    ? ($src->user?->name ?? ('User #'.$src->user_id))
-                    : ($src->orgUnit?->name ?? 'Org unit'),
-                'owner_type' => $src->user_id ? 'employee' : 'org_unit',
+                'owner' => $ownerMeta['name'],
+                'owner_type' => $ownerMeta['type'],
+                'owner_label' => $ownerMeta['label'],
+                'level' => $ownerMeta['level'],
+                'branch' => $ownerMeta['branch'],
+                'goal_org_unit_id' => $src->goal_org_unit_id ? (int) $src->goal_org_unit_id : null,
+                'user_org_unit_id' => $src->user?->goal_org_unit_id ? (int) $src->user->goal_org_unit_id : null,
                 'metric' => $src->metric,
                 'source_period' => $sourcePeriod,
                 'next_period' => $nextPeriod,
@@ -225,5 +231,104 @@ class GoalCarryForwardService
         }
 
         return $q->first();
+    }
+
+    /**
+     * @return array{name: string, type: string, label: string, level: string, branch: string}
+     */
+    protected function ownerDisplayMeta(GoalTarget $src): array
+    {
+        if ($src->user_id) {
+            $user = $src->user;
+            $role = $this->userRoleLabel($user);
+
+            return [
+                'name' => $user?->name ?? ('User #'.$src->user_id),
+                'type' => 'employee',
+                'label' => $role,
+                'level' => $role,
+                'branch' => $this->resolveBranchName($user?->orgUnit),
+            ];
+        }
+
+        $unit = $src->orgUnit;
+        $type = (string) ($unit?->type ?? 'org_unit');
+        $label = match ($type) {
+            GoalOrgUnit::TYPE_REGION => 'Region',
+            GoalOrgUnit::TYPE_CLUSTER => 'Cluster',
+            GoalOrgUnit::TYPE_BRANCH => 'Branch',
+            default => 'Org unit',
+        };
+
+        return [
+            'name' => $unit?->name ?? 'Org unit',
+            'type' => $type !== '' ? $type : 'org_unit',
+            'label' => $label,
+            'level' => $label,
+            'branch' => $this->resolveBranchName($unit),
+        ];
+    }
+
+    protected function resolveBranchName(?GoalOrgUnit $unit): string
+    {
+        if (! $unit) {
+            return '—';
+        }
+        if ($unit->type === GoalOrgUnit::TYPE_BRANCH) {
+            return (string) $unit->name;
+        }
+        $parent = $unit->parent;
+        if ($parent && $parent->type === GoalOrgUnit::TYPE_BRANCH) {
+            return (string) $parent->name;
+        }
+
+        return '—';
+    }
+
+    protected function userRoleLabel(?User $user): string
+    {
+        if (! $user) {
+            return 'Employee';
+        }
+
+        $job = strtolower(trim((string) ($user->job_role ?? '')));
+        $jobKey = preg_replace('/[\s_-]+/', '', $job) ?: '';
+        $map = [
+            'rd' => 'Regional Director',
+            'regionaldirector' => 'Regional Director',
+            'cluster' => 'Cluster Director',
+            'clusterhead' => 'Cluster Director',
+            'clusterdirector' => 'Cluster Director',
+            'cd' => 'Cluster Director',
+            'bm' => 'Branch Manager',
+            'branchmanager' => 'Branch Manager',
+            'ssm' => 'Senior Sales Manager',
+            'seniorsalesmanager' => 'Senior Sales Manager',
+            'sm' => 'Sales Manager',
+            'salesmanager' => 'Sales Manager',
+            'jsm' => 'Junior Sales',
+            'juniorsales' => 'Junior Sales',
+            'vrm' => 'VRM',
+            'ceo' => 'CEO',
+            'md' => 'MD',
+        ];
+        if (isset($map[$jobKey])) {
+            return $map[$jobKey];
+        }
+        if ($job !== '') {
+            return (string) $user->job_role;
+        }
+
+        return match ((int) ($user->crm_role_type ?? -1)) {
+            0 => 'Super Admin',
+            1 => 'Admin',
+            4 => 'MD',
+            5 => 'CEO',
+            6 => 'Regional Director',
+            7 => 'Cluster Director',
+            8 => 'Branch Manager',
+            9 => 'Sales Manager',
+            default => 'Employee',
+        };
     }
 }

@@ -725,19 +725,41 @@ class GoalSetTargetsService
 
         $walk = function (array $nodes) use (&$walk, &$overs) {
             foreach ($nodes as $n) {
-                if (! empty($n['children'])) {
-                    $team = (float) ($n['total_target'] ?? 0);
-                    $rem = (float) ($n['remainder'] ?? max(0, (float) ($n['set_target'] ?? 0) - (float) ($n['owner_target'] ?? 0)));
-                    if ($team - $rem > 0.05) {
-                        $overs[] = sprintf(
-                            '%s: distributed %s exceeds remainder %s.',
-                            $n['area'] ?? $n['name'] ?? ('#'.$n['id']),
-                            $this->n($team),
-                            $this->n($rem)
-                        );
-                    }
-                    $walk($n['children']);
+                if (empty($n['children']) || ! is_array($n['children'])) {
+                    continue;
                 }
+
+                // Pure org rollup rows have no ownership pool — only check linked managers / people.
+                if (! empty($n['is_org_group']) && empty($n['linked_user_id'])) {
+                    $walk($n['children']);
+                    continue;
+                }
+
+                $team = (float) ($n['total_target'] ?? 0);
+                if ($team <= 0) {
+                    $team = (float) array_sum(array_map(
+                        static fn ($c) => (float) ($c['set_target'] ?? 0),
+                        $n['children']
+                    ));
+                }
+
+                // Pool available for downline = Total − Owner.
+                // Do NOT use $n['remainder'] here — that field is "left to assign"
+                // (pool − children) after recompute, which is 0 when fully allocated.
+                $pool = max(0, round(
+                    (float) ($n['set_target'] ?? 0) - (float) ($n['owner_target'] ?? 0),
+                    2
+                ));
+
+                if ($team - $pool > 0.05) {
+                    $overs[] = sprintf(
+                        '%s: distributed %s exceeds remainder %s.',
+                        $n['area'] ?? $n['name'] ?? ('#'.$n['id']),
+                        $this->n($team),
+                        $this->n($pool)
+                    );
+                }
+                $walk($n['children']);
             }
         };
         $walk($payload['tree'] ?? []);

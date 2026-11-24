@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Goal\GoalCarryForwardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -514,11 +515,31 @@ class GoalTargetController extends Controller
         $filters = $this->dashboardFilters($request);
         $rows = $this->filteredTargetRows($actor, $filters);
         $stats = $this->aggregateStats($rows);
-        $table = $rows->map(fn (GoalTarget $t) => $this->summaryRow($t))->values()->all();
+
+        $perPage = (int) ($filters['per_page'] ?? 10);
+        if (! in_array($perPage, [10, 25, 50, 100], true)) {
+            $perPage = 10;
+        }
+        $page = max(1, (int) $request->get('page', 1));
+        $mapped = $rows->map(fn (GoalTarget $t) => $this->summaryRow($t))->values();
+        $table = new LengthAwarePaginator(
+            $mapped->forPage($page, $perPage)->values(),
+            $mapped->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
         $periods = $this->availablePeriods($actor);
+        $branchUnits = $this->scopedBranchUnits($actor);
         $canManage = $actor->hasCrmPermission('manage_targets_guard');
 
-        return view('goal.targets.summary', compact('filters', 'stats', 'table', 'periods', 'canManage'));
+        return view('goal.targets.summary', compact(
+            'filters', 'stats', 'table', 'periods', 'branchUnits', 'canManage'
+        ));
     }
 
     public function achievement(Request $request)
@@ -533,12 +554,14 @@ class GoalTargetController extends Controller
             $eff = $t->effectiveTarget();
             $act = (float) $t->actual;
             $pct = $eff > 0 ? round(($act / $eff) * 100, 1) : 0.0;
+            $ownerMeta = $this->ownerDisplayMeta($t);
 
             return [
-                'owner' => $t->user_id
-                    ? ($t->user?->name ?? ('User #'.$t->user_id))
-                    : ($t->orgUnit?->name ?? 'Org unit'),
-                'owner_type' => $t->user_id ? 'employee' : 'org_unit',
+                'owner' => $ownerMeta['name'],
+                'owner_type' => $ownerMeta['type'],
+                'owner_label' => $ownerMeta['label'],
+                'level' => $ownerMeta['level'],
+                'branch' => $ownerMeta['branch'],
                 'metric' => $t->metric,
                 'period' => $t->period,
                 'effective' => round($eff, 2),
@@ -548,15 +571,34 @@ class GoalTargetController extends Controller
                 'pct' => $pct,
                 'status' => $t->status,
             ];
-        })->sortByDesc('pct')->values()->all();
+        })->sortByDesc('pct')->values();
 
-        $top = array_slice($ranked, 0, 5);
-        $lowest = array_slice(array_reverse($ranked), 0, 5);
+        $rankedAll = $ranked->all();
+        $top = array_slice($rankedAll, 0, 5);
+        $lowest = array_slice(array_reverse($rankedAll), 0, 5);
+
+        $perPage = (int) ($filters['per_page'] ?? 10);
+        if (! in_array($perPage, [10, 25, 50, 100], true)) {
+            $perPage = 10;
+        }
+        $page = max(1, (int) $request->get('page', 1));
+        $table = new LengthAwarePaginator(
+            $ranked->forPage($page, $perPage)->values(),
+            $ranked->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
         $periods = $this->availablePeriods($actor);
+        $branchUnits = $this->scopedBranchUnits($actor);
         $canManage = $actor->hasCrmPermission('manage_targets_guard');
 
         return view('goal.targets.achievement', compact(
-            'filters', 'stats', 'ranked', 'top', 'lowest', 'periods', 'canManage'
+            'filters', 'stats', 'table', 'top', 'lowest', 'periods', 'branchUnits', 'canManage'
         ));
     }
 
@@ -569,26 +611,58 @@ class GoalTargetController extends Controller
             $sourcePeriod = Carbon::now()->subMonthNoOverflow()->format('Y-m');
         }
         $metric = trim((string) $request->get('metric', ''));
-        $candidates = $carry->candidates(
+        $branchId = $request->get('goal_org_unit_id');
+        $branchId = ($branchId === '' || $branchId === null) ? null : (int) $branchId;
+        $candidates = collect($carry->candidates(
             $actor,
             $sourcePeriod,
             $metric !== '' ? $metric : null,
             fn ($q, $user) => $this->applyScope($q, $user)
-        );
+        ));
+        if ($branchId) {
+            $unit = GoalOrgUnit::query()->find($branchId);
+            $orgIds = $unit ? $unit->descendantIds() : [$branchId];
+            $candidates = $candidates->filter(function (array $row) use ($orgIds) {
+                $own = (int) ($row['goal_org_unit_id'] ?? 0);
+                $userOrg = (int) ($row['user_org_unit_id'] ?? 0);
+
+                return ($own && in_array($own, $orgIds, true))
+                    || ($userOrg && in_array($userOrg, $orgIds, true));
+            })->values();
+        }
         $nextPeriod = $carry->nextPeriod($sourcePeriod);
         $periods = $this->availablePeriods($actor);
         if (! $periods->contains($sourcePeriod)) {
             $periods = $periods->prepend($sourcePeriod)->unique()->values();
         }
+        $branchUnits = $this->scopedBranchUnits($actor);
         $canManage = $actor->hasCrmPermission('manage_targets_guard');
         $canApprove = $this->canApproveTargets($actor);
-        $pending = collect($candidates)->where('status', 'pending')->count();
-        $applied = collect($candidates)->where('status', 'applied')->count();
-        $rejected = collect($candidates)->where('status', 'rejected')->count();
+        $pending = $candidates->where('status', 'pending')->count();
+        $applied = $candidates->where('status', 'applied')->count();
+        $rejected = $candidates->where('status', 'rejected')->count();
+        $totalShortfall = round((float) $candidates->where('status', 'pending')->sum('previous_shortfall'), 2);
+
+        $perPage = (int) $request->get('per_page', 10);
+        if (! in_array($perPage, [10, 25, 50, 100], true)) {
+            $perPage = 10;
+        }
+        $page = max(1, (int) $request->get('page', 1));
+        $table = new LengthAwarePaginator(
+            $candidates->forPage($page, $perPage)->values(),
+            $candidates->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
 
         return view('goal.targets.carry-forward', compact(
-            'candidates', 'sourcePeriod', 'nextPeriod', 'metric', 'periods',
-            'canManage', 'canApprove', 'pending', 'applied', 'rejected'
+            'table', 'sourcePeriod', 'nextPeriod', 'metric', 'periods', 'branchUnits',
+            'branchId', 'canManage', 'canApprove', 'pending', 'applied', 'rejected',
+            'totalShortfall', 'perPage'
         ));
     }
 
@@ -606,6 +680,7 @@ class GoalTargetController extends Controller
             'reason' => ['nullable', 'string', 'max:500'],
             'period' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}$/'],
             'metric' => ['nullable', 'string', 'max:30'],
+            'goal_org_unit_id' => ['nullable', 'integer'],
         ]);
 
         $ok = 0;
@@ -628,6 +703,7 @@ class GoalTargetController extends Controller
         $redirect = redirect()->route('goal.targets.carry-forward', array_filter([
             'period' => $data['period'] ?? null,
             'metric' => $data['metric'] ?? null,
+            'goal_org_unit_id' => $data['goal_org_unit_id'] ?? null,
         ]));
 
         if ($ok > 0) {
@@ -654,6 +730,7 @@ class GoalTargetController extends Controller
             'reason' => ['nullable', 'string', 'max:500'],
             'period' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}$/'],
             'metric' => ['nullable', 'string', 'max:30'],
+            'goal_org_unit_id' => ['nullable', 'integer'],
         ]);
 
         $ok = 0;
@@ -674,6 +751,7 @@ class GoalTargetController extends Controller
         return redirect()->route('goal.targets.carry-forward', array_filter([
             'period' => $data['period'] ?? null,
             'metric' => $data['metric'] ?? null,
+            'goal_org_unit_id' => $data['goal_org_unit_id'] ?? null,
         ]))->with('success', "Rejected carry-forward for {$ok} target(s). Opening shortfall will not be applied.");
     }
 
@@ -863,10 +941,51 @@ class GoalTargetController extends Controller
         if (! empty($filters['user_id'])) {
             $query->where('user_id', $filters['user_id']);
         }
-        if (($filters['owner_type'] ?? '') === 'employee') {
+        $ownerType = (string) ($filters['owner_type'] ?? '');
+        if ($ownerType === 'employee') {
             $query->whereNotNull('user_id')->whereNull('goal_org_unit_id');
-        } elseif (($filters['owner_type'] ?? '') === 'org_unit') {
+        } elseif ($ownerType === 'org_unit') {
             $query->whereNotNull('goal_org_unit_id')->whereNull('user_id');
+        } elseif (in_array($ownerType, [
+            GoalOrgUnit::TYPE_REGION,
+            GoalOrgUnit::TYPE_CLUSTER,
+            GoalOrgUnit::TYPE_BRANCH,
+        ], true)) {
+            // Org-unit targets at that hierarchy level (Region / Cluster / Branch).
+            $query->whereNotNull('goal_org_unit_id')
+                ->whereNull('user_id')
+                ->whereHas('orgUnit', fn ($q) => $q->where('type', $ownerType));
+        } elseif (in_array($ownerType, ['rd', 'cd', 'bm', 'staff'], true)) {
+            // Employee targets by role (same bands as Set Targets Apply To).
+            $crmMap = [
+                'rd' => [6],
+                'cd' => [7],
+                'bm' => [8],
+                'staff' => [9, 10, 11, 12, 13, 14],
+            ];
+            $jobMap = [
+                'rd' => ['rd', 'regionaldirector', 'region'],
+                'cd' => ['cluster', 'clusterhead', 'clusterdirector', 'cd'],
+                'bm' => ['bm', 'branchmanager', 'branch'],
+                'staff' => ['ssm', 'seniorsalesmanager', 'sm', 'salesmanager', 'jsm', 'juniorsales', 'vrm'],
+            ];
+            $crmIds = $crmMap[$ownerType] ?? [];
+            $jobs = $jobMap[$ownerType] ?? [];
+            $query->whereNotNull('user_id')
+                ->whereNull('goal_org_unit_id')
+                ->whereHas('user', function ($uq) use ($crmIds, $jobs) {
+                    $uq->where(function ($inner) use ($crmIds, $jobs) {
+                        if ($crmIds !== []) {
+                            $inner->whereIn('crm_role_type', $crmIds);
+                        }
+                        foreach ($jobs as $job) {
+                            $inner->orWhereRaw(
+                                "LOWER(REPLACE(REPLACE(REPLACE(COALESCE(job_role,''), ' ', ''), '-', ''), '_', '')) = ?",
+                                [$job]
+                            );
+                        }
+                    });
+                });
         }
     }
 
@@ -975,11 +1094,31 @@ class GoalTargetController extends Controller
 
     protected function filteredTargetRows(User $actor, array $filters)
     {
-        $query = GoalTarget::query()->with(['orgUnit', 'user']);
+        $query = GoalTarget::query()->with([
+            'orgUnit.parent',
+            'user.orgUnit.parent',
+        ]);
         $this->applyScope($query, $actor);
         $this->applyFilters($query, $filters);
 
         return $query->orderByDesc('period')->orderBy('metric')->orderBy('id')->get();
+    }
+
+    /**
+     * Active branch units in the actor's scope (for filter dropdowns).
+     *
+     * @return \Illuminate\Support\Collection<int, GoalOrgUnit>
+     */
+    protected function scopedBranchUnits(User $actor)
+    {
+        $scopedOrgIds = $actor->goalScopedOrgUnitIds();
+
+        return GoalOrgUnit::query()
+            ->active()
+            ->where('type', GoalOrgUnit::TYPE_BRANCH)
+            ->when(! $this->isGlobalTargetViewer($actor), fn ($q) => $q->whereIn('id', $scopedOrgIds ?: [0]))
+            ->orderBy('name')
+            ->get(['id', 'name', 'parent_id', 'type']);
     }
 
     protected function aggregateStats($rows): array
@@ -1014,15 +1153,17 @@ class GoalTargetController extends Controller
     {
         $eff = $t->effectiveTarget();
         $act = (float) $t->actual;
+        $ownerMeta = $this->ownerDisplayMeta($t);
 
         return [
             'id' => $t->id,
             'period' => $t->period,
             'metric' => $t->metric,
-            'owner' => $t->user_id
-                ? ($t->user?->name ?? ('User #'.$t->user_id))
-                : ($t->orgUnit?->name ?? 'Org unit'),
-            'owner_type' => $t->user_id ? 'employee' : 'org_unit',
+            'owner' => $ownerMeta['name'],
+            'owner_type' => $ownerMeta['type'],
+            'owner_label' => $ownerMeta['label'],
+            'level' => $ownerMeta['level'],
+            'branch' => $ownerMeta['branch'],
             'base' => round((float) $t->base_target, 2),
             'opening' => round((float) $t->opening_shortfall, 2),
             'adjustments' => round((float) $t->adjustments, 2),
@@ -1032,6 +1173,107 @@ class GoalTargetController extends Controller
             'pct' => $eff > 0 ? round(($act / $eff) * 100, 1) : 0.0,
             'status' => $t->status,
         ];
+    }
+
+    /**
+     * @return array{name: string, type: string, label: string, level: string, branch: string}
+     */
+    protected function ownerDisplayMeta(GoalTarget $t): array
+    {
+        if ($t->user_id) {
+            $user = $t->user;
+            $role = $this->userRoleLabel($user);
+            $branchName = $this->resolveBranchName($user?->orgUnit);
+
+            return [
+                'name' => $user?->name ?? ('User #'.$t->user_id),
+                'type' => 'employee',
+                'label' => $role,
+                'level' => $role,
+                'branch' => $branchName,
+            ];
+        }
+
+        $unit = $t->orgUnit;
+        $type = (string) ($unit?->type ?? 'org_unit');
+        $label = match ($type) {
+            GoalOrgUnit::TYPE_REGION => 'Region',
+            GoalOrgUnit::TYPE_CLUSTER => 'Cluster',
+            GoalOrgUnit::TYPE_BRANCH => 'Branch',
+            default => 'Org unit',
+        };
+
+        return [
+            'name' => $unit?->name ?? 'Org unit',
+            'type' => $type !== '' ? $type : 'org_unit',
+            'label' => $label,
+            'level' => $label,
+            'branch' => $this->resolveBranchName($unit),
+        ];
+    }
+
+    protected function resolveBranchName(?GoalOrgUnit $unit): string
+    {
+        if (! $unit) {
+            return '—';
+        }
+        if ($unit->type === GoalOrgUnit::TYPE_BRANCH) {
+            return (string) $unit->name;
+        }
+        // Employee may sit on cluster/region; walk parents for a branch (rare).
+        $parent = $unit->parent;
+        if ($parent && $parent->type === GoalOrgUnit::TYPE_BRANCH) {
+            return (string) $parent->name;
+        }
+
+        return '—';
+    }
+
+    protected function userRoleLabel(?User $user): string
+    {
+        if (! $user) {
+            return 'Employee';
+        }
+
+        $job = strtolower(trim((string) ($user->job_role ?? '')));
+        $jobKey = preg_replace('/[\s_-]+/', '', $job) ?: '';
+        $map = [
+            'rd' => 'Regional Director',
+            'regionaldirector' => 'Regional Director',
+            'cluster' => 'Cluster Director',
+            'clusterhead' => 'Cluster Director',
+            'clusterdirector' => 'Cluster Director',
+            'cd' => 'Cluster Director',
+            'bm' => 'Branch Manager',
+            'branchmanager' => 'Branch Manager',
+            'ssm' => 'Senior Sales Manager',
+            'seniorsalesmanager' => 'Senior Sales Manager',
+            'sm' => 'Sales Manager',
+            'salesmanager' => 'Sales Manager',
+            'jsm' => 'Junior Sales',
+            'juniorsales' => 'Junior Sales',
+            'vrm' => 'VRM',
+            'ceo' => 'CEO',
+            'md' => 'MD',
+        ];
+        if (isset($map[$jobKey])) {
+            return $map[$jobKey];
+        }
+        if ($job !== '') {
+            return (string) $user->job_role;
+        }
+
+        return match ((int) ($user->crm_role_type ?? -1)) {
+            0 => 'Super Admin',
+            1 => 'Admin',
+            4 => 'MD',
+            5 => 'CEO',
+            6 => 'Regional Director',
+            7 => 'Cluster Director',
+            8 => 'Branch Manager',
+            9 => 'Sales Manager',
+            default => 'Employee',
+        };
     }
 
     protected function availablePeriods(User $actor)

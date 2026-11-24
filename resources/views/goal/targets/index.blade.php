@@ -835,8 +835,13 @@
             <label class="form-label" for="filter_owner_type">View By</label>
             <select name="owner_type" id="filter_owner_type" class="form-select" data-search="false" data-allow-clear="false" data-placeholder="Overall">
                 <option value="">Overall</option>
+                <option value="region" @selected(($filters['owner_type'] ?? '') === 'region')>Region</option>
+                <option value="cluster" @selected(($filters['owner_type'] ?? '') === 'cluster')>Cluster</option>
+                <option value="branch" @selected(($filters['owner_type'] ?? '') === 'branch')>Branch</option>
                 <option value="employee" @selected(($filters['owner_type'] ?? '') === 'employee')>Employee</option>
-                <option value="org_unit" @selected(($filters['owner_type'] ?? '') === 'org_unit')>Org unit</option>
+                <option value="bm" @selected(($filters['owner_type'] ?? '') === 'bm')>BM</option>
+                <option value="cd" @selected(($filters['owner_type'] ?? '') === 'cd')>Cluster Director</option>
+                <option value="rd" @selected(($filters['owner_type'] ?? '') === 'rd')>Regional Director</option>
             </select>
         </div>
         <div class="gt-filter-field">
