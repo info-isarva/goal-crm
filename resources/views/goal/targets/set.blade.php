@@ -67,10 +67,25 @@
 .goal-set-targets .st-btn:hover { background: #f8fafc; color: #0f172a; }
 .goal-set-targets .st-btn:disabled { opacity: .55; cursor: not-allowed; }
 .goal-set-targets .st-btn-primary {
-    border: 0; background: var(--st-accent); color: #fff;
-    box-shadow: 0 6px 14px color-mix(in srgb, var(--st-accent) 30%, transparent);
+    border: 0 !important;
+    background: #059669 !important;
+    background: var(--st-accent, #059669) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, .28);
 }
-.goal-set-targets .st-btn-primary:hover { filter: brightness(1.05); color: #fff; }
+.goal-set-targets .st-btn-primary:hover:not(:disabled) {
+    filter: brightness(1.06);
+    color: #fff !important;
+}
+.goal-set-targets .st-btn-primary:disabled,
+.goal-set-targets .st-btn-primary[disabled] {
+    opacity: 1 !important;
+    background: #94a3b8 !important;
+    color: #fff !important;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+.goal-set-targets .st-btn-primary i { color: inherit; }
 .goal-set-targets .st-btn-history {
     background: #e8f8ef; border-color: #9fd4b3; color: #166534; font-weight: 700;
 }
@@ -960,6 +975,14 @@
 .goal-set-targets .st-type.bm { background: #ede9fe; color: #7c3aed; }
 .goal-set-targets .st-type.staff { background: #f1f5f9; color: #475569; }
 .goal-set-targets .st-type.other { background: #ffedd5; color: #c2410c; }
+.goal-set-targets tr.st-own td,
+.goal-set-targets .st-mcard.st-own {
+    background: #f8fafc;
+}
+.goal-set-targets tr.st-own .st-ent-meta,
+.goal-set-targets .st-mcard.st-own .st-mcard-meta {
+    color: #64748b; font-weight: 650;
+}
 
 .goal-set-targets .st-cell-num {
     font-variant-numeric: tabular-nums; color: #475569; font-weight: 600;
@@ -1269,7 +1292,12 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 }
 .goal-set-targets .st-footer-actions .st-btn {
     min-width: 132px;
-    height: 38px;
+    height: 40px;
+    padding: 0 16px;
+    font-weight: 700;
+}
+.goal-set-targets .st-footer-actions .st-btn-primary {
+    min-width: 168px;
 }
 
 /* Mobile footer: tight bar — no empty “card” */
@@ -1587,8 +1615,14 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                 <div id="stCheckSummary" class="ok"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Ready to save or assign</div>
             </div>
             <div class="st-footer-actions">
-                <button type="button" class="st-btn" id="stSaveDraft"><i class="bi bi-floppy"></i> Save as Draft</button>
-                <button type="button" class="st-btn st-btn-primary" id="stAssign" disabled><i class="bi bi-send"></i> Assign &amp; Notify</button>
+                <button type="button" class="st-btn" id="stSaveDraft">
+                    <i class="bi bi-floppy"></i>
+                    <span>Save as Draft</span>
+                </button>
+                <button type="button" class="st-btn st-btn-primary" id="stAssign" disabled>
+                    <i class="bi bi-send-fill"></i>
+                    <span>Assign &amp; Notify</span>
+                </button>
             </div>
         </div>
     </div>
@@ -1882,6 +1916,9 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     /** Roots for current Apply To + hierarchy mode (mockup behavior). */
     function getDisplayRoots() {
         const tree = state.tree || [];
+        const scopeKey = String(state.authority?.scope_key || '');
+        // RD / CD / BM keep their own entity root visible (view-only) even when drilling down.
+        const keepScopedRoot = ['region', 'cluster', 'branch'].includes(scopeKey) && tree.length;
         if (applyFilter === 'all') return tree;
         if (applyFilter === 'rd') {
             const regions = tree.filter((n) => n.is_org_group && n.org_type === 'region');
@@ -1897,12 +1934,14 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             return byRole.length ? byRole : tree;
         }
         if (applyFilter === 'bm') {
+            if (keepScopedRoot) return tree;
             const branches = collectOrgByType(tree, 'branch');
             if (branches.length) return branches;
             const byRole = collectByRole(tree, 'bm');
             return byRole.length ? byRole : tree;
         }
-        // Employee → people leaves
+        // Employee → people leaves (still wrap under scoped root when available)
+        if (keepScopedRoot) return tree;
         const staff = collectByRole(tree, 'staff');
         return staff.length ? staff : tree;
     }
@@ -1993,6 +2032,11 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     }
 
     function entityMeta(n) {
+        if (n.is_own_entity) {
+            const parts = ['View only · set by your reporting authority'];
+            if (n.linked_user_name) parts.push(escapeHtml(n.linked_user_name));
+            return parts.join(' · ');
+        }
         if (n.is_org_group) {
             const parts = [];
             const counts = childCounts(n);
@@ -2001,10 +2045,13 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                 const cls = roleMeta(n).cls || 'other';
                 parts.push(`<span class="st-ent-lead ${cls}">${escapeHtml(n.linked_user_name)}</span>`);
             }
+            if (n.requires_reapproval) parts.push('<span class="st-ent-lead other">Needs approval if edited</span>');
             return parts.join(' · ');
         }
         // People: show job role under the name
-        return escapeHtml(personRoleLabel(n));
+        const role = escapeHtml(personRoleLabel(n));
+        if (n.requires_reapproval) return role + ' · <span class="st-ent-lead other">Needs approval if edited</span>';
+        return role;
     }
 
     function renderMobileCards(nodes, depth = 0, parentCollapsed = false, cards = [], pathPrefix = '', parentTitle = '') {
@@ -2019,16 +2066,16 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                 const editable = !!n.editable;
                 // Only hard-Locked blocks edit. Approved can be revised for next-month planning.
                 // Org-hydrated amounts are never treated as locked person targets.
-                const locked = String(n.status || '') === 'Locked' && !n.from_org_target;
+                const locked = (String(n.status || '') === 'Locked' && !n.from_org_target) || !!n.is_own_entity;
                 const isStaff = !hasKids;
                 const eff = effectiveOf(n);
                 const filteredOut = !matchesFilter(n);
                 const rm = roleMeta(n);
                 const meta = entityMeta(n);
-                const typeLabel = n.is_org_group ? rm.label : personRoleLabel(n);
-                const linkedEditable = !!(n.is_org_group && n.linked_user_id && editable && !locked);
-                const canEditAdj = (editable && !locked && !isStaff && !n.is_org_group) || linkedEditable;
-                const canEditBase = (editable && !locked && !n.is_org_group) || linkedEditable;
+                const typeLabel = n.is_own_entity ? 'Your entity' : (n.is_org_group ? rm.label : personRoleLabel(n));
+                const linkedEditable = !!(n.is_org_group && n.linked_user_id && editable && !locked && !n.is_own_entity);
+                const canEditAdj = (((editable && !locked && !isStaff && !n.is_org_group) || linkedEditable) && !n.is_own_entity);
+                const canEditBase = (((editable && !locked && !n.is_org_group) || linkedEditable) && !n.is_own_entity);
                 const totalHtml = canEditBase
                     ? inputHtml(n, 'st-set', n.set_target, false, 'Total target for ' + escapeHtml(n.name))
                     : (n.is_org_group
@@ -2038,7 +2085,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                     ? inputHtml(n, 'st-owner', n.owner_target, false, 'Owner target for ' + escapeHtml(n.name))
                     : `<span class="st-cell-num" data-owner-for="${n.id}">${fmt(ownerDisplayed(n))}</span>`;
                 cards.push(`
-                    <article class="st-mcard ${n.amber ? 'st-amber' : ''} ${filteredOut ? 'is-filtered-out' : ''}" data-id="${n.id}" data-depth="${depth}">
+                    <article class="st-mcard ${n.amber ? 'st-amber' : ''} ${n.is_own_entity ? 'st-own' : ''} ${filteredOut ? 'is-filtered-out' : ''}" data-id="${n.id}" data-depth="${depth}">
                         <div class="st-mcard-top">
                             <button type="button" class="st-toggle ${hasKids && showHierarchy ? '' : 'is-leaf'}" data-toggle="${n.id}" aria-label="${isCollapsed ? 'Expand' : 'Collapse'}">
                                 <i class="bi ${isCollapsed ? 'bi-chevron-right' : 'bi-chevron-down'}"></i>
@@ -2107,18 +2154,18 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                 const editable = !!n.editable;
                 // Only hard-Locked blocks edit. Approved can be revised for next-month planning.
                 // Org-hydrated amounts are never treated as locked person targets.
-                const locked = String(n.status || '') === 'Locked' && !n.from_org_target;
+                const locked = (String(n.status || '') === 'Locked' && !n.from_org_target) || !!n.is_own_entity;
                 const isStaff = !hasKids;
                 const eff = effectiveOf(n);
                 const filteredOut = !matchesFilter(n);
                 const rm = roleMeta(n);
                 const meta = entityMeta(n);
-                const typeLabel = n.is_org_group ? rm.label : personRoleLabel(n);
-                const linkedEditable = !!(n.is_org_group && n.linked_user_id && editable && !locked);
-                const canEditAdj = (editable && !locked && !isStaff && !n.is_org_group) || linkedEditable;
-                const canEditBase = (editable && !locked && !n.is_org_group) || linkedEditable;
+                const typeLabel = n.is_own_entity ? 'Your entity' : (n.is_org_group ? rm.label : personRoleLabel(n));
+                const linkedEditable = !!(n.is_org_group && n.linked_user_id && editable && !locked && !n.is_own_entity);
+                const canEditAdj = (((editable && !locked && !isStaff && !n.is_org_group) || linkedEditable) && !n.is_own_entity);
+                const canEditBase = (((editable && !locked && !n.is_org_group) || linkedEditable) && !n.is_own_entity);
                 rows.push(`
-                    <tr class="${depth === 0 ? 'st-root' : ''} ${n.amber ? 'st-amber' : ''} ${filteredOut ? 'is-filtered-out' : ''}" data-id="${n.id}" data-depth="${depth}" data-role="${rm.cls}">
+                    <tr class="${depth === 0 ? 'st-root' : ''} ${n.amber ? 'st-amber' : ''} ${n.is_own_entity ? 'st-own' : ''} ${filteredOut ? 'is-filtered-out' : ''}" data-id="${n.id}" data-depth="${depth}" data-role="${rm.cls}">
                         <td class="idx">${num}</td>
                         <td>
                             <div class="st-entity" style="padding-left:${pad}px">
@@ -2491,18 +2538,31 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
         const assignDisabled = !state.can_assign;
         const saveDisabled = !canEdit;
+        // Assign stays the primary CTA; never strip its label/styles when disabled.
+        const needsApproval = collectRows(state.tree || []).some((r) => {
+            const n = findNodeByEmployeeId(Number(r.employee_id));
+            return !!(n && n.requires_reapproval);
+        });
         if (assignBtn) {
             assignBtn.disabled = assignDisabled;
-            assignBtn.classList.toggle('st-btn-primary', !assignDisabled);
+            assignBtn.classList.add('st-btn-primary');
+            assignBtn.setAttribute('aria-disabled', assignDisabled ? 'true' : 'false');
+            const label = assignBtn.querySelector('span');
+            if (label) label.textContent = needsApproval ? 'Submit for Approval' : 'Assign & Notify';
+            assignBtn.title = assignDisabled
+                ? 'Finish valid distribution before assigning'
+                : (needsApproval
+                    ? 'Some rows were set by higher authority — submit for their approval'
+                    : 'Assign targets and notify the team');
         }
         if (assignTop) assignTop.disabled = assignDisabled;
         if (saveBtn) {
             saveBtn.disabled = saveDisabled;
-            saveBtn.classList.toggle('st-btn-primary', canEdit && assignDisabled);
+            saveBtn.classList.remove('st-btn-primary');
         }
         if (saveTop) {
             saveTop.disabled = saveDisabled;
-            saveTop.classList.toggle('st-btn-primary', canEdit && assignDisabled);
+            saveTop.classList.remove('st-btn-primary');
         }
         updateKpis();
     }
@@ -2991,6 +3051,22 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         return collectRows(state.tree || []).filter((r) => want.has(Number(r.employee_id)));
     }
 
+    function findNodeByEmployeeId(employeeId) {
+        let found = null;
+        const walk = (nodes) => {
+            (nodes || []).forEach((n) => {
+                if (found) return;
+                if (Number(n.linked_user_id || 0) === employeeId || (!n.is_org_group && Number(n.id) === employeeId)) {
+                    found = n;
+                    return;
+                }
+                if (n.children?.length) walk(n.children);
+            });
+        };
+        walk(state.tree || []);
+        return found;
+    }
+
     function totalBaseInRows(rows) {
         return (rows || []).reduce((s, r) => s + Number(r.set_target || 0), 0);
     }
@@ -3004,6 +3080,18 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         if (assign && totalBaseInRows(rows) <= 0) {
             flash('Enter Total Target amounts before Assign. Last Month Target is from the previous period.', 'warn');
             return;
+        }
+        if (assign) {
+            const needsApproval = rows.some((r) => {
+                const n = findNodeByEmployeeId(Number(r.employee_id));
+                return !!(n && n.requires_reapproval);
+            });
+            if (needsApproval) {
+                const ok = window.confirm(
+                    'Some of these targets were set by a higher authority. Your changes will be submitted for their approval — not applied immediately. Continue?'
+                );
+                if (!ok) return;
+            }
         }
         const btns = [ $('stSaveDraft'), $('stSaveDraftTop'), $('stAssign'), $('stAssignTop') ].filter(Boolean);
         btns.forEach((b) => { b.disabled = true; });

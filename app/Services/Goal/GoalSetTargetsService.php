@@ -321,6 +321,7 @@ class GoalSetTargetsService
             $orgTargetMap,
             $orgPrevMap
         );
+        $this->annotateAuthorityFlags($tree, $actor);
 
         $selfTargetMap = $this->targetsMap($period, $metric, [(int) $actor->id]);
         $selfPrevMap = $this->targetsMap($prev, $metric, [(int) $actor->id]);
@@ -330,11 +331,32 @@ class GoalSetTargetsService
         $receivesTarget = $this->actorReceivesTarget($actor);
         $mySet = $receivesTarget ? (float) ($selfTarget->base_target ?? 0) : 0.0;
         $myOwner = $receivesTarget ? (float) ($selfTarget->owner_target ?? 0) : 0.0;
+        // Higher authority may have set the org-unit row (Region/Cluster/Branch) instead of person.
+        $actorOrgId = (int) ($actor->goal_org_unit_id ?: 0);
+        if ($receivesTarget && $mySet <= 0.0001 && $actorOrgId > 0) {
+            $orgSelf = $orgTargetMap->get($actorOrgId);
+            if ($orgSelf) {
+                $mySet = round((float) ($orgSelf->base_target ?? 0), 2);
+                $myOwner = round((float) ($orgSelf->owner_target ?? 0), 2);
+            }
+        }
         $remainder = max(0, round($mySet - $myOwner, 2));
         // Remainder check uses direct reports only (not full org rollup)
         $distributed = 0.0;
         foreach ($byParent->get((int) $actor->id, collect()) as $direct) {
             $distributed += (float) ($targetMap->get((int) $direct->id)->base_target ?? 0);
+        }
+        // Org-based managers: fall back to sum of direct child org totals under own root.
+        if ($distributed <= 0.0001 && $tree !== []) {
+            foreach ($tree as $root) {
+                if (! empty($root['is_org_group']) && (int) ($root['org_unit_id'] ?? 0) === $actorOrgId) {
+                    foreach ($root['children'] ?? [] as $child) {
+                        $distributed += (float) ($child['set_target'] ?? 0);
+                    }
+                    break;
+                }
+            }
+            $distributed = round($distributed, 2);
         }
         $left = round($remainder - $distributed, 2);
 
@@ -377,6 +399,9 @@ class GoalSetTargetsService
                 'name' => $actor->name,
                 'role' => $this->roleLabel($actor),
                 'receives_target' => $receivesTarget,
+                'org_unit_id' => $actorOrgId ?: null,
+                'org_name' => (string) ($actor->orgUnit?->name ?? ''),
+                'org_type' => (string) ($actor->orgUnit?->type ?? ''),
                 'set_target' => $mySet,
                 'owner_target' => $myOwner,
                 'remainder' => $remainder,
@@ -398,7 +423,7 @@ class GoalSetTargetsService
                 'default_apply' => $scopeMeta['default_apply'],
                 'can_edit' => $canEdit,
                 'message' => $canEdit
-                    ? 'You can set targets for people below your level in '.$scopeMeta['label'].'. Your own target is set by your reporting authority only.'
+                    ? 'You can set targets for people below your level in '.$scopeMeta['label'].'. Your own entity is view-only (set by higher authority). Editing amounts they already set will require their approval.'
                     : 'Your own target is view-only. Only your reporting authority can add or edit it.',
             ],
             'split_options' => [
@@ -422,14 +447,16 @@ class GoalSetTargetsService
         $crm = (int) ($actor->crm_role_type ?? -1);
 
         if ($type === GoalOrgUnit::TYPE_REGION || $crm === 6) {
-            return ['key' => 'region', 'label' => 'your region', 'default_apply' => 'cluster'];
+            // Land on Region so RD sees own entity (view-only) + downline
+            return ['key' => 'region', 'label' => 'your region', 'default_apply' => 'rd'];
         }
         if ($type === GoalOrgUnit::TYPE_CLUSTER || $crm === 7) {
-            // Land on Branch view so CD can set BM / staff targets under them
-            return ['key' => 'cluster', 'label' => 'your cluster', 'default_apply' => 'bm'];
+            // Land on Cluster so CD sees own entity (view-only) + downline
+            return ['key' => 'cluster', 'label' => 'your cluster', 'default_apply' => 'cluster'];
         }
         if ($type === GoalOrgUnit::TYPE_BRANCH || $crm === 8) {
-            return ['key' => 'branch', 'label' => 'your branch', 'default_apply' => 'staff'];
+            // Land on Branch so BM sees own entity (view-only) + employees
+            return ['key' => 'branch', 'label' => 'your branch', 'default_apply' => 'bm'];
         }
 
         return ['key' => 'team', 'label' => 'your team', 'default_apply' => 'staff'];
@@ -451,6 +478,7 @@ class GoalSetTargetsService
 
         return DB::transaction(function () use ($actor, $period, $metric, $rows, $assign, $editable) {
             $saved = 0;
+            $submitted = 0;
             foreach ($rows as $row) {
                 $employeeId = (int) ($row['employee_id'] ?? 0);
                 $this->assertCanEdit($actor, $employeeId);
@@ -493,7 +521,7 @@ class GoalSetTargetsService
                     ->first();
 
                 // Hard-block only Locked. Approved can still be revised by authority
-                // (Save draft reopens as Draft; Assign re-approves).
+                // (Save draft reopens as Draft; Assign re-approves — unless set by higher authority).
                 if ($existing && (string) $existing->status === GoalTarget::STATUS_LOCKED && ! $assign) {
                     throw ValidationException::withMessages([
                         'rows' => "Target for employee #{$employeeId} is locked. Request revision first.",
@@ -502,7 +530,21 @@ class GoalSetTargetsService
 
                 $oldBase = (float) ($existing->base_target ?? 0);
                 $oldOwner = (float) ($existing->owner_target ?? 0);
-                $status = $assign ? GoalTarget::STATUS_APPROVED : GoalTarget::STATUS_DRAFT;
+                $higherSet = $this->targetSetByHigherAuthority($actor, $existing);
+                $changed = abs($oldBase - $set) > 0.009 || abs($oldOwner - $owner) > 0.009;
+                // Lower managers cannot re-approve amounts originally set by higher authority.
+                // Save → Draft revision; Assign → Submitted for higher approval.
+                if ($assign) {
+                    $status = ($higherSet && ($changed || in_array((string) ($existing->status ?? ''), [
+                        GoalTarget::STATUS_APPROVED,
+                        GoalTarget::STATUS_LOCKED,
+                        GoalTarget::STATUS_SUBMITTED,
+                    ], true)))
+                        ? GoalTarget::STATUS_SUBMITTED
+                        : GoalTarget::STATUS_APPROVED;
+                } else {
+                    $status = GoalTarget::STATUS_DRAFT;
+                }
 
                 $prevPeriod = $this->previousPeriod($period);
                 $prevTarget = GoalTarget::query()
@@ -567,7 +609,7 @@ class GoalSetTargetsService
                     ]);
                 }
 
-                if ($assign) {
+                if ($assign && $status === GoalTarget::STATUS_APPROVED) {
                     $employee = User::query()->find($employeeId);
                     GoalNotify::send(
                         $employee,
@@ -580,13 +622,17 @@ class GoalSetTargetsService
                     );
                 }
 
+                if ($status === GoalTarget::STATUS_SUBMITTED) {
+                    $submitted++;
+                }
+
                 $saved++;
             }
 
             $payload = $this->tree($actor, $period, $metric);
             $this->assertNoOverDistribution($payload);
 
-            if ($assign && ! ($payload['can_assign'] ?? false)) {
+            if ($assign && ! ($payload['can_assign'] ?? false) && $submitted === 0) {
                 $bad = collect($payload['checks'])->where('ok', false)->pluck('label')->implode('; ');
                 throw ValidationException::withMessages([
                     'checks' => 'Cannot assign until every group adds up. Issues: '.$bad,
@@ -607,6 +653,7 @@ class GoalSetTargetsService
 
             return [
                 'saved' => $saved,
+                'submitted' => $submitted,
                 'checks' => $payload['checks'],
                 'can_assign' => $payload['can_assign'],
                 'tree' => $payload['tree'],
@@ -915,6 +962,7 @@ class GoalSetTargetsService
         $amber = $last > 0 && $set > ($last * (1 + ($jumpPct / 100)));
         $source = (string) ($cur->row_source ?? 'auto');
         $status = (string) ($cur->status ?? GoalTarget::STATUS_DRAFT);
+        $setBy = (int) ($cur->set_by ?? 0);
         $chip = match (true) {
             in_array($status, [GoalTarget::STATUS_LOCKED, GoalTarget::STATUS_APPROVED], true) => 'Locked',
             $status === GoalTarget::STATUS_SUBMITTED => 'Submitted',
@@ -945,6 +993,10 @@ class GoalSetTargetsService
             'region_name' => $region['name'],
             'region_code' => $region['code'],
             'is_org_group' => false,
+            'is_own_entity' => false,
+            'set_by' => $setBy,
+            'set_by_higher' => false,
+            'requires_reapproval' => false,
             'depth' => $depth,
             'last_month' => $last,
             'set_target' => $set,
@@ -1073,7 +1125,8 @@ class GoalSetTargetsService
         $byParent = $units->groupBy(fn (GoalOrgUnit $u) => (int) ($u->parent_id ?: 0));
         $unitsById = $units->keyBy(fn (GoalOrgUnit $u) => (int) $u->id);
 
-        $build = function (GoalOrgUnit $unit, int $depth) use (&$build, $byParent, $peopleByOrg, $orgTargetMap, $orgPrevMap): array {
+        $actorId = (int) ($actor?->id ?? 0);
+        $build = function (GoalOrgUnit $unit, int $depth) use (&$build, $byParent, $peopleByOrg, $orgTargetMap, $orgPrevMap, $actorId): array {
             $people = $peopleByOrg[(int) $unit->id] ?? [];
             usort($people, function (array $a, array $b) {
                 $rank = static function (array $n): int {
@@ -1128,7 +1181,7 @@ class GoalSetTargetsService
             $orgCur = $orgTargetMap->get((int) $unit->id);
             $orgPrev = $orgPrevMap->get((int) $unit->id);
 
-            return $this->makeOrgGroupNode($unit, $children, $depth, null, $linked, $orgCur, $orgPrev);
+            return $this->makeOrgGroupNode($unit, $children, $depth, null, $linked, $orgCur, $orgPrev, $actorId);
         };
 
         $roots = $this->resolveOrgTreeRoots($actor, $units, $unitsById);
@@ -1180,7 +1233,8 @@ class GoalSetTargetsService
         ?string $fallbackName = null,
         ?array $linked = null,
         ?GoalTarget $orgTarget = null,
-        ?GoalTarget $orgPrevTarget = null
+        ?GoalTarget $orgPrevTarget = null,
+        int $actorId = 0
     ): array {
         $this->rollupOrgGroup($children);
         $childSet = round(array_sum(array_map(static fn ($c) => (float) ($c['set_target'] ?? 0), $children)), 2);
@@ -1211,6 +1265,7 @@ class GoalSetTargetsService
         $region = $unit ? $this->resolveRegionMeta($unit) : ['id' => null, 'name' => $name, 'code' => ''];
 
         $hasLinked = is_array($linked) && ! empty($linked['id']);
+        $isOwnEntity = $hasLinked && $actorId > 0 && (int) $linked['id'] === $actorId;
         $set = $hasLinked ? round((float) ($linked['set_target'] ?? 0), 2) : $childSet;
         $open = $hasLinked ? round((float) ($linked['last_month'] ?? 0), 2) : $childOpen;
         $owner = $hasLinked ? round((float) ($linked['owner_target'] ?? 0), 2) : 0.0;
@@ -1218,6 +1273,8 @@ class GoalSetTargetsService
         $status = $hasLinked ? (string) ($linked['status'] ?? GoalTarget::STATUS_DRAFT) : GoalTarget::STATUS_DRAFT;
         $amber = $hasLinked ? (bool) ($linked['amber'] ?? false) : false;
         $fromOrgTarget = false;
+        $setBy = $hasLinked ? (int) ($linked['set_by'] ?? 0) : 0;
+        $setByHigher = (bool) ($linked['set_by_higher'] ?? false);
 
         // Allocation may store Region/Cluster/Branch totals as org-unit GoalTarget (no user_id).
         // When the linked lead has no person target yet, surface that org amount so Edit shows data.
@@ -1225,9 +1282,12 @@ class GoalSetTargetsService
             $set = round((float) ($orgTarget->base_target ?? 0), 2);
             $owner = round((float) ($orgTarget->owner_target ?? 0), 2);
             $rowSource = (string) ($orgTarget->row_source ?? 'auto');
-            // Do not inherit Approved/Locked from the org-unit row — there is no person
-            // target yet, so authority must still be able to edit and save onto the linked lead.
-            $status = GoalTarget::STATUS_DRAFT;
+            $setBy = (int) ($orgTarget->set_by ?? 0);
+            // Own entity stays view-only even when hydrated from org row.
+            // For other leads without a person target yet, keep Draft so authority can edit.
+            $status = $isOwnEntity
+                ? (string) ($orgTarget->status ?? GoalTarget::STATUS_DRAFT)
+                : GoalTarget::STATUS_DRAFT;
             $fromOrgTarget = $set > 0;
         }
         if ($orgPrevTarget && $open <= 0.0001) {
@@ -1235,6 +1295,9 @@ class GoalSetTargetsService
         } elseif ($orgTarget && $open <= 0.0001 && ! $orgPrevTarget) {
             // keep linked / child open
         }
+
+        // Never allow editing your own org entity — only higher authority can.
+        $editable = $hasLinked && ! $isOwnEntity && (bool) ($linked['editable'] ?? false);
 
         return [
             'id' => $id,
@@ -1250,10 +1313,14 @@ class GoalSetTargetsService
             'region_name' => $region['name'],
             'region_code' => $region['code'],
             'is_org_group' => true,
+            'is_own_entity' => $isOwnEntity,
             'linked_user_id' => $hasLinked ? (int) $linked['id'] : null,
             'linked_user_name' => $hasLinked ? (string) ($linked['name'] ?? '') : null,
             'org_unit_id' => $unit ? (int) $unit->id : null,
             'from_org_target' => $fromOrgTarget,
+            'set_by' => $setBy,
+            'set_by_higher' => $setByHigher || ($isOwnEntity && $set > 0),
+            'requires_reapproval' => ! $isOwnEntity && (bool) ($linked['requires_reapproval'] ?? false),
             'depth' => $depth,
             'last_month' => $open,
             'set_target' => $set,
@@ -1261,10 +1328,10 @@ class GoalSetTargetsService
             'remainder' => max(0, round(max(0, $set - $owner) - $childSet, 2)),
             'total_target' => $childSet,
             'is_staff' => false,
-            'editable' => $hasLinked ? (bool) ($linked['editable'] ?? false) : false,
+            'editable' => $editable,
             'row_source' => $rowSource,
             'status' => $status,
-            'chip' => $role,
+            'chip' => $isOwnEntity ? 'Your entity' : $role,
             'amber' => $amber,
             'check_ok' => true,
             'over_allocated' => false,
@@ -1339,6 +1406,82 @@ class GoalSetTargetsService
         $job = strtolower(preg_replace('/[\s_-]+/', '', (string) ($user->job_role ?? '')) ?? '');
 
         return in_array($job, ['rd', 'regionaldirector', 'cluster', 'clusterhead', 'cd', 'bm', 'branchmanager'], true);
+    }
+
+    /**
+     * True when an existing target was last set/approved by someone above this actor.
+     */
+    protected function targetSetByHigherAuthority(User $actor, ?GoalTarget $existing): bool
+    {
+        if (! $existing || $this->isGlobalTargetAuthority($actor)) {
+            return false;
+        }
+
+        $setterId = (int) ($existing->set_by ?: $existing->approved_by ?: 0);
+        if ($setterId <= 0 || $setterId === (int) $actor->id) {
+            return false;
+        }
+
+        $setter = User::query()->find($setterId, ['id', 'crm_role_type', 'job_role']);
+        if (! $setter) {
+            return false;
+        }
+
+        if ($this->isGlobalTargetAuthority($setter)) {
+            return true;
+        }
+
+        return $this->roleRank($setter) < $this->roleRank($actor);
+    }
+
+    /**
+     * Flag rows set by higher authority so UI can warn and Assign submits for approval.
+     *
+     * @param  list<array<string, mixed>>  $nodes
+     */
+    protected function annotateAuthorityFlags(array &$nodes, User $actor): void
+    {
+        $actorId = (int) $actor->id;
+        foreach ($nodes as &$n) {
+            $linkedId = (int) ($n['linked_user_id'] ?? 0);
+            $personId = ! empty($n['is_org_group']) ? $linkedId : (int) ($n['id'] ?? 0);
+            $isOwn = $personId > 0 && $personId === $actorId;
+            $n['is_own_entity'] = ! empty($n['is_own_entity']) || $isOwn;
+
+            if ($isOwn) {
+                $n['editable'] = false;
+                $n['set_by_higher'] = (float) ($n['set_target'] ?? 0) > 0;
+                $n['requires_reapproval'] = false;
+                if (($n['chip'] ?? '') === '' || ($n['chip'] ?? '') === ($n['role'] ?? '')) {
+                    $n['chip'] = 'Your entity';
+                }
+            } else {
+                $setBy = (int) ($n['set_by'] ?? 0);
+                $higher = false;
+                if ($setBy > 0 && $setBy !== $actorId) {
+                    $setter = User::query()->find($setBy, ['id', 'crm_role_type', 'job_role']);
+                    if ($setter) {
+                        $higher = $this->isGlobalTargetAuthority($setter)
+                            || $this->roleRank($setter) < $this->roleRank($actor);
+                    }
+                }
+                // Approved/Locked without set_by still treat as higher-authority once actor is not global.
+                if (! $higher && ! $this->isGlobalTargetAuthority($actor)) {
+                    $st = (string) ($n['status'] ?? '');
+                    if (in_array($st, [GoalTarget::STATUS_APPROVED, GoalTarget::STATUS_LOCKED], true)
+                        && $setBy !== $actorId) {
+                        $higher = true;
+                    }
+                }
+                $n['set_by_higher'] = $higher;
+                $n['requires_reapproval'] = $higher && ! empty($n['editable']);
+            }
+
+            if (! empty($n['children']) && is_array($n['children'])) {
+                $this->annotateAuthorityFlags($n['children'], $actor);
+            }
+        }
+        unset($n);
     }
 
     /**

@@ -65,6 +65,7 @@ class GoalSetTargetsController extends Controller
             'rows.*.set_target' => 'required|numeric|min:0',
             'rows.*.owner_target' => 'nullable|numeric|min:0',
             'rows.*.row_source' => 'nullable|in:auto,edited',
+            'rows.*.org_unit_id' => 'nullable|integer',
         ]);
 
         $result = $this->service->saveDraft(
@@ -89,6 +90,7 @@ class GoalSetTargetsController extends Controller
             'rows.*.set_target' => 'required|numeric|min:0',
             'rows.*.owner_target' => 'nullable|numeric|min:0',
             'rows.*.row_source' => 'nullable|in:auto,edited',
+            'rows.*.org_unit_id' => 'nullable|integer',
         ]);
 
         $result = $this->service->saveDraft(
@@ -99,7 +101,15 @@ class GoalSetTargetsController extends Controller
             true
         );
 
-        return response()->json(['ok' => true, 'data' => $result, 'message' => 'Targets assigned and team notified.']);
+        $submitted = (int) ($result['submitted'] ?? 0);
+        $saved = (int) ($result['saved'] ?? 0);
+        $message = $submitted > 0
+            ? ($submitted === $saved
+                ? 'Changes submitted for higher-authority approval.'
+                : "Assigned {$saved} row(s); {$submitted} submitted for higher-authority approval.")
+            : 'Targets assigned and team notified.';
+
+        return response()->json(['ok' => true, 'data' => $result, 'message' => $message]);
     }
 
     public function autoSplit(Request $request): JsonResponse
