@@ -1562,6 +1562,28 @@ body.sidebar-collapsed .goal-set-targets-footer {
     line-height: 1.3;
     white-space: nowrap;
 }
+.goal-set-targets .st-set-by {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    max-width: 100%;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: #ecfdf5;
+    border: 1px solid #99f6e4;
+    font-size: .66rem;
+    color: #0f766e;
+    font-weight: 650;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+.goal-set-targets .st-set-by i { font-size: .68rem; flex-shrink: 0; }
+.goal-set-targets .st-set-by-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+}
 .goal-set-targets .st-cell-pending .st-cell-num,
 .goal-set-targets .st-cell-pending .st-input-wrap {
     border-color: #fdba74;
@@ -2510,10 +2532,20 @@ body.sidebar-collapsed .goal-set-targets-footer {
         const delta = showDelta
             ? `<span class="st-pending-delta" title="Previous → proposed">${fmt(from)} → ${fmt(val)}</span>`
             : '';
+        // Who set this amount (higher authority) — under Total / Owner fields
+        const showSetter = !!(n.set_by_higher && String(n.set_by_name || '').trim() && val > 0.009);
+        const setterLabel = showSetter
+            ? (String(n.set_by_role || '').trim()
+                ? `${escapeHtml(n.set_by_name)} (${escapeHtml(n.set_by_role)})`
+                : escapeHtml(n.set_by_name))
+            : '';
+        const setter = showSetter
+            ? `<span class="st-set-by" title="Target set by higher authority"><i class="bi bi-person-badge"></i><span class="st-set-by-name">Set by ${setterLabel}</span></span>`
+            : '';
         return {
             delta,
             pendingClass: showDelta ? 'st-cell-pending' : '',
-            wrap: (inner) => `<div class="st-amt-stack">${inner}${delta}</div>`,
+            wrap: (inner) => `<div class="st-amt-stack">${inner}${delta}${setter}</div>`,
         };
     }
 

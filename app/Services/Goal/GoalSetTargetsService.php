@@ -1348,6 +1348,7 @@ class GoalSetTargetsService
         $source = (string) ($cur->row_source ?? 'auto');
         $status = (string) ($cur->status ?? GoalTarget::STATUS_DRAFT);
         $setBy = (int) ($cur->set_by ?? 0);
+        $approvedBy = (int) ($cur->approved_by ?? 0);
         $chip = match (true) {
             in_array($status, [GoalTarget::STATUS_LOCKED, GoalTarget::STATUS_APPROVED], true) => 'Locked',
             $status === GoalTarget::STATUS_SUBMITTED => 'Submitted',
@@ -1380,6 +1381,9 @@ class GoalSetTargetsService
             'is_org_group' => false,
             'is_own_entity' => false,
             'set_by' => $setBy,
+            'approved_by' => $approvedBy,
+            'set_by_name' => '',
+            'set_by_role' => '',
             'set_by_higher' => false,
             'requires_reapproval' => false,
             'depth' => $depth,
@@ -1659,6 +1663,7 @@ class GoalSetTargetsService
         $amber = $hasLinked ? (bool) ($linked['amber'] ?? false) : false;
         $fromOrgTarget = false;
         $setBy = $hasLinked ? (int) ($linked['set_by'] ?? 0) : 0;
+        $approvedBy = $hasLinked ? (int) ($linked['approved_by'] ?? 0) : 0;
         $setByHigher = (bool) ($linked['set_by_higher'] ?? false);
 
         // Allocation may store Region/Cluster/Branch totals as org-unit GoalTarget (no user_id).
@@ -1668,12 +1673,16 @@ class GoalSetTargetsService
             $owner = round((float) ($orgTarget->owner_target ?? 0), 2);
             $rowSource = (string) ($orgTarget->row_source ?? 'auto');
             $setBy = (int) ($orgTarget->set_by ?? 0);
+            $approvedBy = (int) ($orgTarget->approved_by ?? 0);
             // Own entity stays view-only even when hydrated from org row.
             // For other leads without a person target yet, keep Draft so authority can edit.
             $status = $isOwnEntity
                 ? (string) ($orgTarget->status ?? GoalTarget::STATUS_DRAFT)
                 : GoalTarget::STATUS_DRAFT;
             $fromOrgTarget = $set > 0;
+        } elseif ($orgTarget && $setBy <= 0) {
+            $setBy = (int) ($orgTarget->set_by ?? 0);
+            $approvedBy = $approvedBy ?: (int) ($orgTarget->approved_by ?? 0);
         }
         if ($orgPrevTarget && $open <= 0.0001) {
             $open = $this->lastMonthTarget($orgPrevTarget);
@@ -1704,6 +1713,9 @@ class GoalSetTargetsService
             'org_unit_id' => $unit ? (int) $unit->id : null,
             'from_org_target' => $fromOrgTarget,
             'set_by' => $setBy,
+            'approved_by' => $approvedBy,
+            'set_by_name' => '',
+            'set_by_role' => '',
             'set_by_higher' => $setByHigher || ($isOwnEntity && $set > 0),
             'requires_reapproval' => ! $isOwnEntity && (bool) ($linked['requires_reapproval'] ?? false),
             'depth' => $depth,
@@ -1827,14 +1839,72 @@ class GoalSetTargetsService
     }
 
     /**
+     * Collect set_by / approved_by user ids from the tree (for label lookup).
+     *
+     * @param  list<array<string, mixed>>  $nodes
+     * @return list<int>
+     */
+    protected function collectSetterIds(array $nodes): array
+    {
+        $ids = [];
+        $walk = function (array $list) use (&$walk, &$ids): void {
+            foreach ($list as $n) {
+                $setBy = (int) ($n['set_by'] ?? 0);
+                if ($setBy > 0) {
+                    $ids[$setBy] = true;
+                }
+                $approvedBy = (int) ($n['approved_by'] ?? 0);
+                if ($approvedBy > 0) {
+                    $ids[$approvedBy] = true;
+                }
+                if (! empty($n['children']) && is_array($n['children'])) {
+                    $walk($n['children']);
+                }
+            }
+        };
+        $walk($nodes);
+
+        return array_map('intval', array_keys($ids));
+    }
+
+    /**
+     * @param  list<int>  $ids
+     * @return array<int, array{name: string, role: string}>
+     */
+    protected function setterLabelMap(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $map = [];
+        User::query()
+            ->whereIn('id', $ids)
+            ->get(['id', 'name', 'crm_role_type', 'job_role'])
+            ->each(function (User $u) use (&$map): void {
+                $map[(int) $u->id] = [
+                    'name' => (string) $u->name,
+                    'role' => $this->roleLabel($u),
+                ];
+            });
+
+        return $map;
+    }
+
+    /**
      * Flag rows that already have amounts set by higher authority.
      * Empty rows (0) never require approval — manager can Assign freely.
      *
      * @param  list<array<string, mixed>>  $nodes
+     * @param  array<int, array{name: string, role: string}>|null  $setterMap
      */
-    protected function annotateAuthorityFlags(array &$nodes, User $actor): void
+    protected function annotateAuthorityFlags(array &$nodes, User $actor, ?array $setterMap = null): void
     {
         $actorId = (int) $actor->id;
+        if ($setterMap === null) {
+            $setterMap = $this->setterLabelMap($this->collectSetterIds($nodes));
+        }
+
         foreach ($nodes as &$n) {
             $linkedId = (int) ($n['linked_user_id'] ?? 0);
             $personId = ! empty($n['is_org_group']) ? $linkedId : (int) ($n['id'] ?? 0);
@@ -1842,6 +1912,14 @@ class GoalSetTargetsService
             $n['is_own_entity'] = ! empty($n['is_own_entity']) || $isOwn;
             $hasAmount = (float) ($n['set_target'] ?? 0) > 0.009
                 || (float) ($n['owner_target'] ?? 0) > 0.009;
+
+            $setBy = (int) ($n['set_by'] ?? 0);
+            if ($setBy <= 0) {
+                $setBy = (int) ($n['approved_by'] ?? 0);
+            }
+            $setterInfo = $setBy > 0 ? ($setterMap[$setBy] ?? null) : null;
+            $n['set_by_name'] = $setterInfo['name'] ?? '';
+            $n['set_by_role'] = $setterInfo['role'] ?? '';
 
             if ($isOwn) {
                 $n['editable'] = false;
@@ -1851,13 +1929,15 @@ class GoalSetTargetsService
                     $n['chip'] = 'Your entity';
                 }
             } else {
-                $setBy = (int) ($n['set_by'] ?? 0);
                 $higher = false;
                 if ($hasAmount && $setBy > 0 && $setBy !== $actorId) {
                     $setter = User::query()->find($setBy, ['id', 'crm_role_type', 'job_role']);
                     if ($setter) {
                         $higher = $this->isGlobalTargetAuthority($setter)
                             || $this->roleRank($setter) < $this->roleRank($actor);
+                    } elseif (! empty($setterInfo)) {
+                        // Label known from map — still treat as higher-set when not self
+                        $higher = true;
                     }
                 }
                 // Approved/Locked with a real amount and no self set_by → treat as higher-set.
@@ -1879,7 +1959,7 @@ class GoalSetTargetsService
             }
 
             if (! empty($n['children']) && is_array($n['children'])) {
-                $this->annotateAuthorityFlags($n['children'], $actor);
+                $this->annotateAuthorityFlags($n['children'], $actor, $setterMap);
             }
         }
         unset($n);
