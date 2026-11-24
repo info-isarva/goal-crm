@@ -26,8 +26,11 @@
     --st-muted: #64748b;
     --st-text: #0f172a;
     color: var(--st-text);
-    padding-bottom: 110px;
+    padding-bottom: 96px;
     background: #f4f6f9;
+    max-width: 100%;
+    overflow-x: clip;
+    box-sizing: border-box;
 }
 
 /* Hero */
@@ -443,31 +446,381 @@
     }
     .goal-set-targets .st-search-box .st-control {
         width: 100% !important;
+        min-width: 0 !important;
         max-width: none !important;
     }
 }
-@media (max-width: 575.98px) {
+
+/* —— Responsive: tablet / phone —— */
+@media (max-width: 991.98px) {
+    .goal-set-targets.container-fluid,
+    .goal-set-targets {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+    .goal-set-targets .st-hero {
+        flex-direction: column;
+        gap: 12px;
+    }
+    .goal-set-targets .st-hero-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+        gap: 8px;
+    }
+    .goal-set-targets .st-hero-actions .st-btn {
+        width: 100%;
+        min-width: 0;
+        justify-content: center;
+        font-size: .75rem;
+        padding: 0 8px;
+        height: 36px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .goal-set-targets .st-title { font-size: 1.28rem; }
+    .goal-set-targets .st-sub { font-size: .82rem; max-width: none; }
+    .goal-set-targets .st-title-ico { width: 44px; height: 44px; font-size: 1.2rem; }
+    .goal-set-targets .st-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .goal-set-targets .st-kpi { padding: 10px 12px; gap: 10px; }
+    .goal-set-targets .st-kpi-value { font-size: 1.05rem; }
+    .goal-set-targets .st-kpi-meta { white-space: normal; }
+}
+
+@media (max-width: 767.98px) {
+    .goal-set-targets { padding-bottom: 72px; }
     .goal-set-targets .st-filters {
         flex-direction: column;
         align-items: stretch;
         gap: 10px;
+        padding: 12px;
     }
+    .goal-set-targets .st-field { width: 100%; }
     .goal-set-targets .st-filters .st-control,
     .goal-set-targets .st-filters .form-select.st-control {
-        width: 100%;
-        min-width: 0;
-        max-width: none;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
     }
     .goal-set-targets .st-dd,
     .goal-set-targets .st-dd.is-metric { width: 100%; }
-    .goal-set-targets .st-seg { width: 100%; }
-    .goal-set-targets .st-seg button { flex: 1; padding: 0 8px; }
-    .goal-set-targets .st-toggle-wrap { height: auto; }
+    .goal-set-targets .st-seg {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        height: auto;
+        overflow: hidden;
+    }
+    .goal-set-targets .st-seg button {
+        flex: none;
+        height: 36px;
+        padding: 0 6px;
+        border-right: 0;
+        border-bottom: 1px solid var(--ft-border);
+        font-size: 11px;
+    }
+    .goal-set-targets .st-seg button:nth-child(odd) { border-right: 1px solid var(--ft-border); }
+    .goal-set-targets .st-seg button:nth-child(n+3) { border-bottom: 0; }
+    .goal-set-targets .st-toggle-wrap {
+        height: auto;
+        width: 100%;
+        justify-content: space-between;
+        padding: 4px 0;
+    }
     .goal-set-targets .st-search {
         width: 100%;
         max-width: none;
         flex: 1 1 auto;
+        margin-left: 0;
     }
+    .goal-set-targets .st-search > label { display: none; }
+
+    /* Mobile: dense aligned tree rows */
+    .goal-set-targets .st-table-scroll-hint { display: none !important; }
+    .goal-set-targets .st-table-wrap { display: none !important; }
+    .goal-set-targets .st-mobile-list {
+        display: flex !important;
+        flex-direction: column;
+        gap: 0;
+        padding: 0;
+        background: #fff;
+        border-top: 1px solid #e2e8f0;
+    }
+    .goal-set-targets .st-mcard {
+        position: relative;
+        background: #fff;
+        border: 0;
+        border-bottom: 1px solid #eef2f7;
+        border-radius: 0;
+        padding: 8px 10px 8px 8px;
+        margin: 0;
+        box-shadow: none;
+    }
+    .goal-set-targets .st-mcard[data-depth="0"] { padding-left: 10px; }
+    .goal-set-targets .st-mcard[data-depth="1"] { padding-left: 22px; }
+    .goal-set-targets .st-mcard[data-depth="2"] { padding-left: 34px; }
+    .goal-set-targets .st-mcard[data-depth="3"],
+    .goal-set-targets .st-mcard[data-depth="4"] { padding-left: 46px; }
+    .goal-set-targets .st-mcard::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: #e2e8f0;
+    }
+    .goal-set-targets .st-mcard[data-depth="0"]::before { background: #059669; }
+    .goal-set-targets .st-mcard[data-depth="1"]::before { background: #3b82f6; }
+    .goal-set-targets .st-mcard[data-depth="2"]::before { background: #8b5cf6; }
+    .goal-set-targets .st-mcard[data-depth="3"]::before,
+    .goal-set-targets .st-mcard[data-depth="4"]::before { background: #94a3b8; }
+    .goal-set-targets .st-mcard.is-filtered-out { display: none; }
+    .goal-set-targets .st-mcard.st-amber { background: #fffbeb; }
+
+    .goal-set-targets .st-mcard-under { display: none; }
+
+    .goal-set-targets .st-mcard-top {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 6px;
+        min-width: 0;
+    }
+    .goal-set-targets .st-mcard-top .st-toggle {
+        margin: 0;
+        width: 22px;
+        height: 22px;
+        flex-shrink: 0;
+        border-radius: 5px;
+        background: transparent;
+        border: 0;
+        color: #64748b;
+    }
+    .goal-set-targets .st-mcard-top .st-toggle.is-leaf {
+        visibility: hidden;
+        pointer-events: none;
+    }
+    .goal-set-targets .st-mcard-top .st-ent-ico {
+        width: 24px;
+        height: 24px;
+        font-size: .7rem;
+        flex-shrink: 0;
+        border-radius: 6px;
+    }
+    .goal-set-targets .st-mcard-head {
+        flex: 1;
+        min-width: 0;
+    }
+    .goal-set-targets .st-mcard-title-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        margin-bottom: 0;
+    }
+    .goal-set-targets .st-mcard-idx {
+        font-size: .65rem;
+        font-weight: 700;
+        color: #94a3b8;
+        font-variant-numeric: tabular-nums;
+        flex-shrink: 0;
+    }
+    .goal-set-targets .st-mcard-title-row .st-type {
+        font-size: .58rem;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    .goal-set-targets .st-mcard-kids { display: none; }
+    .goal-set-targets .st-mcard-name {
+        font-size: .82rem;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.25;
+        word-break: break-word;
+        white-space: normal;
+    }
+    .goal-set-targets .st-mcard-meta {
+        margin-top: 1px;
+        font-size: .68rem;
+        color: #64748b;
+        line-height: 1.3;
+        white-space: normal;
+    }
+
+    /* 4 aligned columns — same grid on every row */
+    .goal-set-targets .st-mcard-grid {
+        display: grid;
+        grid-template-columns: minmax(0, .9fr) minmax(0, 1.15fr) minmax(0, 1.15fr) minmax(0, .95fr);
+        gap: 6px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        align-items: end;
+    }
+    .goal-set-targets .st-mfield {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-end;
+        gap: 2px;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+        min-width: 0;
+    }
+    .goal-set-targets .st-mfield.is-eff {
+        background: transparent;
+        border: 0;
+        margin: 0;
+        padding: 0;
+    }
+    .goal-set-targets .st-mfield-label {
+        display: block;
+        font-size: .58rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .02em;
+        color: #94a3b8;
+        margin: 0;
+        line-height: 1.1;
+        white-space: nowrap;
+    }
+    .goal-set-targets .st-mfield.is-eff .st-mfield-label { color: #059669; }
+    .goal-set-targets .st-mfield .st-input-wrap,
+    .goal-set-targets .st-mfield .st-cell-num,
+    .goal-set-targets .st-mfield .st-eff {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        justify-content: flex-end;
+        font-size: .78rem;
+        font-variant-numeric: tabular-nums;
+    }
+    .goal-set-targets .st-mfield .st-input-wrap {
+        height: 30px;
+        padding: 0 5px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        box-shadow: none;
+    }
+    .goal-set-targets .st-mfield .st-input-wrap .cur {
+        font-size: .62rem;
+        color: #94a3b8;
+    }
+    .goal-set-targets .st-mfield .st-input-wrap input {
+        font-size: .76rem;
+        font-weight: 650;
+        padding: 0 2px;
+        text-align: right;
+        min-width: 0;
+    }
+    .goal-set-targets .st-mfield .st-cell-num {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        height: 30px;
+        font-weight: 650;
+        color: #334155;
+        padding: 0 2px;
+    }
+    .goal-set-targets .st-mfield .st-eff {
+        font-size: .8rem;
+        font-weight: 800;
+        color: #059669;
+        display: flex;
+        align-items: center;
+        height: 30px;
+        justify-content: flex-end;
+        padding: 0 2px;
+    }
+    .goal-set-targets .st-mfield .st-rem-caption {
+        max-width: none;
+        text-align: right;
+        margin-top: 2px;
+        color: #64748b;
+    }
+
+    .goal-set-targets .st-mcard-actions {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        gap: 0;
+    }
+    .goal-set-targets .st-mcard-actions .st-btn-assign {
+        height: 26px;
+        min-height: 26px;
+        padding: 0 8px;
+        font-size: .66rem;
+        width: auto !important;
+        border-radius: 6px;
+    }
+    .goal-set-targets .st-mcard-actions .st-btn-icon { display: none; }
+    .goal-set-targets .st-panel { overflow: visible; }
+    .goal-set-targets .st-mcard-actions .st-action-dd { position: relative; }
+    .goal-set-targets .st-mcard-actions .st-action-menu {
+        min-width: 190px;
+        z-index: 1080;
+    }
+    .goal-set-targets .st-mcard-empty {
+        text-align: center;
+        color: #94a3b8;
+        padding: 24px 12px;
+        font-size: .82rem;
+    }
+    .goal-set-targets .st-mobile-totals {
+        background: #f0fdf4;
+        border: 0;
+        border-top: 1px solid #bbf7d0;
+        border-radius: 0;
+        padding: 10px 12px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+        margin: 0;
+    }
+    .goal-set-targets .st-mobile-totals .st-mfield {
+        display: block;
+        background: transparent;
+        border: 0;
+        padding: 0;
+    }
+    .goal-set-targets .st-mobile-totals .st-mfield-label {
+        color: #166534;
+        font-size: .58rem;
+        margin-bottom: 2px;
+    }
+    .goal-set-targets .st-mobile-totals .st-mfield-val {
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        color: #14532d;
+        font-size: .78rem;
+    }
+}
+@media (min-width: 768px) {
+    .goal-set-targets .st-mobile-list { display: none !important; }
+}
+
+@media (max-width: 575.98px) {
+    .goal-set-targets .st-kpi-grid { grid-template-columns: 1fr; }
+    .goal-set-targets .st-hero-actions { grid-template-columns: 1fr 1fr; }
+    .goal-set-targets .st-footer-tip-short { display: inline; }
+    .goal-set-targets .st-footer-tip-full { display: none; }
+}
+@media (min-width: 576px) {
+    .goal-set-targets .st-footer-tip-short { display: none; }
+    .goal-set-targets .st-footer-tip-full { display: inline; }
+}
+@media (min-width: 768px) {
+    .goal-set-targets .st-table-scroll-hint { display: none !important; }
 }
 
 /* Panel + table */
@@ -478,6 +831,8 @@
     box-shadow: 0 4px 16px rgba(148,163,184,.1); overflow: hidden;
 }
 .goal-set-targets .st-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.goal-set-targets .st-mobile-list { display: none; }
+.goal-set-targets .st-table-scroll-hint { display: none; }
 .goal-set-targets table.st-tree {
     width: 100%; min-width: 1100px; border-collapse: collapse; font-size: .82rem;
 }
@@ -489,6 +844,52 @@
 }
 .goal-set-targets table.st-tree th .th-info {
     color: #94a3b8; margin-left: 3px; font-size: .7rem; vertical-align: middle;
+    cursor: help;
+}
+.goal-set-targets table.st-tree th .th-info:hover,
+.goal-set-targets table.st-tree th .th-info:focus {
+    color: #059669;
+    outline: none;
+}
+.st-tip-bubble {
+    position: fixed;
+    z-index: 3000;
+    max-width: 260px;
+    padding: 8px 11px;
+    border-radius: 8px;
+    background: #0f172a;
+    color: #f8fafc;
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: left;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .22);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity .12s ease, transform .12s ease;
+}
+.st-tip-bubble.is-on {
+    opacity: 1;
+    transform: translateY(0);
+}
+.st-tip-bubble::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    margin-left: -6px;
+    border: 6px solid transparent;
+    border-top-color: #0f172a;
+    border-bottom-width: 0;
+}
+.st-tip-bubble.is-below::after {
+    top: -6px;
+    bottom: auto;
+    border-top-color: transparent;
+    border-bottom-color: #0f172a;
+    border-top-width: 0;
+    border-bottom-width: 6px;
 }
 .goal-set-targets table.st-tree th.num,
 .goal-set-targets table.st-tree td.num { text-align: right; }
@@ -570,6 +971,48 @@
     display: inline-flex; align-items: center; justify-content: flex-end;
     box-sizing: border-box; width: 118px; min-width: 118px; text-align: right;
 }
+.goal-set-targets .st-rem-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    margin-left: auto;
+}
+.goal-set-targets .st-rem-stack .st-eff {
+    width: auto;
+    min-width: 0;
+}
+.goal-set-targets .st-rem-caption {
+    display: block;
+    font-size: .58rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #64748b;
+    text-align: right;
+    text-transform: none;
+    letter-spacing: 0;
+    white-space: normal;
+    max-width: 110px;
+}
+.goal-set-targets .st-th-sub {
+    display: block;
+    margin-top: 2px;
+    font-size: .58rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #166534;
+    opacity: .85;
+}
+.goal-set-targets table.st-tree th.col-eff {
+    white-space: normal;
+    line-height: 1.25;
+    vertical-align: bottom;
+}
+.goal-set-targets table.st-tree td.col-eff {
+    vertical-align: middle;
+    white-space: normal;
+}
 .goal-set-targets table.st-tree td.num {
     text-align: right;
     vertical-align: middle;
@@ -581,26 +1024,58 @@
     margin-left: auto;
     margin-right: 0;
 }
+.goal-set-targets table.st-tree td.col-eff > .st-rem-stack {
+    margin-left: auto;
+    margin-right: 0;
+}
 .goal-set-targets table.st-tree tfoot td.num {
     text-align: right;
     font-variant-numeric: tabular-nums;
 }
+.goal-set-targets table.st-tree th.num,
+.goal-set-targets table.st-tree td.num {
+    width: 132px;
+    min-width: 124px;
+}
+.goal-set-targets table.st-tree th.col-eff,
+.goal-set-targets table.st-tree td.col-eff {
+    width: 138px;
+    min-width: 128px;
+}
 .goal-set-targets table.st-tree th.col-actions,
 .goal-set-targets table.st-tree td.col-actions {
+    width: 148px;
+    min-width: 136px;
     text-align: right;
     white-space: nowrap;
+    padding-right: 14px;
+}
+.goal-set-targets table.st-tree tr.st-focus-row > td,
+.goal-set-targets .st-mcard.st-focus-row {
+    background: #ecfdf5 !important;
+    box-shadow: inset 3px 0 0 #059669;
+}
+.goal-set-targets .st-mcard.st-focus-row {
+    border-bottom-color: #bbf7d0;
+}
+.goal-set-targets .st-row-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    width: 100%;
 }
 
 /* Single clean currency field — kill global input chrome (double box) */
 .goal-set-targets .st-input-wrap {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     box-sizing: border-box;
     height: 34px;
     width: 118px;
     max-width: 100%;
-    padding: 0 10px;
+    padding: 0 8px 0 10px;
     background: #fff;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
@@ -617,7 +1092,10 @@
     color: #94a3b8;
     font-size: .78rem;
     font-weight: 700;
-    line-height: 1;
+    line-height: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
     user-select: none;
 }
 .goal-set-targets .st-input-wrap input.st-input-num,
@@ -626,7 +1104,7 @@
     width: 100% !important;
     min-width: 0 !important;
     max-width: none !important;
-    height: 100% !important;
+    height: 32px !important;
     min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -639,7 +1117,7 @@
     color: #0f172a !important;
     font-size: .82rem !important;
     font-weight: 650 !important;
-    line-height: 1.2 !important;
+    line-height: 32px !important;
     text-align: right !important;
     font-variant-numeric: tabular-nums;
     -webkit-appearance: none !important;
@@ -666,9 +1144,6 @@
     outline: 0 !important;
 }
 
-.goal-set-targets .st-row-actions {
-    display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end;
-}
 .goal-set-targets .st-btn-assign {
     height: 30px; min-height: 30px; padding: 0 10px; border-radius: 6px;
     border: 1px solid #86efac; background: #fff; color: #059669;
@@ -680,13 +1155,18 @@
 .goal-set-targets .st-status-ico { display: none; }
 .goal-set-targets .st-action-dd { position: relative; display: inline-flex; }
 .goal-set-targets .st-action-menu {
-    position: absolute; right: 0; top: calc(100% + 4px);
-    min-width: 180px; margin: 0; padding: 6px; list-style: none;
+    position: fixed; right: auto; top: 0; left: 0;
+    min-width: 190px; margin: 0; padding: 6px; list-style: none;
     background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
-    box-shadow: 0 12px 28px rgba(15,23,42,.14); z-index: 40;
+    box-shadow: 0 12px 28px rgba(15,23,42,.18); z-index: 1080;
     display: none;
 }
 .goal-set-targets .st-action-dd.is-open .st-action-menu { display: block; }
+.goal-set-targets table.st-tree tr.st-menu-open,
+.goal-set-targets .st-mcard.st-menu-open {
+    position: relative;
+    z-index: 50;
+}
 .goal-set-targets .st-action-menu button {
     display: flex; align-items: center; gap: 8px; width: 100%;
     border: 0; background: transparent; text-align: left;
@@ -717,32 +1197,124 @@
     background: #f8fafc; font-size: .66rem; text-transform: uppercase; color: var(--st-muted);
 }
 
-/* Footer */
+/* Footer — single compact action bar */
 .goal-set-targets .st-footer {
-    position: fixed; left: 270px; right: 0; bottom: 50px; z-index: 1046;
-    background: rgba(255,255,255,.97); backdrop-filter: blur(8px);
-    border-top: 1px solid var(--st-border);
-    box-shadow: 0 -6px 20px rgba(15,23,42,.08);
-    padding: 10px 18px;
+    position: fixed;
+    left: 270px;
+    right: 0;
+    bottom: 0;
+    z-index: 1046;
+    height: auto;
+    max-height: none;
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -4px 18px rgba(15, 23, 42, .07);
+    padding: 10px 16px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
 }
 body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 @media (max-width: 1023.98px) { .goal-set-targets .st-footer { left: 0; } }
 .goal-set-targets .st-footer-inner {
-    display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
-    max-width: 1400px; margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+.goal-set-targets .st-footer-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    min-width: 0;
+    flex: 1 1 auto;
 }
 .goal-set-targets .st-tip {
-    display: inline-flex; align-items: flex-start; gap: 8px;
-    background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;
-    border-radius: 10px; padding: 8px 12px; font-size: .78rem; line-height: 1.35;
-    max-width: 560px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #f0f9ff;
+    color: #075985;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: .74rem;
+    line-height: 1.3;
+    max-width: min(560px, 100%);
 }
-.goal-set-targets .st-tip i { margin-top: 1px; flex-shrink: 0; }
-.goal-set-targets #stCheckSummary { font-size: .8rem; font-weight: 700; margin-top: 4px; }
+.goal-set-targets .st-tip i {
+    flex-shrink: 0;
+    font-size: .85rem;
+    color: #0284c7;
+}
+.goal-set-targets #stCheckSummary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .78rem;
+    font-weight: 700;
+    margin: 0;
+    white-space: nowrap;
+}
 .goal-set-targets #stCheckSummary.ok { color: #15803d; }
 .goal-set-targets #stCheckSummary.warn { color: #c2410c; }
-.goal-set-targets .st-footer-actions { display: flex; gap: 8px; flex-shrink: 0; }
-.goal-set-targets .st-footer-actions .st-btn { min-width: 130px; height: 40px; }
+.goal-set-targets .st-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+.goal-set-targets .st-footer-actions .st-btn {
+    min-width: 132px;
+    height: 38px;
+}
+
+/* Mobile footer: tight bar — no empty “card” */
+@media (max-width: 767.98px) {
+    .goal-set-targets { padding-bottom: 72px !important; }
+    .goal-set-targets .st-footer {
+        padding: 8px 12px;
+        padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    }
+    .goal-set-targets .st-footer-inner {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 8px;
+    }
+    .goal-set-targets .st-footer-meta {
+        flex: 0 0 auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 10px;
+    }
+    /* Tip is secondary on phone — keep one compact status line */
+    .goal-set-targets .st-tip {
+        display: none;
+    }
+    .goal-set-targets #stCheckSummary {
+        width: 100%;
+        white-space: normal;
+        font-size: .74rem;
+        line-height: 1.3;
+        padding: 0;
+    }
+    .goal-set-targets .st-footer-actions {
+        margin-left: 0;
+        width: 100%;
+        gap: 8px;
+    }
+    .goal-set-targets .st-footer-actions .st-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        height: 40px;
+        font-size: .78rem;
+    }
+}
 </style>
 @endpush
 
@@ -930,17 +1502,30 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     </div>
 
     <section class="st-panel">
-        <div class="st-table-wrap">
+        <div class="st-table-wrap" id="stTableWrap">
             <table class="st-tree" id="stTreeTable">
                 <thead>
                     <tr>
                         <th class="idx">#</th>
                         <th style="min-width:260px">Entity / Person (Hierarchy)</th>
                         <th>Type</th>
-                        <th class="num">Last Month Target ({{ $unit }}) <i class="bi bi-info-circle th-info" title="Previous period’s assigned total target (read-only)"></i></th>
-                        <th class="num">Total Target ({{ $unit }}) <i class="bi bi-info-circle th-info" title="This period’s total target to assign"></i></th>
-                        <th class="num">Owner Target ({{ $unit }}) <i class="bi bi-info-circle th-info" title="Personal share kept by this person — must be within Total Target (not extra)"></i></th>
-                        <th class="num col-eff">Remaining ({{ $unit }}) <i class="bi bi-info-circle th-info" title="Still left to give below = (Total − Owner) − children Total Targets"></i></th>
+                        <th class="num">Last Month Target ({{ $unit }})
+                            <i class="bi bi-info-circle th-info" role="button" tabindex="0"
+                               data-st-tip="Previous period’s assigned total target (read-only)."></i>
+                        </th>
+                        <th class="num">Total Target ({{ $unit }})
+                            <i class="bi bi-info-circle th-info" role="button" tabindex="0"
+                               data-st-tip="This period’s total target to assign."></i>
+                        </th>
+                        <th class="num">Owner Target ({{ $unit }})
+                            <i class="bi bi-info-circle th-info" role="button" tabindex="0"
+                               data-st-tip="Personal share kept by this person — must be within Total Target (not extra)."></i>
+                        </th>
+                        <th class="num col-eff">Remaining ({{ $unit }})
+                            <i class="bi bi-info-circle th-info" role="button" tabindex="0"
+                               data-st-tip="Still left to assign downline = (Total − Owner) − children Total Targets."></i>
+                            <span class="st-th-sub">left to assign downline</span>
+                        </th>
                         <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
@@ -951,12 +1536,19 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                         <td class="num"><span class="st-cell-num" id="stFootLast">0</span></td>
                         <td class="num"><span class="st-cell-num" id="stFootTarget">0</span></td>
                         <td class="num"><span class="st-cell-num" id="stFootPersonal">0</span></td>
-                        <td class="num col-eff"><span class="st-eff" id="stFootTeam">0</span></td>
+                        <td class="num col-eff">
+                            <div class="st-rem-stack">
+                                <span class="st-eff" id="stFootTeam">0</span>
+                                <span class="st-rem-caption">left to assign downline</span>
+                            </div>
+                        </td>
                         <td class="col-actions"></td>
                     </tr>
                 </tfoot>
             </table>
         </div>
+
+        <div class="st-mobile-list" id="stMobileList" aria-label="Targets list"></div>
 
         <details class="st-more" id="stHistory">
             <summary><i class="bi bi-clock-history"></i> Target History</summary>
@@ -984,12 +1576,15 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
     <div class="st-footer" role="region" aria-label="Save and assign">
         <div class="st-footer-inner">
-            <div>
+            <div class="st-footer-meta">
                 <div class="st-tip">
-                    <i class="bi bi-info-circle-fill"></i>
-                    <span id="stAuthTip"><strong>Remaining</strong> = (Total − Owner) − already given to children. Owner is within Total. Your own target is set by your authority only.</span>
+                    <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                    <span id="stAuthTip">
+                        <span class="st-footer-tip-full">You can set targets for people below your level. Your own target is set by your reporting authority only.</span>
+                        <span class="st-footer-tip-short">Edit team below you · own target is view-only</span>
+                    </span>
                 </div>
-                <div id="stCheckSummary" class="ok">Ready</div>
+                <div id="stCheckSummary" class="ok"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Ready to save or assign</div>
             </div>
             <div class="st-footer-actions">
                 <button type="button" class="st-btn" id="stSaveDraft"><i class="bi bi-floppy"></i> Save as Draft</button>
@@ -1410,6 +2005,94 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         return escapeHtml(personRoleLabel(n));
     }
 
+    function renderMobileCards(nodes, depth = 0, parentCollapsed = false, cards = [], pathPrefix = '', parentTitle = '') {
+        (nodes || []).forEach((n, i) => {
+            n.depth = depth;
+            const hasKids = !!(n.children && n.children.length);
+            const isCollapsed = showHierarchy ? collapsed.has(n.id) : false;
+            const hidden = parentCollapsed;
+            const num = pathPrefix ? `${pathPrefix}.${i + 1}` : String(i + 1);
+            const title = entityTitle(n);
+            if (!hidden) {
+                const editable = !!n.editable;
+                // Only hard-Locked blocks edit. Approved can be revised for next-month planning.
+                // Org-hydrated amounts are never treated as locked person targets.
+                const locked = String(n.status || '') === 'Locked' && !n.from_org_target;
+                const isStaff = !hasKids;
+                const eff = effectiveOf(n);
+                const filteredOut = !matchesFilter(n);
+                const rm = roleMeta(n);
+                const meta = entityMeta(n);
+                const typeLabel = n.is_org_group ? rm.label : personRoleLabel(n);
+                const linkedEditable = !!(n.is_org_group && n.linked_user_id && editable && !locked);
+                const canEditAdj = (editable && !locked && !isStaff && !n.is_org_group) || linkedEditable;
+                const canEditBase = (editable && !locked && !n.is_org_group) || linkedEditable;
+                const totalHtml = canEditBase
+                    ? inputHtml(n, 'st-set', n.set_target, false, 'Total target for ' + escapeHtml(n.name))
+                    : (n.is_org_group
+                        ? `<span class="st-cell-num" data-set-for="${n.id}">${fmt(n.set_target)}</span>`
+                        : inputHtml(n, 'st-set', n.set_target, true, 'Total target for ' + escapeHtml(n.name)));
+                const ownerHtml = canEditAdj
+                    ? inputHtml(n, 'st-owner', n.owner_target, false, 'Owner target for ' + escapeHtml(n.name))
+                    : `<span class="st-cell-num" data-owner-for="${n.id}">${fmt(ownerDisplayed(n))}</span>`;
+                cards.push(`
+                    <article class="st-mcard ${n.amber ? 'st-amber' : ''} ${filteredOut ? 'is-filtered-out' : ''}" data-id="${n.id}" data-depth="${depth}">
+                        <div class="st-mcard-top">
+                            <button type="button" class="st-toggle ${hasKids && showHierarchy ? '' : 'is-leaf'}" data-toggle="${n.id}" aria-label="${isCollapsed ? 'Expand' : 'Collapse'}">
+                                <i class="bi ${isCollapsed ? 'bi-chevron-right' : 'bi-chevron-down'}"></i>
+                            </button>
+                            <span class="st-ent-ico ${rm.cls}"><i class="bi ${rm.icon}"></i></span>
+                            <div class="st-mcard-head">
+                                <div class="st-mcard-title-row">
+                                    <span class="st-mcard-idx">${num}</span>
+                                    <span class="st-type ${rm.cls}">${escapeHtml(typeLabel)}</span>
+                                </div>
+                                <div class="st-mcard-name">${escapeHtml(title)}</div>
+                                <div class="st-mcard-meta">${meta}</div>
+                            </div>
+                            <div class="st-mcard-actions">
+                                <div class="st-action-dd" data-row-dd="${n.id}">
+                                    <button type="button" class="st-btn-assign" data-assign-toggle="${n.id}" ${editable && !locked ? '' : 'disabled'}>
+                                        Assign <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                    <ul class="st-action-menu" role="menu">
+                                        <li><button type="button" data-row-act="assign" data-id="${n.id}" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-send"></i> Assign &amp; notify</button></li>
+                                        <li><button type="button" data-row-act="draft" data-id="${n.id}" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-floppy"></i> Save draft</button></li>
+                                        <li><button type="button" data-row-act="copy-open" data-id="${n.id}" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-arrow-down-left-square"></i> Use last month as total</button></li>
+                                        <li><button type="button" data-row-act="clear" data-id="${n.id}" class="danger" ${editable && !locked ? '' : 'disabled'}><i class="bi bi-eraser"></i> Clear</button></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="st-mcard-grid">
+                            <div class="st-mfield">
+                                <span class="st-mfield-label">Last</span>
+                                <span class="st-cell-num" data-open-for="${n.id}">${fmt(n.last_month)}</span>
+                            </div>
+                            <div class="st-mfield">
+                                <span class="st-mfield-label">Total</span>
+                                ${totalHtml}
+                            </div>
+                            <div class="st-mfield">
+                                <span class="st-mfield-label">Owner</span>
+                                ${ownerHtml}
+                            </div>
+                            <div class="st-mfield is-eff">
+                                <span class="st-mfield-label">Remaining</span>
+                                <span class="st-eff" data-total-for="${n.id}"><span class="st-rem-val">${fmt(eff)}</span></span>
+                                ${hasKids ? `<span class="st-rem-caption">left to assign downline</span>` : ''}
+                            </div>
+                        </div>
+                    </article>
+                `);
+            }
+            if (hasKids && showHierarchy) {
+                renderMobileCards(n.children, depth + 1, hidden || isCollapsed, cards, num, title);
+            }
+        });
+        return cards;
+    }
+
     function renderRows(nodes, depth = 0, parentCollapsed = false, rows = [], pathPrefix = '') {
         (nodes || []).forEach((n, i) => {
             n.depth = depth;
@@ -1420,7 +2103,9 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             if (!hidden) {
                 const pad = showHierarchy ? depth * 22 : 0;
                 const editable = !!n.editable;
-                const locked = ['Approved', 'Locked'].includes(n.status);
+                // Only hard-Locked blocks edit. Approved can be revised for next-month planning.
+                // Org-hydrated amounts are never treated as locked person targets.
+                const locked = String(n.status || '') === 'Locked' && !n.from_org_target;
                 const isStaff = !hasKids;
                 const eff = effectiveOf(n);
                 const filteredOut = !matchesFilter(n);
@@ -1462,10 +2147,13 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                                     : inputHtml(n, 'st-owner', n.owner_target, true, 'Owner target for ' + escapeHtml(n.name)))}
                         </td>
                         <td class="num col-eff">
-                            <span class="st-eff" data-total-for="${n.id}">
-                                <span class="st-rem-val">${fmt(eff)}</span>
-                                <span class="st-rem-hint d-none" data-check-label="${n.id}"></span>
-                            </span>
+                            <div class="st-rem-stack">
+                                <span class="st-eff" data-total-for="${n.id}">
+                                    <span class="st-rem-val">${fmt(eff)}</span>
+                                    <span class="st-rem-hint d-none" data-check-label="${n.id}"></span>
+                                </span>
+                                ${hasKids ? `<span class="st-rem-caption">left to assign downline</span>` : ''}
+                            </div>
                         </td>
                         <td class="col-actions">
                             <div class="st-row-actions">
@@ -1505,7 +2193,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
     function findNode(nodes, id) {
         for (const n of nodes || []) {
-            if (n.id === id) return n;
+            if (Number(n.id) === Number(id)) return n;
             const hit = findNode(n.children || [], id);
             if (hit) return hit;
         }
@@ -1514,11 +2202,93 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
     function findParentNode(nodes, id) {
         for (const n of nodes || []) {
-            if ((n.children || []).some((c) => c.id === id)) return n;
+            if ((n.children || []).some((c) => Number(c.id) === Number(id))) return n;
             const deeper = findParentNode(n.children || [], id);
             if (deeper) return deeper;
         }
         return null;
+    }
+
+    function findOrgNodeByUnitId(nodes, orgUnitId) {
+        const want = Number(orgUnitId);
+        if (!want) return null;
+        const syntheticId = -100000 - want;
+        for (const n of nodes || []) {
+            if (n.is_org_group && Number(n.id) === syntheticId) return n;
+            const hit = findOrgNodeByUnitId(n.children || [], want);
+            if (hit) return hit;
+        }
+        return null;
+    }
+
+    function findUserNode(nodes, userId) {
+        const want = Number(userId);
+        if (!want) return null;
+        for (const n of nodes || []) {
+            if (!n.is_org_group && Number(n.id) === want) return n;
+            if (n.is_org_group && Number(n.linked_user_id) === want) return n;
+            const hit = findUserNode(n.children || [], want);
+            if (hit) return hit;
+        }
+        return null;
+    }
+
+    function pathIdsToRoot(id) {
+        const path = [];
+        let cur = findNode(state.tree || [], id);
+        while (cur) {
+            path.unshift(Number(cur.id));
+            const parent = findParentNode(state.tree || [], cur.id);
+            cur = parent;
+        }
+        return path;
+    }
+
+    function applyFocusFromUrl() {
+        let focusOrg = 0;
+        let focusUser = 0;
+        try {
+            const url = new URL(window.location.href);
+            focusOrg = Number(url.searchParams.get('focus_org') || 0) || 0;
+            focusUser = Number(url.searchParams.get('focus_user') || 0) || 0;
+        } catch (e) { /* ignore */ }
+        if (!focusOrg && !focusUser) return null;
+
+        let target = focusUser
+            ? findUserNode(state.tree || [], focusUser)
+            : findOrgNodeByUnitId(state.tree || [], focusOrg);
+        if (!target) return null;
+
+        // Show full hierarchy so the focused node is reachable under Region roots
+        applyFilter = 'rd';
+        const regions = (state.tree || []).filter((n) => n.is_org_group && n.org_type === 'region');
+        if (!regions.length) applyFilter = String(state.authority?.default_apply || 'rd');
+        syncApplyToButtons();
+
+        const path = pathIdsToRoot(target.id);
+        // Expand every ancestor; keep the focused node expanded if it has kids
+        path.forEach((id, idx) => {
+            if (idx < path.length - 1) collapsed.delete(id);
+        });
+        if (target.children?.length) collapsed.delete(Number(target.id));
+
+        return Number(target.id);
+    }
+
+    function highlightFocus(focusId) {
+        if (!focusId) return;
+        requestAnimationFrame(() => {
+            const row = document.querySelector(`#stTreeBody tr[data-id="${focusId}"]`)
+                || document.querySelector(`#stMobileList .st-mcard[data-id="${focusId}"]`);
+            if (!row) return;
+            row.classList.add('st-focus-row');
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const input = row.querySelector('input.st-set:not([disabled]), input.st-owner:not([disabled])');
+            if (input) {
+                try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+            }
+            setTimeout(() => row.classList.remove('st-focus-row'), 4500);
+        });
     }
 
     function maxAllowedTarget(nodeId) {
@@ -1578,6 +2348,17 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         if ($('stFootTarget')) $('stFootTarget').textContent = fmt(base);
         if ($('stFootPersonal')) $('stFootPersonal').textContent = fmt(adj);
         if ($('stFootTeam')) $('stFootTeam').textContent = fmt(eff);
+        const m = $('stMobileList');
+        if (m) {
+            const vals = m.querySelectorAll('.st-mobile-totals [data-mfoot]');
+            vals.forEach((el) => {
+                const key = el.getAttribute('data-mfoot');
+                if (key === 'last') el.textContent = fmt(open);
+                if (key === 'total') el.textContent = fmt(base);
+                if (key === 'owner') el.textContent = fmt(adj);
+                if (key === 'rem') el.textContent = fmt(eff);
+            });
+        }
     }
 
     function sumDisplayRoots(key) {
@@ -1607,11 +2388,11 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         if ($('stKpiArea')) $('stKpiArea').textContent = money(revenueVal);
         if ($('stKpiAssigned')) $('stKpiAssigned').textContent = money(assigned);
         if ($('stKpiAreaLabel')) $('stKpiAreaLabel').textContent = 'Total Revenue Target';
-        if ($('stKpiAreaMeta')) $('stKpiAreaMeta').textContent = 'Opening shortfall carry ' + money(revenueLast);
+        if ($('stKpiAreaMeta')) $('stKpiAreaMeta').textContent = 'Last month target ' + money(revenueLast);
 
         if ($('stKpiLast')) $('stKpiLast').textContent = money(disbVal);
         if ($('stKpiLastLabel')) $('stKpiLastLabel').textContent = 'Total Disbursement Target';
-        if ($('stKpiLastMeta')) $('stKpiLastMeta').textContent = 'Opening shortfall carry ' + money(disbLast);
+        if ($('stKpiLastMeta')) $('stKpiLastMeta').textContent = 'Last month target ' + money(disbLast);
 
         // Opening shortfall card = carried shortfall at Apply To roots
         let shortfall = openingAll;
@@ -1669,7 +2450,17 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
         const tip = $('stAuthTip');
         if (tip && state.authority?.message) {
-            tip.textContent = state.authority.message;
+            const msg = String(state.authority.message);
+            const full = tip.querySelector('.st-footer-tip-full');
+            const short = tip.querySelector('.st-footer-tip-short');
+            if (full && short) {
+                full.textContent = msg;
+                short.textContent = canEdit
+                    ? 'Edit team below you · own target is view-only'
+                    : 'View only — your authority sets your target';
+            } else {
+                tip.textContent = msg;
+            }
         }
 
         const sum = $('stCheckSummary');
@@ -1680,20 +2471,20 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
 
         if (!canEdit) {
             sum.className = 'warn';
-            sum.innerHTML = '<i class="bi bi-lock-fill"></i> View only — your authority sets your target';
-        } else                 if (overs.length) {
+            sum.innerHTML = '<i class="bi bi-lock-fill" aria-hidden="true"></i> View only — your authority sets your target';
+        } else if (overs.length) {
             sum.className = 'warn';
             const overMsg = overs[0]?.label || 'Children exceed Remaining pool';
-            sum.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> ' + escapeHtml(overMsg);
+            sum.innerHTML = '<i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i> ' + escapeHtml(overMsg);
         } else if (receivesTarget() && blocking.some((b) => !b.ok)) {
             sum.className = 'warn';
-            sum.innerHTML = '<i class="bi bi-share"></i> Finish assigning your remainder to unlock Assign';
+            sum.innerHTML = '<i class="bi bi-share" aria-hidden="true"></i> Finish assigning your remainder to unlock Assign';
         } else if (!(state.tree || []).length) {
             sum.className = 'warn';
-            sum.textContent = 'No team below you in your authorized scope';
+            sum.innerHTML = '<i class="bi bi-people" aria-hidden="true"></i> No team below you in your authorized scope';
         } else {
             sum.className = 'ok';
-            sum.innerHTML = '<i class="bi bi-check-circle-fill"></i> Ready to save or assign';
+            sum.innerHTML = '<i class="bi bi-check-circle-fill" aria-hidden="true"></i> Ready to save or assign';
         }
 
         const assignDisabled = !state.can_assign;
@@ -1718,8 +2509,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         recompute(state.tree || []);
         const walk = (nodes) => {
             (nodes || []).forEach((n) => {
-                const row = document.querySelector(`#stTreeBody tr[data-id="${n.id}"]`);
-                if (row) {
+                document.querySelectorAll(`[data-id="${n.id}"]`).forEach((row) => {
                     row.classList.toggle('st-amber', !!n.amber);
                     const totalCell = row.querySelector(`[data-total-for="${n.id}"]`);
                     if (totalCell) {
@@ -1734,14 +2524,15 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                     }
                     const ownerSpan = row.querySelector(`[data-owner-for="${n.id}"]`);
                     if (ownerSpan) {
-                        ownerSpan.textContent = fmt(n.is_org_group && n.linked_user_id ? (n.owner_target || 0) : 0);
+                        ownerSpan.textContent = fmt(ownerDisplayed(n));
                     }
-                }
+                });
                 if (n.children?.length) walk(n.children);
             });
         };
         walk(state.tree || []);
         updateCheckSummary();
+        updateFooters();
     }
 
     function render() {
@@ -1750,6 +2541,25 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         const rows = renderRows(roots, 0, false, [], '');
         $('stTreeBody').innerHTML = rows.join('') || `
             <tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:36px">No matching people for this filter</td></tr>`;
+        const mobile = $('stMobileList');
+        if (mobile) {
+            const cards = renderMobileCards(roots, 0, false, [], '');
+            let open = 0, base = 0, adj = 0, rem = 0;
+            (roots || []).forEach((n) => {
+                open += Number(n.last_month || 0);
+                base += Number(n.set_target || 0);
+                adj += ownerDisplayed(n);
+                rem += effectiveOf(n);
+            });
+            const totals = roots.length ? `
+                <div class="st-mobile-totals">
+                    <div class="st-mfield"><span class="st-mfield-label">Last</span><div class="st-mfield-val" data-mfoot="last">${fmt(open)}</div></div>
+                    <div class="st-mfield"><span class="st-mfield-label">Total</span><div class="st-mfield-val" data-mfoot="total">${fmt(base)}</div></div>
+                    <div class="st-mfield"><span class="st-mfield-label">Owner</span><div class="st-mfield-val" data-mfoot="owner">${fmt(adj)}</div></div>
+                    <div class="st-mfield"><span class="st-mfield-label">Remaining</span><div class="st-mfield-val" data-mfoot="rem">${fmt(rem)}</div><span class="st-rem-caption">left to assign downline</span></div>
+                </div>` : '';
+            mobile.innerHTML = (cards.join('') || `<div class="st-mcard-empty">No matching people for this filter</div>`) + totals;
+        }
         if ($('stLastMonth')) $('stLastMonth').value = fmt(state.self?.last_month || 0);
         if ($('stMyTarget')) $('stMyTarget').value = fmt(state.self?.set_target || 0);
         if ($('stMyOwner')) $('stMyOwner').value = fmt(state.self?.owner_target || 0);
@@ -1771,6 +2581,10 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
             body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:28px">
                 <i class="bi bi-arrow-repeat" style="margin-right:6px"></i>Loading ${escapeHtml(period)}…
             </td></tr>`;
+        }
+        const mobile = $('stMobileList');
+        if (mobile) {
+            mobile.innerHTML = `<div class="st-mcard-empty"><i class="bi bi-arrow-repeat" style="margin-right:6px"></i>Loading ${escapeHtml(period)}…</div>`;
         }
 
         const json = await api(`${routes.tree}?period=${encodeURIComponent(period)}&metric=${encodeURIComponent(metric)}`);
@@ -1862,7 +2676,7 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         flash(msg, 'warn');
     }
 
-    $('stTreeBody').addEventListener('input', (e) => {
+    function onTargetInput(e) {
         const el = e.target;
         if (!el.classList.contains('st-set') && !el.classList.contains('st-owner')) return;
         const id = Number(el.dataset.id);
@@ -1885,8 +2699,9 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
                 const maxOwner = maxAllowedOwner(node);
                 if (Number(node.owner_target || 0) > maxOwner) {
                     node.owner_target = maxOwner;
-                    const ownerInput = document.querySelector(`#stTreeBody input.st-owner[data-id="${id}"]`);
-                    if (ownerInput && document.activeElement !== ownerInput) ownerInput.value = String(maxOwner);
+                    document.querySelectorAll(`input.st-owner[data-id="${id}"]`).forEach((ownerInput) => {
+                        if (document.activeElement !== ownerInput) ownerInput.value = String(maxOwner);
+                    });
                 }
             }
         }
@@ -1910,15 +2725,105 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         node.row_source = 'edited';
         node.chip = 'Edited';
         refreshDerived();
-    });
+    }
 
-    $('stTreeBody').addEventListener('blur', (e) => {
+    function onTargetBlur(e) {
         const el = e.target;
         if (!el.classList.contains('st-set') && !el.classList.contains('st-owner')) return;
         const num = sanitizeDecimal(el);
         if (num === null) return;
         el.value = String(num);
-    }, true);
+    }
+
+    function positionActionMenu(toggle, menu) {
+        if (!toggle || !menu) return;
+        const rect = toggle.getBoundingClientRect();
+        const menuW = Math.max(190, menu.offsetWidth || 190);
+        const menuH = menu.offsetHeight || 160;
+        let top = rect.bottom + 4;
+        let left = rect.right - menuW;
+        if (top + menuH > window.innerHeight - 8) top = Math.max(8, rect.top - menuH - 4);
+        if (left < 8) left = 8;
+        if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+        menu.style.top = `${top}px`;
+        menu.style.left = `${left}px`;
+        menu.style.right = 'auto';
+    }
+
+    function onRowActionClick(e) {
+        const toggle = e.target.closest('[data-assign-toggle], [data-more-toggle]');
+        if (toggle) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (toggle.disabled) return;
+            const dd = toggle.closest('.st-action-dd');
+            const menu = dd?.querySelector('.st-action-menu');
+            const willOpen = !dd.classList.contains('is-open');
+            closeRowMenus();
+            if (willOpen && dd) {
+                dd.classList.add('is-open');
+                const row = toggle.closest('tr, .st-mcard');
+                if (row) row.classList.add('st-menu-open');
+                if (menu) {
+                    // Measure after display:block, then pin to viewport (escapes table stacking)
+                    positionActionMenu(toggle, menu);
+                    requestAnimationFrame(() => positionActionMenu(toggle, menu));
+                }
+            }
+            return;
+        }
+
+        const actBtn = e.target.closest('[data-row-act]');
+        if (!actBtn || actBtn.disabled) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const id = Number(actBtn.getAttribute('data-id'));
+        const act = actBtn.getAttribute('data-row-act');
+        const node = findNode(state.tree, id);
+        closeRowMenus();
+        if (!node || !node.editable) return;
+
+        if (act === 'copy-open') {
+            const open = Number(node.last_month || 0);
+            node.set_target = open;
+            if (!(node.children && node.children.length)) node.owner_target = open;
+            node.row_source = 'edited';
+            node.chip = 'Edited';
+            render();
+            flash(`Total Target set from Last Month Target (${fmt(open)}) for ${node.linked_user_name || node.name}. Save or Assign when ready.`, 'ok');
+            return;
+        }
+        if (act === 'clear') {
+            node.set_target = 0;
+            if (node.children?.length) node.owner_target = 0;
+            else node.owner_target = 0;
+            node.row_source = 'edited';
+            node.chip = 'Edited';
+            render();
+            return;
+        }
+        if (act === 'draft') {
+            persist(false, [id]).catch((err) => flash(err.message, 'err'));
+            return;
+        }
+        if (act === 'assign') {
+            if (Number(node.set_target || 0) <= 0) {
+                flash('Enter a Total Target for this person first (Last Month Target is from the previous period).', 'warn');
+                return;
+            }
+            const label = node.linked_user_name || node.name;
+            if (!confirm(`Assign target for ${label} and notify them?`)) return;
+            persist(true, [id]).catch((err) => flash(err.message, 'err'));
+        }
+    }
+
+    $('stTreeBody').addEventListener('input', onTargetInput);
+    $('stTreeBody').addEventListener('blur', onTargetBlur, true);
+    const stMobileListEl = $('stMobileList');
+    if (stMobileListEl) {
+        stMobileListEl.addEventListener('input', onTargetInput);
+        stMobileListEl.addEventListener('blur', onTargetBlur, true);
+    }
 
     function expandSearchHits(nodes) {
         (nodes || []).forEach((n) => {
@@ -1930,11 +2835,11 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     }
 
     function applyRowVisibility() {
-        document.querySelectorAll('#stTreeBody tr[data-id]').forEach((tr) => {
-            const id = Number(tr.getAttribute('data-id'));
+        document.querySelectorAll('#stTreeBody tr[data-id], #stMobileList .st-mcard[data-id]').forEach((el) => {
+            const id = Number(el.getAttribute('data-id'));
             const n = findNode(state.tree, id);
             if (!n) return;
-            tr.classList.toggle('is-filtered-out', !matchesFilter(n));
+            el.classList.toggle('is-filtered-out', !matchesFilter(n));
         });
     }
 
@@ -2060,7 +2965,17 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     });
 
     function closeRowMenus() {
-        document.querySelectorAll('.goal-set-targets .st-action-dd.is-open').forEach((el) => el.classList.remove('is-open'));
+        document.querySelectorAll('.goal-set-targets .st-action-dd.is-open').forEach((el) => {
+            el.classList.remove('is-open');
+            const menu = el.querySelector('.st-action-menu');
+            if (menu) {
+                menu.style.top = '';
+                menu.style.left = '';
+                menu.style.right = '';
+            }
+        });
+        document.querySelectorAll('.goal-set-targets tr.st-menu-open, .goal-set-targets .st-mcard.st-menu-open')
+            .forEach((el) => el.classList.remove('st-menu-open'));
     }
 
     function collectRowsForIds(ids) {
@@ -2135,64 +3050,12 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
     bindAssign($('stAssign'));
     bindAssign($('stAssignTop'));
 
-    $('stTreeBody').addEventListener('click', (e) => {
-        const toggle = e.target.closest('[data-assign-toggle], [data-more-toggle]');
-        if (toggle) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (toggle.disabled) return;
-            const dd = toggle.closest('.st-action-dd');
-            const willOpen = !dd.classList.contains('is-open');
-            closeRowMenus();
-            if (willOpen) dd.classList.add('is-open');
-            return;
-        }
-
-        const actBtn = e.target.closest('[data-row-act]');
-        if (!actBtn || actBtn.disabled) return;
-        e.preventDefault();
-        e.stopPropagation();
-        const id = Number(actBtn.getAttribute('data-id'));
-        const act = actBtn.getAttribute('data-row-act');
-        const node = findNode(state.tree, id);
-        closeRowMenus();
-        if (!node || !node.editable) return;
-
-        if (act === 'copy-open') {
-            const open = Number(node.last_month || 0);
-            node.set_target = open;
-            if (!(node.children && node.children.length)) node.owner_target = open;
-            node.row_source = 'edited';
-            node.chip = 'Edited';
-            render();
-            flash(`Total Target set from Last Month Target (${fmt(open)}) for ${node.linked_user_name || node.name}. Save or Assign when ready.`, 'ok');
-            return;
-        }
-        if (act === 'clear') {
-            node.set_target = 0;
-            if (node.children?.length) node.owner_target = 0;
-            else node.owner_target = 0;
-            node.row_source = 'edited';
-            node.chip = 'Edited';
-            render();
-            return;
-        }
-        if (act === 'draft') {
-            persist(false, [id]).catch((err) => flash(err.message, 'err'));
-            return;
-        }
-        if (act === 'assign') {
-            if (Number(node.set_target || 0) <= 0) {
-                flash('Enter a Total Target for this person first (Last Month Target is from the previous period).', 'warn');
-                return;
-            }
-            const label = node.linked_user_name || node.name;
-            if (!confirm(`Assign target for ${label} and notify them?`)) return;
-            persist(true, [id]).catch((err) => flash(err.message, 'err'));
-        }
-    });
+    $('stTreeBody').addEventListener('click', onRowActionClick);
+    if (stMobileListEl) stMobileListEl.addEventListener('click', onRowActionClick);
 
     document.addEventListener('click', () => closeRowMenus());
+    document.addEventListener('scroll', () => closeRowMenus(), true);
+    window.addEventListener('resize', () => closeRowMenus());
 
     syncApplyToButtons();
     if (showHierarchy) {
@@ -2206,8 +3069,54 @@ body.sidebar-collapsed .goal-set-targets .st-footer { left: 76px; }
         };
         collapseDeep(getDisplayRoots(), 0);
     }
+    const focusId = applyFocusFromUrl();
     render();
+    highlightFocus(focusId);
     loadAudit();
+
+    (function bindColumnTips() {
+        let bubble = document.getElementById('stTipBubble');
+        if (!bubble) {
+            bubble = document.createElement('div');
+            bubble.id = 'stTipBubble';
+            bubble.className = 'st-tip-bubble';
+            bubble.setAttribute('role', 'tooltip');
+            document.body.appendChild(bubble);
+        }
+        let hideTimer = null;
+        const showTip = (el) => {
+            const text = el.getAttribute('data-st-tip') || '';
+            if (!text) return;
+            clearTimeout(hideTimer);
+            bubble.textContent = text;
+            bubble.classList.remove('is-below');
+            bubble.classList.add('is-on');
+            const rect = el.getBoundingClientRect();
+            const tipW = bubble.offsetWidth || 200;
+            const tipH = bubble.offsetHeight || 40;
+            let left = rect.left + (rect.width / 2) - (tipW / 2);
+            let top = rect.top - tipH - 10;
+            if (top < 8) {
+                top = rect.bottom + 10;
+                bubble.classList.add('is-below');
+            }
+            if (left < 8) left = 8;
+            if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
+            bubble.style.left = `${left}px`;
+            bubble.style.top = `${top}px`;
+        };
+        const hideTip = () => {
+            hideTimer = setTimeout(() => bubble.classList.remove('is-on'), 40);
+        };
+        document.querySelectorAll('.goal-set-targets [data-st-tip]').forEach((el) => {
+            el.addEventListener('mouseenter', () => showTip(el));
+            el.addEventListener('mouseleave', hideTip);
+            el.addEventListener('focus', () => showTip(el));
+            el.addEventListener('blur', hideTip);
+        });
+        document.addEventListener('scroll', () => bubble.classList.remove('is-on'), true);
+        window.addEventListener('resize', () => bubble.classList.remove('is-on'));
+    })();
 })();
 </script>
 @endpush

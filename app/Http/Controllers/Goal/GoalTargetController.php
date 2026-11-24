@@ -271,6 +271,7 @@ class GoalTargetController extends Controller
                 'key' => 'org-'.$unit->id,
                 'name' => $unit->name.($unit->code ? ' ('.$unit->code.')' : ''),
                 'type' => (string) $unit->type,
+                'org_id' => (int) $unit->id,
                 'children' => $children,
             ], $orgOwn[(int) $unit->id] ?? null);
         };
@@ -375,6 +376,10 @@ class GoalTargetController extends Controller
             }
             $node['owner_type'] = 'org_unit';
             $node['target_id'] = null;
+            // Keep org_id from the scaffold so Edit can deep-link into Set Targets
+            if (empty($node['org_id']) && ! empty($node['key']) && str_starts_with((string) $node['key'], 'org-')) {
+                $node['org_id'] = (int) substr((string) $node['key'], 4);
+            }
         }
 
         $effective = round($base + $opening + $adj, 2);

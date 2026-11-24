@@ -421,9 +421,9 @@
     height: 26px; padding: 0 9px; border-radius: 999px;
     border: 1px solid #86efac; background: #fff; color: #059669;
     font-size: .68rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;
-    cursor: pointer; white-space: nowrap;
+    cursor: pointer; white-space: nowrap; text-decoration: none;
 }
-.goal-targets-page .gt-btn-edit:hover { background: #ecfdf5; }
+.goal-targets-page .gt-btn-edit:hover { background: #ecfdf5; color: #047857; }
 .goal-targets-page .gt-more-dd { position: relative; display: inline-flex; }
 .goal-targets-page .gt-btn-more {
     width: 26px; height: 26px; border-radius: 7px; border: 1px solid #e2e8f0;
@@ -432,21 +432,31 @@
 }
 .goal-targets-page .gt-btn-more:hover { background: #f8fafc; color: #0f172a; }
 .goal-targets-page .gt-more-menu {
-    position: fixed; z-index: 1080;
-    min-width: 168px; margin: 0; padding: 4px; list-style: none;
+    position: fixed; z-index: 2000;
+    min-width: 180px; margin: 0; padding: 4px; list-style: none;
     background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
-    box-shadow: 0 12px 28px rgba(15,23,42,.14); display: none;
+    box-shadow: 0 12px 28px rgba(15,23,42,.18); display: none;
 }
 .goal-targets-page .gt-more-dd.is-open .gt-more-menu { display: block; }
-.goal-targets-page .gt-more-menu button {
+/* Portaled to body — escape table / foot stacking */
+.gt-more-menu.is-portal {
+    display: block !important;
+    position: fixed !important;
+    z-index: 2000 !important;
+}
+.goal-targets-page .gt-more-menu button,
+.goal-targets-page .gt-more-menu a {
     display: flex; align-items: center; gap: 7px; width: 100%;
     border: 0; background: transparent; text-align: left;
     padding: 7px 9px; border-radius: 6px; font-size: .74rem; font-weight: 650;
-    color: #334155; cursor: pointer;
+    color: #334155; cursor: pointer; text-decoration: none;
 }
-.goal-targets-page .gt-more-menu button:hover { background: #ecfdf5; color: #059669; }
-.goal-targets-page .gt-more-menu button.danger { color: #b91c1c; }
-.goal-targets-page .gt-more-menu button.danger:hover { background: #fef2f2; color: #991b1b; }
+.goal-targets-page .gt-more-menu button:hover,
+.goal-targets-page .gt-more-menu a:hover { background: #ecfdf5; color: #059669; }
+.goal-targets-page .gt-more-menu button.danger,
+.goal-targets-page .gt-more-menu a.danger { color: #b91c1c; }
+.goal-targets-page .gt-more-menu button.danger:hover,
+.goal-targets-page .gt-more-menu a.danger:hover { background: #fef2f2; color: #991b1b; }
 .goal-targets-page .gt-more-menu button:disabled { opacity: .45; cursor: not-allowed; }
 .goal-targets-page .gt-table-foot {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
@@ -1088,7 +1098,7 @@
                 </table>
             </div>
             <div class="gt-table-foot">
-                <div class="gt-showing" id="gtAllocHint">Click a region to expand clusters, then branches and employees.</div>
+                <div class="gt-showing" id="gtAllocHint">Expand the hierarchy to review figures. Use Edit to change targets in Set Targets.</div>
                 <div class="gt-foot-right">
                     @if($canManage)
                         <a href="{{ route('goal.targets.set', request()->only('period', 'metric')) }}" class="btn-gt-primary">
@@ -1325,6 +1335,9 @@
     const dashStats = @json($stats);
     const canManage = @json((bool) $canManage);
     const updateRouteTpl = @json($canManage ? route('goal.targets.update', ['target' => '__ID__']) : '');
+    const setTargetsUrl = @json(route('goal.targets.set'));
+    const dashPeriod = @json((string) ($filters['period'] ?? ''));
+    const dashMetric = @json((string) ($tableMetric ?? 'revenue'));
     const activityUrl = @json(route('goal.targets.activity'));
     const openAdd = @json($openAddModal);
     const openEdit = @json($openEditModal);
@@ -1374,14 +1387,34 @@
         });
     }
 
-    function editAttrs(n, actionUrl) {
-        return `data-id="${n.target_id || ''}" data-action="${escapeHtml(actionUrl)}"
-            data-owner-type="${escapeHtml(n.owner_type || (n.type === 'employee' ? 'employee' : 'org_unit'))}"
-            data-period="${escapeHtml(n.period || '')}" data-metric="${escapeHtml(n.metric || 'revenue')}"
-            data-org="${n.org_id || ''}" data-user="${n.user_id || ''}"
-            data-base="${n.base || 0}" data-opening="${n.opening || 0}"
-            data-adjustments="${n.adjustments || 0}" data-actual="${n.actual || 0}"
-            data-status="${escapeHtml(n.status || 'Draft')}"`;
+    function firstPeriodInTree(nodes) {
+        for (let i = 0; i < (nodes || []).length; i++) {
+            const n = nodes[i];
+            if (n.period) return String(n.period);
+            const nested = firstPeriodInTree(n.children || []);
+            if (nested) return nested;
+        }
+        return '';
+    }
+
+    function setTargetsHref(n) {
+        const url = new URL(setTargetsUrl, window.location.origin);
+        // Prefer dashboard filter period so Edit matches what the user is viewing
+        const period = String(dashPeriod || n.period || firstPeriodInTree(allocationTree) || '').trim();
+        const metric = String(dashMetric || n.metric || 'revenue').trim() || 'revenue';
+        if (period) url.searchParams.set('period', period);
+        url.searchParams.set('metric', metric);
+        let orgId = Number(n.org_id || 0);
+        let userId = Number(n.user_id || 0);
+        const key = String(n.key || '');
+        if (!orgId && key.indexOf('org-') === 0) orgId = Number(key.slice(4)) || 0;
+        if (!userId && key.indexOf('user-') === 0) {
+            const parts = key.split('-');
+            userId = Number(parts[1]) || 0;
+        }
+        if (userId) url.searchParams.set('focus_user', String(userId));
+        else if (orgId) url.searchParams.set('focus_org', String(orgId));
+        return url.pathname + url.search;
     }
 
     function renderAllocRows(nodes, depth, parentCollapsed, pathPrefix, rows) {
@@ -1396,25 +1429,18 @@
                 const pct = Number(n.pct || 0);
                 let actions = '';
                 if (canManage) {
-                    const actionUrl = n.target_id ? updateRouteTpl.replace('__ID__', String(n.target_id)) : '';
-                    const editDisabled = n.target_id ? '' : 'disabled';
-                    const attrs = n.target_id ? editAttrs(n, actionUrl) : '';
+                    const href = setTargetsHref(n);
                     actions = `<td class="col-actions">
                         <div class="gt-row-actions">
-                            <button type="button" class="gt-btn-edit btn-edit-target" ${editDisabled}
-                                data-bs-toggle="modal" data-bs-target="#editTargetModal" ${attrs}
-                                title="Edit">
+                            <a href="${escapeHtml(href)}" class="gt-btn-edit" title="Edit in Set Targets">
                                 <i class="bi bi-pencil"></i> Edit
-                            </button>
+                            </a>
                             <div class="gt-more-dd">
                                 <button type="button" class="gt-btn-more" data-more-toggle="${escapeHtml(n.key)}" title="More" aria-haspopup="true">
                                     <i class="bi bi-three-dots-vertical"></i>
                                 </button>
                                 <ul class="gt-more-menu" role="menu">
-                                    <li><button type="button" class="btn-edit-target" ${editDisabled}
-                                        data-bs-toggle="modal" data-bs-target="#editTargetModal" ${attrs}>
-                                        <i class="bi bi-pencil"></i> Edit Target
-                                    </button></li>
+                                    <li><a href="${escapeHtml(href)}"><i class="bi bi-pencil"></i> Edit in Set Targets</a></li>
                                     <li><button type="button" data-alloc-act="allocate" data-key="${escapeHtml(n.key)}" ${hasKids ? '' : 'disabled'}>
                                         <i class="bi bi-people"></i> Allocate to Child
                                     </button></li>
@@ -1424,9 +1450,7 @@
                                     <li><button type="button" data-alloc-act="history" data-key="${escapeHtml(n.key)}">
                                         <i class="bi bi-clock-history"></i> Target History
                                     </button></li>
-                                    <li><button type="button" class="danger" data-alloc-act="remove" data-id="${n.target_id || ''}" ${n.target_id ? '' : 'disabled'}>
-                                        <i class="bi bi-trash"></i> Remove Target
-                                    </button></li>
+                                    <li><a href="${escapeHtml(href)}" class="danger"><i class="bi bi-eraser"></i> Clear / reassign</a></li>
                                 </ul>
                             </div>
                         </div>
@@ -1468,6 +1492,7 @@
     }
 
     function renderAllocationTable() {
+        closeAllocMenus();
         const body = document.getElementById('gtAllocBody');
         const foot = document.getElementById('gtAllocFoot');
         if (!body) return;
@@ -1516,6 +1541,21 @@
         return null;
     }
 
+    function positionAllocMenu(toggle, menu) {
+        if (!toggle || !menu) return;
+        const rect = toggle.getBoundingClientRect();
+        const menuW = Math.max(180, menu.offsetWidth || 180);
+        const menuH = menu.offsetHeight || 200;
+        let top = rect.bottom + 4;
+        let left = rect.right - menuW;
+        if (top + menuH > window.innerHeight - 8) top = Math.max(8, rect.top - menuH - 4);
+        if (left < 8) left = 8;
+        if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+        menu.style.top = top + 'px';
+        menu.style.left = left + 'px';
+        menu.style.right = 'auto';
+    }
+
     document.getElementById('gtAllocBody')?.addEventListener('click', function (e) {
         const moreToggle = e.target.closest('[data-more-toggle]');
         if (moreToggle) {
@@ -1524,56 +1564,21 @@
             const dd = moreToggle.closest('.gt-more-dd');
             const menu = dd.querySelector('.gt-more-menu');
             const willOpen = !dd.classList.contains('is-open');
-            document.querySelectorAll('.gt-more-dd.is-open').forEach(function (el) {
-                el.classList.remove('is-open');
-                const m = el.querySelector('.gt-more-menu');
-                if (m) { m.style.top = ''; m.style.left = ''; m.style.right = ''; }
-            });
+            closeAllocMenus();
             if (willOpen && menu) {
                 dd.classList.add('is-open');
-                const rect = moreToggle.getBoundingClientRect();
-                const menuW = 168;
-                const menuH = menu.offsetHeight || 200;
-                let top = rect.bottom + 4;
-                let left = rect.right - menuW;
-                if (top + menuH > window.innerHeight - 8) top = Math.max(8, rect.top - menuH - 4);
-                if (left < 8) left = 8;
-                if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
-                menu.style.top = top + 'px';
-                menu.style.left = left + 'px';
-                menu.style.right = 'auto';
+                let ownerKey = dd.getAttribute('data-more-owner');
+                if (!ownerKey) {
+                    ownerKey = 'gt-more-' + Math.random().toString(36).slice(2, 9);
+                    dd.setAttribute('data-more-owner', ownerKey);
+                }
+                menu.dataset.portalOwner = ownerKey;
+                document.body.appendChild(menu);
+                menu.classList.add('is-portal');
+                positionAllocMenu(moreToggle, menu);
+                requestAnimationFrame(function () { positionAllocMenu(moreToggle, menu); });
             }
             return;
-        }
-
-        const allocAct = e.target.closest('[data-alloc-act]');
-        if (allocAct && !allocAct.disabled) {
-            e.preventDefault();
-            e.stopPropagation();
-            closeAllocMenus();
-            const act = allocAct.getAttribute('data-alloc-act');
-            const key = allocAct.getAttribute('data-key');
-            if (act === 'allocate' && key) {
-                collapsed.delete(key);
-                const node = findAllocNode(allocationTree, key);
-                (node?.children || []).forEach(function (c) {
-                    if (c.children && c.children.length) collapsed.add(c.key);
-                });
-                renderAllocationTable();
-                return;
-            }
-            if (act === 'details' || act === 'history') {
-                document.getElementById('gtActivityPanel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                return;
-            }
-            if (act === 'remove') {
-                if (typeof showFlashSwal === 'function') {
-                    showFlashSwal('info', 'Use Set Targets to clear or reassign this row.');
-                } else if (window.Swal) {
-                    Swal.fire({ icon: 'info', title: 'Remove target', text: 'Use Set Targets to clear or reassign this row.', confirmButtonColor: '#059669' });
-                }
-                return;
-            }
         }
 
         const btn = e.target.closest('[data-toggle-key]');
@@ -1584,14 +1589,63 @@
         renderAllocationTable();
     });
 
+    function runAllocAction(allocAct) {
+        if (!allocAct || allocAct.disabled) return;
+        closeAllocMenus();
+        const act = allocAct.getAttribute('data-alloc-act');
+        const key = allocAct.getAttribute('data-key');
+        if (act === 'allocate' && key) {
+            collapsed.delete(key);
+            const node = findAllocNode(allocationTree, key);
+            (node?.children || []).forEach(function (c) {
+                if (c.children && c.children.length) collapsed.add(c.key);
+            });
+            renderAllocationTable();
+            return;
+        }
+        if (act === 'details' || act === 'history') {
+            document.getElementById('gtActivityPanel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            return;
+        }
+        if (act === 'remove') {
+            if (typeof showFlashSwal === 'function') {
+                showFlashSwal('info', 'Use Set Targets to clear or reassign this row.');
+            } else if (window.Swal) {
+                Swal.fire({ icon: 'info', title: 'Remove target', text: 'Use Set Targets to clear or reassign this row.', confirmButtonColor: '#059669' });
+            }
+        }
+    }
+
     function closeAllocMenus() {
+        document.querySelectorAll('.gt-more-menu.is-portal').forEach(function (menu) {
+            const ownerKey = menu.dataset.portalOwner || '';
+            const dd = ownerKey
+                ? document.querySelector('.gt-more-dd[data-more-owner="' + ownerKey + '"]')
+                : null;
+            menu.classList.remove('is-portal');
+            menu.style.top = '';
+            menu.style.left = '';
+            menu.style.right = '';
+            menu.style.display = '';
+            if (dd) dd.appendChild(menu);
+            else if (menu.parentElement === document.body) menu.remove();
+        });
         document.querySelectorAll('.gt-more-dd.is-open').forEach(function (el) {
             el.classList.remove('is-open');
-            const m = el.querySelector('.gt-more-menu');
-            if (m) { m.style.top = ''; m.style.left = ''; m.style.right = ''; }
         });
     }
-    document.addEventListener('click', closeAllocMenus);
+
+    document.addEventListener('click', function (e) {
+        const allocAct = e.target.closest('.gt-more-menu [data-alloc-act]');
+        if (allocAct) {
+            e.preventDefault();
+            e.stopPropagation();
+            runAllocAction(allocAct);
+            return;
+        }
+        if (e.target.closest('.gt-more-menu, [data-more-toggle]')) return;
+        closeAllocMenus();
+    });
     document.addEventListener('scroll', closeAllocMenus, true);
     window.addEventListener('resize', closeAllocMenus);
 

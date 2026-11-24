@@ -275,6 +275,7 @@ class GoalSetTargetsService
         // Build leaf person nodes, then nest under org Region → Cluster → Branch
         $peopleByOrg = [];
         $unassignedPeople = [];
+        $orgIdsForMap = [];
         foreach ($users as $user) {
             $leaf = $this->buildNode($user, collect(), $targetMap, $prevMap, $editable, 0);
             $leaf['children'] = [];
@@ -289,11 +290,37 @@ class GoalSetTargetsService
             $oid = (int) ($user->goal_org_unit_id ?: 0);
             if ($oid > 0) {
                 $peopleByOrg[$oid][] = $leaf;
+                // Collect ancestor org ids so Region/Cluster org-unit targets hydrate on Edit
+                $unit = $user->orgUnit;
+                $guard = 0;
+                while ($unit && $guard < 6) {
+                    $orgIdsForMap[(int) $unit->id] = true;
+                    $unit = $unit->parent;
+                    $guard++;
+                }
             } else {
                 $unassignedPeople[] = $leaf;
             }
         }
-        $tree = $this->buildOrgHierarchyTree($users, $peopleByOrg, $unassignedPeople, $actor);
+        if ($actor && (int) ($actor->goal_org_unit_id ?: 0) > 0) {
+            $own = $actor->orgUnit;
+            $guard = 0;
+            while ($own && $guard < 6) {
+                $orgIdsForMap[(int) $own->id] = true;
+                $own = $own->parent;
+                $guard++;
+            }
+        }
+        $orgTargetMap = $this->orgTargetsMap($period, $metric, array_keys($orgIdsForMap));
+        $orgPrevMap = $this->orgTargetsMap($prev, $metric, array_keys($orgIdsForMap));
+        $tree = $this->buildOrgHierarchyTree(
+            $users,
+            $peopleByOrg,
+            $unassignedPeople,
+            $actor,
+            $orgTargetMap,
+            $orgPrevMap
+        );
 
         $selfTargetMap = $this->targetsMap($period, $metric, [(int) $actor->id]);
         $selfPrevMap = $this->targetsMap($prev, $metric, [(int) $actor->id]);
@@ -463,7 +490,9 @@ class GoalSetTargetsService
                     ->whereNull('goal_org_unit_id')
                     ->first();
 
-                if ($existing && $existing->isLocked() && ! $assign) {
+                // Hard-block only Locked. Approved can still be revised by authority
+                // (Save draft reopens as Draft; Assign re-approves).
+                if ($existing && (string) $existing->status === GoalTarget::STATUS_LOCKED && ! $assign) {
                     throw ValidationException::withMessages([
                         'rows' => "Target for employee #{$employeeId} is locked. Request revision first.",
                     ]);
@@ -786,6 +815,29 @@ class GoalSetTargetsService
     }
 
     /**
+     * Org-unit owned targets (Allocation "Entity" rows with no user_id).
+     * Used to hydrate Region/Cluster/Branch rows when the linked lead has no person target yet.
+     *
+     * @param  list<int>  $orgIds
+     * @return Collection<int, GoalTarget>
+     */
+    protected function orgTargetsMap(string $period, string $metric, array $orgIds): Collection
+    {
+        $orgIds = array_values(array_unique(array_filter(array_map('intval', $orgIds))));
+        if ($orgIds === []) {
+            return collect();
+        }
+
+        return GoalTarget::query()
+            ->where('period', $period)
+            ->where('metric', $metric)
+            ->whereIn('goal_org_unit_id', $orgIds)
+            ->whereNull('user_id')
+            ->get()
+            ->keyBy(fn (GoalTarget $t) => (int) $t->goal_org_unit_id);
+    }
+
+    /**
      * @param  Collection<int|string, Collection<int, User>>  $byParent
      * @param  Collection<int, GoalTarget>  $targetMap
      * @param  Collection<int, GoalTarget>  $prevMap
@@ -932,12 +984,21 @@ class GoalSetTargetsService
      * @param  list<array<string, mixed>>  $unassignedPeople
      * @return list<array<string, mixed>>
      */
+    /**
+     * @param  Collection<int, GoalTarget>  $orgTargetMap
+     * @param  Collection<int, GoalTarget>  $orgPrevMap
+     */
     protected function buildOrgHierarchyTree(
         Collection $users,
         array $peopleByOrg,
         array $unassignedPeople,
-        ?User $actor = null
+        ?User $actor = null,
+        ?Collection $orgTargetMap = null,
+        ?Collection $orgPrevMap = null
     ): array {
+        $orgTargetMap = $orgTargetMap ?? collect();
+        $orgPrevMap = $orgPrevMap ?? collect();
+
         $orgIds = [];
         foreach ($users as $user) {
             $unit = $user->orgUnit;
@@ -972,7 +1033,7 @@ class GoalSetTargetsService
         $byParent = $units->groupBy(fn (GoalOrgUnit $u) => (int) ($u->parent_id ?: 0));
         $unitsById = $units->keyBy(fn (GoalOrgUnit $u) => (int) $u->id);
 
-        $build = function (GoalOrgUnit $unit, int $depth) use (&$build, $byParent, $peopleByOrg): array {
+        $build = function (GoalOrgUnit $unit, int $depth) use (&$build, $byParent, $peopleByOrg, $orgTargetMap, $orgPrevMap): array {
             $people = $peopleByOrg[(int) $unit->id] ?? [];
             usort($people, function (array $a, array $b) {
                 $rank = static function (array $n): int {
@@ -1024,7 +1085,10 @@ class GoalSetTargetsService
                 }
             }
 
-            return $this->makeOrgGroupNode($unit, $children, $depth, null, $linked);
+            $orgCur = $orgTargetMap->get((int) $unit->id);
+            $orgPrev = $orgPrevMap->get((int) $unit->id);
+
+            return $this->makeOrgGroupNode($unit, $children, $depth, null, $linked, $orgCur, $orgPrev);
         };
 
         $roots = $this->resolveOrgTreeRoots($actor, $units, $unitsById);
@@ -1074,7 +1138,9 @@ class GoalSetTargetsService
         array $children,
         int $depth,
         ?string $fallbackName = null,
-        ?array $linked = null
+        ?array $linked = null,
+        ?GoalTarget $orgTarget = null,
+        ?GoalTarget $orgPrevTarget = null
     ): array {
         $this->rollupOrgGroup($children);
         $childSet = round(array_sum(array_map(static fn ($c) => (float) ($c['set_target'] ?? 0), $children)), 2);
@@ -1108,6 +1174,27 @@ class GoalSetTargetsService
         $set = $hasLinked ? round((float) ($linked['set_target'] ?? 0), 2) : $childSet;
         $open = $hasLinked ? round((float) ($linked['last_month'] ?? 0), 2) : $childOpen;
         $owner = $hasLinked ? round((float) ($linked['owner_target'] ?? 0), 2) : 0.0;
+        $rowSource = $hasLinked ? (string) ($linked['row_source'] ?? 'auto') : 'auto';
+        $status = $hasLinked ? (string) ($linked['status'] ?? GoalTarget::STATUS_DRAFT) : GoalTarget::STATUS_DRAFT;
+        $amber = $hasLinked ? (bool) ($linked['amber'] ?? false) : false;
+        $fromOrgTarget = false;
+
+        // Allocation may store Region/Cluster/Branch totals as org-unit GoalTarget (no user_id).
+        // When the linked lead has no person target yet, surface that org amount so Edit shows data.
+        if ($orgTarget && $set <= 0.0001) {
+            $set = round((float) ($orgTarget->base_target ?? 0), 2);
+            $owner = round((float) ($orgTarget->owner_target ?? 0), 2);
+            $rowSource = (string) ($orgTarget->row_source ?? 'auto');
+            // Do not inherit Approved/Locked from the org-unit row — there is no person
+            // target yet, so authority must still be able to edit and save onto the linked lead.
+            $status = GoalTarget::STATUS_DRAFT;
+            $fromOrgTarget = $set > 0;
+        }
+        if ($orgPrevTarget && $open <= 0.0001) {
+            $open = $this->lastMonthTarget($orgPrevTarget);
+        } elseif ($orgTarget && $open <= 0.0001 && ! $orgPrevTarget) {
+            // keep linked / child open
+        }
 
         return [
             'id' => $id,
@@ -1125,6 +1212,8 @@ class GoalSetTargetsService
             'is_org_group' => true,
             'linked_user_id' => $hasLinked ? (int) $linked['id'] : null,
             'linked_user_name' => $hasLinked ? (string) ($linked['name'] ?? '') : null,
+            'org_unit_id' => $unit ? (int) $unit->id : null,
+            'from_org_target' => $fromOrgTarget,
             'depth' => $depth,
             'last_month' => $open,
             'set_target' => $set,
@@ -1133,10 +1222,10 @@ class GoalSetTargetsService
             'total_target' => $childSet,
             'is_staff' => false,
             'editable' => $hasLinked ? (bool) ($linked['editable'] ?? false) : false,
-            'row_source' => $hasLinked ? (string) ($linked['row_source'] ?? 'auto') : 'auto',
-            'status' => $hasLinked ? (string) ($linked['status'] ?? GoalTarget::STATUS_DRAFT) : GoalTarget::STATUS_DRAFT,
+            'row_source' => $rowSource,
+            'status' => $status,
             'chip' => $role,
-            'amber' => $hasLinked ? (bool) ($linked['amber'] ?? false) : false,
+            'amber' => $amber,
             'check_ok' => true,
             'over_allocated' => false,
             'pending_distribution' => false,
