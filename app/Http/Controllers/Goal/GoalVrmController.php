@@ -43,6 +43,15 @@ class GoalVrmController extends Controller
         $visibleUserIds = $this->visibleCallLogUserIds();
         $seesTeamLogs = count($visibleUserIds) > 1;
 
+        $assignedContactsBase = GoalLoanLead::query()
+            ->whereIn('assigned_to', $visibleUserIds)
+            ->whereNotIn('status', ['Closed / Lost', 'Closed', 'Rejected', 'Cancelled', 'Disbursed']);
+
+        $assignedContactsCount = (clone $assignedContactsBase)->count();
+        $pendingToCallCount = (clone $assignedContactsBase)
+            ->whereDoesntHave('vrmCalls')
+            ->count();
+
         $todayCount = GoalVrmCallLog::query()
             ->whereIn('user_id', $visibleUserIds)
             ->whereDate('called_at', today())
@@ -81,6 +90,8 @@ class GoalVrmController extends Controller
         $canQuickAddDisposition = $this->canManageDispositionMaster();
 
         return view('goal.vrm.index', compact(
+            'assignedContactsCount',
+            'pendingToCallCount',
             'todayCount',
             'callbacksDueCount',
             'totalCalls',

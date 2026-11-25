@@ -88,6 +88,14 @@
     background: linear-gradient(135deg, transparent 20%, #c4b5fd 100%);
 }
 .vrm-page .kpi-card.tone-purple::after { background: #8b5cf6; }
+.vrm-page .kpi-card.tone-teal::before {
+    background: linear-gradient(135deg, transparent 20%, #5eead4 100%);
+}
+.vrm-page .kpi-card.tone-teal::after { background: #0d9488; }
+.vrm-page .kpi-card.tone-amber::before {
+    background: linear-gradient(135deg, transparent 20%, #fcd34d 100%);
+}
+.vrm-page .kpi-card.tone-amber::after { background: #d97706; }
 .vrm-page .kpi-icon {
     position: relative; z-index: 1;
     width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
@@ -98,6 +106,8 @@
 .vrm-page .kpi-icon.green { background: #dcfce7; color: #16a34a; }
 .vrm-page .kpi-icon.orange { background: #ffedd5; color: #ea580c; }
 .vrm-page .kpi-icon.purple { background: #ede9fe; color: #7c3aed; }
+.vrm-page .kpi-icon.teal { background: #ccfbf1; color: #0f766e; }
+.vrm-page .kpi-icon.amber { background: #fef3c7; color: #b45309; }
 .vrm-page .kpi-meta {
     position: relative; z-index: 1;
     min-width: 0;
@@ -1034,6 +1044,10 @@
             </div>
         </div>
         <div class="page-hero-actions">
+            <span class="vrm-pill" title="Pending to call out of assigned contacts">
+                <span class="dot" aria-hidden="true"></span>
+                Pending: {{ (int) ($pendingToCallCount ?? 0) }} / {{ (int) ($assignedContactsCount ?? 0) }} contacts
+            </span>
             <button type="button" class="btn btn-log-call" data-bs-toggle="modal" data-bs-target="#logCallModal">
                 <i class="bi bi-plus-lg"></i> Log Call
             </button>
@@ -1090,7 +1104,25 @@
     </div>
 
     <div class="row g-3 kpi-row">
-        <div class="col-6 col-xl-3">
+        <div class="col-6 col-xl-2">
+            <div class="kpi-card tone-teal">
+                <span class="kpi-icon teal"><i class="bi bi-people-fill"></i></span>
+                <div class="kpi-meta">
+                    <div class="kpi-label">Assigned Contacts</div>
+                    <div class="kpi-value">{{ $assignedContactsCount }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="kpi-card tone-{{ $pendingToCallCount > 0 ? 'amber' : 'teal' }}">
+                <span class="kpi-icon {{ $pendingToCallCount > 0 ? 'amber' : 'teal' }}"><i class="bi bi-telephone-x"></i></span>
+                <div class="kpi-meta">
+                    <div class="kpi-label">Pending to Call</div>
+                    <div class="kpi-value">{{ $pendingToCallCount }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
             <div class="kpi-card tone-blue">
                 <span class="kpi-icon blue"><i class="bi bi-telephone"></i></span>
                 <div class="kpi-meta">
@@ -1099,7 +1131,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-xl-3">
+        <div class="col-6 col-xl-2">
             <a href="{{ route('goal.vrm.index', ['callbacks_due' => 1]) }}" class="text-decoration-none">
                 <div class="kpi-card tone-{{ $callbacksDueCount > 0 ? 'orange' : 'blue' }}">
                     <span class="kpi-icon {{ $callbacksDueCount > 0 ? 'orange' : 'blue' }}"><i class="bi bi-alarm"></i></span>
@@ -1110,7 +1142,7 @@
                 </div>
             </a>
         </div>
-        <div class="col-6 col-xl-3">
+        <div class="col-6 col-xl-2">
             <div class="kpi-card tone-green">
                 <span class="kpi-icon green"><i class="bi bi-hand-thumbs-up"></i></span>
                 <div class="kpi-meta">
@@ -1119,7 +1151,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-xl-3">
+        <div class="col-6 col-xl-2">
             <div class="kpi-card tone-purple">
                 <span class="kpi-icon purple"><i class="bi bi-person-plus"></i></span>
                 <div class="kpi-meta">
