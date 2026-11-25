@@ -549,6 +549,43 @@
     display: flex;
     flex-direction: column;
 }
+.vrm-call-modal .contact-suggest-wrap { position: relative; }
+.vrm-call-modal .contact-suggest {
+    display: none; position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 4px);
+    max-height: 240px; overflow: auto; margin: 0; padding: 6px;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+}
+.vrm-call-modal .contact-suggest.show { display: block; }
+.vrm-call-modal .contact-suggest-item {
+    display: flex; flex-direction: column; gap: 2px; width: 100%;
+    border: 0; background: transparent; text-align: left;
+    padding: 9px 10px; border-radius: 8px; cursor: pointer; color: #0f172a;
+}
+.vrm-call-modal .contact-suggest-item:hover,
+.vrm-call-modal .contact-suggest-item.active { background: #f0fdf4; }
+.vrm-call-modal .contact-suggest-item .sg-name {
+    font-size: 0.86rem; font-weight: 700; line-height: 1.25;
+}
+.vrm-call-modal .contact-suggest-item .sg-meta {
+    font-size: 0.74rem; color: #64748b; font-weight: 500;
+}
+.vrm-call-modal .contact-suggest-empty {
+    padding: 10px; font-size: 0.8rem; color: #64748b; font-weight: 600;
+}
+.vrm-call-modal .contact-source-hint {
+    margin-top: 6px; font-size: 0.74rem; font-weight: 600; color: #64748b;
+    display: inline-flex; align-items: center; gap: 6px;
+}
+.vrm-call-modal .contact-source-hint.assigned { color: #0f766e; }
+.vrm-call-modal .contact-source-hint.new { color: #7c3aed; }
+.vrm-call-modal .contact-source-hint .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 700;
+    background: #f1f5f9; color: inherit;
+}
+.vrm-call-modal .contact-source-hint.assigned .chip { background: #ccfbf1; }
+.vrm-call-modal .contact-source-hint.new .chip { background: #ede9fe; }
 .vrm-call-modal .product-with-add {
     display: flex;
     align-items: stretch;
@@ -1402,8 +1439,10 @@
 <div class="modal fade vrm-call-modal" id="logCallModal" tabindex="-1" aria-labelledby="logCallModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
-            <form method="POST" action="{{ route('goal.vrm.store') }}" id="vrmCallForm" class="vrm-log-form" novalidate>
+            <form method="POST" action="{{ route('goal.vrm.store') }}" id="vrmCallForm" class="vrm-log-form" novalidate
+                  data-assigned-search="{{ route('goal.vrm.assigned-contacts') }}">
                 @csrf
+                <input type="hidden" name="goal_loan_lead_id" id="goal_loan_lead_id" value="{{ old('goal_loan_lead_id') }}">
                 <div class="modal-header">
                     <div class="modal-title-wrap">
                         <span class="modal-icon"><i class="bi bi-telephone-outbound"></i></span>
@@ -1421,24 +1460,33 @@
                         <div class="field-grid">
                             <div class="field {{ $errors->has('customer_name') ? 'is-invalid' : '' }}">
                                 <label class="form-label" for="customer_name">Customer <span class="req">*</span></label>
-                                <div class="input-icon">
-                                    <i class="bi bi-person"></i>
-                                    <input type="text" name="customer_name" id="customer_name"
-                                           class="form-control {{ $errors->has('customer_name') ? 'is-invalid' : '' }}"
-                                           placeholder="Enter customer name"
-                                           value="{{ old('customer_name') }}" required autocomplete="off"
-                                           data-required-message="Please enter customer name.">
+                                <div class="contact-suggest-wrap">
+                                    <div class="input-icon">
+                                        <i class="bi bi-person"></i>
+                                        <input type="text" name="customer_name" id="customer_name"
+                                               class="form-control js-contact-search {{ $errors->has('customer_name') ? 'is-invalid' : '' }}"
+                                               placeholder="Type name to find assigned contact"
+                                               value="{{ old('customer_name') }}" required autocomplete="off"
+                                               data-required-message="Please enter customer name."
+                                               data-search-field="name">
+                                    </div>
+                                    <div class="contact-suggest" id="customerSuggest" role="listbox" hidden></div>
                                 </div>
+                                <div class="contact-source-hint" id="contactSourceHint" hidden></div>
                                 <div class="field-error {{ $errors->has('customer_name') ? 'show' : '' }}" data-error-for="customer_name">{{ $errors->first('customer_name') }}</div>
                             </div>
                             <div class="field {{ $errors->has('mobile') ? 'is-invalid' : '' }}">
                                 <label class="form-label" for="mobile">Mobile <span class="req">*</span></label>
-                                <div class="input-icon">
-                                    <i class="bi bi-telephone"></i>
-                                    <input type="text" name="mobile" id="mobile"
-                                           class="form-control {{ $errors->has('mobile') ? 'is-invalid' : '' }}"
-                                           placeholder="10-digit mobile" value="{{ old('mobile') }}"
-                                           maxlength="10" inputmode="numeric" pattern="[0-9]{10}" required>
+                                <div class="contact-suggest-wrap">
+                                    <div class="input-icon">
+                                        <i class="bi bi-telephone"></i>
+                                        <input type="text" name="mobile" id="mobile"
+                                               class="form-control js-contact-search {{ $errors->has('mobile') ? 'is-invalid' : '' }}"
+                                               placeholder="Type mobile to find assigned contact" value="{{ old('mobile') }}"
+                                               maxlength="10" inputmode="numeric" pattern="[0-9]{10}" required autocomplete="off"
+                                               data-search-field="mobile">
+                                    </div>
+                                    <div class="contact-suggest" id="mobileSuggest" role="listbox" hidden></div>
                                 </div>
                                 <div class="field-error {{ $errors->has('mobile') ? 'show' : '' }}" data-error-for="mobile">{{ $errors->first('mobile') }}</div>
                             </div>
@@ -1830,6 +1878,10 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
     function resetFormDefaults() {
         form.reset();
         clearAllErrors();
+        const leadIdInput = document.getElementById('goal_loan_lead_id');
+        if (leadIdInput) leadIdInput.value = '';
+        setContactSourceHint(null);
+        hideSuggestMenus();
         const disp = document.getElementById('disposition');
         if (disp) {
             const preferred = Array.from(disp.options).find(function (o) { return o.value === 'Interested'; });
@@ -1847,6 +1899,194 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
         }
         syncCreateLeadAvailability();
         syncLeadRequiredFields();
+    }
+
+    const assignedSearchUrl = form.getAttribute('data-assigned-search') || '';
+    const leadIdInput = document.getElementById('goal_loan_lead_id');
+    const nameInput = document.getElementById('customer_name');
+    const mobileInput = document.getElementById('mobile');
+    const nameSuggest = document.getElementById('customerSuggest');
+    const mobileSuggest = document.getElementById('mobileSuggest');
+    const contactHint = document.getElementById('contactSourceHint');
+    let suggestTimer = null;
+    let suggestAbort = null;
+    let selectingContact = false;
+
+    function hideSuggestMenus() {
+        [nameSuggest, mobileSuggest].forEach(function (menu) {
+            if (!menu) return;
+            menu.classList.remove('show');
+            menu.hidden = true;
+            menu.innerHTML = '';
+        });
+    }
+
+    function setContactSourceHint(mode, meta) {
+        if (!contactHint) return;
+        if (!mode) {
+            contactHint.hidden = true;
+            contactHint.className = 'contact-source-hint';
+            contactHint.innerHTML = '';
+            return;
+        }
+        contactHint.hidden = false;
+        if (mode === 'assigned') {
+            contactHint.className = 'contact-source-hint assigned';
+            contactHint.innerHTML = '<span class="chip"><i class="bi bi-person-check"></i> Assigned contact</span>'
+                + (meta && meta.ref_no ? ' ' + meta.ref_no : '')
+                + (meta && meta.status ? ' · ' + meta.status : '');
+        } else {
+            contactHint.className = 'contact-source-hint new';
+            contactHint.innerHTML = '<span class="chip"><i class="bi bi-person-plus"></i> New contact</span> Not from your assigned list';
+        }
+    }
+
+    function clearAssignedSelection(opts) {
+        const options = opts || {};
+        if (leadIdInput) leadIdInput.value = '';
+        if (!options.keepHint) setContactSourceHint(null);
+        syncCreateLeadAvailability({ autoCheck: false });
+    }
+
+    function applyAssignedContact(item) {
+        if (!item) return;
+        selectingContact = true;
+        if (leadIdInput) leadIdInput.value = String(item.id || '');
+        if (nameInput) nameInput.value = item.customer_name || '';
+        if (mobileInput) mobileInput.value = (item.mobile || '').replace(/\D+/g, '').slice(0, 10);
+        const branchSel = document.getElementById('goal_org_unit_id');
+        if (branchSel && item.goal_org_unit_id) {
+            branchSel.value = String(item.goal_org_unit_id);
+            if (window.jQuery) window.jQuery(branchSel).val(String(item.goal_org_unit_id)).trigger('change');
+        }
+        const productSel = document.getElementById('product');
+        if (productSel && item.product) {
+            const hasOpt = Array.from(productSel.options).some(function (o) { return o.value === item.product; });
+            if (hasOpt) {
+                productSel.value = item.product;
+                if (window.jQuery) window.jQuery(productSel).val(item.product).trigger('change');
+            }
+        }
+        const loanAmt = document.getElementById('loan_amount');
+        if (loanAmt && item.loan_amount != null && item.loan_amount !== '') {
+            loanAmt.value = item.loan_amount;
+        }
+        const createLead = document.getElementById('create_lead');
+        if (createLead) {
+            createLead.checked = false;
+            createLead.disabled = true;
+        }
+        const label = document.getElementById('create_lead_label');
+        if (label) label.textContent = 'Lead already assigned — call will link to this contact';
+        setContactSourceHint('assigned', item);
+        hideSuggestMenus();
+        syncLeadRequiredFields();
+        setTimeout(function () { selectingContact = false; }, 0);
+    }
+
+    function renderSuggest(menu, items, query) {
+        if (!menu) return;
+        menu.innerHTML = '';
+        if (!items.length) {
+            menu.innerHTML = '<div class="contact-suggest-empty">No assigned contact found — continue as new contact</div>';
+            menu.hidden = false;
+            menu.classList.add('show');
+            setContactSourceHint('new');
+            return;
+        }
+        items.forEach(function (item, idx) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'contact-suggest-item' + (idx === 0 ? ' active' : '');
+            btn.setAttribute('role', 'option');
+            btn.innerHTML = '<span class="sg-name"></span><span class="sg-meta"></span>';
+            btn.querySelector('.sg-name').textContent = item.customer_name || '—';
+            const bits = [item.mobile, item.ref_no, item.branch_name, item.status].filter(Boolean);
+            btn.querySelector('.sg-meta').textContent = bits.join(' · ');
+            btn.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                applyAssignedContact(item);
+            });
+            menu.appendChild(btn);
+        });
+        menu.hidden = false;
+        menu.classList.add('show');
+    }
+
+    function searchAssignedContacts(query, menu) {
+        if (!assignedSearchUrl || !menu) return;
+        const q = (query || '').trim();
+        if (q.length < 2) {
+            hideSuggestMenus();
+            if (!leadIdInput || !leadIdInput.value) setContactSourceHint(null);
+            return;
+        }
+        if (suggestAbort) suggestAbort.abort();
+        suggestAbort = new AbortController();
+        fetch(assignedSearchUrl + '?q=' + encodeURIComponent(q), {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            signal: suggestAbort.signal,
+            credentials: 'same-origin',
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (payload) {
+                const items = (payload && payload.data) ? payload.data : [];
+                renderSuggest(menu, items, q);
+                if (!items.length && (!leadIdInput || !leadIdInput.value)) {
+                    setContactSourceHint('new');
+                }
+            })
+            .catch(function (err) {
+                if (err && err.name === 'AbortError') return;
+                hideSuggestMenus();
+            });
+    }
+
+    function bindContactSearch(input, menu) {
+        if (!input || !menu) return;
+        input.addEventListener('input', function () {
+            if (selectingContact) return;
+            clearAssignedSelection({ keepHint: true });
+            const q = input.value || '';
+            clearTimeout(suggestTimer);
+            suggestTimer = setTimeout(function () {
+                searchAssignedContacts(q, menu);
+            }, 220);
+        });
+        input.addEventListener('focus', function () {
+            const q = (input.value || '').trim();
+            if (q.length >= 2 && !leadIdInput?.value) searchAssignedContacts(q, menu);
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') hideSuggestMenus();
+            if (e.key === 'Enter' && menu.classList.contains('show')) {
+                const first = menu.querySelector('.contact-suggest-item');
+                if (first) {
+                    e.preventDefault();
+                    first.dispatchEvent(new Event('mousedown'));
+                }
+            }
+        });
+        input.addEventListener('blur', function () {
+            setTimeout(function () {
+                if (!menu.contains(document.activeElement)) {
+                    menu.classList.remove('show');
+                    menu.hidden = true;
+                }
+            }, 150);
+            if (!leadIdInput?.value && (nameInput?.value || '').trim().length >= 2) {
+                setContactSourceHint('new');
+            }
+        });
+    }
+
+    bindContactSearch(nameInput, nameSuggest);
+    bindContactSearch(mobileInput, mobileSuggest);
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.contact-suggest-wrap')) hideSuggestMenus();
+    });
+    if (leadIdInput && leadIdInput.value) {
+        setContactSourceHint('assigned', { ref_no: '' });
     }
 
     form.addEventListener('submit', function (e) {
@@ -1884,6 +2124,14 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
         const createLead = document.getElementById('create_lead');
         const label = document.getElementById('create_lead_label');
         if (!createLead) return;
+        const assignedSelected = !!(document.getElementById('goal_loan_lead_id')?.value);
+        if (assignedSelected) {
+            createLead.checked = false;
+            createLead.disabled = true;
+            if (label) label.textContent = 'Lead already assigned — call will link to this contact';
+            syncLeadRequiredFields();
+            return;
+        }
         const allows = dispositionAllowsCreateLead();
         createLead.disabled = !allows;
         if (!allows) {

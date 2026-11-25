@@ -546,25 +546,69 @@ class GoalVrmController extends Controller
         return $query;
     }
 
+    public function searchAssignedContacts(Request $request)
+    {
+        $this->requireGoalPermission('vrm_calling_guard');
+
+        $q = trim((string) $request->query('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json(['data' => []]);
+        }
+
+        $visibleUserIds = $this->visibleCallLogUserIds();
+        $digits = preg_replace('/\D+/', '', $q) ?: '';
+
+        $leads = GoalLoanLead::query()
+            ->with(['orgUnit:id,name,code'])
+            ->whereIn('assigned_to', $visibleUserIds)
+            ->whereNotIn('status', ['Closed / Lost', 'Closed', 'Rejected', 'Cancelled', 'Disbursed'])
+            ->where(function ($query) use ($q, $digits) {
+                $query->where('customer_name', 'like', '%'.$q.'%')
+                    ->orWhere('ref_no', 'like', '%'.$q.'%');
+                if ($digits !== '') {
+                    $query->orWhere('mobile', 'like', '%'.$digits.'%');
+                }
+            })
+            ->orderByDesc('assigned_at')
+            ->orderByDesc('id')
+            ->limit(12)
+            ->get(['id', 'ref_no', 'customer_name', 'mobile', 'product', 'loan_amount', 'status', 'goal_org_unit_id', 'assigned_to']);
+
+        return response()->json([
+            'data' => $leads->map(fn (GoalLoanLead $lead) => [
+                'id' => (int) $lead->id,
+                'ref_no' => $lead->ref_no,
+                'customer_name' => $lead->customer_name,
+                'mobile' => $lead->mobile,
+                'product' => $lead->product,
+                'loan_amount' => $lead->loan_amount !== null ? (float) $lead->loan_amount : null,
+                'status' => $lead->status,
+                'goal_org_unit_id' => $lead->goal_org_unit_id ? (int) $lead->goal_org_unit_id : null,
+                'branch_name' => $lead->orgUnit?->name,
+            ])->values(),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $this->requireGoalPermission('vrm_calling_guard');
         $data = $request->validate([
             'customer_name' => 'required|string|max:150',
             'mobile' => PhoneNumber::mobileRules(true),
+            'goal_loan_lead_id' => 'nullable|integer|exists:goal_loan_leads,id',
             'disposition' => ['required', Rule::in(GoalVrmCallLog::allowedDispositionNames())],
             'callback_at' => 'nullable|date',
             'notes' => 'nullable|string',
             'create_lead' => 'nullable|boolean',
             'product' => [
-                Rule::requiredIf(fn () => $request->boolean('create_lead')),
+                Rule::requiredIf(fn () => $request->boolean('create_lead') && ! $request->filled('goal_loan_lead_id')),
                 'nullable',
                 'string',
                 'max:100',
                 Rule::in($this->activeProducts()->pluck('product_name')->all()),
             ],
             'loan_amount' => [
-                Rule::requiredIf(fn () => $request->boolean('create_lead')),
+                Rule::requiredIf(fn () => $request->boolean('create_lead') && ! $request->filled('goal_loan_lead_id')),
                 'nullable',
                 'numeric',
                 'min:0',
@@ -584,7 +628,29 @@ class GoalVrmController extends Controller
             : in_array($data['disposition'], ['Interested', 'Callback'], true);
 
         $leadId = null;
-        if ($request->boolean('create_lead') && $canCreateLeadFromDisposition) {
+        $assignedLeadId = (int) ($data['goal_loan_lead_id'] ?? 0);
+        if ($assignedLeadId > 0) {
+            $assignedLead = GoalLoanLead::query()->find($assignedLeadId);
+            $visibleUserIds = $this->visibleCallLogUserIds();
+            if (! $assignedLead || ! in_array((int) $assignedLead->assigned_to, $visibleUserIds, true)) {
+                return back()->withInput()->withErrors([
+                    'customer_name' => 'Selected contact is not in your assigned list.',
+                ])->with('reopen_log_call', true);
+            }
+            $leadId = (int) $assignedLead->id;
+            if (empty($data['goal_org_unit_id']) && $assignedLead->goal_org_unit_id) {
+                $data['goal_org_unit_id'] = (int) $assignedLead->goal_org_unit_id;
+            }
+            if ($data['callback_at'] ?? null) {
+                $assignedLead->follow_up_at = $data['callback_at'];
+            }
+            if (! empty($data['disposition'])) {
+                $assignedLead->disposition = $data['disposition'];
+            }
+            if ($assignedLead->isDirty()) {
+                $assignedLead->save();
+            }
+        } elseif ($request->boolean('create_lead') && $canCreateLeadFromDisposition) {
             $this->requireGoalPermission('create_lead_guard');
 
             $mobile = trim((string) ($data['mobile'] ?? ''));

@@ -50,6 +50,7 @@ Route::prefix('goal')->name('goal.')->group(function () {
 
     Route::get('vrm', [GoalVrmController::class, 'index'])->name('vrm.index');
     Route::post('vrm', [GoalVrmController::class, 'store'])->name('vrm.store');
+    Route::get('vrm/assigned-contacts', [GoalVrmController::class, 'searchAssignedContacts'])->name('vrm.assigned-contacts');
     Route::post('vrm/products/quick', [GoalVrmController::class, 'storeQuickProduct'])->name('vrm.products.quick');
     Route::post('vrm/dispositions/quick', [GoalVrmController::class, 'storeQuickDisposition'])->name('vrm.dispositions.quick');
     Route::put('vrm/dispositions/{disposition}', [GoalVrmController::class, 'updateDisposition'])->name('vrm.dispositions.update');
