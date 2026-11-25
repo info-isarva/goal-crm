@@ -467,10 +467,11 @@
 
 .ci-hub .as-card {
     background:#fff; border:1px solid #e5eee8; border-radius:12px;
-    box-shadow:0 2px 8px rgba(15,23,42,.03); padding:14px;
+    box-shadow:0 2px 8px rgba(15,23,42,.03); padding:0; overflow:hidden;
 }
 .ci-hub .as-card-head {
-    display:flex; align-items:flex-start; gap:10px; margin:0 0 12px;
+    display:flex; align-items:flex-start; gap:10px; margin:0;
+    padding:12px 14px 10px;
 }
 .ci-hub .as-card-ico {
     width:34px; height:34px; border-radius:9px; flex-shrink:0;
@@ -488,31 +489,31 @@
 }
 
 .ci-hub .as-methods {
-    display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-bottom:10px;
+    display:flex; flex-wrap:wrap; align-items:stretch; gap:0;
+    margin:0; padding:0 10px;
+    background:#f8faf9; border-top:1px solid #e5eee8; border-bottom:1px solid #e5eee8;
 }
-@media (max-width:900px) { .ci-hub .as-methods { grid-template-columns:1fr 1fr; } }
-@media (max-width:520px) { .ci-hub .as-methods { grid-template-columns:1fr; } }
 .ci-hub .as-method {
-    display:flex; flex-direction:column; align-items:flex-start; gap:2px;
-    min-height:0; padding:10px 11px;
-    border-radius:10px; border:1px solid #e2e8f0; background:#fff;
-    cursor:pointer; color:#334155; text-align:left; transition:all .12s ease;
+    position:relative; display:inline-flex; align-items:center; gap:6px;
+    height:38px; padding:0 12px; margin-bottom:-1px;
+    border:0; border-bottom:2px solid transparent; border-radius:0;
+    background:transparent; cursor:pointer; color:#64748b;
+    font-size:.78rem; font-weight:700; line-height:1.2; white-space:nowrap;
+    transition:color .12s ease, border-color .12s ease, background .12s ease;
 }
 .ci-hub .as-method .as-method-top {
     display:inline-flex; align-items:center; gap:6px;
-    font-size:.78rem; font-weight:800; line-height:1.2;
+    font-size:.78rem; font-weight:700; line-height:1.2;
 }
-.ci-hub .as-method i { font-size:.9rem; color:#64748b; }
-.ci-hub .as-method .as-method-hint {
-    font-size:.68rem; font-weight:500; color:#64748b; line-height:1.3;
-}
+.ci-hub .as-method i { font-size:.88rem; color:#94a3b8; }
+.ci-hub .as-method .as-method-hint { display:none; }
 .ci-hub .as-method.active {
-    background:#16a34a; border-color:#16a34a; color:#fff;
-    box-shadow:0 4px 10px rgba(22,163,74,.2);
+    color:#16a34a; border-bottom-color:#16a34a; background:#fff;
+    box-shadow:none;
 }
-.ci-hub .as-method.active i,
-.ci-hub .as-method.active .as-method-hint { color:rgba(255,255,255,.9); }
-.ci-hub .as-method:hover:not(.active) { border-color:#86efac; background:#f7fdf9; }
+.ci-hub .as-method.active i { color:#16a34a; }
+.ci-hub .as-method:hover:not(.active) { color:#0f172a; background:rgba(255,255,255,.55); }
+.ci-hub .as-card-body { padding:12px 14px 14px; }
 .ci-hub .as-method-guide {
     display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px;
     margin:0 0 12px; padding:8px 10px;
@@ -1129,27 +1130,24 @@
                         </div>
                     </div>
 
-                    <div class="as-methods" role="group" aria-label="Assignment method">
+                    <div class="as-methods" role="tablist" aria-label="Assignment method">
                         @if($canPickBranch)
-                        <button type="button" class="as-method {{ $draftMethod === 'cluster' ? 'active' : '' }}" data-method="cluster">
+                        <button type="button" class="as-method {{ $draftMethod === 'cluster' ? 'active' : '' }}" data-method="cluster" role="tab" aria-selected="{{ $draftMethod === 'cluster' ? 'true' : 'false' }}">
                             <span class="as-method-top"><i class="bi bi-diagram-3"></i> To Cluster</span>
-                            <span class="as-method-hint">Park at cluster level</span>
                         </button>
-                        <button type="button" class="as-method {{ $draftMethod === 'branch' ? 'active' : '' }}" data-method="branch">
+                        <button type="button" class="as-method {{ $draftMethod === 'branch' ? 'active' : '' }}" data-method="branch" role="tab" aria-selected="{{ $draftMethod === 'branch' ? 'true' : 'false' }}">
                             <span class="as-method-top"><i class="bi bi-building"></i> To Branch</span>
-                            <span class="as-method-hint">Cluster → Branch</span>
                         </button>
                         @endif
-                        <button type="button" class="as-method {{ $draftMethod === 'vrm' ? 'active' : '' }}" data-method="vrm">
+                        <button type="button" class="as-method {{ $draftMethod === 'vrm' ? 'active' : '' }}" data-method="vrm" role="tab" aria-selected="{{ $draftMethod === 'vrm' ? 'true' : 'false' }}">
                             <span class="as-method-top"><i class="bi bi-person-badge"></i> To VRM</span>
-                            <span class="as-method-hint">One VRM receives all</span>
                         </button>
-                        <button type="button" class="as-method {{ $draftMethod === 'custom' ? 'active' : '' }}" data-method="custom">
+                        <button type="button" class="as-method {{ $draftMethod === 'custom' ? 'active' : '' }}" data-method="custom" role="tab" aria-selected="{{ $draftMethod === 'custom' ? 'true' : 'false' }}">
                             <span class="as-method-top"><i class="bi bi-sliders"></i> Split to VRMs</span>
-                            <span class="as-method-hint">Equal, %, or custom qty</span>
                         </button>
                     </div>
 
+                    <div class="as-card-body">
                     <div class="as-method-guide" id="asMethodGuide" aria-live="polite">
                         <span id="asMethodGuideText">Choose where these contacts should go.</span>
                         <span class="path" id="asMethodPath" hidden></span>
@@ -1331,7 +1329,8 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                    </div>{{-- /.as-card-body --}}
+                </div>{{-- /.as-card --}}
 
                 <aside class="as-card as-preview">
                     <div class="as-card-head">
@@ -1341,6 +1340,7 @@
                             <p>Confirm before assigning.</p>
                         </div>
                     </div>
+                    <div class="as-card-body">
                     <table class="as-preview-table">
                         <tr>
                             <th>Total Imported</th>
@@ -1375,6 +1375,7 @@
                             <td id="pvStatus">—</td>
                         </tr>
                     </table>
+                    </div>{{-- /.as-card-body --}}
                 </aside>
             </div>
 
@@ -1675,7 +1676,9 @@
     function setMethod(method) {
         methodInput.value = method;
         methodBtns.forEach(function (b) {
-            b.classList.toggle('active', b.getAttribute('data-method') === method);
+            var on = b.getAttribute('data-method') === method;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-selected', on ? 'true' : 'false');
         });
 
         document.querySelectorAll('.as-field[data-for]').forEach(function (field) {
