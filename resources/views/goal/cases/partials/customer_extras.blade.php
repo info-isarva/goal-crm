@@ -25,6 +25,36 @@
                     <span class="cw-ico cw-ico-amber"><i class="bi bi-people"></i></span>
                     <h6 class="cw-card-title">Borrower Profile</h6>
                 </div>
+                @php
+                    $bpVal = function (string $party, string $key, $fallback = '') use ($br) {
+                        $stored = data_get($br, "profile.$party.$key");
+                        if ($stored !== null && $stored !== '') {
+                            return $stored;
+                        }
+
+                        return $fallback ?? '';
+                    };
+                    $bpAppDefaults = [
+                        'name' => $app['name'] ?? $case->customer_name ?? '',
+                        'age' => $app['age'] ?? '',
+                        'dob' => $app['dob'] ?? '',
+                        'relationship' => $app['relationship'] ?? 'Self',
+                        'profession' => $emp['designation_applicant'] ?? ($emp['type_applicant'] ?? ($cd['employment_type'] ?? '')),
+                        'gross_income' => $emp['gross_income_applicant'] ?? ($emp['income_applicant'] ?? ($cd['monthly_income'] ?? '')),
+                        'net_income' => $emp['income_applicant'] ?? ($cd['monthly_income'] ?? ''),
+                        'pan' => $app['pan'] ?? '',
+                    ];
+                    $bpCoDefaults = [
+                        'name' => $co['name'] ?? '',
+                        'age' => $co['age'] ?? '',
+                        'dob' => $co['dob'] ?? '',
+                        'relationship' => $co['relationship'] ?? '',
+                        'profession' => $emp['designation_co'] ?? ($emp['type_co'] ?? ''),
+                        'gross_income' => $emp['gross_income_co'] ?? ($emp['income_co'] ?? ''),
+                        'net_income' => $emp['income_co'] ?? '',
+                        'pan' => $co['pan'] ?? '',
+                    ];
+                @endphp
                 <div class="cw-bp-table-wrap">
                     <table class="cw-bp-table">
                         <thead>
@@ -45,6 +75,10 @@
                                 ['net_income', 'Net Income', 'money', '0.00'],
                                 ['pan', 'PAN NO', 'text', 'ABCDE1234F'],
                             ] as [$key, $label, $type, $ph])
+                                @php
+                                    $appVal = $bpVal('applicant', $key, $bpAppDefaults[$key] ?? '');
+                                    $coVal = $bpVal('co_applicant', $key, $bpCoDefaults[$key] ?? '');
+                                @endphp
                                 <tr>
                                     <td>{{ $label }}</td>
                                     <td>
@@ -52,7 +86,7 @@
                                             <div class="cw-input-group">
                                                 <span class="cw-input-group-ico"><i class="bi bi-calendar3"></i></span>
                                                 <input type="text" class="cw-input js-datepicker" name="bm_reco[profile][applicant][{{ $key }}]"
-                                                       value="{{ data_get($br, "profile.applicant.$key") }}"
+                                                       value="{{ $appVal }}"
                                                        placeholder="{{ $ph }}" autocomplete="off" {{ $ro }}>
                                             </div>
                                         @elseif($type === 'money')
@@ -60,12 +94,12 @@
                                                 <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
                                                 <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal"
                                                        name="bm_reco[profile][applicant][{{ $key }}]"
-                                                       value="{{ data_get($br, "profile.applicant.$key") }}"
+                                                       value="{{ $appVal }}"
                                                        placeholder="{{ $ph }}" {{ $ro }}>
                                             </div>
                                         @else
                                             <input class="cw-input" name="bm_reco[profile][applicant][{{ $key }}]"
-                                                   value="{{ data_get($br, "profile.applicant.$key", $key === 'name' ? ($app['name'] ?? $case->customer_name) : '') }}"
+                                                   value="{{ $appVal }}"
                                                    placeholder="{{ $ph }}" {{ $ro }}>
                                         @endif
                                     </td>
@@ -74,7 +108,7 @@
                                             <div class="cw-input-group">
                                                 <span class="cw-input-group-ico"><i class="bi bi-calendar3"></i></span>
                                                 <input type="text" class="cw-input js-datepicker" name="bm_reco[profile][co_applicant][{{ $key }}]"
-                                                       value="{{ data_get($br, "profile.co_applicant.$key") }}"
+                                                       value="{{ $coVal }}"
                                                        placeholder="{{ $ph }}" autocomplete="off" {{ $ro }}>
                                             </div>
                                         @elseif($type === 'money')
@@ -82,12 +116,12 @@
                                                 <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
                                                 <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal"
                                                        name="bm_reco[profile][co_applicant][{{ $key }}]"
-                                                       value="{{ data_get($br, "profile.co_applicant.$key") }}"
+                                                       value="{{ $coVal }}"
                                                        placeholder="{{ $ph }}" {{ $ro }}>
                                             </div>
                                         @else
                                             <input class="cw-input" name="bm_reco[profile][co_applicant][{{ $key }}]"
-                                                   value="{{ data_get($br, "profile.co_applicant.$key", $key === 'name' ? ($co['name'] ?? '') : '') }}"
+                                                   value="{{ $coVal }}"
                                                    placeholder="{{ $ph }}" {{ $ro }}>
                                         @endif
                                     </td>
@@ -200,11 +234,11 @@
                 </div>
                 <div class="cw-reco-contact-col">
                     <div class="cw-field-row">
-                        <label class="cw-label-inline">ASM Name</label>
-                        <input class="cw-input" name="bm_reco[contacts][asm_name]" value="{{ data_get($br, 'contacts.asm_name') }}" placeholder="Enter ASM name" {{ $ro }}>
+                        <label class="cw-label-inline">JSM Name</label>
+                        <input class="cw-input" name="bm_reco[contacts][asm_name]" value="{{ data_get($br, 'contacts.asm_name') }}" placeholder="Enter JSM name" {{ $ro }}>
                     </div>
                     <div class="cw-field-row">
-                        <label class="cw-label-inline">ASM Contact Number</label>
+                        <label class="cw-label-inline">JSM Contact Number</label>
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
                             <input class="cw-input js-mobile" name="bm_reco[contacts][asm_mobile]" value="{{ data_get($br, 'contacts.asm_mobile') }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
@@ -220,11 +254,11 @@
                 </div>
                 <div class="cw-reco-contact-col">
                     <div class="cw-field-row">
-                        <label class="cw-label-inline">RSM Name</label>
-                        <input class="cw-input" name="bm_reco[contacts][rsm_name]" value="{{ data_get($br, 'contacts.rsm_name') }}" placeholder="Enter RSM name" {{ $ro }}>
+                        <label class="cw-label-inline">SSM Name</label>
+                        <input class="cw-input" name="bm_reco[contacts][rsm_name]" value="{{ data_get($br, 'contacts.rsm_name') }}" placeholder="Enter SSM name" {{ $ro }}>
                     </div>
                     <div class="cw-field-row">
-                        <label class="cw-label-inline">RSM Contact Number</label>
+                        <label class="cw-label-inline">SSM Contact Number</label>
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
                             <input class="cw-input js-mobile" name="bm_reco[contacts][rsm_mobile]" value="{{ data_get($br, 'contacts.rsm_mobile') }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>

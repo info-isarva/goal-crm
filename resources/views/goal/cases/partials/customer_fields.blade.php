@@ -103,7 +103,21 @@
                     </div>
                     <div class="cw-field-row">
                         <label class="cw-label-inline">Age{!! $reqMark('applicant.age') !!}</label>
-                        <input class="cw-input" name="customer_details[applicant][age]" value="{{ $app['age'] ?? '' }}" placeholder="Enter age" {{ $ro }} {{ $reqAttr('applicant.age') }}>
+                        <input class="cw-input js-age-from-dob" name="customer_details[applicant][age]" value="{{ $app['age'] ?? '' }}" placeholder="Enter age" data-party="applicant" {{ $ro }} {{ $reqAttr('applicant.age') }}>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Date of Birth{!! $reqMark('applicant.dob') !!}</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-calendar3"></i></span>
+                            <input type="text" class="cw-input js-datepicker js-dob-input" name="customer_details[applicant][dob]"
+                                   value="{{ $app['dob'] ?? '' }}" placeholder="dd-mm-yyyy" autocomplete="off"
+                                   data-party="applicant" {{ $ro }} {{ $reqAttr('applicant.dob') }}>
+                        </div>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">PAN{!! $reqMark('applicant.pan') !!}</label>
+                        <input class="cw-input js-pan-input" name="customer_details[applicant][pan]" value="{{ $app['pan'] ?? '' }}"
+                               placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase" {{ $ro }} {{ $reqAttr('applicant.pan') }}>
                     </div>
                     <div class="cw-field-row">
                         <label class="cw-label-inline">Marital Status{!! $reqMark('applicant.marital_status') !!}</label>
@@ -158,7 +172,21 @@
                     </div>
                     <div class="cw-field-row">
                         <label class="cw-label-inline">Age{!! $reqMark('co_applicant.age') !!}</label>
-                        <input class="cw-input" name="customer_details[co_applicant][age]" value="{{ $co['age'] ?? '' }}" placeholder="Enter age" {{ $ro }} {{ $reqAttr('co_applicant.age') }}>
+                        <input class="cw-input js-age-from-dob" name="customer_details[co_applicant][age]" value="{{ $co['age'] ?? '' }}" placeholder="Enter age" data-party="co_applicant" {{ $ro }} {{ $reqAttr('co_applicant.age') }}>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">Date of Birth{!! $reqMark('co_applicant.dob') !!}</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-calendar3"></i></span>
+                            <input type="text" class="cw-input js-datepicker js-dob-input" name="customer_details[co_applicant][dob]"
+                                   value="{{ $co['dob'] ?? '' }}" placeholder="dd-mm-yyyy" autocomplete="off"
+                                   data-party="co_applicant" {{ $ro }} {{ $reqAttr('co_applicant.dob') }}>
+                        </div>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">PAN{!! $reqMark('co_applicant.pan') !!}</label>
+                        <input class="cw-input js-pan-input" name="customer_details[co_applicant][pan]" value="{{ $co['pan'] ?? '' }}"
+                               placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase" {{ $ro }} {{ $reqAttr('co_applicant.pan') }}>
                     </div>
                     <div class="cw-field-row">
                         <label class="cw-label-inline">Marital Status{!! $reqMark('co_applicant.marital_status') !!}</label>

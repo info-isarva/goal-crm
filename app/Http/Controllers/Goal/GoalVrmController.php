@@ -186,7 +186,7 @@ class GoalVrmController extends Controller
             'delete_url' => ($isOwner && ! $log->goal_loan_lead_id)
                 ? route('goal.vrm.calls.destroy', $log)
                 : null,
-            'callback_at_input' => optional($log->callback_at)->format('d-m-Y H:i'),
+            'callback_at_input' => optional($log->callback_at)->format('Y-m-d H:i'),
             'goal_org_unit_id' => $branchId,
             'lead_type_raw' => $lead?->lead_type,
             'product_raw' => $lead?->product,

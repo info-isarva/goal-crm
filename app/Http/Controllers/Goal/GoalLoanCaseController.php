@@ -1339,6 +1339,16 @@ class GoalLoanCaseController extends Controller
             $mergedBm['equifax'] = $prevEquifax;
             $case->bm_reco = $mergedBm;
         }
+
+        // Keep Borrower Profile (age/DOB/PAN/etc.) in sync with Customer tab.
+        $cwTab = (string) ($data['cw_tab'] ?? $request->input('cw_tab', 'customer'));
+        [$syncedCd, $syncedBm] = $this->syncBorrowerProfileWithCustomer(
+            is_array($case->customer_details) ? $case->customer_details : [],
+            is_array($case->bm_reco) ? $case->bm_reco : [],
+            $cwTab
+        );
+        $case->customer_details = $syncedCd;
+        $case->bm_reco = $syncedBm;
         $incomingCollateral = $request->input('collateral');
         $case->collateral = $this->mergeWorkspaceJson(
             $case->collateral,
@@ -1457,6 +1467,136 @@ class GoalLoanCaseController extends Controller
         }
 
         return array_replace_recursive($base, $in);
+    }
+
+    /**
+     * Two-way sync between customer_details and bm_reco.profile for shared borrower fields.
+     *
+     * @param  array<string, mixed>  $customerDetails
+     * @param  array<string, mixed>  $bmReco
+     * @return array{0: array<string, mixed>, 1: array<string, mixed>}
+     */
+    protected function syncBorrowerProfileWithCustomer(array $customerDetails, array $bmReco, string $tab): array
+    {
+        $filled = static function ($value): bool {
+            if ($value === null) {
+                return false;
+            }
+            if (is_string($value)) {
+                return trim($value) !== '';
+            }
+
+            return $value !== '';
+        };
+
+        $parties = [
+            'applicant' => 'applicant',
+            'co_applicant' => 'co_applicant',
+        ];
+
+        foreach ($parties as $cdKey => $bmParty) {
+            $profile = data_get($bmReco, "profile.$bmParty", []);
+            if (! is_array($profile)) {
+                $profile = [];
+            }
+
+            $name = data_get($customerDetails, "$cdKey.name");
+            $age = data_get($customerDetails, "$cdKey.age");
+            $dob = data_get($customerDetails, "$cdKey.dob");
+            $pan = data_get($customerDetails, "$cdKey.pan");
+            $relationship = $cdKey === 'applicant'
+                ? (data_get($customerDetails, "$cdKey.relationship") ?: 'Self')
+                : data_get($customerDetails, "$cdKey.relationship");
+            $profession = $cdKey === 'applicant'
+                ? (data_get($customerDetails, 'employment.designation_applicant')
+                    ?: data_get($customerDetails, 'employment.type_applicant'))
+                : (data_get($customerDetails, 'employment.designation_co')
+                    ?: data_get($customerDetails, 'employment.type_co'));
+            $netIncome = $cdKey === 'applicant'
+                ? data_get($customerDetails, 'employment.income_applicant')
+                : data_get($customerDetails, 'employment.income_co');
+            $grossIncome = $cdKey === 'applicant'
+                ? (data_get($customerDetails, 'employment.gross_income_applicant') ?: $netIncome)
+                : (data_get($customerDetails, 'employment.gross_income_co') ?: $netIncome);
+
+            $customerMap = [
+                'name' => $name,
+                'age' => $age,
+                'dob' => $dob,
+                'pan' => $pan,
+                'relationship' => $relationship,
+                'profession' => $profession,
+                'net_income' => $netIncome,
+                'gross_income' => $grossIncome,
+            ];
+
+            if ($tab === 'recommendation') {
+                // Recommendation edits write back into Customer.
+                foreach (['name', 'age', 'dob', 'pan', 'relationship'] as $field) {
+                    $v = $profile[$field] ?? null;
+                    if ($filled($v)) {
+                        data_set($customerDetails, "$cdKey.$field", is_string($v) ? trim($v) : $v);
+                    }
+                }
+                if ($filled($profile['profession'] ?? null)) {
+                    $prof = trim((string) $profile['profession']);
+                    if ($cdKey === 'applicant') {
+                        if (! $filled(data_get($customerDetails, 'employment.designation_applicant'))) {
+                            data_set($customerDetails, 'employment.designation_applicant', $prof);
+                        }
+                    } elseif (! $filled(data_get($customerDetails, 'employment.designation_co'))) {
+                        data_set($customerDetails, 'employment.designation_co', $prof);
+                    }
+                }
+                if ($filled($profile['net_income'] ?? null)) {
+                    $incomePath = $cdKey === 'applicant' ? 'employment.income_applicant' : 'employment.income_co';
+                    if (! $filled(data_get($customerDetails, $incomePath))) {
+                        data_set($customerDetails, $incomePath, $profile['net_income']);
+                    }
+                }
+                if ($filled($profile['gross_income'] ?? null)) {
+                    $grossPath = $cdKey === 'applicant' ? 'employment.gross_income_applicant' : 'employment.gross_income_co';
+                    data_set($customerDetails, $grossPath, $profile['gross_income']);
+                }
+            } else {
+                // Customer (and other tabs): push customer values into empty BM profile slots,
+                // and overwrite shared identity fields when customer has them.
+                foreach ($customerMap as $field => $value) {
+                    if (! $filled($value)) {
+                        continue;
+                    }
+                    if (in_array($field, ['name', 'age', 'dob', 'pan', 'relationship'], true) || ! $filled($profile[$field] ?? null)) {
+                        $profile[$field] = is_string($value) ? trim($value) : $value;
+                    }
+                }
+                data_set($bmReco, "profile.$bmParty", $profile);
+            }
+
+            // Always ensure BM profile mirrors latest customer identity when customer tab saved.
+            if ($tab === 'customer') {
+                foreach (['name', 'age', 'dob', 'pan', 'relationship'] as $field) {
+                    $v = $customerMap[$field] ?? null;
+                    if ($filled($v)) {
+                        data_set($bmReco, "profile.$bmParty.$field", is_string($v) ? trim($v) : $v);
+                    }
+                }
+                if ($filled($customerMap['profession'])) {
+                    data_set($bmReco, "profile.$bmParty.profession", $customerMap['profession']);
+                }
+                if ($filled($customerMap['net_income'])) {
+                    data_set($bmReco, "profile.$bmParty.net_income", $customerMap['net_income']);
+                }
+                if ($filled($customerMap['gross_income'])) {
+                    data_set($bmReco, "profile.$bmParty.gross_income", $customerMap['gross_income']);
+                }
+            }
+        }
+
+        if ($tab === 'recommendation') {
+            // Keep posted recommendation profile as-is (already merged); customer updated above.
+        }
+
+        return [$customerDetails, $bmReco];
     }
 
     /**

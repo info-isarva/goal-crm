@@ -107,8 +107,8 @@ class GoalRolesPermissionsSeeder extends Seeder
             ['parent' => 'Goal Leads & Calling', 'name' => 'Create Lead', 'guard' => 'create_lead_guard', 'desc' => 'Create VRM leads'],
             ['parent' => 'Goal Leads & Calling', 'name' => 'Channel Lead', 'guard' => 'channel_lead_guard', 'desc' => 'Create channel-sourced leads'],
             ['parent' => 'Goal Leads & Calling', 'name' => 'View Leads', 'guard' => 'view_leads_guard', 'desc' => 'Lead register access'],
-            ['parent' => 'Goal Leads & Calling', 'name' => 'Import Contacts', 'guard' => 'import_contacts_guard', 'desc' => 'Import contact CSV/Excel batches'],
-            ['parent' => 'Goal Leads & Calling', 'name' => 'Split Contacts', 'guard' => 'split_contacts_guard', 'desc' => 'Split imported contacts to branches / VRMs'],
+            ['parent' => 'Goal Leads & Calling', 'name' => 'Campaigns', 'guard' => 'import_contacts_guard', 'desc' => 'Campaigns module — import contact CSV/Excel batches'],
+            ['parent' => 'Goal Leads & Calling', 'name' => 'Campaigns Assign', 'guard' => 'split_contacts_guard', 'desc' => 'Assign campaign contacts to cluster, branch, or VRMs'],
             // Loan Processing
             ['parent' => 'Goal Allocation & Cases', 'name' => 'BM Allocation', 'guard' => 'bm_allocation_guard', 'desc' => 'Assign / reassign leads'],
             ['parent' => 'Goal Allocation & Cases', 'name' => 'View Loan Cases', 'guard' => 'view_loan_cases_guard', 'desc' => 'Case pipeline'],

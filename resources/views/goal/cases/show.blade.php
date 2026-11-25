@@ -2402,6 +2402,45 @@
         });
     });
 
+    page.querySelectorAll('.js-pan-input').forEach(function (el) {
+        el.addEventListener('input', function () {
+            el.value = String(el.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+        });
+    });
+
+    function parseDobToAge(raw) {
+        var s = String(raw || '').trim();
+        if (!s) return '';
+        var d = null;
+        var m1 = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+        var m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (m1) d = new Date(parseInt(m1[3], 10), parseInt(m1[2], 10) - 1, parseInt(m1[1], 10));
+        else if (m2) d = new Date(parseInt(m2[1], 10), parseInt(m2[2], 10) - 1, parseInt(m2[3], 10));
+        if (!d || isNaN(d.getTime())) return '';
+        var today = new Date();
+        var age = today.getFullYear() - d.getFullYear();
+        var md = today.getMonth() - d.getMonth();
+        if (md < 0 || (md === 0 && today.getDate() < d.getDate())) age--;
+        return age >= 0 && age < 130 ? String(age) : '';
+    }
+
+    function syncAgeFromDob(dobEl) {
+        if (!dobEl) return;
+        var party = dobEl.getAttribute('data-party') || '';
+        var ageEl = page.querySelector('.js-age-from-dob[data-party="' + party + '"]');
+        if (!ageEl) return;
+        var age = parseDobToAge(dobEl.value);
+        if (age !== '') ageEl.value = age;
+    }
+
+    page.querySelectorAll('.js-dob-input').forEach(function (el) {
+        el.addEventListener('change', function () { syncAgeFromDob(el); });
+        el.addEventListener('blur', function () { syncAgeFromDob(el); });
+        if (el._flatpickr) {
+            el._flatpickr.config.onChange.push(function () { syncAgeFromDob(el); });
+        }
+    });
+
     (function initBtSourceRows() {
         var list = document.getElementById('cwBtSourceList');
         var tpl = document.getElementById('cwBtRowTpl');

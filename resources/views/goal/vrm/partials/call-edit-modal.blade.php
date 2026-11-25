@@ -194,7 +194,24 @@
         var dispositionLabel = document.getElementById('edit_disposition_label');
         if (dispositionHidden) dispositionHidden.value = disposition;
         if (dispositionLabel) dispositionLabel.value = disposition || '-';
-        if (callbackEl) callbackEl.value = data.callback_at || data.callback_display || '';
+        if (callbackEl) {
+            var cbRaw = data.callback_at || data.callback_display || '';
+            // Normalize d-m-Y H:i → Y-m-d H:i (flatpickr datetime value format)
+            var dm = String(cbRaw).match(/^(\d{2})-(\d{2})-(\d{4})(?:\s+(\d{2}):(\d{2}))?$/);
+            if (dm) {
+                cbRaw = dm[3] + '-' + dm[2] + '-' + dm[1] + (dm[4] ? (' ' + dm[4] + ':' + dm[5]) : '');
+            }
+            if (callbackEl._flatpickr) {
+                if (cbRaw) callbackEl._flatpickr.setDate(cbRaw, true);
+                else callbackEl._flatpickr.clear();
+            } else {
+                callbackEl.value = cbRaw;
+                if (window.IsarvaDatepicker && typeof window.IsarvaDatepicker.initOne === 'function') {
+                    window.IsarvaDatepicker.initOne(callbackEl);
+                    if (callbackEl._flatpickr && cbRaw) callbackEl._flatpickr.setDate(cbRaw, true);
+                }
+            }
+        }
         setSelectValue('edit_goal_org_unit_id', data.goal_org_unit_id || '');
         var branchLabel = document.getElementById('edit_goal_org_unit_label');
         if (branchLabel) {

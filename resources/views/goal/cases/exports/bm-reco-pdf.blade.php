@@ -191,8 +191,8 @@
         </thead>
         <tbody>
             <tr><td>SM</td><td>{{ $txt($contacts['sm_name'] ?? $case->owner?->name) }}</td><td>{{ $txt($contacts['sm_mobile'] ?? $case->owner?->mobile) }}</td></tr>
-            <tr><td>ASM</td><td>{{ $txt($contacts['asm_name'] ?? null) }}</td><td>{{ $txt($contacts['asm_mobile'] ?? null) }}</td></tr>
-            <tr><td>RSM</td><td>{{ $txt($contacts['rsm_name'] ?? null) }}</td><td>{{ $txt($contacts['rsm_mobile'] ?? null) }}</td></tr>
+            <tr><td>JSM</td><td>{{ $txt($contacts['asm_name'] ?? null) }}</td><td>{{ $txt($contacts['asm_mobile'] ?? null) }}</td></tr>
+            <tr><td>SSM</td><td>{{ $txt($contacts['rsm_name'] ?? null) }}</td><td>{{ $txt($contacts['rsm_mobile'] ?? null) }}</td></tr>
             <tr><td>BM</td><td>{{ $txt($contacts['bm_name'] ?? null) }}</td><td>{{ $txt($contacts['bm_mobile'] ?? null) }}</td></tr>
         </tbody>
     </table>

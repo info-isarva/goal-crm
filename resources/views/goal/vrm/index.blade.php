@@ -1349,7 +1349,7 @@
                                             data-mobile="{{ $log->mobile }}"
                                             data-disposition="{{ $log->disposition }}"
                                             data-notes="{{ $log->notes }}"
-                                            data-callback="{{ optional($log->callback_at)->format('d-m-Y H:i') }}"
+                                            data-callback="{{ optional($log->callback_at)->format('Y-m-d H:i') }}"
                                             data-branch-id="{{ $log->goal_org_unit_id ?: $log->lead?->goal_org_unit_id }}"
                                             data-branch-name="{{ $branch ?: '' }}"
                                             data-lead-type="{{ $log->lead?->lead_type }}"
