@@ -518,65 +518,99 @@
 }
 
 .ci-hub .as-layout {
-    display:grid; grid-template-columns:minmax(0,1fr) 290px; gap:16px; align-items:start;
+    display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px; align-items:start;
 }
 @media (max-width:1100px) { .ci-hub .as-layout { grid-template-columns:1fr; } }
 
 .ci-hub .as-card {
     background:#fff; border:1px solid #e6edf3; border-radius:16px;
-    box-shadow:0 8px 20px rgba(15,23,42,.04); padding:20px 20px 18px;
+    box-shadow:0 8px 20px rgba(15,23,42,.04); padding:20px;
 }
-.ci-hub .as-card-title {
-    margin:0 0 16px; font-size:1.02rem; font-weight:800; color:#0f172a;
-    display:flex; align-items:center; gap:8px;
+.ci-hub .as-card-head {
+    display:flex; align-items:flex-start; gap:12px; margin:0 0 16px;
 }
-.ci-hub .as-card-title i { color:#16a34a; }
+.ci-hub .as-card-ico {
+    width:40px; height:40px; border-radius:11px; flex-shrink:0;
+    display:inline-flex; align-items:center; justify-content:center;
+    background:#16a34a; color:#fff; font-size:1.15rem;
+    box-shadow:0 6px 12px rgba(22,163,74,.22);
+}
+.ci-hub .as-card-ico.soft {
+    background:#ecfdf3; color:#16a34a; box-shadow:none; border:1px solid #d1fae5;
+}
+.ci-hub .as-card-head h3 {
+    margin:0; font-size:1.05rem; font-weight:800; color:#0f172a; letter-spacing:-.01em; line-height:1.25;
+}
+.ci-hub .as-card-head p {
+    margin:3px 0 0; font-size:.8rem; color:#64748b; font-weight:500; line-height:1.35;
+}
 
 .ci-hub .as-methods {
     display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;
-    padding:6px; border-radius:12px; background:#f3f6f4; border:1px solid #e8eee9;
 }
 .ci-hub .as-method {
     display:inline-flex; align-items:center; justify-content:center; gap:8px;
-    flex:1 1 auto; min-width:140px; height:40px; padding:0 14px;
-    border-radius:9px; border:0; background:transparent;
-    cursor:pointer; color:#475569; font-size:.82rem; font-weight:700;
+    flex:1 1 0; min-width:130px; height:42px; padding:0 12px;
+    border-radius:10px; border:1px solid #e2e8f0; background:#fff;
+    cursor:pointer; color:#475569; font-size:.8rem; font-weight:700;
     transition:all .15s ease; white-space:nowrap;
 }
 .ci-hub .as-method i { font-size:.95rem; color:#64748b; }
 .ci-hub .as-method.active {
-    background:#16a34a; color:#fff;
-    box-shadow:0 4px 12px rgba(22,163,74,.28);
+    background:#16a34a; border-color:#16a34a; color:#fff;
+    box-shadow:0 6px 14px rgba(22,163,74,.28);
 }
 .ci-hub .as-method.active i { color:#fff; }
-.ci-hub .as-method:hover:not(.active) { background:#fff; color:#0f172a; }
+.ci-hub .as-method:hover:not(.active) { border-color:#cbd5e1; color:#0f172a; background:#f8fafc; }
 
 .ci-hub .as-fields {
-    display:grid; grid-template-columns:1fr 1fr; gap:14px 16px; margin-bottom:4px;
+    display:grid; grid-template-columns:1fr 1fr; gap:14px 16px;
 }
 @media (max-width:700px) { .ci-hub .as-fields { grid-template-columns:1fr; } }
 .ci-hub .as-field label {
     display:block; font-size:.78rem; font-weight:700; color:#334155; margin-bottom:6px;
 }
-.ci-hub .as-field label .req { color:#ef4444; margin-left:2px; }
+.ci-hub .as-field label .req {
+    color:#ef4444; margin-left:2px; background:transparent; padding:0;
+    font-size:.85rem; text-transform:none; letter-spacing:0; font-weight:800;
+}
+.ci-hub .as-field .select-ico .leading {
+    background:transparent; color:#64748b; width:20px; height:20px; left:14px;
+}
+.ci-hub .as-field .select-ico .form-select {
+    padding-left:40px; min-height:44px; border-radius:10px; border-color:#e2e8f0;
+    background-color:#fff;
+}
+.ci-hub .as-field .select-ico > .select2-container .select2-selection--single {
+    min-height:44px !important;
+    padding-left:36px !important;
+    border-radius:10px !important;
+}
 
+.ci-hub .as-options-panel {
+    margin-top:18px; padding:16px;
+    border-radius:14px; background:#f8faf9; border:1px solid #e8eee9;
+}
+.ci-hub .as-options-panel > .as-opt-head {
+    display:flex; align-items:center; gap:8px;
+    margin:0 0 12px; font-size:.9rem; font-weight:800; color:#0f172a;
+}
+.ci-hub .as-options-panel > .as-opt-head i { color:#16a34a; font-size:1rem; }
 .ci-hub .as-options-row {
-    display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px;
+    display:grid; grid-template-columns:1fr 1fr; gap:18px 24px;
 }
 @media (max-width:700px) { .ci-hub .as-options-row { grid-template-columns:1fr; } }
-.ci-hub .as-opt-box {
-    border:1px solid #e8eee9; border-radius:14px; padding:14px 16px; background:#fafbfc;
-}
-.ci-hub .as-opt-box h4 {
-    margin:0 0 10px; font-size:.84rem; font-weight:800; color:#0f172a;
+.ci-hub .as-opt-col h4 {
+    margin:0 0 8px; font-size:.78rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.03em;
 }
 .ci-hub .as-radio, .ci-hub .as-check {
-    display:flex; align-items:flex-start; gap:10px;
-    padding:7px 0; font-size:.84rem; color:#334155; font-weight:600; cursor:pointer;
+    display:flex; align-items:center; gap:10px;
+    padding:6px 0; font-size:.84rem; color:#334155; font-weight:600; cursor:pointer;
 }
-.ci-hub .as-radio input, .ci-hub .as-check input { margin-top:2px; accent-color:#16a34a; width:16px; height:16px; }
+.ci-hub .as-radio input, .ci-hub .as-check input {
+    margin:0; accent-color:#16a34a; width:16px; height:16px; flex-shrink:0;
+}
 .ci-hub .as-radio span, .ci-hub .as-check span { line-height:1.35; }
-.ci-hub .as-radio .muted, .ci-hub .as-check .muted { color:#94a3b8; font-weight:500; font-size:.78rem; }
 
 .ci-hub .as-custom-vrms {
     display:none; margin-top:14px; border:1px solid #e8eee9; border-radius:14px;
@@ -598,7 +632,7 @@
 .ci-hub .as-preview-table { width:100%; border-collapse:separate; border-spacing:0; font-size:.84rem; }
 .ci-hub .as-preview-table th,
 .ci-hub .as-preview-table td {
-    padding:11px 0; border-bottom:1px solid #f1f5f9; text-align:left; vertical-align:top;
+    padding:12px 0; border-bottom:1px solid #f1f5f9; text-align:left; vertical-align:middle;
 }
 .ci-hub .as-preview-table tr:last-child th,
 .ci-hub .as-preview-table tr:last-child td { border-bottom:0; }
@@ -1058,7 +1092,13 @@
 
             <div class="as-layout">
                 <div class="as-card">
-                    <h3 class="as-card-title"><i class="bi bi-people-fill"></i> Assign Contacts</h3>
+                    <div class="as-card-head">
+                        <span class="as-card-ico"><i class="bi bi-building"></i></span>
+                        <div>
+                            <h3>Assign Contacts</h3>
+                            <p>Distribute the imported contacts to a cluster, branch, or VRM.</p>
+                        </div>
+                    </div>
 
                     <div class="as-methods" role="group" aria-label="Assignment method">
                         @if($canPickBranch)
@@ -1070,7 +1110,7 @@
                         </button>
                         @endif
                         <button type="button" class="as-method {{ $draftMethod === 'vrm' ? 'active' : '' }}" data-method="vrm">
-                            <i class="bi bi-person-badge"></i> Assign to VRM
+                            <i class="bi bi-person"></i> Assign to VRM
                         </button>
                         <button type="button" class="as-method {{ $draftMethod === 'custom' ? 'active' : '' }}" data-method="custom">
                             <i class="bi bi-sliders"></i> Custom (Rules)
@@ -1083,7 +1123,7 @@
                             <label>Organisation / Region <span class="req">*</span></label>
                             <div class="select-ico">
                                 <span class="leading"><i class="bi bi-building"></i></span>
-                                <select name="region_id" id="asRegion" class="form-select">
+                                <select name="region_id" id="asRegion" class="form-select no-select2" data-select2-skip="1">
                                     <option value="">— Select region —</option>
                                     @foreach(($orgOptions['regions'] ?? collect()) as $r)
                                         <option value="{{ $r->id }}" @selected($draftRegion === (int)$r->id)>
@@ -1097,7 +1137,7 @@
                             <label>Cluster <span class="req">*</span></label>
                             <div class="select-ico">
                                 <span class="leading"><i class="bi bi-diagram-3"></i></span>
-                                <select name="cluster_id" id="asCluster" class="form-select">
+                                <select name="cluster_id" id="asCluster" class="form-select no-select2" data-select2-skip="1">
                                     <option value="">— Select cluster —</option>
                                     @foreach(($orgOptions['clusters'] ?? $clusters) as $c)
                                         <option value="{{ $c->id }}"
@@ -1113,7 +1153,7 @@
                             <label>Branch <span class="req">*</span></label>
                             <div class="select-ico">
                                 <span class="leading"><i class="bi bi-building"></i></span>
-                                <select name="branch_id" id="asBranch" class="form-select">
+                                <select name="branch_id" id="asBranch" class="form-select no-select2" data-select2-skip="1">
                                     <option value="">— Select branch —</option>
                                     @foreach(($orgOptions['branches'] ?? $branches) as $b)
                                         <option value="{{ $b->id }}"
@@ -1129,8 +1169,8 @@
                         <div class="as-field" data-show="vrm" id="asVrmField" style="{{ $draftMethod === 'vrm' ? '' : 'display:none' }}">
                             <label>VRM <span class="req">*</span></label>
                             <div class="select-ico">
-                                <span class="leading"><i class="bi bi-person-badge"></i></span>
-                                <select name="vrm_id" id="asVrm" class="form-select">
+                                <span class="leading"><i class="bi bi-person"></i></span>
+                                <select name="vrm_id" id="asVrm" class="form-select no-select2" data-select2-skip="1">
                                     <option value="">— Select VRM —</option>
                                     @foreach($vrms as $vrm)
                                         <option value="{{ $vrm->id }}" @selected($draftVrm === (int)$vrm->id)>{{ $vrm->name }}</option>
@@ -1142,7 +1182,7 @@
                             <label>Lead Status <span class="req">*</span></label>
                             <div class="select-ico">
                                 <span class="leading"><i class="bi bi-tag"></i></span>
-                                <select name="lead_status" id="asLeadStatus" class="form-select">
+                                <select name="lead_status" id="asLeadStatus" class="form-select no-select2" data-select2-skip="1">
                                     <option value="Future Prospect" @selected($draftStatus === 'Future Prospect')>Future Prospect (dialer)</option>
                                     <option value="Pending BM Allocation" @selected($draftStatus === 'Pending BM Allocation')>Pending BM Allocation</option>
                                 </select>
@@ -1168,46 +1208,55 @@
                         @endforelse
                     </div>
 
-                    <div class="as-options-row">
-                        <div class="as-opt-box">
-                            <h4>Assignment Options</h4>
-                            <label class="as-radio">
-                                <input type="radio" name="allocation_ui" value="all" @checked($draftAlloc === 'all')>
-                                <span>All Contacts ({{ number_format($validCount) }})</span>
-                            </label>
-                            <label class="as-radio">
-                                <input type="radio" name="allocation_ui" value="equal" @checked($draftAlloc === 'equal')>
-                                <span>Assign in Equal Split</span>
-                            </label>
-                            <label class="as-radio">
-                                <input type="radio" name="allocation_ui" value="percentage" @checked($draftAlloc === 'percentage')>
-                                <span>Assign by Percentage</span>
-                            </label>
-                        </div>
-                        <div class="as-opt-box">
-                            <h4>Additional Settings</h4>
-                            <label class="as-check">
-                                <input type="checkbox" name="create_lead" value="1" @checked(($draft['create_lead'] ?? true))>
-                                <span>Create as Lead (if not exists)</span>
-                            </label>
-                            <label class="as-check">
-                                <input type="checkbox" name="update_existing" value="1" @checked(($draft['update_existing'] ?? true))>
-                                <span>Update existing contact details</span>
-                            </label>
-                            <label class="as-check">
-                                <input type="checkbox" name="skip_duplicates" value="1" @checked(array_key_exists('skip_duplicates', $draft) ? !empty($draft['skip_duplicates']) : false)>
-                                <span>Skip duplicate contacts</span>
-                            </label>
-                            <label class="as-check">
-                                <input type="checkbox" name="notify" value="1" @checked(!empty($draft['notify']))>
-                                <span>Send notification to assignee</span>
-                            </label>
+                    <div class="as-options-panel">
+                        <div class="as-opt-head"><i class="bi bi-gear"></i> Assignment Options</div>
+                        <div class="as-options-row">
+                            <div class="as-opt-col">
+                                <h4>Assignment type</h4>
+                                <label class="as-radio">
+                                    <input type="radio" name="allocation_ui" value="all" @checked($draftAlloc === 'all')>
+                                    <span>All Contacts ({{ number_format($validCount) }})</span>
+                                </label>
+                                <label class="as-radio">
+                                    <input type="radio" name="allocation_ui" value="equal" @checked($draftAlloc === 'equal')>
+                                    <span>Assign in Equal Split</span>
+                                </label>
+                                <label class="as-radio">
+                                    <input type="radio" name="allocation_ui" value="percentage" @checked($draftAlloc === 'percentage')>
+                                    <span>Assign by Percentage</span>
+                                </label>
+                            </div>
+                            <div class="as-opt-col">
+                                <h4>Additional settings</h4>
+                                <label class="as-check">
+                                    <input type="checkbox" name="create_lead" value="1" @checked(($draft['create_lead'] ?? true))>
+                                    <span>Create as Lead (if not exists)</span>
+                                </label>
+                                <label class="as-check">
+                                    <input type="checkbox" name="update_existing" value="1" @checked(($draft['update_existing'] ?? true))>
+                                    <span>Update existing contact details</span>
+                                </label>
+                                <label class="as-check">
+                                    <input type="checkbox" name="skip_duplicates" value="1" @checked(array_key_exists('skip_duplicates', $draft) ? !empty($draft['skip_duplicates']) : false)>
+                                    <span>Skip duplicate contacts</span>
+                                </label>
+                                <label class="as-check">
+                                    <input type="checkbox" name="notify" value="1" @checked(!empty($draft['notify']))>
+                                    <span>Send notification to assignee</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <aside class="as-card as-preview">
-                    <h3 class="as-card-title"><i class="bi bi-eye"></i> Assign Preview</h3>
+                    <div class="as-card-head">
+                        <span class="as-card-ico soft"><i class="bi bi-eye"></i></span>
+                        <div>
+                            <h3>Assign Preview</h3>
+                            <p>Review the assignment details before confirming.</p>
+                        </div>
+                    </div>
                     <table class="as-preview-table">
                         <tr>
                             <th>Total Imported</th>
