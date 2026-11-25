@@ -9,7 +9,8 @@
     $isFullGoalNav = $goalNavMode === 'full';
 
     $canLeadMgmt = $can('vrm_calling_guard') || $can('view_leads_guard') || $can('create_lead_guard')
-        || $can('channel_lead_guard') || $can('bm_allocation_guard');
+        || $can('channel_lead_guard') || $can('bm_allocation_guard')
+        || $can('import_contacts_guard') || $can('split_contacts_guard');
     $canLoanProc = $can('view_loan_cases_guard');
     // Case-ops sub-modules — dedicated guards, with edit_case_workspace as legacy fallback
     $canCaseOps = $can('edit_case_workspace_guard');
@@ -139,6 +140,14 @@
 <li class="nav-item">
     <a class="nav-link {{ request()->routeIs('goal.allocation.*') ? 'active' : '' }}" href="{{ route('goal.allocation.index') }}">
         <i class="bi bi-diagram-3"></i> <span class="nav-label">BM Allocation</span>
+    </a>
+</li>
+@endif
+
+@if($can('import_contacts_guard'))
+<li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('goal.contacts.*') ? 'active' : '' }}" href="{{ route('goal.contacts.import') }}">
+        <i class="bi bi-cloud-upload"></i> <span class="nav-label">Import Contacts</span>
     </a>
 </li>
 @endif

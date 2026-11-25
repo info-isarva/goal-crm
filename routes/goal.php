@@ -20,6 +20,7 @@ use App\Http\Controllers\Goal\GoalTargetController;
 use App\Http\Controllers\Goal\GoalVisitsController;
 use App\Http\Middleware\EnsureGoalTargetSubtree;
 use App\Http\Controllers\Goal\GoalVrmController;
+use App\Http\Controllers\Goal\GoalContactImportController;
 use App\Http\Controllers\Goal\GoalLeadSourceController;
 use App\Http\Controllers\Goal\GoalLoanPurposeController;
 use App\Http\Controllers\Goal\GoalVrmDispositionController;
@@ -92,6 +93,15 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::post('allocation/bulk', [GoalAllocationController::class, 'assignBulk'])->name('allocation.bulk');
     Route::get('allocation/{lead}/history', [GoalAllocationController::class, 'history'])->name('allocation.history');
     Route::post('allocation/{lead}', [GoalAllocationController::class, 'assign'])->name('allocation.assign');
+
+    Route::get('contacts/import', [GoalContactImportController::class, 'index'])->name('contacts.import');
+    Route::post('contacts/import', [GoalContactImportController::class, 'store'])->name('contacts.import.store');
+    Route::get('contacts/import/template', [GoalContactImportController::class, 'template'])->name('contacts.import.template');
+    Route::get('contacts/import/{import}', [GoalContactImportController::class, 'show'])->name('contacts.import.show');
+    Route::get('contacts/import/{import}/errors', [GoalContactImportController::class, 'errors'])->name('contacts.import.errors');
+    Route::get('contacts/import/{import}/split', [GoalContactImportController::class, 'splitForm'])->name('contacts.import.split');
+    Route::post('contacts/import/{import}/split', [GoalContactImportController::class, 'split'])->name('contacts.import.split.store');
+    Route::post('contacts/import/{import}/draft', [GoalContactImportController::class, 'saveDraft'])->name('contacts.import.draft');
 
     Route::get('documents', [GoalDocumentsController::class, 'index'])->name('documents.index');
     Route::get('documents/export', [GoalDocumentsController::class, 'export'])->name('documents.export');

@@ -107,6 +107,8 @@ class GoalRolesPermissionsSeeder extends Seeder
             ['parent' => 'Goal Leads & Calling', 'name' => 'Create Lead', 'guard' => 'create_lead_guard', 'desc' => 'Create VRM leads'],
             ['parent' => 'Goal Leads & Calling', 'name' => 'Channel Lead', 'guard' => 'channel_lead_guard', 'desc' => 'Create channel-sourced leads'],
             ['parent' => 'Goal Leads & Calling', 'name' => 'View Leads', 'guard' => 'view_leads_guard', 'desc' => 'Lead register access'],
+            ['parent' => 'Goal Leads & Calling', 'name' => 'Import Contacts', 'guard' => 'import_contacts_guard', 'desc' => 'Import contact CSV/Excel batches'],
+            ['parent' => 'Goal Leads & Calling', 'name' => 'Split Contacts', 'guard' => 'split_contacts_guard', 'desc' => 'Split imported contacts to branches / VRMs'],
             // Loan Processing
             ['parent' => 'Goal Allocation & Cases', 'name' => 'BM Allocation', 'guard' => 'bm_allocation_guard', 'desc' => 'Assign / reassign leads'],
             ['parent' => 'Goal Allocation & Cases', 'name' => 'View Loan Cases', 'guard' => 'view_loan_cases_guard', 'desc' => 'Case pipeline'],
@@ -189,7 +191,8 @@ class GoalRolesPermissionsSeeder extends Seeder
             5 => '__ALL_MODULES__', // CEO
             6 => [ // RD — can create/open cases across region
                 'goal_analytics_guard', 'mis_reports_guard', 'scheduled_reports_guard',
-                'view_leads_guard', 'view_loan_cases_guard', 'edit_case_workspace_guard',
+                'view_leads_guard', 'import_contacts_guard', 'split_contacts_guard',
+                'view_loan_cases_guard', 'edit_case_workspace_guard',
                 'case_documents_guard', 'bank_processing_guard', 'sanction_disbursement_guard',
                 'view_targets_guard',
                 'branch_mis_guard', 'revenue_ledger_guard', 'manage_users_guard', 'manage_org_units_guard',
@@ -198,7 +201,8 @@ class GoalRolesPermissionsSeeder extends Seeder
             ],
             7 => [ // Cluster Head — can create/open cases in cluster
                 'goal_analytics_guard', 'mis_reports_guard',
-                'view_leads_guard', 'view_loan_cases_guard', 'edit_case_workspace_guard',
+                'view_leads_guard', 'import_contacts_guard', 'split_contacts_guard',
+                'view_loan_cases_guard', 'edit_case_workspace_guard',
                 'case_documents_guard', 'bank_processing_guard', 'sanction_disbursement_guard',
                 'view_targets_guard', 'manage_targets_guard',
                 'branch_mis_guard', 'revenue_ledger_guard', 'manage_users_guard', 'view_audit_logs_guard',
@@ -207,6 +211,7 @@ class GoalRolesPermissionsSeeder extends Seeder
             8 => [ // BM — can create/revise branch & team targets (approval by Cluster+)
                 'goal_analytics_guard', 'mis_reports_guard',
                 'vrm_calling_guard', 'view_leads_guard', 'create_lead_guard', 'channel_lead_guard',
+                'import_contacts_guard', 'split_contacts_guard',
                 'bm_allocation_guard', 'view_loan_cases_guard', 'edit_case_workspace_guard',
                 'customer_visits_guard', 'case_documents_guard', 'bank_processing_guard', 'sanction_disbursement_guard',
                 'view_targets_guard', 'manage_targets_guard', 'branch_mis_guard', 'revenue_ledger_guard',
@@ -326,20 +331,32 @@ class GoalRolesPermissionsSeeder extends Seeder
             }
         }
 
-        // Push Goal matrix guards into existing users' crm_page_right (Create Case, etc.).
+        // Push Goal matrix guards into existing users' crm_page_right (Create Case, Import Contacts, etc.).
+        // MD/CEO (__ALL_MODULES__) with an explicit rights list also get every Goal module guard merged in
+        // so new permissions appear in the user form and authorize correctly.
         $syncedUsers = 0;
+        $allGoalGuards = array_keys($guardIds);
         foreach ($matrix as $roleId => $guards) {
-            if ($guards === '__ALL_MODULES__' || ! is_array($guards)) {
+            if ($guards === '__ALL_MODULES__') {
+                $extra = $allGoalGuards;
+                foreach ($classicBridge as $bridgeGuards) {
+                    foreach ($bridgeGuards as $classicGuard) {
+                        $extra[] = $classicGuard;
+                    }
+                }
+                $extra = array_values(array_unique($extra));
+            } elseif (is_array($guards)) {
+                $extra = [];
+                foreach ($guards as $goalGuard) {
+                    $extra[] = $goalGuard;
+                    foreach ($classicBridge[$goalGuard] ?? [] as $classicGuard) {
+                        $extra[] = $classicGuard;
+                    }
+                }
+                $extra = array_values(array_unique($extra));
+            } else {
                 continue;
             }
-            $extra = [];
-            foreach ($guards as $goalGuard) {
-                $extra[] = $goalGuard;
-                foreach ($classicBridge[$goalGuard] ?? [] as $classicGuard) {
-                    $extra[] = $classicGuard;
-                }
-            }
-            $extra = array_values(array_unique($extra));
 
             $users = User::query()->where('crm_role_type', (int) $roleId)->get(['id', 'crm_page_right']);
             foreach ($users as $user) {
