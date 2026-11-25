@@ -471,7 +471,7 @@
     $branchLocked = !empty($branchLocked);
     $leadNextById = $leadNextById ?? [];
     $leadEditableById = $leadEditableById ?? [];
-    $tableColCount = 10;
+    $tableColCount = 9;
 @endphp
 
 <div class="container-fluid p-4 ll-page">
@@ -592,7 +592,6 @@
                             <th>Customer</th>
                             <th>Product</th>
                             <th>Amount</th>
-                            <th>Type</th>
                             <th>Source</th>
                             <th>Status</th>
                             <th>Branch</th>
@@ -644,9 +643,6 @@
                                 @else
                                     <div class="amount-cell muted">-</div>
                                 @endif
-                            </td>
-                            <td data-label="Type">
-                                <span class="type-pill {{ $lead->lead_type }}">{{ ucfirst($lead->lead_type ?: '-') }}</span>
                             </td>
                             <td data-label="Source">
                                 <span class="source-pill {{ $sourceClass($lead->source) }}">{{ $lead->source ?: '-' }}</span>
