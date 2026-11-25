@@ -1,4 +1,4 @@
-﻿<div class="cw-cust cw-reco">
+<div class="cw-cust cw-reco">
     {{-- ========== BM RECO ========== --}}
     <div class="cw-extra-section" id="cwBmReco">
         <div class="cw-reco-banner">
@@ -539,10 +539,12 @@
         </div>
     </div>
 
-    {{-- ========== EQUIFAX (record only — no file upload) ========== --}}
+    {{-- ========== EQUIFAX ========== --}}
     @php
         $equifax = data_get($br, 'equifax', []) ?: [];
-        $equifaxReceived = ! empty($equifax['received']) || filled($equifax['recorded_at'] ?? null) || filled($equifax['path'] ?? null);
+        $hasEquifaxFile = filled($equifax['path'] ?? null);
+        $hasEquifaxData = filled($equifax['score'] ?? null) || filled($equifax['notes'] ?? null);
+        $equifaxReceived = ! empty($equifax['received']) || filled($equifax['recorded_at'] ?? null) || $hasEquifaxFile || $hasEquifaxData;
         $equifaxWhen = $equifax['recorded_at'] ?? ($equifax['uploaded_at'] ?? null);
         $equifaxBy = $equifax['recorded_by'] ?? ($equifax['uploaded_by'] ?? null);
         $equifaxWhenFmt = null;
@@ -552,48 +554,88 @@
     @endphp
     <div class="cw-extra-section" id="cwEquifax">
         <div class="cw-card-tw cw-card-soft">
-            <div class="cw-card-head cw-card-head-soft">
-                <span class="cw-ico cw-ico-amber"><i class="bi bi-file-earmark-lock"></i></span>
-                <h6 class="cw-card-title">Equifax / Credit Bureau</h6>
-            </div>
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2" style="padding:.15rem 0">
-                <div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        @if($equifaxReceived)
-                            <span class="status-pill verified" style="display:inline-flex;align-items:center;gap:4px;padding:.2rem .55rem;border-radius:999px;font-size:.72rem;font-weight:700;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0">
-                                <i class="bi bi-check2-circle"></i> Received
-                            </span>
-                        @else
-                            <span class="status-pill idle" style="display:inline-flex;align-items:center;gap:4px;padding:.2rem .55rem;border-radius:999px;font-size:.72rem;font-weight:700;background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0">
-                                Not recorded
-                            </span>
-                        @endif
-                        @if($equifaxReceived && ($equifaxWhenFmt || $equifaxBy))
-                            <span class="text-muted" style="font-size:.78rem">
-                                {{ $equifaxWhenFmt }}
-                                @if($equifaxBy) · {{ $equifaxBy }} @endif
-                            </span>
-                        @endif
-                    </div>
-                    <div class="text-muted mt-1" style="font-size:.72rem">Record that the Equifax / bureau check is done — no file upload.</div>
+            <div class="cw-card-head cw-card-head-soft cw-equifax-head">
+                <div class="cw-equifax-head-left">
+                    <span class="cw-ico cw-ico-amber"><i class="bi bi-file-earmark-lock"></i></span>
+                    <h6 class="cw-card-title">Equifax / Credit Bureau</h6>
+                    @if($equifaxReceived)
+                        <span class="cw-equifax-pill is-saved"><i class="bi bi-check2-circle"></i> Saved</span>
+                    @else
+                        <span class="cw-equifax-pill">Not recorded</span>
+                    @endif
                 </div>
-                @if($canEdit)
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        @if(! $equifaxReceived)
-                            <button type="submit" form="cwEquifaxRecordForm" class="btn-save" style="height:36px">
-                                <i class="bi bi-check2"></i> Mark received
-                            </button>
-                        @else
-                            <button type="submit" form="cwEquifaxRemoveForm" class="btn btn-outline-danger btn-sm js-cw-equifax-clear"
-                                    style="height:36px;border-radius:10px"
-                                    data-swal-title="Clear Equifax record?"
-                                    data-swal-text="This will mark Equifax as not recorded for this recommendation.">
-                                <i class="bi bi-x-lg"></i> Clear
-                            </button>
-                        @endif
-                    </div>
-                @endif
+                <div class="cw-equifax-head-right">
+                    @if($equifaxReceived && ($equifaxWhenFmt || $equifaxBy))
+                        <span class="cw-equifax-meta">
+                            {{ $equifaxWhenFmt }}
+                            @if($equifaxBy) · {{ $equifaxBy }} @endif
+                        </span>
+                    @endif
+                    @if($hasEquifaxFile)
+                        <a href="{{ route('goal.cases.bm-reco.equifax.download', $case) }}" target="_blank" rel="noopener" class="btn-ghost cw-equifax-view">
+                            <i class="bi bi-eye"></i>
+                            <span class="cw-equifax-view-name">{{ $equifax['file_name'] ?? 'View report' }}</span>
+                        </a>
+                    @endif
+                    @if($canEdit && $equifaxReceived)
+                        <button type="submit" form="cwEquifaxRemoveForm" class="btn btn-outline-danger btn-sm js-cw-equifax-clear cw-equifax-clear"
+                                data-swal-title="Clear Equifax?"
+                                data-swal-text="This removes the uploaded file and any entered bureau data.">
+                            <i class="bi bi-x-lg"></i> Clear
+                        </button>
+                    @endif
+                </div>
             </div>
+
+            @if($equifaxReceived && ($hasEquifaxData || $hasEquifaxFile) && ! $canEdit)
+                <div class="cw-equifax-readonly">
+                    @if(filled($equifax['score'] ?? null))
+                        <div><span class="cw-equifax-ro-label">Score / Ref</span> {{ $equifax['score'] }}</div>
+                    @endif
+                    @if(filled($equifax['notes'] ?? null))
+                        <div class="cw-equifax-ro-notes">{{ $equifax['notes'] }}</div>
+                    @endif
+                    @if(! $hasEquifaxData && $hasEquifaxFile)
+                        <div class="cw-equifax-hint">Report file attached — open View to see it.</div>
+                    @endif
+                </div>
+            @endif
+
+            @if($canEdit)
+                <div class="cw-reco-col-grid cw-equifax-fields">
+                    <div>
+                        <label class="cw-label" for="cwEquifaxScore">Score / Reference</label>
+                        <input type="text" id="cwEquifaxScore" name="score" form="cwEquifaxUploadForm"
+                               class="cw-input cw-input-soft" maxlength="80"
+                               value="{{ old('score', $equifax['score'] ?? '') }}"
+                               placeholder="e.g. 742 / EQX-12345">
+                    </div>
+                    <div>
+                        <label class="cw-label" for="cwEquifaxFile">{{ $hasEquifaxFile ? 'Replace file' : 'Upload Equifax PDF / image' }}</label>
+                        <label class="cw-file-pick" for="cwEquifaxFile">
+                            <input type="file" id="cwEquifaxFile" name="file" form="cwEquifaxUploadForm"
+                                   class="cw-file-pick-input js-cw-equifax-file"
+                                   accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
+                            <span class="cw-file-pick-btn"><i class="bi bi-upload"></i> Choose file</span>
+                            <span class="cw-file-pick-name js-cw-equifax-file-name">{{ $hasEquifaxFile ? ($equifax['file_name'] ?? 'Current file kept') : 'No file chosen' }}</span>
+                        </label>
+                    </div>
+                    <div class="cw-reco-col-span">
+                        <label class="cw-label" for="cwEquifaxNotes">Bureau data / notes</label>
+                        <textarea id="cwEquifaxNotes" name="notes" form="cwEquifaxUploadForm"
+                                  class="cw-textarea cw-textarea-soft" rows="3" maxlength="2000"
+                                  placeholder="Enter Equifax / bureau findings if you are not uploading a file">{{ old('notes', $equifax['notes'] ?? '') }}</textarea>
+                    </div>
+                    <div class="cw-reco-col-span cw-equifax-footer">
+                        <p class="cw-equifax-hint">Upload a report, enter score / notes, or both — then save.</p>
+                        <button type="submit" form="cwEquifaxUploadForm" class="btn-save">
+                            <i class="bi bi-check2"></i> {{ $equifaxReceived ? 'Update Equifax' : 'Save Equifax' }}
+                        </button>
+                    </div>
+                </div>
+            @elseif(! $equifaxReceived)
+                <div class="cw-equifax-empty">No Equifax report or bureau data yet.</div>
+            @endif
         </div>
     </div>
 
@@ -677,6 +719,12 @@
                             <option value="{{ $val }}" @selected($colStage === $val)>{{ $lab }}</option>
                         @endforeach
                     </select>
+                </div>
+                <div class="cw-reco-col-span">
+                    <label class="cw-label">Notes</label>
+                    <textarea class="cw-textarea cw-textarea-soft" name="collateral[notes]" rows="3"
+                              maxlength="2000" placeholder="Enter collateral notes"
+                              {{ $ro }}>{{ $col['notes'] ?? '' }}</textarea>
                 </div>
             </div>
         </div>

@@ -291,7 +291,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            font-weight: 600;
+                font-weight: 600;
             color: #334155;
         }
         .us-table .col-target,
@@ -851,8 +851,8 @@
         .uh-org-item {
             display: flex; flex-direction: column; align-items: center;
             position: relative; padding: 0 6px;
-            flex: 0 0 auto;
-        }
+                flex: 0 0 auto;
+            }
 
         /* Sibling horizontal rail */
         .uh-org > .uh-org-item:not(:only-child)::before {

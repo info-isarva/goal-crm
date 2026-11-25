@@ -777,7 +777,7 @@ class GoalCaseWorkspaceController extends Controller
     }
 
     /**
-     * Mark Equifax / credit-bureau check as received on BM Reco (no file upload).
+     * Save Equifax / credit-bureau on BM Reco — upload a file and/or enter bureau data.
      */
     public function uploadBmRecoEquifax(Request $request, GoalLoanCase $case)
     {
@@ -787,30 +787,88 @@ class GoalCaseWorkspaceController extends Controller
             return $redirect;
         }
 
+        $data = $request->validate([
+            'file' => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,webp',
+            'score' => 'nullable|string|max:80',
+            'notes' => 'nullable|string|max:2000',
+        ]);
+
+        $score = trim((string) ($data['score'] ?? ''));
+        $notes = trim((string) ($data['notes'] ?? ''));
+        $file = $request->file('file');
+
         $bm = is_array($case->bm_reco) ? $case->bm_reco : [];
-        $prevPath = data_get($bm, 'equifax.path');
-        if ($prevPath && Storage::disk('local')->exists($prevPath)) {
-            Storage::disk('local')->delete($prevPath);
+        $prev = is_array(data_get($bm, 'equifax')) ? data_get($bm, 'equifax') : [];
+        $prevPath = $prev['path'] ?? null;
+
+        if (! $file && $score === '' && $notes === '' && empty($prevPath)) {
+            return $this->ajaxFail(
+                ['file' => 'Upload an Equifax file or enter score / bureau data.'],
+                'recommendation'
+            );
         }
 
-        $bm['equifax'] = [
+        $equifax = [
+            'score' => $score !== '' ? $score : null,
+            'notes' => $notes !== '' ? $notes : null,
+            'path' => $prevPath,
+            'file_name' => $prev['file_name'] ?? null,
+            'mime' => $prev['mime'] ?? null,
+            'size' => $prev['size'] ?? null,
+            'uploaded_at' => $prev['uploaded_at'] ?? null,
+            'uploaded_by' => $prev['uploaded_by'] ?? null,
+            'uploaded_by_id' => $prev['uploaded_by_id'] ?? null,
             'received' => true,
             'recorded_at' => now()->toDateTimeString(),
             'recorded_by' => auth()->user()?->name,
             'recorded_by_id' => auth()->id(),
         ];
+
+        if ($file) {
+            $path = $file->store('goal/bm-reco/'.$case->id, 'local');
+            if ($prevPath && $prevPath !== $path && Storage::disk('local')->exists($prevPath)) {
+                Storage::disk('local')->delete($prevPath);
+            }
+            $equifax['path'] = $path;
+            $equifax['file_name'] = $file->getClientOriginalName();
+            $equifax['mime'] = $file->getClientMimeType();
+            $equifax['size'] = $file->getSize();
+            $equifax['uploaded_at'] = now()->toDateTimeString();
+            $equifax['uploaded_by'] = auth()->user()?->name;
+            $equifax['uploaded_by_id'] = auth()->id();
+        }
+
+        $bm['equifax'] = $equifax;
         $case->bm_reco = $bm;
         $case->save();
 
-        GoalCaseAudit::record($case, 'document', 'Equifax marked received on BM Reco', auth()->user());
+        $msg = $file
+            ? 'Equifax report saved.'
+            : 'Equifax / bureau data saved.';
+        GoalCaseAudit::record($case, 'document', $msg.' (BM Reco)', auth()->user());
 
-        return $this->ajaxOk('Equifax marked as received.', 'recommendation');
+        return $this->ajaxOk($msg, 'recommendation');
     }
 
-    /** @deprecated File download removed — Equifax is record-only. */
     public function downloadBmRecoEquifax(GoalLoanCase $case)
     {
-        abort(404, 'Equifax file download is no longer available.');
+        $this->requireGoalPermission('view_loan_cases_guard');
+        $this->assertCaseInScope($case);
+
+        $path = data_get($case->bm_reco, 'equifax.path');
+        $name = data_get($case->bm_reco, 'equifax.file_name') ?: 'equifax-report.pdf';
+        if (! $path || ! Storage::disk('local')->exists($path)) {
+            abort(404, 'Equifax file not found.');
+        }
+
+        $mime = Storage::disk('local')->mimeType($path) ?: 'application/octet-stream';
+
+        return Storage::disk('local')->response($path, $name, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.addslashes($name).'"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store, max-age=0',
+        ]);
     }
 
     public function removeBmRecoEquifax(GoalLoanCase $case)
@@ -830,9 +888,9 @@ class GoalCaseWorkspaceController extends Controller
         $case->bm_reco = $bm;
         $case->save();
 
-        GoalCaseAudit::record($case, 'document', 'Equifax record cleared from BM Reco', auth()->user());
+        GoalCaseAudit::record($case, 'document', 'Equifax cleared from BM Reco', auth()->user());
 
-        return $this->ajaxOk('Equifax record cleared.', 'recommendation');
+        return $this->ajaxOk('Equifax cleared.', 'recommendation');
     }
 
     /**

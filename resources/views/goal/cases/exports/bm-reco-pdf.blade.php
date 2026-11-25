@@ -18,7 +18,12 @@
     $equifaxReceived = ! empty(data_get($br, 'equifax.received'))
         || filled(data_get($br, 'equifax.recorded_at'))
         || filled(data_get($br, 'equifax.path'))
-        || filled(data_get($br, 'equifax.file_name'));
+        || filled(data_get($br, 'equifax.file_name'))
+        || filled(data_get($br, 'equifax.score'))
+        || filled(data_get($br, 'equifax.notes'));
+    $equifaxScore = data_get($br, 'equifax.score');
+    $equifaxNotes = data_get($br, 'equifax.notes');
+    $equifaxFile = data_get($br, 'equifax.file_name');
     $titleName = strtoupper((string) ($app['name'] ?? $case->customer_name ?? 'CUSTOMER'));
 @endphp
 <!DOCTYPE html>
@@ -59,6 +64,23 @@
         <p>Dear Sir,</p>
         <p>Please find the below Proposal brief summary of <strong>{{ $titleName }}</strong>@if($equifaxReceived). Equifax / credit bureau check recorded.@else.@endif</p>
     </div>
+
+    @if($equifaxReceived && ($equifaxScore || $equifaxNotes || $equifaxFile))
+        <h2>Equifax / Credit Bureau</h2>
+        <table>
+            <tbody>
+                @if($equifaxScore)
+                    <tr><td class="label">Score / Reference</td><td>{{ $txt($equifaxScore) }}</td></tr>
+                @endif
+                @if($equifaxFile)
+                    <tr><td class="label">Report file</td><td>{{ $txt($equifaxFile) }}</td></tr>
+                @endif
+                @if($equifaxNotes)
+                    <tr><td class="label">Bureau data / notes</td><td>{{ $txt($equifaxNotes) }}</td></tr>
+                @endif
+            </tbody>
+        </table>
+    @endif
 
     <h2>Borrower Profile</h2>
     <table>

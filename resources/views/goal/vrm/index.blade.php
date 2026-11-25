@@ -152,7 +152,7 @@
 }
 .vrm-page .filter-grid {
     display: grid;
-    grid-template-columns: minmax(180px, 1.4fr) repeat(4, minmax(130px, 1fr)) auto;
+    grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(130px, 1fr)) auto;
     gap: 10px; align-items: end;
 }
 .vrm-page .filter-grid label {
@@ -1067,7 +1067,7 @@
             'Invalid Number' => 'invalid-number',
         ][$d] ?? 'follow-up';
     };
-    $filters = request()->only(['q', 'disposition', 'lead_status', 'from_date', 'to_date', 'per_page']);
+    $filters = request()->only(['q', 'disposition', 'from_date', 'to_date', 'per_page']);
     $dispositionValue = request('disposition', request('disposition_filter'));
 @endphp
 
@@ -1106,15 +1106,6 @@
                     @foreach(($dispositions ?? []) as $d)
                         <option value="{{ $d->name }}" @selected($dispositionValue===$d->name)>{{ $d->name }}</option>
                     @endforeach
-                </select>
-            </div>
-            <div>
-                <label for="lead_status">Lead Status</label>
-                <select name="lead_status" id="lead_status" class="form-select js-select2"
-                        data-placeholder="All">
-                    <option value="all" @selected(request('lead_status', 'all')==='all')>All</option>
-                    <option value="yes" @selected(request('lead_status')==='yes')>Yes</option>
-                    <option value="no" @selected(request('lead_status')==='no')>No</option>
                 </select>
             </div>
             <div>
@@ -1180,11 +1171,11 @@
             </a>
         </div>
         <div class="col-6 col-xl-2">
-            <div class="kpi-card tone-green">
-                <span class="kpi-icon green"><i class="bi bi-hand-thumbs-up"></i></span>
+            <div class="kpi-card tone-purple">
+                <span class="kpi-icon purple"><i class="bi bi-fire"></i></span>
                 <div class="kpi-meta">
-                    <div class="kpi-label">Interested</div>
-                    <div class="kpi-value">{{ $interestedCount }}</div>
+                    <div class="kpi-label">Hot Lead</div>
+                    <div class="kpi-value">{{ $hotLeadCount }}</div>
                 </div>
             </div>
         </div>
@@ -1897,7 +1888,7 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
                 window.jQuery(this).val(this.value).trigger('change');
             });
         }
-        syncCreateLeadAvailability();
+        syncCreateLeadAvailability({ autoCheck: true });
         syncLeadRequiredFields();
     }
 
@@ -2159,9 +2150,10 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
         });
     }
     modalEl.addEventListener('shown.bs.modal', function () {
-        syncCreateLeadAvailability({ autoCheck: false });
+        // Default disposition (e.g. Hot Lead / Interested) should auto-check create-lead when allowed.
+        syncCreateLeadAvailability({ autoCheck: true });
     });
-    syncCreateLeadAvailability({ autoCheck: false });
+    syncCreateLeadAvailability({ autoCheck: true });
 
     @if($openModal)
         modal.show();
@@ -2170,7 +2162,7 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
     @if(session('reopen_log_call'))
         modalEl.addEventListener('shown.bs.modal', function once() {
             resetFormDefaults();
-            syncCreateLeadAvailability();
+            syncCreateLeadAvailability({ autoCheck: true });
             modalEl.removeEventListener('shown.bs.modal', once);
         });
     @endif

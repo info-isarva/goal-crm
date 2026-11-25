@@ -46,12 +46,19 @@
                         <div class="section-bar"><i class="bi bi-telephone"></i> Call Details</div>
                         <div class="field-grid">
                             <div class="field">
-                                <label class="form-label" for="edit_disposition_label">Disposition</label>
-                                <input type="hidden" name="disposition" id="edit_disposition" value="">
+                                <label class="form-label" for="edit_disposition">Disposition <span class="req">*</span></label>
                                 <div class="input-icon">
                                     <i class="bi bi-tag"></i>
-                                    <input type="text" id="edit_disposition_label" class="form-control"
-                                           value="" readonly disabled>
+                                    <select name="disposition" id="edit_disposition"
+                                            class="form-select js-select2"
+                                            data-placeholder="Select disposition" required
+                                            data-required-message="Please select disposition.">
+                                        <option value=""></option>
+                                        @foreach($dispositions ?? [] as $d)
+                                            <option value="{{ $d->name }}"
+                                                    data-creates-lead="{{ $d->creates_lead ? '1' : '0' }}">{{ $d->name }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
                             <div class="field">
@@ -189,11 +196,7 @@
         var notesEl = document.getElementById('edit_notes');
         if (customerEl) customerEl.value = data.customer_name || '';
         if (mobileEl) mobileEl.value = data.mobile || '';
-        var disposition = data.disposition || '';
-        var dispositionHidden = document.getElementById('edit_disposition');
-        var dispositionLabel = document.getElementById('edit_disposition_label');
-        if (dispositionHidden) dispositionHidden.value = disposition;
-        if (dispositionLabel) dispositionLabel.value = disposition || '-';
+        setSelectValue('edit_disposition', data.disposition || '');
         if (callbackEl) {
             var cbRaw = data.callback_at || data.callback_display || '';
             // Normalize d-m-Y H:i → Y-m-d H:i (flatpickr datetime value format)

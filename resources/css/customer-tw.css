@@ -301,8 +301,94 @@
         @apply gap-4 px-4 pb-4 pt-1;
     }
 
+    .cw-equifax-head {
+        @apply flex flex-wrap items-center justify-between gap-2;
+    }
+
+    .cw-equifax-head-left {
+        @apply flex min-w-0 flex-wrap items-center gap-2;
+    }
+
+    .cw-equifax-head-right {
+        @apply flex min-w-0 flex-wrap items-center justify-end gap-2;
+    }
+
+    .cw-equifax-pill {
+        @apply inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[0.72rem] font-bold text-slate-500;
+    }
+
+    .cw-equifax-pill.is-saved {
+        @apply border-emerald-200 bg-emerald-50 text-emerald-700;
+    }
+
+    .cw-equifax-meta {
+        @apply text-xs text-slate-500;
+    }
+
+    .cw-equifax-view {
+        @apply h-8 max-w-[14rem] px-2.5 text-xs;
+    }
+
+    .cw-equifax-view-name {
+        @apply truncate;
+    }
+
+    .cw-equifax-clear {
+        @apply h-8 rounded-[10px];
+    }
+
+    .cw-equifax-fields {
+        @apply gap-4 px-4 pb-4 pt-1;
+    }
+
+    .cw-equifax-fields > div {
+        @apply min-w-0;
+    }
+
+    .cw-equifax-footer {
+        @apply mt-1 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3;
+    }
+
+    .cw-equifax-hint {
+        @apply m-0 text-xs text-slate-500;
+    }
+
+    .cw-equifax-empty,
+    .cw-equifax-readonly {
+        @apply px-4 pb-4 pt-1 text-sm text-slate-600;
+    }
+
+    .cw-equifax-ro-label {
+        @apply mr-1 font-semibold text-slate-500;
+    }
+
+    .cw-equifax-ro-notes {
+        @apply mt-1 whitespace-pre-wrap text-slate-700;
+    }
+
+    .cw-file-pick {
+        @apply flex h-[31px] min-h-[31px] w-full cursor-pointer items-stretch overflow-hidden rounded-lg border border-sky-100 bg-sky-50/80;
+    }
+
+    .cw-file-pick:focus-within {
+        @apply border-sky-300 bg-white ring-2 ring-sky-500/15;
+    }
+
+    .cw-file-pick-input {
+        @apply sr-only;
+    }
+
+    .cw-file-pick-btn {
+        @apply inline-flex flex-shrink-0 items-center gap-1.5 border-r border-sky-100 bg-white px-3 text-xs font-semibold text-slate-700;
+    }
+
+    .cw-file-pick-name {
+        @apply min-w-0 flex-1 truncate px-2.5 text-sm leading-[31px] text-slate-500;
+    }
+
     .cw-input-soft,
-    .cw-select-soft {
+    .cw-select-soft,
+    .cw-textarea-soft {
         @apply rounded-lg border-sky-100 bg-sky-50/80 text-slate-800
             placeholder:text-slate-400
             focus:border-sky-300 focus:bg-white focus:ring-sky-500/15;

@@ -372,6 +372,50 @@ class UserController extends Controller
     }
 
     /**
+     * One leadership seat per org unit:
+     * BM (8) → one per branch, Cluster Head (7) → one per cluster, RD (6) → one per region.
+     */
+    protected function assertUniqueLeadershipSeat(int $roleId, $orgUnitId, ?int $ignoreUserId = null): void
+    {
+        if ($orgUnitId === null || $orgUnitId === '') {
+            return;
+        }
+
+        $exclusive = [
+            6 => ['label' => 'RD', 'unit' => 'region'],
+            7 => ['label' => 'Cluster Head', 'unit' => 'cluster'],
+            8 => ['label' => 'BM', 'unit' => 'branch'],
+        ];
+        if (! isset($exclusive[$roleId])) {
+            return;
+        }
+
+        $orgUnitId = (int) $orgUnitId;
+        $query = User::query()
+            ->where('crm_role_type', $roleId)
+            ->where('goal_org_unit_id', $orgUnitId)
+            ->where('status', 1);
+        if ($ignoreUserId) {
+            $query->where('id', '!=', $ignoreUserId);
+        }
+
+        $existing = $query->orderBy('id')->first(['id', 'name', 'email']);
+        if (! $existing) {
+            return;
+        }
+
+        $meta = $exclusive[$roleId];
+        $unit = \App\Models\GoalOrgUnit::query()->find($orgUnitId, ['id', 'name', 'type']);
+        $unitName = $unit?->name ?: ('this '.$meta['unit']);
+
+        throw \Illuminate\Validation\ValidationException::withMessages([
+            'crm_role_type' => 'Only one '.$meta['label'].' is allowed for '.$unitName.'. '
+                .$existing->name.' is already assigned. Deactivate or reassign that user first.',
+            'goal_org_unit_id' => 'Only one '.$meta['label'].' is allowed for '.$unitName.'.',
+        ]);
+    }
+
+    /**
      * Role → default permission guards for the Add/Edit User UI.
      * MD (4) and CEO (5) always receive every assignable module permission.
      */
@@ -977,6 +1021,10 @@ class UserController extends Controller
             (int) $validated['crm_role_type'],
             $validated['goal_org_unit_id'] ?? null
         );
+        $this->assertUniqueLeadershipSeat(
+            (int) $validated['crm_role_type'],
+            $validated['goal_org_unit_id'] ?? null
+        );
 
         $plainPassword = $validated['password'];
         $pageRights = $this->filterAssignableGuards($validated['crm_page_right'] ?? []);
@@ -1163,6 +1211,11 @@ class UserController extends Controller
         $this->assertAssignableRoleAndOrg(
             (int) $validated['crm_role_type'],
             $validated['goal_org_unit_id'] ?? null
+        );
+        $this->assertUniqueLeadershipSeat(
+            (int) $validated['crm_role_type'],
+            $validated['goal_org_unit_id'] ?? null,
+            (int) $user->id
         );
 
         $pageRights = $this->filterAssignableGuards($validated['crm_page_right'] ?? []);

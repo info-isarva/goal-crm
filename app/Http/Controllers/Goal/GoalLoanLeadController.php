@@ -56,6 +56,16 @@ class GoalLoanLeadController extends Controller
             $baseQuery->whereIn('goal_org_unit_id', $scope);
         }
 
+        // VRM: only leads they created (not the whole branch).
+        if ($this->isBranchLockedToOwn()) {
+            $baseQuery->where('created_by', auth()->id());
+        }
+
+        // JSM / SM / SSM: only leads assigned to them.
+        if ($this->isSalesAssigneeRole()) {
+            $baseQuery->where('assigned_to', auth()->id());
+        }
+
         if ($request->filled('q')) {
             $q = trim((string) $request->input('q'));
             $baseQuery->where(function ($inner) use ($q) {
@@ -99,6 +109,8 @@ class GoalLoanLeadController extends Controller
 
         $statuses = GoalLoanLead::query()
             ->when($scope !== [], fn ($q) => $q->whereIn('goal_org_unit_id', $scope))
+            ->when($this->isBranchLockedToOwn(), fn ($q) => $q->where('created_by', auth()->id()))
+            ->when($this->isSalesAssigneeRole(), fn ($q) => $q->where('assigned_to', auth()->id()))
             ->whereNotNull('status')
             ->distinct()
             ->orderBy('status')
@@ -829,6 +841,22 @@ class GoalLoanLeadController extends Controller
             || strtolower((string) ($user->job_role ?? '')) === 'vrm';
     }
 
+    /** JSM / SM / SSM — sales assignees see only their own allocated leads. */
+    protected function isSalesAssigneeRole(): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        $role = (int) ($user->crm_role_type ?? -1);
+        if (in_array($role, [10, 11, 12], true)) {
+            return true;
+        }
+
+        return in_array(strtolower((string) ($user->job_role ?? '')), ['jsm', 'sm', 'ssm'], true);
+    }
+
     /**
      * Resolve branch for create/update. VRM always gets own branch.
      */
@@ -934,6 +962,14 @@ class GoalLoanLeadController extends Controller
         $scope = $this->scopedOrgIds();
         if ($scope === [] || ($lead->goal_org_unit_id && ! in_array((int) $lead->goal_org_unit_id, array_map('intval', $scope), true))) {
             abort(403, 'Lead is outside your branch scope.');
+        }
+
+        if ($this->isBranchLockedToOwn() && (int) ($lead->created_by ?? 0) !== (int) auth()->id()) {
+            abort(403, 'You can only access leads you created.');
+        }
+
+        if ($this->isSalesAssigneeRole() && (int) ($lead->assigned_to ?? 0) !== (int) auth()->id()) {
+            abort(403, 'You can only access leads assigned to you.');
         }
     }
 

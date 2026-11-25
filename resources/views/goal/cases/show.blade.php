@@ -1525,9 +1525,6 @@
                             <span class="sec-ico"><i class="bi bi-layers"></i></span>
                             <div><h6>Lender Applications</h6></div>
                         </div>
-                        @if($canEdit)
-                            <button type="button" class="btn-link-cw" data-bs-toggle="modal" data-bs-target="#cwAddLenderModal"><i class="bi bi-plus-lg"></i> Add Application</button>
-                        @endif
                     </div>
                     <div class="cw-table-wrap">
                         @if($case->bankApplications->isEmpty())
@@ -1897,7 +1894,7 @@
         </form>
         {{-- Equifax forms live outside cwRecommendationForm (HTML forbids nested forms). --}}
         @if($canEdit)
-        <form id="cwEquifaxRecordForm" method="POST" action="{{ route('goal.cases.bm-reco.equifax', $case) }}" class="d-none js-cw-ajax-save" data-no-loader data-ajax-reload="1" aria-hidden="true">
+        <form id="cwEquifaxUploadForm" method="POST" action="{{ route('goal.cases.bm-reco.equifax', $case) }}" enctype="multipart/form-data" class="d-none js-cw-ajax-save" data-no-loader data-ajax-reload="1" aria-hidden="true">
             @csrf
         </form>
         <form id="cwEquifaxRemoveForm" method="POST" action="{{ route('goal.cases.bm-reco.equifax.remove', $case) }}" class="d-none js-cw-ajax-save" data-no-loader data-ajax-reload="1" aria-hidden="true">
@@ -2689,7 +2686,6 @@
             e.preventDefault();
             var title = equifaxClear.getAttribute('data-swal-title') || 'Clear Equifax record?';
             var text = equifaxClear.getAttribute('data-swal-text') || '';
-            var theme = (getComputedStyle(document.documentElement).getPropertyValue('--theme-primary') || '').trim() || '#009B80';
             var go = function () {
                 if (window.CwAjaxSave && typeof window.CwAjaxSave.submit === 'function') {
                     window.CwAjaxSave.submit(equifaxRemoveForm, { skipConfirm: true });
@@ -2714,6 +2710,15 @@
                 return;
             }
             if (window.confirm(title + (text ? '\n\n' + text : ''))) go();
+        });
+    }
+
+    var equifaxFile = page.querySelector('.js-cw-equifax-file');
+    var equifaxFileName = page.querySelector('.js-cw-equifax-file-name');
+    if (equifaxFile && equifaxFileName) {
+        equifaxFile.addEventListener('change', function () {
+            var file = equifaxFile.files && equifaxFile.files[0];
+            equifaxFileName.textContent = file ? file.name : 'No file chosen';
         });
     }
 })();

@@ -71,7 +71,9 @@ class GoalVrmController extends Controller
         $summaryQuery = clone $baseQuery;
 
         $totalCalls = (clone $summaryQuery)->count();
-        $interestedCount = (clone $summaryQuery)->where('disposition', 'Interested')->count();
+        $hotLeadCount = (clone $summaryQuery)
+            ->whereRaw('LOWER(disposition) = ?', ['hot lead'])
+            ->count();
         $callbackCount = (clone $summaryQuery)->where('disposition', 'Callback')->count();
         $leadsCreatedCount = (clone $summaryQuery)->whereNotNull('goal_loan_lead_id')->count();
 
@@ -95,7 +97,7 @@ class GoalVrmController extends Controller
             'todayCount',
             'callbacksDueCount',
             'totalCalls',
-            'interestedCount',
+            'hotLeadCount',
             'callbackCount',
             'leadsCreatedCount',
             'logs',
@@ -209,7 +211,7 @@ class GoalVrmController extends Controller
         $data = $request->validate([
             'customer_name' => 'required|string|max:150',
             'mobile' => PhoneNumber::mobileRules(true),
-            'disposition' => ['nullable', Rule::in($allowedDispositions)],
+            'disposition' => ['required', Rule::in($allowedDispositions)],
             'callback_at' => 'nullable|date',
             'notes' => 'nullable|string',
             'product' => 'nullable|string|max:100',
@@ -217,13 +219,12 @@ class GoalVrmController extends Controller
             'goal_org_unit_id' => ['nullable', Rule::in($this->allowedBranchIds())],
         ], PhoneNumber::messages('mobile'));
 
-        // Disposition is locked after create — keep the original value.
-        $data['disposition'] = $log->disposition;
         $data['goal_org_unit_id'] = $this->resolveBranchId($data['goal_org_unit_id'] ?? null);
 
         $log->update([
             'customer_name' => $data['customer_name'],
             'mobile' => $data['mobile'] ?? null,
+            'disposition' => $data['disposition'],
             'callback_at' => $data['callback_at'] ?? null,
             'notes' => $data['notes'] ?? null,
             'goal_org_unit_id' => $data['goal_org_unit_id'] ?: $log->goal_org_unit_id,
@@ -235,6 +236,7 @@ class GoalVrmController extends Controller
                 $leadUpdates = [
                     'customer_name' => $data['customer_name'],
                     'mobile' => $data['mobile'] ?? null,
+                    'disposition' => $data['disposition'],
                     'notes' => $data['notes'] ?? $lead->notes,
                 ];
                 if (array_key_exists('callback_at', $data) && $data['callback_at']) {

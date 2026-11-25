@@ -16,14 +16,11 @@
                 <div class="sec-sub">Each application keeps its own status and history.</div>
             </div>
         </div>
-        @if($canEdit)
-            <button type="button" class="btn-primary-cw" data-bs-toggle="modal" data-bs-target="#cwAddLenderModal"><i class="bi bi-plus-lg"></i> Add Lender Application</button>
-        @endif
     </div>
     <div class="cw-table-wrap">
         @if($case->bankApplications->isEmpty())
             <div class="cw-empty-inline">
-                <span>No lender applications yet. Add one to proceed to Bank Login.</span>
+                <span>No lender applications yet.</span>
             </div>
         @else
             <div class="table-responsive">
