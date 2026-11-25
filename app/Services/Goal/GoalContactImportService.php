@@ -452,6 +452,14 @@ class GoalContactImportService
         } elseif ($clusterId) {
             $import->goal_org_unit_id = $clusterId;
         }
+
+        $remainingUnassigned = $import->unassignedLeads()
+            ->when($scopedOrgIds !== [], fn ($q) => $q->whereIn('goal_org_unit_id', $scopedOrgIds))
+            ->count();
+        if ($remainingUnassigned === 0 && (int) $import->success_count > 0) {
+            $import->status = 'assigned';
+        }
+
         $import->save();
 
         return [

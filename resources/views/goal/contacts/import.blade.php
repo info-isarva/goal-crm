@@ -262,16 +262,17 @@
 
 .ci-hub .batches-card { margin-bottom:8px; }
 .ci-hub .stats-row {
-    display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px;
+    display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px;
     padding:16px 18px; border-bottom:1px solid #f1f5f9;
 }
-@media (max-width:768px) { .ci-hub .stats-row { grid-template-columns:1fr 1fr; } }
+@media (max-width:900px) { .ci-hub .stats-row { grid-template-columns:1fr 1fr; } }
 .ci-hub .stat {
     background:#f8faf9; border:1px solid #eef3f0; border-radius:14px; padding:12px 14px;
 }
 .ci-hub .stat .lbl { font-size:.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
 .ci-hub .stat .val { margin-top:4px; font-size:1.25rem; font-weight:800; color:var(--ink); }
 .ci-hub .stat.ok .val { color:#166534; }
+.ci-hub .stat.info .val { color:#1d4ed8; }
 .ci-hub .stat.warn .val { color:#c2410c; }
 .ci-hub .stat.bad .val { color:#b91c1c; }
 
@@ -290,6 +291,7 @@
     padding:.22rem .55rem; border-radius:999px; font-size:.72rem; font-weight:800;
 }
 .ci-hub .badge-st.ready, .ci-hub .badge-st.partial { background:#dcfce7; color:#166534; }
+.ci-hub .badge-st.assigned { background:#dbeafe; color:#1d4ed8; }
 .ci-hub .badge-st.failed { background:#fee2e2; color:#b91c1c; }
 .ci-hub .badge-st.processing { background:#ffedd5; color:#c2410c; }
 .ci-hub .btn-assign {
@@ -914,6 +916,10 @@
                 <div class="lbl">Completed</div>
                 <div class="val">{{ $stats['completed'] }}</div>
             </div>
+            <div class="stat info">
+                <div class="lbl">Assigned</div>
+                <div class="val">{{ $stats['assigned'] ?? 0 }}</div>
+            </div>
             <div class="stat warn">
                 <div class="lbl">In Progress</div>
                 <div class="val">{{ $stats['processing'] }}</div>
@@ -940,12 +946,28 @@
                 <tbody>
                     @forelse($batches as $batch)
                         @php
-                            $statusLabel = match ($batch->status) {
-                                'ready', 'partial' => 'Completed',
-                                'processing' => 'In Progress',
-                                'failed' => 'Failed',
-                                default => ucfirst($batch->status),
-                            };
+                            $unassignedN = (int) ($batch->unassigned_count ?? 0);
+                            $isFullyAssigned = (
+                                $batch->status === 'assigned'
+                                || (
+                                    in_array($batch->status, ['ready', 'partial'], true)
+                                    && (int) $batch->success_count > 0
+                                    && $unassignedN === 0
+                                )
+                            );
+                            if ($isFullyAssigned) {
+                                $statusLabel = 'Assigned';
+                                $statusClass = 'assigned';
+                            } else {
+                                $statusLabel = match ($batch->status) {
+                                    'ready', 'partial' => 'Completed',
+                                    'processing' => 'In Progress',
+                                    'failed' => 'Failed',
+                                    'assigned' => 'Assigned',
+                                    default => ucfirst($batch->status),
+                                };
+                                $statusClass = $batch->status;
+                            }
                             $ext = strtolower(pathinfo($batch->filename, PATHINFO_EXTENSION));
                             $fileIcon = $ext === 'csv' ? 'bi-filetype-csv' : 'bi-file-earmark-excel';
                         @endphp
@@ -959,12 +981,14 @@
                             </td>
                             <td>{{ $batch->orgUnit?->name ?? '—' }}</td>
                             <td>{{ $batch->success_count }}/{{ $batch->total_rows }} ({{ $batch->success_count }} OK, {{ $batch->failed_count }} Fail)</td>
-                            <td>{{ (int) ($batch->unassigned_count ?? 0) }}</td>
+                            <td>{{ $unassignedN }}</td>
                             <td>
-                                <span class="badge-st {{ $batch->status }}">
-                                    @if(in_array($batch->status, ['ready', 'partial'], true))
+                                <span class="badge-st {{ $statusClass }}">
+                                    @if($statusClass === 'assigned')
+                                        <i class="bi bi-people-fill"></i>
+                                    @elseif(in_array($statusClass, ['ready', 'partial'], true))
                                         <i class="bi bi-check-circle-fill"></i>
-                                    @elseif($batch->status === 'failed')
+                                    @elseif($statusClass === 'failed')
                                         <i class="bi bi-x-circle-fill"></i>
                                     @else
                                         <i class="bi bi-hourglass-split"></i>

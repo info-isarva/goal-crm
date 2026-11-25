@@ -46,7 +46,18 @@ class GoalContactImportController extends Controller
 
         $batchStats = [
             'total' => (clone $batchBase)->count(),
-            'completed' => (clone $batchBase)->whereIn('status', ['ready', 'partial'])->count(),
+            'completed' => (clone $batchBase)->whereIn('status', ['ready', 'partial', 'assigned'])->count(),
+            'assigned' => (clone $batchBase)->where(function ($q) use ($scope) {
+                $q->where('status', 'assigned')
+                    ->orWhere(function ($inner) use ($scope) {
+                        $inner->whereIn('status', ['ready', 'partial'])
+                            ->where('success_count', '>', 0)
+                            ->whereDoesntHave('leads', function ($l) use ($scope) {
+                                $l->whereNull('assigned_to')
+                                    ->when($scope !== [], fn ($x) => $x->whereIn('goal_org_unit_id', $scope));
+                            });
+                    });
+            })->count(),
             'processing' => (clone $batchBase)->where('status', 'processing')->count(),
             'failed' => (clone $batchBase)->where('status', 'failed')->count(),
         ];
