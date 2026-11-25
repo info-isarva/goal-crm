@@ -296,7 +296,7 @@ class GoalContactImportController extends Controller
 
         $data = $request->validate([
             'method' => 'required|in:branch,cluster,vrm,custom',
-            'allocation' => 'nullable|in:all,equal,percentage',
+            'allocation' => 'nullable|in:all,equal,percentage,counts',
             'region_id' => 'nullable|integer|exists:goal_org_units,id',
             'cluster_id' => 'nullable|integer|exists:goal_org_units,id',
             'branch_id' => 'nullable|integer|exists:goal_org_units,id',
@@ -305,6 +305,8 @@ class GoalContactImportController extends Controller
             'vrm_ids.*' => 'integer|exists:users,id',
             'percentages' => 'nullable|array',
             'percentages.*' => 'nullable|numeric|min:0|max:100',
+            'counts' => 'nullable|array',
+            'counts.*' => 'nullable|integer|min:0',
             'lead_status' => 'nullable|in:Future Prospect,Pending BM Allocation',
             'notify' => 'nullable|boolean',
             'skip_duplicates' => 'nullable|boolean',
@@ -330,6 +332,7 @@ class GoalContactImportController extends Controller
             'vrm_id' => isset($data['vrm_id']) ? (int) $data['vrm_id'] : null,
             'vrm_ids' => array_map('intval', $data['vrm_ids'] ?? []),
             'percentages' => $data['percentages'] ?? [],
+            'counts' => $data['counts'] ?? [],
             'lead_status' => $data['lead_status'] ?? 'Future Prospect',
             'notify' => $request->boolean('notify'),
             'skip_duplicates' => $request->boolean('skip_duplicates', true),
@@ -348,7 +351,7 @@ class GoalContactImportController extends Controller
 
         $data = $request->validate([
             'method' => 'nullable|in:branch,cluster,vrm,custom',
-            'allocation' => 'nullable|in:all,equal,percentage',
+            'allocation' => 'nullable|in:all,equal,percentage,counts',
             'region_id' => 'nullable|integer|exists:goal_org_units,id',
             'cluster_id' => 'nullable|integer|exists:goal_org_units,id',
             'branch_id' => 'nullable|integer|exists:goal_org_units,id',
@@ -356,6 +359,8 @@ class GoalContactImportController extends Controller
             'vrm_ids' => 'nullable|array',
             'vrm_ids.*' => 'integer|exists:users,id',
             'percentages' => 'nullable|array',
+            'counts' => 'nullable|array',
+            'counts.*' => 'nullable|integer|min:0',
             'lead_status' => 'nullable|in:Future Prospect,Pending BM Allocation',
             'notify' => 'nullable|boolean',
             'skip_duplicates' => 'nullable|boolean',
@@ -372,6 +377,7 @@ class GoalContactImportController extends Controller
             'vrm_id' => $data['vrm_id'] ?? null,
             'vrm_ids' => $data['vrm_ids'] ?? [],
             'percentages' => $data['percentages'] ?? [],
+            'counts' => $data['counts'] ?? [],
             'lead_status' => $data['lead_status'] ?? 'Future Prospect',
             'notify' => $request->boolean('notify'),
             'skip_duplicates' => $request->boolean('skip_duplicates', true),

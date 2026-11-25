@@ -429,6 +429,10 @@ class GoalContactImportService
                     $percents = array_map('floatval', $config['percentages'] ?? []);
                     $counts = $this->countsFromPercentages($leads->count(), $vrmIds, $percents);
                     $result = $this->splitCustomToVrms($leads, $actor, $scopedOrgIds, $counts, $notify, $leadStatus);
+                } elseif ($allocation === 'counts') {
+                    $rawCounts = $config['counts'] ?? [];
+                    $counts = $this->countsFromCustomTotals($leads->count(), $vrmIds, $rawCounts);
+                    $result = $this->splitCustomToVrms($leads, $actor, $scopedOrgIds, $counts, $notify, $leadStatus);
                 } else {
                     $result = $this->splitEvenToVrms($leads, $actor, $scopedOrgIds, $vrmIds, $notify, $leadStatus);
                 }
@@ -521,6 +525,39 @@ class GoalContactImportService
                 $counts[$id] = $n;
                 $allocated += $n;
             }
+        }
+
+        return $counts;
+    }
+
+    /**
+     * @param  list<int>  $vrmIds
+     * @param  array<int|string, int|float|string|null>  $rawCounts
+     * @return array<int, int>
+     */
+    protected function countsFromCustomTotals(int $total, array $vrmIds, array $rawCounts): array
+    {
+        $counts = [];
+        $sum = 0;
+        foreach ($vrmIds as $id) {
+            $n = (int) ($rawCounts[$id] ?? 0);
+            if ($n < 0) {
+                $n = 0;
+            }
+            $counts[$id] = $n;
+            $sum += $n;
+        }
+
+        if ($sum === 0) {
+            throw ValidationException::withMessages([
+                'counts' => 'Enter contact counts for the selected VRMs.',
+            ]);
+        }
+
+        if ($sum !== $total) {
+            throw ValidationException::withMessages([
+                'counts' => 'Custom split must total exactly '.$total.' contacts (currently '.$sum.').',
+            ]);
         }
 
         return $counts;

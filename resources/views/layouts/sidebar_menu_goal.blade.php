@@ -147,7 +147,7 @@
 @if($can('import_contacts_guard'))
 <li class="nav-item">
     <a class="nav-link {{ request()->routeIs('goal.contacts.*') ? 'active' : '' }}" href="{{ route('goal.contacts.import') }}">
-        <i class="bi bi-cloud-upload"></i> <span class="nav-label">Import Contacts</span>
+        <i class="bi bi-cloud-upload"></i> <span class="nav-label">Campaigns</span>
     </a>
 </li>
 @endif
