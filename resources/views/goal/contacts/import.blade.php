@@ -15,15 +15,13 @@
     min-height:calc(100vh - 70px);
 }
 .ci-hub .ci-head {
-    margin:0 0 1rem;
-    padding:14px 16px 16px;
-    border-radius:18px;
-    background:linear-gradient(135deg,#e8f6f0 0%, #eef7f3 42%, #f7fbf9 100%);
-    border:1px solid #d9eee4;
+    margin:0 0 0;
+    padding:8px 2px 10px;
+    background:transparent; border:0;
 }
 .ci-hub .ci-crumbs {
-    display:flex; flex-wrap:wrap; align-items:center; gap:6px;
-    margin:0 0 10px; padding:0; list-style:none; font-size:.75rem; color:#94a3b8; font-weight:500;
+    display:flex; flex-wrap:wrap; align-items:center; gap:5px;
+    margin:0 0 8px; padding:0; list-style:none; font-size:.7rem; color:#94a3b8; font-weight:500;
 }
 .ci-hub .ci-crumbs a { color:#15803d; text-decoration:none; font-weight:600; }
 .ci-hub .ci-crumbs a:hover { text-decoration:underline; }
@@ -31,104 +29,56 @@
 .ci-hub .ci-crumbs .current { color:#64748b; font-weight:500; }
 
 .ci-hub .hero {
-    display:grid;
-    grid-template-columns:minmax(0,1fr) auto;
-    align-items:center;
-    column-gap:1.5rem;
-    row-gap:.75rem;
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px;
 }
-@media (max-width:992px) {
-    .ci-hub .hero { grid-template-columns:1fr; }
-}
-.ci-hub .hero-left { min-width:0; }
+.ci-hub .hero-left { min-width:0; flex:1; }
 .ci-hub .hero-main {
-    display:flex; align-items:flex-start; gap:12px; min-width:0;
+    display:flex; align-items:center; gap:10px; min-width:0;
 }
 .ci-hub .hero-icon {
-    width:42px; height:42px; border-radius:12px; flex-shrink:0;
+    width:30px; height:30px; border-radius:8px; flex-shrink:0;
     background:#16a34a; color:#fff;
     display:inline-flex; align-items:center; justify-content:center;
-    font-size:1.15rem; box-shadow:0 8px 16px rgba(22,163,74,.22);
+    font-size:.9rem;
 }
-.ci-hub .hero-copy { min-width:0; padding-top:1px; }
+.ci-hub .hero-copy { min-width:0; }
 .ci-hub .hero-title {
-    margin:0; font-size:1.35rem; font-weight:800; color:#0f172a;
+    margin:0; font-size:1rem; font-weight:800; color:#0f172a;
     letter-spacing:-.02em; line-height:1.2;
 }
 .ci-hub .hero-sub {
-    margin:.28rem 0 0; color:#64748b; font-size:.82rem; line-height:1.4; max-width:36rem;
+    margin:2px 0 0; color:#64748b; font-size:.72rem; line-height:1.3; max-width:32rem;
 }
 
-.ci-hub .ci-steps {
-    display:inline-flex; gap:8px; flex-wrap:wrap;
-    margin-top:.7rem; margin-left:54px;
+.ci-hub .ci-shell {
+    background:#fff; border:1px solid #e5eee8; border-radius:12px;
+    overflow:hidden; box-shadow:0 2px 8px rgba(15,23,42,.03);
 }
-@media (max-width:576px) { .ci-hub .ci-steps { margin-left:0; } }
-.ci-hub .ci-step {
-    display:inline-flex; align-items:center; gap:8px;
-    height:34px; padding:0 12px 0 6px; border-radius:999px;
-    font-weight:700; font-size:.8rem; text-decoration:none; color:#475569;
-    background:#e4ebe8; border:0;
+.ci-hub .ci-tabs {
+    display:flex; align-items:stretch; gap:0;
+    margin:0; padding:0 8px;
+    background:#f8faf9; border-bottom:1px solid #e5eee8;
 }
-.ci-hub .ci-step .num {
-    width:22px; height:22px; border-radius:999px;
+.ci-hub .ci-tab {
+    position:relative; display:inline-flex; align-items:center; gap:7px;
+    height:40px; padding:0 14px; margin-bottom:-1px;
+    font-weight:700; font-size:.8rem; text-decoration:none; color:#64748b;
+    background:transparent; border:0; border-bottom:2px solid transparent;
+}
+.ci-hub .ci-tab .num {
+    width:18px; height:18px; border-radius:999px;
     display:inline-flex; align-items:center; justify-content:center;
-    font-size:.72rem; font-weight:800; background:#fff; color:#64748b;
+    font-size:.68rem; font-weight:800; background:#e2e8f0; color:#64748b;
 }
-.ci-hub .ci-step.active {
-    background:#16a34a; color:#fff;
-    box-shadow:0 6px 14px rgba(22,163,74,.25);
+.ci-hub .ci-tab:hover { color:#0f172a; }
+.ci-hub .ci-tab.active {
+    color:#16a34a; border-bottom-color:#16a34a; background:#fff;
 }
-.ci-hub .ci-step.active .num { background:#fff; color:#16a34a; }
-.ci-hub .ci-step:not(.active):hover { background:#d7e2dc; color:#0f172a; }
-.ci-hub .ci-step.disabled { opacity:.55; pointer-events:none; }
+.ci-hub .ci-tab.active .num { background:#16a34a; color:#fff; }
+.ci-hub .ci-tab.disabled { opacity:.45; pointer-events:none; }
+.ci-hub .ci-panel { padding:12px; }
 
-.ci-hub .hero-illu {
-    display:flex; align-items:center; gap:10px; justify-self:end;
-    padding:0; background:transparent; border:0; box-shadow:none;
-}
-@media (max-width:992px) {
-    .ci-hub .hero-illu { justify-self:start; flex-wrap:wrap; }
-}
-.ci-hub .illu-tile {
-    position:relative; width:58px; height:58px; border-radius:14px; flex-shrink:0;
-    background:#fff; border:1px solid #e6efe9;
-    box-shadow:0 8px 18px rgba(15,23,42,.06);
-    display:inline-flex; align-items:center; justify-content:center;
-    color:#0f7a3f; font-size:1.35rem; overflow:hidden;
-}
-.ci-hub .illu-tile.file { flex-direction:column; padding-bottom:16px; }
-.ci-hub .illu-tile .file-ico { line-height:1; margin-top:2px; }
-.ci-hub .illu-tile .file-banner {
-    position:absolute; left:0; right:0; bottom:0; height:16px;
-    background:#0f7a3f; color:#fff;
-    display:flex; align-items:center; justify-content:center;
-    font-size:.52rem; font-weight:800; letter-spacing:.03em;
-}
-.ci-hub .illu-tile .pin-badge {
-    position:absolute; right:-4px; bottom:-4px; width:20px; height:20px; border-radius:999px;
-    background:#d1fae5; border:2px solid #fff; color:#0f7a3f;
-    display:inline-flex; align-items:center; justify-content:center; font-size:.65rem;
-    box-shadow:0 2px 6px rgba(15,23,42,.1);
-}
-.ci-hub .illu-arrow {
-    color:#0f7a3f; font-size:1.05rem; display:inline-flex; align-items:center; flex-shrink:0;
-}
-.ci-hub .illu-bubble {
-    position:relative; list-style:none; margin:0 0 0 4px; padding:10px 12px 10px 14px;
-    display:grid; gap:6px; min-width:178px;
-    background:#fff; border:1px solid #e4ece7; border-radius:14px;
-    box-shadow:0 8px 18px rgba(15,23,42,.06);
-}
-.ci-hub .illu-bubble::before {
-    content:""; position:absolute; left:-6px; top:50%; transform:translateY(-50%) rotate(45deg);
-    width:12px; height:12px; background:#fff; border-left:1px solid #e4ece7; border-bottom:1px solid #e4ece7;
-}
-.ci-hub .illu-bubble li {
-    display:flex; align-items:center; gap:7px;
-    font-size:.72rem; color:#1e293b; font-weight:600; white-space:nowrap; line-height:1.2;
-}
-.ci-hub .illu-bubble i { color:#16a34a; font-size:.82rem; }
+.ci-hub .hero-illu { display:none !important; }
 
 .ci-hub .ci-grid {
     display:grid; grid-template-columns:minmax(0,1.25fr) minmax(280px,.85fr);
@@ -773,7 +723,7 @@
     $activeTab = $tab ?? 'import';
     $stats = $batchStats ?? ['total' => 0, 'completed' => 0, 'processing' => 0, 'failed' => 0];
 @endphp
-<div class="container-fluid p-4 ci-hub">
+<div class="container-fluid px-3 py-3 ci-hub">
     <div class="ci-head">
         <ul class="ci-crumbs">
             <li><a href="{{ url('/') }}">Home</a></li>
@@ -782,51 +732,37 @@
             <li class="sep">›</li>
             <li class="current">Campaigns</li>
         </ul>
-
         <div class="hero">
             <div class="hero-left">
                 <div class="hero-main">
-                    <span class="hero-icon" aria-hidden="true"><i class="bi bi-cloud-upload"></i></span>
+                    <span class="hero-icon" aria-hidden="true"><i class="bi bi-megaphone"></i></span>
                     <div class="hero-copy">
                         <h1 class="hero-title">Campaigns</h1>
-                        <p class="hero-sub">Bulk import customer or lead contacts from CSV or Excel and assign them to a cluster, branch, or VRM.</p>
+                        <p class="hero-sub">Import contacts, then assign to cluster, branch, or VRM.</p>
                     </div>
                 </div>
-
-                <div class="ci-steps" role="tablist">
-                    <a class="ci-step {{ $activeTab === 'import' ? 'active' : '' }}"
-                       href="{{ route('goal.contacts.import', ['tab' => 'import']) }}">
-                        <span class="num">1</span> Import
-                    </a>
-                    @if($canSplit)
-                    <a class="ci-step {{ $activeTab === 'assign' ? 'active' : '' }}"
-                       href="{{ route('goal.contacts.import', array_filter(['tab' => 'assign', 'batch' => $selectedBatchId ?: null])) }}">
-                        <span class="num">2</span> Assign
-                    </a>
-                    @else
-                    <span class="ci-step disabled"><span class="num">2</span> Assign</span>
-                    @endif
-                </div>
             </div>
-
-            <aside class="hero-illu" aria-hidden="true">
-                <span class="illu-tile file">
-                    <i class="bi bi-file-earmark-text file-ico"></i>
-                    <span class="file-banner">CSV/XLSX</span>
-                </span>
-                <span class="illu-arrow"><i class="bi bi-arrow-right"></i></span>
-                <span class="illu-tile">
-                    <i class="bi bi-people-fill"></i>
-                    <span class="pin-badge"><i class="bi bi-geo-alt-fill"></i></span>
-                </span>
-                <ul class="illu-bubble">
-                    <li><i class="bi bi-check-circle-fill"></i> Upload contact list</li>
-                    <li><i class="bi bi-check-circle-fill"></i> Map &amp; validate data</li>
-                    <li><i class="bi bi-check-circle-fill"></i> Assign to team / VRM</li>
-                </ul>
-            </aside>
         </div>
     </div>
+
+    <div class="ci-shell">
+        <nav class="ci-tabs" role="tablist" aria-label="Campaign steps">
+            <a class="ci-tab {{ $activeTab === 'import' ? 'active' : '' }}"
+               href="{{ route('goal.contacts.import', ['tab' => 'import']) }}"
+               role="tab" aria-selected="{{ $activeTab === 'import' ? 'true' : 'false' }}">
+                <span class="num">1</span> Import
+            </a>
+            @if($canSplit)
+            <a class="ci-tab {{ $activeTab === 'assign' ? 'active' : '' }}"
+               href="{{ route('goal.contacts.import', array_filter(['tab' => 'assign', 'batch' => $selectedBatchId ?: null])) }}"
+               role="tab" aria-selected="{{ $activeTab === 'assign' ? 'true' : 'false' }}">
+                <span class="num">2</span> Assign
+            </a>
+            @else
+            <span class="ci-tab disabled" role="tab" aria-disabled="true"><span class="num">2</span> Assign</span>
+            @endif
+        </nav>
+        <div class="ci-panel">
 
     @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
@@ -1460,6 +1396,8 @@
         @endif
     @endif
     @endif
+        </div>{{-- /.ci-panel --}}
+    </div>{{-- /.ci-shell --}}
 </div>
 @endsection
 
