@@ -71,13 +71,44 @@
 .cg-dd-menu a:last-child{margin-bottom:0}
 .cg-dd-menu a i{font-size:1rem}
 
-.cg-field{margin-bottom:10px}
+.cg-field{margin-bottom:10px;position:relative}
 .cg-field label{display:block;font-size:.75rem;font-weight:700;color:#475569;margin-bottom:4px}
 .cg-field .req{color:#dc2626}
 .cg-field input[type=text],.cg-field textarea,.cg-field select{
   width:100%;max-width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:.875rem;color:var(--ink);background:#fff;min-height:38px
 }
+.cg-field select{
+  appearance:none;-webkit-appearance:none;-moz-appearance:none;
+  padding-right:36px;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2364748b' d='M1.4 0.6L6 5.2 10.6.6 12 2 6 8 0 2z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-color:#fff;
+}
+.cg-field select:focus{outline:none;border-color:#86efac;box-shadow:0 0 0 3px rgba(22,163,74,.15)}
 .cg-field textarea{min-height:64px;height:auto;resize:vertical}
+.cg-page .select2-container{width:100%!important}
+.cg-page .select2-container--default .select2-selection--single{
+  min-height:38px;border:1px solid #e2e8f0;border-radius:8px;padding:4px 8px;background:#fff
+}
+.cg-page .select2-container--default .select2-selection--single .select2-selection__rendered{
+  line-height:28px;color:#0f172a;font-size:.875rem;padding-left:2px
+}
+.cg-page .select2-container--default .select2-selection--single .select2-selection__arrow{height:36px;right:8px}
+.cg-page .select2-container--default.select2-container--focus .select2-selection--single,
+.cg-page .select2-container--default.select2-container--open .select2-selection--single{
+  border-color:#86efac;box-shadow:0 0 0 3px rgba(22,163,74,.15)
+}
+.cg-page .select2-dropdown,
+.select2-dropdown.cg-select2-drop{
+  border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;box-shadow:0 12px 28px rgba(15,23,42,.12);z-index:1200
+}
+.cg-page .select2-results__option,
+.select2-dropdown.cg-select2-drop .select2-results__option{font-size:.875rem;padding:8px 12px}
+.cg-page .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable,
+.select2-dropdown.cg-select2-drop .select2-results__option--highlighted.select2-results__option--selectable{
+  background:#16a34a;color:#fff
+}
+.cg-page .select2-container--default .select2-results__option--selected,
+.select2-dropdown.cg-select2-drop .select2-results__option--selected{background:#f0fdf4;color:#166534}
 .cg-row2{display:grid;grid-template-columns:1fr;gap:8px}
 .cg-assign-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .cg-assign-tabs label{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:.8rem;font-weight:700;color:#64748b;cursor:pointer;background:#fff}
@@ -251,7 +282,7 @@
                     <div class="cg-row2">
                         <div class="cg-field">
                             <label>Lead Source</label>
-                            <select name="lead_source">
+                            <select name="lead_source" class="js-select2" data-search="false" data-allow-clear="false">
                                 <option value="Imported List" @selected(old('lead_source', 'Imported List') === 'Imported List')>Imported List</option>
                                 <option value="Digital" @selected(old('lead_source') === 'Digital')>Digital</option>
                                 <option value="Partner" @selected(old('lead_source') === 'Partner')>Partner</option>
@@ -261,7 +292,7 @@
                         </div>
                         <div class="cg-field">
                             <label>Lead Status</label>
-                            <select name="lead_status">
+                            <select name="lead_status" class="js-select2" data-search="false" data-allow-clear="false">
                                 <option value="Future Prospect" @selected(old('lead_status', 'Future Prospect') === 'Future Prospect')>Future Prospect (dialer)</option>
                                 <option value="Pending BM Allocation" @selected(old('lead_status') === 'Pending BM Allocation')>Pending BM Allocation</option>
                             </select>
@@ -587,6 +618,28 @@
             }, 0);
         });
     }
+
+    function bindCreateSelects() {
+        if (!window.jQuery || !jQuery.fn.select2) return;
+        // Campaign details only — assign Region/Cluster/Branch/VRM are handled in assign-form
+        jQuery('select[name="lead_source"], select[name="lead_status"]').each(function () {
+            var $el = jQuery(this);
+            var $parent = $el.closest('.cg-field');
+            if (!$parent.length) $parent = $el.parent();
+            if ($el.hasClass('select2-hidden-accessible')) {
+                try { $el.select2('destroy'); } catch (e) {}
+            }
+            $el.select2({
+                width: '100%',
+                minimumResultsForSearch: Infinity,
+                allowClear: false,
+                dropdownParent: $parent,
+                dropdownCssClass: 'cg-select2-drop'
+            });
+        });
+    }
+    bindCreateSelects();
+    window.setTimeout(bindCreateSelects, 0);
 })();
 </script>
 @endpush

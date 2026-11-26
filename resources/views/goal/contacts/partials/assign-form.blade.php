@@ -8,6 +8,16 @@
     // Cascade filters: don't ask RD to re-pick Region; don't ask Cluster to re-pick Cluster
     $showRegionFilter = $canAssignRegion || $handoffKey === 'hq';
     $showClusterFilter = $canAssignCluster || in_array($handoffKey, ['hq', 'rd'], true);
+    $lockSelectedOrg = (bool) ($lockSelectedOrg ?? false);
+    $hideAllocation = (bool) ($hideAllocation ?? $lockSelectedOrg);
+    $preselectedRegionId = (int) ($preselectedRegionId ?? 0);
+    $preselectedClusterId = (int) ($preselectedClusterId ?? 0);
+    $preselectedBranchId = (int) ($preselectedBranchId ?? 0);
+    $preselectedTargetIds = array_values(array_filter(array_map('intval', $preselectedTargetIds ?? [])));
+    if ($lockSelectedOrg) {
+        $showRegionFilter = false;
+        $showClusterFilter = false;
+    }
     $defaultMethod = $defaultMethod ?? (
         $canAssignRegion ? 'region' : (
             $canAssignCluster ? 'cluster' : (
@@ -15,6 +25,7 @@
             )
         )
     );
+    $defaultAlloc = $defaultAlloc ?? ($lockSelectedOrg ? 'equal' : (count($preselectedTargetIds) > 1 ? 'equal' : 'all'));
     $validCount = (int) ($validCount ?? 0);
     $embedInNew = (bool) ($embedInNew ?? false);
     $formId = $formId ?? null;
@@ -29,7 +40,7 @@
 @endif
 
 <input type="hidden" name="method" id="{{ $uid }}Method" value="{{ $defaultMethod }}">
-<input type="hidden" name="allocation" id="{{ $uid }}Allocation" value="all">
+<input type="hidden" name="allocation" id="{{ $uid }}Allocation" value="{{ $defaultAlloc }}">
 
 <div class="cg-assign-tabs" role="tablist">
     @if($canAssignRegion)
@@ -52,15 +63,26 @@
     </label>
 </div>
 
-@if($canAssignRegion || $canAssignCluster || $canAssignBranch || $showRegionFilter || $showClusterFilter)
+@if($lockSelectedOrg)
+    {{-- Org already chosen on selected contacts — keep as hidden fields --}}
+    @if($preselectedRegionId > 0)
+        <input type="hidden" name="region_id" id="{{ $uid }}Region" value="{{ $preselectedRegionId }}">
+    @endif
+    @if($preselectedClusterId > 0)
+        <input type="hidden" name="cluster_id" id="{{ $uid }}Cluster" value="{{ $preselectedClusterId }}">
+    @endif
+    @if($preselectedBranchId > 0)
+        <input type="hidden" name="branch_id" id="{{ $uid }}Branch" value="{{ $preselectedBranchId }}">
+    @endif
+@elseif($canAssignRegion || $canAssignCluster || $canAssignBranch || $showRegionFilter || $showClusterFilter)
 <div class="cg-row2" data-fields="org">
     @if($showRegionFilter || $canAssignRegion)
     <div class="cg-field" data-show="region" id="{{ $uid }}RegionField">
         <label>Region <span class="req" id="{{ $uid }}RegionReq" @if($defaultMethod !== 'region') style="display:none" @endif>*</span></label>
-        <select name="region_id" id="{{ $uid }}Region">
+        <select name="region_id" id="{{ $uid }}Region" class="js-select2" data-search="false" data-allow-clear="false">
             <option value="">— Select region —</option>
             @foreach(($orgOptions['regions'] ?? collect()) as $r)
-                <option value="{{ $r->id }}">{{ $r->name }}</option>
+                <option value="{{ $r->id }}" @selected($preselectedRegionId === (int) $r->id)>{{ $r->name }}</option>
             @endforeach
         </select>
     </div>
@@ -68,10 +90,10 @@
     @if($showClusterFilter || $canAssignCluster)
     <div class="cg-field" data-show="cluster" id="{{ $uid }}ClusterField">
         <label>Cluster <span class="req" id="{{ $uid }}ClusterReq">*</span></label>
-        <select name="cluster_id" id="{{ $uid }}Cluster">
+        <select name="cluster_id" id="{{ $uid }}Cluster" class="js-select2" data-search="false" data-allow-clear="false">
             <option value="">— Select cluster —</option>
             @foreach(($orgOptions['clusters'] ?? $clusters ?? collect()) as $c)
-                <option value="{{ $c->id }}" data-parent="{{ (int)($c->parent_id ?? 0) }}">{{ $c->name }}</option>
+                <option value="{{ $c->id }}" data-parent="{{ (int)($c->parent_id ?? 0) }}" @selected($preselectedClusterId === (int) $c->id)>{{ $c->name }}</option>
             @endforeach
         </select>
     </div>
@@ -80,19 +102,37 @@
 @if($canAssignBranch)
 <div class="cg-field" data-show="branch" id="{{ $uid }}BranchField">
     <label>Branch <span class="req" id="{{ $uid }}BranchReq">*</span></label>
-    <select name="branch_id" id="{{ $uid }}Branch">
+    <select name="branch_id" id="{{ $uid }}Branch" class="js-select2" data-search="false" data-allow-clear="false">
         <option value="">— Select branch —</option>
         @foreach(($orgOptions['branches'] ?? $branches ?? collect()) as $b)
-            <option value="{{ $b->id }}" data-parent="{{ (int)($b->parent_id ?? 0) }}">{{ $b->name }}</option>
+            <option value="{{ $b->id }}" data-parent="{{ (int)($b->parent_id ?? 0) }}" @selected($preselectedBranchId === (int) $b->id)>{{ $b->name }}</option>
         @endforeach
     </select>
 </div>
 @endif
 @endif
 
+@if($lockSelectedOrg && $canAssignBranch && $preselectedBranchId === 0)
+<div class="cg-field" data-show="branch" id="{{ $uid }}BranchField">
+    <label>Branch <span class="req" id="{{ $uid }}BranchReq">*</span></label>
+    <select name="branch_id" id="{{ $uid }}Branch" class="js-select2" data-search="false" data-allow-clear="false">
+        <option value="">— Select branch —</option>
+        @foreach(($orgOptions['branches'] ?? $branches ?? collect()) as $b)
+            @php
+                $branchParent = (int) ($b->parent_id ?? 0);
+                $showBranch = $preselectedClusterId === 0 || $branchParent === $preselectedClusterId;
+            @endphp
+            @if($showBranch)
+                <option value="{{ $b->id }}" data-parent="{{ $branchParent }}">{{ $b->name }}</option>
+            @endif
+        @endforeach
+    </select>
+</div>
+@endif
+
 <div class="cg-field" data-show="vrm" id="{{ $uid }}VrmField" @if($defaultMethod !== 'vrm') style="display:none" @endif>
     <label>VRM <span class="req">*</span></label>
-    <select name="vrm_id" id="{{ $uid }}Vrm">
+    <select name="vrm_id" id="{{ $uid }}Vrm" class="js-select2" data-search="false" data-allow-clear="false">
         <option value="">— Select VRM —</option>
         @foreach($vrms as $vrm)
             <option value="{{ $vrm->id }}" data-branch="{{ (int) ($vrm->goal_org_unit_id ?? 0) }}">{{ $vrm->name }}</option>
@@ -100,13 +140,25 @@
     </select>
 </div>
 
+@if(! $hideAllocation)
 <div class="cg-alloc">
-    <label><input type="radio" name="{{ $uid }}_alloc_ui" value="all" checked> All Contacts</label>
-    <label><input type="radio" name="{{ $uid }}_alloc_ui" value="equal"> Equal Split</label>
+    <label><input type="radio" name="{{ $uid }}_alloc_ui" value="all" @checked($defaultAlloc === 'all')> All Contacts</label>
+    <label><input type="radio" name="{{ $uid }}_alloc_ui" value="equal" @checked($defaultAlloc === 'equal')> Equal Split</label>
     <label><input type="radio" name="{{ $uid }}_alloc_ui" value="percentage"> By %</label>
     <label><input type="radio" name="{{ $uid }}_alloc_ui" value="counts"> Custom count</label>
 </div>
-<p style="margin:0 0 4px;font-size:.62rem;color:#94a3b8;line-height:1.25" id="{{ $uid }}AllocHint">All contacts go to the selected target.</p>
+<p style="margin:0 0 4px;font-size:.62rem;color:#94a3b8;line-height:1.25" id="{{ $uid }}AllocHint">
+    @if($lockSelectedOrg)
+        Select branches/VRMs with checkboxes (same as Create Campaign).
+    @else
+        All contacts go to the selected target.
+    @endif
+</p>
+@else
+<p style="margin:0 0 8px;font-size:.75rem;color:#64748b;line-height:1.35" id="{{ $uid }}AllocHint">
+    Using already selected org. Choose Branch or VRM to continue.
+</p>
+@endif
 
 @if($canAssignRegion)
 <div class="cg-split" id="{{ $uid }}SplitRegions" data-panel="region">
@@ -124,7 +176,7 @@
             <tbody>
                 @forelse(($orgOptions['regions'] ?? collect()) as $r)
                     <tr class="cg-split-row">
-                        <td class="col-check"><input type="checkbox" name="region_ids[]" value="{{ $r->id }}" class="js-target" disabled></td>
+                        <td class="col-check"><input type="checkbox" name="region_ids[]" value="{{ $r->id }}" class="js-target" @checked(in_array((int) $r->id, $preselectedTargetIds, true)) disabled></td>
                         <td class="nm">{{ $r->name }}</td>
                         <td class="col-pct"><input type="number" min="0" max="100" step="0.01" class="pct js-pct" name="percentages[{{ $r->id }}]" placeholder="%" disabled></td>
                         <td class="col-count">
@@ -157,7 +209,7 @@
             <tbody>
                 @forelse(($orgOptions['clusters'] ?? $clusters ?? collect()) as $c)
                     <tr class="cg-split-row" data-parent="{{ (int) ($c->parent_id ?? 0) }}">
-                        <td class="col-check"><input type="checkbox" name="cluster_ids[]" value="{{ $c->id }}" class="js-target" disabled></td>
+                        <td class="col-check"><input type="checkbox" name="cluster_ids[]" value="{{ $c->id }}" class="js-target" @checked(in_array((int) $c->id, $preselectedTargetIds, true)) disabled></td>
                         <td class="nm">{{ $c->name }}</td>
                         <td class="col-pct"><input type="number" min="0" max="100" step="0.01" class="pct js-pct" name="percentages[{{ $c->id }}]" placeholder="%" disabled></td>
                         <td class="col-count">
@@ -189,7 +241,7 @@
             <tbody>
                 @forelse(($orgOptions['branches'] ?? $branches ?? collect()) as $b)
                     <tr class="cg-split-row" data-parent="{{ (int) ($b->parent_id ?? 0) }}" data-branch="{{ (int) $b->id }}">
-                        <td class="col-check"><input type="checkbox" name="branch_ids[]" value="{{ $b->id }}" class="js-target" disabled></td>
+                        <td class="col-check"><input type="checkbox" name="branch_ids[]" value="{{ $b->id }}" class="js-target" @checked(in_array((int) $b->id, $preselectedTargetIds, true)) disabled></td>
                         <td class="nm">{{ $b->name }}</td>
                         <td class="col-pct"><input type="number" min="0" max="100" step="0.01" class="pct js-pct" name="percentages[{{ $b->id }}]" placeholder="%" disabled></td>
                         <td class="col-count">
@@ -262,7 +314,12 @@ window.cgAssignPerms[@json($uid)] = {
     canBranch: @json($canAssignBranch),
     showRegion: @json($showRegionFilter),
     showCluster: @json($showClusterFilter),
-    handoff: @json($handoffKey)
+    lockOrg: @json($lockSelectedOrg),
+    hideAlloc: @json($hideAllocation),
+    handoff: @json($handoffKey),
+    preselectedTargets: @json($preselectedTargetIds),
+    defaultMethod: @json($defaultMethod),
+    defaultAlloc: @json($defaultAlloc)
 };
 document.addEventListener('DOMContentLoaded', function () {
     (window.cgAssignBoot || []).forEach(function (uid) {
@@ -369,19 +426,30 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
+        function isSelect(el) { return el && el.tagName === 'SELECT'; }
+
         function syncCascade() {
+            if (perms.lockOrg) {
+                // Org already locked from selected contacts — only filter VRMs if needed
+                if (isSelect(vrmSel) || splitVrms) {
+                    // fall through to VRM filter using locked branch/cluster values
+                } else {
+                    return;
+                }
+            }
             var region = regionSel ? regionSel.value : '';
-            if (clusterSel) {
+            if (isSelect(clusterSel)) {
                 Array.prototype.forEach.call(clusterSel.options, function (opt) {
                     if (!opt.value) return;
                     var p = opt.getAttribute('data-parent') || '0';
                     var show = !region || p === region || p === '0';
                     opt.hidden = !show;
+                    opt.disabled = !show;
                     if (!show && opt.value === clusterSel.value) clusterSel.value = '';
                 });
             }
             var cluster = clusterSel ? clusterSel.value : '';
-            if (branchSel) {
+            if (isSelect(branchSel)) {
                 Array.prototype.forEach.call(branchSel.options, function (opt) {
                     if (!opt.value) return;
                     var p = opt.getAttribute('data-parent') || '0';
@@ -389,6 +457,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         || (cluster && (p === cluster || p === '0'))
                         || (!cluster && region && (parentOf(clusterSel, p) === region || p === region || p === '0'));
                     opt.hidden = !show;
+                    opt.disabled = !show;
                     if (!show && opt.value === branchSel.value) branchSel.value = '';
                 });
             }
@@ -415,6 +484,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!opt.value) return;
                     var show = branchAllowed(opt.getAttribute('data-branch') || '0');
                     opt.hidden = !show;
+                    opt.disabled = !show;
                     if (!show && opt.value === vrmSel.value) vrmSel.value = '';
                 });
             }
@@ -667,28 +737,29 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // Cascade required when those filters are visible (single-target modes)
-            if (!isSplit(a) && perms.showRegion && regionSel && regionField && regionField.style.display !== 'none' && !regionSel.value) {
-                if (m === 'cluster' || m === 'branch' || m === 'vrm') {
-                    return fail('Select a Region first.');
+            if (!perms.lockOrg) {
+                if (!isSplit(a) && perms.showRegion && regionSel && regionField && regionField.style.display !== 'none' && !regionSel.value) {
+                    if (m === 'cluster' || m === 'branch' || m === 'vrm') {
+                        return fail('Select a Region first.');
+                    }
                 }
-            }
-            if (!isSplit(a) && perms.showCluster && clusterSel && clusterField && clusterField.style.display !== 'none' && !clusterSel.value) {
-                if (m === 'branch' || m === 'vrm') {
-                    return fail('Select a Cluster first.');
+                if (!isSplit(a) && perms.showCluster && clusterSel && clusterField && clusterField.style.display !== 'none' && !clusterSel.value) {
+                    if (m === 'branch' || m === 'vrm') {
+                        return fail('Select a Cluster first.');
+                    }
                 }
-            }
-
-            if (m === 'region' && !isSplit(a) && regionSel && !regionSel.value) {
-                return fail('Select a region.');
-            }
-            if (m === 'cluster' && !isSplit(a) && clusterSel && !clusterSel.value) {
-                return fail('Select a cluster.');
+                if (m === 'region' && !isSplit(a) && regionSel && !regionSel.value) {
+                    return fail('Select a region.');
+                }
+                if (m === 'cluster' && !isSplit(a) && clusterSel && !clusterSel.value) {
+                    return fail('Select a cluster.');
+                }
             }
             if (m === 'branch' && !isSplit(a)) {
                 if (branchSel && !branchSel.value) return fail('Select a branch (BM).');
             }
             if (m === 'vrm' && !isSplit(a)) {
-                if (branchField && branchField.style.display !== 'none' && branchSel && !branchSel.value) {
+                if (!perms.lockOrg && branchField && branchField.style.display !== 'none' && branchSel && !branchSel.value) {
                     return fail('Select a Branch before choosing a VRM.');
                 }
                 if (vrmSel && !vrmSel.value) return fail('Select a VRM.');
@@ -750,7 +821,76 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
+        // Restore prior assignment: method + allocation + checked targets
+        if (perms.defaultMethod) {
+            methodInput.value = perms.defaultMethod;
+        }
+        if (perms.defaultAlloc) {
+            allocInput.value = perms.defaultAlloc;
+            document.querySelectorAll('input[name="' + uid + '_alloc_ui"]').forEach(function (r) {
+                r.checked = r.value === perms.defaultAlloc;
+            });
+        }
+        var cgSelectBinding = false;
+        function bindCgSelects() {
+            if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) return;
+            if (cgSelectBinding) return;
+            cgSelectBinding = true;
+            var $ = window.jQuery;
+            try {
+                [regionSel, clusterSel, branchSel, vrmSel].forEach(function (el) {
+                    if (!el || el.tagName !== 'SELECT') return;
+                    var $el = $(el);
+                    var $parent = $el.closest('.cg-field');
+                    if (!$parent.length) $parent = $el.parent();
+                    if ($el.hasClass('select2-hidden-accessible')) {
+                        try { $el.select2('destroy'); } catch (e) {}
+                    }
+                    $el.select2({
+                        width: '100%',
+                        dropdownParent: $parent,
+                        dropdownCssClass: 'cg-select2-drop',
+                        minimumResultsForSearch: Infinity,
+                        allowClear: false
+                    });
+                    $el.off('change.cgSel').on('change.cgSel', function () {
+                        if (cgSelectBinding) return;
+                        syncCascade();
+                        bindCgSelects();
+                        updateMeter();
+                    });
+                });
+            } finally {
+                cgSelectBinding = false;
+            }
+        }
+
         sync();
+        var targets = perms.preselectedTargets || [];
+        if (targets.length) {
+            var box = panelEl(activePanel());
+            if (box) {
+                box.querySelectorAll('tr.cg-split-row').forEach(function (row) {
+                    var cb = row.querySelector('.js-target');
+                    if (!cb) return;
+                    var id = parseInt(cb.value, 10) || 0;
+                    if (targets.indexOf(id) !== -1) {
+                        cb.checked = true;
+                        cb.disabled = false;
+                    }
+                });
+                updateMeter();
+            }
+        }
+        bindCgSelects();
+        // Global select2-init may race; re-bind once more after paint
+        window.setTimeout(bindCgSelects, 0);
+
+        var _syncCore = sync;
+        sync = function () {
+            _syncCore();
+            bindCgSelects();
+        };
     }
 });
 </script>

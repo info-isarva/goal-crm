@@ -40,13 +40,44 @@
 .cg-btn-choose input{display:none}
 .cg-file{margin-top:6px;font-size:.78rem;color:#64748b;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cg-file.has-file{color:#166534}
-.cg-field{margin-bottom:10px}
+.cg-field{margin-bottom:10px;position:relative}
 .cg-field label{display:block;font-size:.75rem;font-weight:700;color:#475569;margin-bottom:4px}
 .cg-field .req{color:#dc2626}
 .cg-field input[type=text],.cg-field textarea,.cg-field select{
   width:100%;max-width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:.875rem;color:var(--ink);background:#fff;min-height:38px
 }
+.cg-field select{
+  appearance:none;-webkit-appearance:none;-moz-appearance:none;
+  padding-right:36px;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2364748b' d='M1.4 0.6L6 5.2 10.6.6 12 2 6 8 0 2z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-color:#fff;
+}
+.cg-field select:focus{outline:none;border-color:#86efac;box-shadow:0 0 0 3px rgba(22,163,74,.15)}
 .cg-field textarea{min-height:64px;height:auto;resize:vertical}
+.cg-page .select2-container{width:100%!important}
+.cg-page .select2-container--default .select2-selection--single{
+  min-height:38px;border:1px solid #e2e8f0;border-radius:8px;padding:4px 8px;background:#fff
+}
+.cg-page .select2-container--default .select2-selection--single .select2-selection__rendered{
+  line-height:28px;color:#0f172a;font-size:.875rem;padding-left:2px
+}
+.cg-page .select2-container--default .select2-selection--single .select2-selection__arrow{height:36px;right:8px}
+.cg-page .select2-container--default.select2-container--focus .select2-selection--single,
+.cg-page .select2-container--default.select2-container--open .select2-selection--single{
+  border-color:#86efac;box-shadow:0 0 0 3px rgba(22,163,74,.15)
+}
+.cg-page .select2-dropdown,
+.select2-dropdown.cg-select2-drop{
+  border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;box-shadow:0 12px 28px rgba(15,23,42,.12);z-index:1200
+}
+.cg-page .select2-results__option,
+.select2-dropdown.cg-select2-drop .select2-results__option{font-size:.875rem;padding:8px 12px}
+.cg-page .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable,
+.select2-dropdown.cg-select2-drop .select2-results__option--highlighted.select2-results__option--selectable{
+  background:#16a34a;color:#fff
+}
+.cg-page .select2-container--default .select2-results__option--selected,
+.select2-dropdown.cg-select2-drop .select2-results__option--selected{background:#f0fdf4;color:#166534}
 .cg-assign-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .cg-assign-tabs label{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:.8rem;font-weight:700;color:#64748b;cursor:pointer;background:#fff}
 .cg-assign-tabs label.on{border-color:#86efac;background:#f0fdf4;color:#166534}
@@ -195,7 +226,10 @@
 .cg-view-modal .cg-vm-desc{margin:12px 0 0;font-size:.84rem;color:#475569;line-height:1.45}
 .cg-view-modal .cg-vm-foot{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:12px 18px 16px;border-top:1px solid #eef3f0}
 .cg-assign-layout{display:grid;grid-template-columns:1fr;gap:14px}
-@media(min-width:1100px){.cg-assign-layout{grid-template-columns:minmax(280px,.95fr) minmax(360px,1.2fr);align-items:start}}
+@media(min-width:1100px){.cg-assign-layout:not(.is-selected-only){grid-template-columns:minmax(280px,.95fr) minmax(360px,1.2fr);align-items:start}}
+.cg-assign-layout.is-selected-only .cg-loaded{max-width:100%}
+.cg-assign-layout.is-selected-only.has-onward{grid-template-columns:1fr}
+@media(min-width:1100px){.cg-assign-layout.is-selected-only.has-onward{grid-template-columns:minmax(280px,.95fr) minmax(360px,1.2fr);align-items:start}}
 .cg-loaded{border:1px solid #e8eef2;border-radius:12px;overflow:hidden;background:#fff}
 .cg-loaded-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;background:#f8faf9;border-bottom:1px solid #eef3f0}
 .cg-loaded-head h4{margin:0;font-size:.9rem;font-weight:800;color:#0f172a}
@@ -346,6 +380,55 @@
         $loadedTotal = $batchLeads->count();
         $loadedAssigned = $batchLeads->whereNotNull('assigned_to')->count();
         $loadedOpen = $batchLeads->whereNull('assigned_to')->count();
+        // Already distributed once (e.g. MD split to regions) — show selected data, not Region split table again
+        $alreadyDistributed = $focusBatch && (
+            filled($selectedBatch->assigned_at ?? null) || filled($selectedBatch->assigned_label ?? null)
+        );
+        $orgBuckets = $batchLeads
+            ->groupBy(fn ($l) => optional($l->orgUnit)->name ?: 'Unassigned org')
+            ->map->count();
+        $onwardDefault = $isBmAssigner ? 'vrm' : (
+            $canAssignCluster ? 'cluster' : ($canAssignBranch ? 'branch' : 'vrm')
+        );
+        // After region park, HQ/RD continue from cluster (not region again)
+        if ($alreadyDistributed && $canAssignRegion) {
+            $onwardDefault = $canAssignCluster ? 'cluster' : ($canAssignBranch ? 'branch' : 'vrm');
+        }
+        // Pre-selected org(s) from parked contacts — restore method + checked targets on Finish assign
+        $preselectedRegionId = 0;
+        $preselectedClusterId = 0;
+        $preselectedBranchId = 0;
+        $preselectedTargetIds = [];
+        $preselectedMethod = $canAssignRegion ? 'region' : $onwardDefault;
+        $preselectedAlloc = 'all';
+        if ($alreadyDistributed && $batchLeads->isNotEmpty()) {
+            $orgUnits = $batchLeads->pluck('orgUnit')->filter()->unique('id')->values();
+            $orgIds = $orgUnits->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+            $types = $orgUnits->pluck('type')->unique()->values();
+            $sameType = $types->count() === 1 ? (string) $types->first() : '';
+
+            if ($sameType === \App\Models\GoalOrgUnit::TYPE_REGION) {
+                $preselectedMethod = 'region';
+                $preselectedTargetIds = $orgIds;
+                $preselectedRegionId = count($orgIds) === 1 ? $orgIds[0] : 0;
+                $preselectedAlloc = count($orgIds) > 1 ? 'equal' : 'all';
+            } elseif ($sameType === \App\Models\GoalOrgUnit::TYPE_CLUSTER) {
+                $preselectedMethod = 'cluster';
+                $preselectedTargetIds = $orgIds;
+                $preselectedClusterId = count($orgIds) === 1 ? $orgIds[0] : 0;
+                $preselectedRegionId = (int) ($orgUnits->first()->parent_id ?? 0);
+                $preselectedAlloc = count($orgIds) > 1 ? 'equal' : 'all';
+            } elseif ($sameType === \App\Models\GoalOrgUnit::TYPE_BRANCH) {
+                $preselectedMethod = 'branch';
+                $preselectedTargetIds = $orgIds;
+                $preselectedBranchId = count($orgIds) === 1 ? $orgIds[0] : 0;
+                $preselectedClusterId = (int) ($orgUnits->first()->parent_id ?? 0);
+                $preselectedAlloc = count($orgIds) > 1 ? 'equal' : 'all';
+            } else {
+                $preselectedMethod = $canAssignRegion ? 'region' : $onwardDefault;
+                $preselectedAlloc = 'equal';
+            }
+        }
     @endphp
 
     {{-- Assign onward (focused page) --}}
@@ -362,12 +445,57 @@
         <div class="cg-card" style="margin-bottom:14px;padding:16px 18px">
             <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px">
                 <div>
-                    <h3 style="margin:0;font-size:1rem;font-weight:800">Assign: {{ $selectedBatch->displayName() }}</h3>
-                    <p style="margin:2px 0 0;font-size:.78rem;color:#64748b">{{ $selectedBatch->filename }} · {{ number_format($loadedOpen) }} open of {{ number_format($loadedTotal) }} loaded</p>
+                    <h3 style="margin:0;font-size:1rem;font-weight:800">
+                        {{ $alreadyDistributed ? 'Selected data' : 'Assign' }}: {{ $selectedBatch->displayName() }}
+                    </h3>
+                    <p style="margin:2px 0 0;font-size:.78rem;color:#64748b">
+                        {{ $selectedBatch->filename }}
+                        @if($alreadyDistributed && $selectedBatch->assigned_label)
+                            · {{ $selectedBatch->assigned_label }}
+                        @else
+                            · {{ number_format($loadedOpen) }} open of {{ number_format($loadedTotal) }} loaded
+                        @endif
+                    </p>
                 </div>
-                <a href="{{ route('goal.contacts.import') }}" class="cg-btn"><i class="bi bi-arrow-left"></i> Back to Campaigns</a>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <a href="{{ route('goal.contacts.import') }}" class="cg-btn"><i class="bi bi-arrow-left"></i> Back to Campaigns</a>
+                </div>
             </div>
 
+            @if($alreadyDistributed)
+                {{-- Selected data header + assign fields (Branch / VRM) always visible --}}
+                <div id="cgOnwardPanel" style="margin-top:4px">
+                    @if($loadedOpen > 0)
+                        @include('goal.contacts.partials.assign-form', [
+                            'formId' => 'assignForm',
+                            'formAction' => route('goal.contacts.import.split.store', $selectedBatch),
+                            'submitLabel' => $isBmAssigner ? 'Assign to VRM team' : 'Assign Contacts',
+                            'showAllMethods' => $canPickBranch,
+                            // MD/HQ edit-style: show all tabs like Create Campaign
+                            'canAssignRegion' => $canAssignRegion,
+                            'canAssignCluster' => $canAssignCluster,
+                            'canAssignBranch' => $canAssignBranch,
+                            'handoffKey' => $handoffKey,
+                            'defaultMethod' => $preselectedMethod,
+                            'defaultAlloc' => $preselectedAlloc,
+                            'validCount' => $validCount,
+                            'embedInNew' => false,
+                            'lockSelectedOrg' => false,
+                            'hideAllocation' => false,
+                            'preselectedRegionId' => $preselectedRegionId,
+                            'preselectedClusterId' => $preselectedClusterId,
+                            'preselectedBranchId' => $preselectedBranchId,
+                            'preselectedTargetIds' => $preselectedTargetIds,
+                        ])
+                    @else
+                        <div style="padding:18px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;text-align:center">
+                            <i class="bi bi-check2-circle" style="font-size:1.6rem;color:#16a34a"></i>
+                            <p style="margin:8px 0 4px;font-weight:800;color:#0f172a">All loaded contacts are already assigned</p>
+                            <p style="margin:0;font-size:.8rem;color:#64748b">Nothing left to split for this campaign.</p>
+                        </div>
+                    @endif
+                </div>
+            @else
             <div class="cg-assign-layout">
                 <div class="cg-loaded">
                     <div class="cg-loaded-head">
@@ -424,7 +552,7 @@
                     </div>
                 </div>
 
-                <div>
+                <div id="cgOnwardPanel">
                     @if($loadedOpen > 0)
                         @include('goal.contacts.partials.assign-form', [
                             'formId' => 'assignForm',
@@ -435,7 +563,7 @@
                             'canAssignCluster' => $canAssignCluster,
                             'canAssignBranch' => $canAssignBranch,
                             'handoffKey' => $handoffKey,
-                            'defaultMethod' => $isBmAssigner ? 'vrm' : $defaultMethod,
+                            'defaultMethod' => $onwardDefault,
                             'validCount' => $validCount,
                             'embedInNew' => false,
                         ])
@@ -448,6 +576,7 @@
                     @endif
                 </div>
             </div>
+            @endif
         </div>
     @endif
 
@@ -586,11 +715,13 @@
                             };
                             $progTone = in_array($statusClass, ['completed', 'await', 'draft', 'failed', 'active'], true) ? $statusClass : '';
 
-                            // List Assign: handoff owners always; higher authority (HQ / RD / Cluster) can also
-                            // re-assign open contacts (e.g. change Branch while Awaiting BM).
+                            // Once every contact is on a VRM (Completed), never show Assign buttons.
+                            $assignedToVrms = $validN > 0
+                                && $unassignedN === 0
+                                && ($statusClass === 'completed' || $assignedPeople >= $validN || ($batch->status ?? '') === 'assigned');
                             $showAssignBtn = false;
                             $assignBtnLabel = 'Assign';
-                            if ($canSplit && $unassignedN > 0) {
+                            if ($canSplit && $unassignedN > 0 && ! $assignedToVrms && $statusClass !== 'completed') {
                                 if ($handoffKey === 'bm' && $orgType === \App\Models\GoalOrgUnit::TYPE_BRANCH) {
                                     $showAssignBtn = true;
                                     $assignBtnLabel = 'Assign to team';

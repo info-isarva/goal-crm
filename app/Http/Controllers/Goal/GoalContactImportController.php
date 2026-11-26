@@ -144,7 +144,7 @@ class GoalContactImportController extends Controller
                     $this->assertImportInScope($selectedBatch);
                     $batchLeads = $selectedBatch->leads()
                         ->with([
-                            'orgUnit:id,name,code,type',
+                            'orgUnit:id,name,code,type,parent_id',
                             'assignee:id,name',
                         ])
                         ->when($scope !== [], fn ($q) => $q->whereIn('goal_org_unit_id', $scope))
@@ -169,11 +169,11 @@ class GoalContactImportController extends Controller
             if ($firstOpen) {
                 $selectedBatchId = (int) $firstOpen->id;
                 $selectedBatch = GoalContactImport::query()
-                    ->with(['orgUnit:id,name,code,type'])
+                    ->with(['orgUnit:id,name,code,type,parent_id'])
                     ->find($selectedBatchId) ?: $firstOpen;
                 $batchLeads = $selectedBatch->leads()
                     ->with([
-                        'orgUnit:id,name,code,type',
+                        'orgUnit:id,name,code,type,parent_id',
                         'assignee:id,name',
                     ])
                     ->when($scope !== [], fn ($q) => $q->whereIn('goal_org_unit_id', $scope))
