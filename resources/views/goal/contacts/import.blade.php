@@ -150,9 +150,27 @@
 .cg-prog{min-width:110px}
 .cg-prog .bar{height:6px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-bottom:4px}
 .cg-prog .bar>span{display:block;height:100%;background:var(--g)}
+.cg-prog.is-completed .bar>span{background:#2563eb}
+.cg-prog.is-await .bar>span{background:#f59e0b}
+.cg-prog.is-draft .bar>span{background:#ea580c}
+.cg-prog.is-failed .bar>span{background:#dc2626}
 .cg-prog .txt{font-size:.72rem;color:#64748b;font-weight:600}
-.cg-ico{width:34px;height:34px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;color:#475569;text-decoration:none;font-size:.85rem}
-.cg-ico:hover{background:#f8fafc;color:var(--ink)}
+.cg-ico{width:34px;height:34px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;color:#475569;text-decoration:none;font-size:.85rem;vertical-align:middle}
+.cg-ico:hover{filter:brightness(.96)}
+.cg-ico.tone-view{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+.cg-ico.tone-view:hover{background:#dbeafe;color:#1e40af}
+.cg-ico.tone-active{background:#ecfdf3;border-color:#86efac;color:#15803d}
+.cg-ico.tone-active:hover{background:#dcfce7;color:#166534}
+.cg-ico.tone-await{background:#fffbeb;border-color:#fcd34d;color:#b45309}
+.cg-ico.tone-await:hover{background:#fef3c7;color:#92400e}
+.cg-ico.tone-draft{background:#fff7ed;border-color:#fdba74;color:#c2410c}
+.cg-ico.tone-draft:hover{background:#ffedd5;color:#9a3412}
+.cg-ico.tone-failed,.cg-ico.tone-errors{background:#fef2f2;border-color:#fca5a5;color:#b91c1c}
+.cg-ico.tone-failed:hover,.cg-ico.tone-errors:hover{background:#fee2e2;color:#991b1b}
+.cg-btn-assign{background:#16a34a;border-color:#16a34a;color:#fff;height:32px;padding:0 10px;font-size:.75rem}
+.cg-btn-assign:hover{background:#15803d;border-color:#15803d;color:#fff}
+.cg-btn-assign.tone-await{background:#d97706;border-color:#d97706}
+.cg-btn-assign.tone-await:hover{background:#b45309;border-color:#b45309}
 .cg-handoff{margin:0 0 12px;padding:12px 14px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;display:flex;gap:10px;align-items:flex-start}
 .cg-handoff h4{margin:0 0 4px;font-size:.9rem;font-weight:800}
 .cg-handoff p{margin:0;font-size:.8rem}
@@ -441,6 +459,15 @@
                             $validN = (int) $batch->success_count;
                             $pct = $validN > 0 ? (int) round(($assignedPeople / $validN) * 100) : ($unassignedN === 0 && $validN > 0 ? 100 : 0);
                             if ($statusClass === 'completed') { $pct = 100; $assignedPeople = max($assignedPeople, $validN); }
+                            $tone = match ($statusClass) {
+                                'completed' => 'view',
+                                'active' => 'active',
+                                'await' => 'await',
+                                'draft' => 'draft',
+                                'failed' => 'failed',
+                                default => 'view',
+                            };
+                            $progTone = in_array($statusClass, ['completed', 'await', 'draft', 'failed', 'active'], true) ? $statusClass : '';
                         @endphp
                         <tr>
                             <td>{{ $batches->firstItem() + $i }}</td>
@@ -461,21 +488,21 @@
                             <td>{{ optional($batch->assigned_at)->format('d M Y, H:i') ?: '—' }}</td>
                             <td><span class="cg-badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
                             <td>
-                                <div class="cg-prog">
+                                <div class="cg-prog {{ $progTone ? 'is-'.$progTone : '' }}">
                                     <div class="bar"><span style="width:{{ min(100, $pct) }}%"></span></div>
                                     <div class="txt">{{ number_format($assignedPeople) }} Assigned — {{ $pct }}%</div>
                                 </div>
                             </td>
                             <td style="white-space:nowrap">
                                 @if($canSplit && $unassignedN > 0)
-                                    <a class="cg-btn cg-btn-primary" style="height:32px;padding:0 10px;font-size:.75rem" href="{{ route('goal.contacts.import', ['tab' => 'assign', 'batch' => $batch->id]) }}">
+                                    <a class="cg-btn cg-btn-assign {{ $statusClass === 'await' ? 'tone-await' : '' }}" href="{{ route('goal.contacts.import', ['tab' => 'assign', 'batch' => $batch->id]) }}">
                                         {{ $isBmAssigner ? 'Assign to team' : 'Assign' }}
                                     </a>
                                 @endif
                                 @if($batch->failed_count > 0)
-                                    <a class="cg-ico" href="{{ route('goal.contacts.import.errors', $batch) }}" title="Error report"><i class="bi bi-download"></i></a>
+                                    <a class="cg-ico tone-errors" href="{{ route('goal.contacts.import.errors', $batch) }}" title="Error report"><i class="bi bi-download"></i></a>
                                 @endif
-                                <a class="cg-ico" href="{{ route('goal.contacts.import', ['tab' => 'assign', 'batch' => $batch->id]) }}" title="View"><i class="bi bi-eye"></i></a>
+                                <a class="cg-ico tone-{{ $tone }}" href="{{ route('goal.contacts.import', ['tab' => 'assign', 'batch' => $batch->id]) }}" title="View"><i class="bi bi-eye"></i></a>
                             </td>
                         </tr>
                     @empty

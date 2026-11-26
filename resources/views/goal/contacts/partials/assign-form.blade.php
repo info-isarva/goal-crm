@@ -255,6 +255,15 @@
 <script>
 window.cgAssignBoot = window.cgAssignBoot || [];
 window.cgAssignBoot.push(@json($uid));
+window.cgAssignPerms = window.cgAssignPerms || {};
+window.cgAssignPerms[@json($uid)] = {
+    canRegion: @json($canAssignRegion),
+    canCluster: @json($canAssignCluster),
+    canBranch: @json($canAssignBranch),
+    showRegion: @json($showRegionFilter),
+    showCluster: @json($showClusterFilter),
+    handoff: @json($handoffKey)
+};
 document.addEventListener('DOMContentLoaded', function () {
     (window.cgAssignBoot || []).forEach(function (uid) {
         if (window['cgAssignInit_' + uid]) return;
@@ -262,10 +271,21 @@ document.addEventListener('DOMContentLoaded', function () {
         initAssign(uid);
     });
 
+    function cgAssignAlert(message, title) {
+        title = title || 'Check assignment';
+        if (window.toastr && typeof toastr.error === 'function') { toastr.error(message); return; }
+        if (typeof Swal !== 'undefined' && Swal.fire) {
+            Swal.fire({ icon: 'warning', title: title, text: message, confirmButtonColor: '#16a34a' });
+            return;
+        }
+        alert(message);
+    }
+
     function initAssign(uid) {
         var methodInput = document.getElementById(uid + 'Method');
         var allocInput = document.getElementById(uid + 'Allocation');
         if (!methodInput || !allocInput) return;
+        var perms = window.cgAssignPerms[uid] || {};
 
         var regionSel = document.getElementById(uid + 'Region');
         var clusterSel = document.getElementById(uid + 'Cluster');
@@ -621,35 +641,71 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         window.cgValidateAssign = function (e, soft) {
+            if (e && e.__cgAssignChecked) return !!e.__cgAssignOk;
+            function fail(msg) {
+                if (e && e.preventDefault) e.preventDefault();
+                if (e) { e.__cgAssignChecked = true; e.__cgAssignOk = false; }
+                cgAssignAlert(msg);
+                return false;
+            }
+            function ok() {
+                if (e) { e.__cgAssignChecked = true; e.__cgAssignOk = true; }
+                return true;
+            }
             var m = methodInput.value;
             var a = allocInput.value;
             var panel = activePanel();
+
+            if (m === 'region' && !perms.canRegion) {
+                return fail('You do not have permission to assign to a Region.');
+            }
+            if (m === 'cluster' && !perms.canCluster) {
+                return fail('You do not have permission to assign to a Cluster. Choose Branch (BM) or VRM.');
+            }
+            if (m === 'branch' && !perms.canBranch) {
+                return fail('You do not have permission to assign to a Branch. Choose VRM in your branch.');
+            }
+
+            // Cascade required when those filters are visible (single-target modes)
+            if (!isSplit(a) && perms.showRegion && regionSel && regionField && regionField.style.display !== 'none' && !regionSel.value) {
+                if (m === 'cluster' || m === 'branch' || m === 'vrm') {
+                    return fail('Select a Region first.');
+                }
+            }
+            if (!isSplit(a) && perms.showCluster && clusterSel && clusterField && clusterField.style.display !== 'none' && !clusterSel.value) {
+                if (m === 'branch' || m === 'vrm') {
+                    return fail('Select a Cluster first.');
+                }
+            }
+
             if (m === 'region' && !isSplit(a) && regionSel && !regionSel.value) {
-                e.preventDefault();
-                alert('Select a region.');
-                return false;
+                return fail('Select a region.');
             }
             if (m === 'cluster' && !isSplit(a) && clusterSel && !clusterSel.value) {
-                e.preventDefault();
-                alert('Select a cluster.');
-                return false;
+                return fail('Select a cluster.');
             }
             if (m === 'branch' && !isSplit(a)) {
-                if (branchSel && !branchSel.value) { e.preventDefault(); alert('Select a branch (BM).'); return false; }
+                if (branchSel && !branchSel.value) return fail('Select a branch (BM).');
             }
-            if (m === 'vrm' && !isSplit(a) && vrmSel && !vrmSel.value) {
-                e.preventDefault();
-                alert('Select a VRM.');
-                return false;
+            if (m === 'vrm' && !isSplit(a)) {
+                if (branchField && branchField.style.display !== 'none' && branchSel && !branchSel.value) {
+                    return fail('Select a Branch before choosing a VRM.');
+                }
+                if (vrmSel && !vrmSel.value) return fail('Select a VRM.');
             }
             if (panel) {
                 var box = panelEl(panel);
-                var checked = box ? box.querySelectorAll('.js-target:checked:not(:disabled)') : [];
+                var checked = [];
+                if (box) {
+                    box.querySelectorAll('tr.cg-split-row').forEach(function (row) {
+                        if (row.hidden) return;
+                        var cb = row.querySelector('.js-target');
+                        if (cb && cb.checked && !cb.disabled) checked.push(cb);
+                    });
+                }
                 var unit = panel === 'region' ? 'region' : (panel === 'cluster' ? 'cluster' : (panel === 'branch' ? 'branch (BM)' : 'VRM'));
                 if (!checked.length) {
-                    e.preventDefault();
-                    alert('Select at least one ' + unit + ' for the split.');
-                    return false;
+                    return fail('Select at least one ' + unit + ' for the split.');
                 }
                 if (a === 'percentage') {
                     var pct = 0;
@@ -658,9 +714,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         pct += inp ? (parseFloat(inp.value) || 0) : 0;
                     });
                     if (Math.abs(pct - 100) > 0.5) {
-                        e.preventDefault();
-                        alert('Percentages must total 100%.');
-                        return false;
+                        return fail('Percentages must total 100%. Currently ' + pct.toFixed(1) + '%.');
                     }
                 }
                 if (a === 'counts') {
@@ -671,13 +725,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         sum += inp ? (parseInt(inp.value || '0', 10) || 0) : 0;
                     });
                     if (total > 0 && sum !== total) {
-                        e.preventDefault();
-                        alert('Custom split must total exactly ' + total + ' (currently ' + sum + ').');
-                        return false;
+                        return fail('Custom split must total exactly ' + total + ' (currently ' + sum + ').');
+                    }
+                    if (total <= 0) {
+                        return fail('Upload a file with valid contacts before using custom count.');
                     }
                 }
             }
-            return true;
+            return ok();
         };
 
         var form = methodInput.closest('form');
@@ -686,7 +741,12 @@ document.addEventListener('DOMContentLoaded', function () {
             form.addEventListener('submit', function (e) {
                 var submitter = e.submitter;
                 if (submitter && submitter.getAttribute('formaction') && submitter.getAttribute('formaction').indexOf('/draft') !== -1) return;
-                window.cgValidateAssign(e, false);
+                if (!window.cgValidateAssign(e, false)) {
+                    var btn = document.getElementById('cgSubmitBtn');
+                    var lbl = document.getElementById('cgSubmitLabel');
+                    if (btn) btn.disabled = false;
+                    if (lbl) lbl.textContent = 'Import & Assign';
+                }
             });
         }
 

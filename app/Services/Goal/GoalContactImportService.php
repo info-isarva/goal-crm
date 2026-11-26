@@ -401,6 +401,8 @@ class GoalContactImportService
         $failed = 0;
 
         try {
+            $this->assertAssignMethodAllowed($actor, $method);
+
             if ($method === 'region') {
                 if (! $this->actorCanAssignRegion($actor)) {
                     throw ValidationException::withMessages(['method' => 'You cannot assign to a region.']);
@@ -1464,6 +1466,50 @@ class GoalContactImportService
         return $actor->isSuperAdmin()
             || in_array($role, [1, 4, 5], true)
             || in_array($job, ['md', 'ceo'], true);
+    }
+
+    /** HQ / RD may park on a Cluster (Cluster Head cannot assign to their own level). */
+    public function actorCanAssignCluster(User $actor): bool
+    {
+        $key = $this->actorHandoffRole($actor)['key'] ?? '';
+
+        return $this->actorCanPickBranch($actor) && ! in_array($key, ['cluster', 'bm'], true);
+    }
+
+    /** HQ / RD / Cluster may park on a Branch (BM cannot assign to their own level). */
+    public function actorCanAssignBranch(User $actor): bool
+    {
+        $key = $this->actorHandoffRole($actor)['key'] ?? '';
+
+        return $this->actorCanPickBranch($actor) && $key !== 'bm';
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    public function assertAssignMethodAllowed(User $actor, string $method): void
+    {
+        $method = strtolower(trim($method));
+        if ($method === 'region' && ! $this->actorCanAssignRegion($actor)) {
+            throw ValidationException::withMessages([
+                'method' => 'Region assign is available to MD / CEO / Super Admin only.',
+            ]);
+        }
+        if ($method === 'cluster' && ! $this->actorCanAssignCluster($actor)) {
+            throw ValidationException::withMessages([
+                'method' => 'You cannot assign to Cluster. Choose Branch (BM) or VRM.',
+            ]);
+        }
+        if ($method === 'branch' && ! $this->actorCanAssignBranch($actor)) {
+            throw ValidationException::withMessages([
+                'method' => 'You cannot assign to Branch. Choose VRM in your branch.',
+            ]);
+        }
+        if (! in_array($method, ['region', 'cluster', 'branch', 'vrm', 'custom'], true)) {
+            throw ValidationException::withMessages([
+                'method' => 'Invalid assignment method.',
+            ]);
+        }
     }
 
     /**

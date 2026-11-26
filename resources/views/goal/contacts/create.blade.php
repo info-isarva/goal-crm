@@ -543,18 +543,37 @@
 
     if (form) {
         form.addEventListener('submit', function (e) {
-            if (!input.files || !input.files[0]) {
+            function stop(msg) {
                 e.preventDefault();
-                notify('error', 'Please choose a file first.', 'Almost there');
+                notify('error', msg, 'Almost there');
+                if (submitBtn) submitBtn.disabled = false;
+                if (submitLabel) submitLabel.textContent = 'Import & Assign';
+            }
+            if (!input.files || !input.files[0]) {
+                stop('Please choose a file first.');
                 return;
             }
             var name = document.getElementById('cgCampaignName');
             if (name && !name.value.trim()) {
-                e.preventDefault();
-                notify('error', 'Enter a campaign name.', 'Almost there');
+                stop('Enter a campaign name.');
+                if (name.focus) name.focus();
                 return;
             }
-            if (typeof window.cgValidateAssign === 'function' && !window.cgValidateAssign(e, true)) return;
+            var sumValidEl = document.getElementById('sumValid');
+            var sumTxt = sumValidEl ? String(sumValidEl.textContent || '').trim() : '';
+            var previewReady = sumTxt !== '' && sumTxt !== '—' && sumTxt !== '…';
+            var validEst = typeof window.__cgValidEstimate === 'number'
+                ? window.__cgValidEstimate
+                : (previewReady ? (parseInt(sumTxt, 10) || 0) : null);
+            if (validEst === 0) {
+                stop('No valid contacts in the file. Fix the list or choose another file.');
+                return;
+            }
+            if (typeof window.cgValidateAssign === 'function' && !window.cgValidateAssign(e, true)) {
+                if (submitBtn) submitBtn.disabled = false;
+                if (submitLabel) submitLabel.textContent = 'Import & Assign';
+                return;
+            }
             if (submitBtn) { submitBtn.disabled = true; }
             if (submitLabel) submitLabel.textContent = 'Importing…';
         });

@@ -278,12 +278,30 @@ class GoalContactImportController extends Controller
         ]);
 
         $leadStatus = $data['lead_status'] ?? 'Future Prospect';
-        $method = $data['method'] ?? ($canAssignRegion ? 'region' : ($canPickBranch ? 'branch' : 'vrm'));
-        if ($method === 'region' && ! $canAssignRegion) {
-            $method = $canPickBranch ? 'branch' : 'vrm';
+        $canAssignCluster = $this->imports->actorCanAssignCluster($actor);
+        $canAssignBranch = $this->imports->actorCanAssignBranch($actor);
+        $method = $data['method'] ?? (
+            $canAssignRegion ? 'region' : (
+                $canAssignCluster ? 'cluster' : (
+                    $canAssignBranch ? 'branch' : 'vrm'
+                )
+            )
+        );
+
+        try {
+            $this->imports->assertAssignMethodAllowed($actor, (string) $method);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->withErrors($e->errors());
         }
-        if (in_array($method, ['branch', 'cluster'], true) && ! $canPickBranch) {
-            $method = 'vrm';
+
+        if (! $canSplit) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->withErrors(['method' => 'You do not have permission to assign contacts.']);
         }
 
         $import = $this->imports->processUpload(
@@ -482,35 +500,38 @@ class GoalContactImportController extends Controller
         ]);
 
         $method = $data['method'] ?? $data['mode'] ?? 'branch';
-        if ($method === 'region' && ! $canAssignRegion) {
+        try {
+            $this->imports->assertAssignMethodAllowed($actor, (string) $method);
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()
                 ->route('goal.contacts.import', ['tab' => 'assign', 'batch' => $import->id])
-                ->withErrors(['method' => 'Region assign is available to MD / CEO / Super Admin only.']);
-        }
-        if (in_array($method, ['branch', 'cluster'], true) && ! $canPickBranch) {
-            return redirect()
-                ->route('goal.contacts.import', ['tab' => 'assign', 'batch' => $import->id])
-                ->withErrors(['method' => 'Cluster / branch assign is available to Cluster / RD+ only.']);
+                ->withErrors($e->errors());
         }
 
         $allocation = $data['allocation'] ?? 'all';
-        $result = $this->imports->confirmAssignment($import, $actor, $scope, [
-            'method' => $method,
-            'allocation' => $allocation,
-            'region_id' => isset($data['region_id']) ? (int) $data['region_id'] : null,
-            'cluster_id' => isset($data['cluster_id']) ? (int) $data['cluster_id'] : null,
-            'branch_id' => isset($data['branch_id']) ? (int) $data['branch_id'] : null,
-            'region_ids' => array_map('intval', $data['region_ids'] ?? []),
-            'cluster_ids' => array_map('intval', $data['cluster_ids'] ?? []),
-            'branch_ids' => array_map('intval', $data['branch_ids'] ?? []),
-            'vrm_id' => isset($data['vrm_id']) ? (int) $data['vrm_id'] : null,
-            'vrm_ids' => array_map('intval', $data['vrm_ids'] ?? []),
-            'percentages' => $data['percentages'] ?? [],
-            'counts' => $data['counts'] ?? [],
-            'lead_status' => $data['lead_status'] ?? 'Future Prospect',
-            'notify' => $request->boolean('notify'),
-            'skip_duplicates' => $request->boolean('skip_duplicates', true),
-        ]);
+        try {
+            $result = $this->imports->confirmAssignment($import, $actor, $scope, [
+                'method' => $method,
+                'allocation' => $allocation,
+                'region_id' => isset($data['region_id']) ? (int) $data['region_id'] : null,
+                'cluster_id' => isset($data['cluster_id']) ? (int) $data['cluster_id'] : null,
+                'branch_id' => isset($data['branch_id']) ? (int) $data['branch_id'] : null,
+                'region_ids' => array_map('intval', $data['region_ids'] ?? []),
+                'cluster_ids' => array_map('intval', $data['cluster_ids'] ?? []),
+                'branch_ids' => array_map('intval', $data['branch_ids'] ?? []),
+                'vrm_id' => isset($data['vrm_id']) ? (int) $data['vrm_id'] : null,
+                'vrm_ids' => array_map('intval', $data['vrm_ids'] ?? []),
+                'percentages' => $data['percentages'] ?? [],
+                'counts' => $data['counts'] ?? [],
+                'lead_status' => $data['lead_status'] ?? 'Future Prospect',
+                'notify' => $request->boolean('notify'),
+                'skip_duplicates' => $request->boolean('skip_duplicates', true),
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()
+                ->route('goal.contacts.import', ['tab' => 'assign', 'batch' => $import->id])
+                ->withErrors($e->errors());
+        }
 
         $assignedN = (int) ($result['assigned'] ?? 0);
         $isSplit = in_array($allocation, ['equal', 'percentage', 'counts'], true);
