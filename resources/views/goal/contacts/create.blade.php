@@ -329,7 +329,7 @@
                         </div>
                     </div>
                 </div>
-                <p class="cg-sum-note">Preview estimates. Final after Import &amp; Assign.</p>
+                <p class="cg-sum-note">Duplicates are allowed and imported as new contacts. Final after Import &amp; Assign.</p>
             </div>
         </div>
 
@@ -416,8 +416,7 @@
         }
         var header = rows[0] || [];
         var mobileIdx = mobileColIndex(header);
-        var mobiles = {};
-        var total = 0, dup = 0, invalid = 0;
+        var total = 0, invalid = 0;
         for (var i = 1; i < rows.length; i++) {
             var row = rows[i] || [];
             var hasData = false;
@@ -427,10 +426,10 @@
             if (!hasData) continue;
             total++;
             var mobile = String(row[mobileIdx] == null ? '' : row[mobileIdx]).replace(/[^0-9]/g, '');
-            if (!mobile || mobile.length < 8) { invalid++; continue; }
-            if (mobiles[mobile]) dup++; else mobiles[mobile] = 1;
+            if (!mobile || mobile.length < 8) { invalid++; }
         }
-        applyPreviewCounts(total, Math.max(0, total - dup - invalid), dup, invalid);
+        // Duplicates are allowed — every row with a valid mobile counts as valid.
+        applyPreviewCounts(total, Math.max(0, total - invalid), 0, invalid);
     }
 
     function previewCsv(file) {

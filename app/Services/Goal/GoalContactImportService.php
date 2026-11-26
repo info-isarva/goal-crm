@@ -243,9 +243,7 @@ class GoalContactImportService
             $name = 'Contact '.$mobile;
         }
 
-        if (isset($seenMobiles[$mobile])) {
-            return ['lead' => null, 'status' => 'duplicate', 'error' => 'Duplicate mobile in this file.'];
-        }
+        // Duplicates are allowed: same mobile in-file or already in CRM still creates a new lead.
         $seenMobiles[$mobile] = true;
 
         $orgUnitId = $defaultOrgUnitId;
@@ -264,18 +262,6 @@ class GoalContactImportService
 
         if ($scopedOrgIds !== [] && ! in_array((int) $orgUnitId, array_map('intval', $scopedOrgIds), true)) {
             return ['lead' => null, 'status' => 'error', 'error' => 'Branch is outside your org scope.'];
-        }
-
-        $existing = GoalLoanLead::query()
-            ->whereIn('goal_org_unit_id', $scopedOrgIds !== [] ? $scopedOrgIds : [$orgUnitId])
-            ->where(function ($q) use ($mobile) {
-                $q->where('mobile', $mobile)
-                    ->orWhereHas('party', fn ($p) => $p->where('normalized_mobile', $mobile));
-            })
-            ->exists();
-
-        if ($existing) {
-            return ['lead' => null, 'status' => 'duplicate', 'error' => 'Lead with this mobile already exists in scope.'];
         }
 
         $email = trim((string) ($payload['email'] ?? ''));
