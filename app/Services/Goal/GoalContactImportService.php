@@ -219,12 +219,12 @@ class GoalContactImportService
     }
 
     /**
-     * Append contacts from a new file into an existing campaign (edit flow).
+     * Fully replace campaign contacts with a new file (edit flow — no merge).
      *
      * @param  list<int>  $scopedOrgIds
      * @param  array{campaign_name?:string,description?:string,lead_source?:string,lead_status?:string}  $campaign
      */
-    public function appendUpload(
+    public function replaceUpload(
         GoalContactImport $import,
         User $actor,
         UploadedFile $file,
@@ -267,7 +267,6 @@ class GoalContactImportService
         $success = 0;
         $failed = 0;
         $total = 0;
-        $rowBase = (int) $import->rows()->max('row_number');
 
         if (array_key_exists('campaign_name', $campaign)) {
             $name = trim((string) ($campaign['campaign_name'] ?? ''));
@@ -284,66 +283,91 @@ class GoalContactImportService
             $import->default_lead_status = $campaign['lead_status'];
         }
 
-        $import->filename = $file->getClientOriginalName() ?: $import->filename;
-        $import->source = in_array($meta['extension'], ['csv', 'xlsx', 'xls'], true) ? $meta['extension'] : ($import->source ?: 'csv');
+        \Illuminate\Support\Facades\DB::transaction(function () use (
+            $import, $actor, $file, $meta, $rows, $indexes, $scopedOrgIds, $defaultOrgUnitId,
+            $branchMap, $allowBranchCode, &$seenMobiles, &$success, &$failed, &$total
+        ) {
+            // Clear prior import rows first (FK to leads is nullOnDelete)
+            GoalContactImportRow::query()
+                ->where('goal_contact_import_id', $import->id)
+                ->delete();
 
-        foreach (array_slice($rows, 1) as $offset => $raw) {
-            if (! is_array($raw) || ! array_filter($raw, fn ($v) => filled($v))) {
-                continue;
+            // Remove all leads from this campaign (full replace, no merge)
+            $leadIds = GoalLoanLead::query()
+                ->where('goal_contact_import_id', $import->id)
+                ->pluck('id');
+            if ($leadIds->isNotEmpty()) {
+                GoalLoanLeadAssignment::query()->whereIn('goal_loan_lead_id', $leadIds)->delete();
+                GoalLoanLeadEvent::query()->whereIn('goal_loan_lead_id', $leadIds)->delete();
+                GoalLoanLead::query()->whereIn('id', $leadIds)->delete();
             }
 
-            $total++;
-            $rowNumber = $rowBase + $offset + 1;
-            $payload = $this->extractPayload($raw, $indexes);
+            $import->filename = $file->getClientOriginalName() ?: $import->filename;
+            $import->source = in_array($meta['extension'], ['csv', 'xlsx', 'xls'], true) ? $meta['extension'] : ($import->source ?: 'csv');
+            $import->assign_method = null;
+            $import->assigned_label = null;
+            $import->assigned_at = null;
+            $import->assign_draft = null;
+            $import->status = 'processing';
+            $import->total_rows = 0;
+            $import->success_count = 0;
+            $import->failed_count = 0;
+            $import->save();
 
-            try {
-                $result = $this->createLeadFromRow(
-                    $import,
-                    $actor,
-                    $payload,
-                    $scopedOrgIds,
-                    $defaultOrgUnitId,
-                    $branchMap,
-                    $allowBranchCode,
-                    $seenMobiles
-                );
-
-                GoalContactImportRow::create([
-                    'goal_contact_import_id' => $import->id,
-                    'row_number' => $rowNumber,
-                    'payload' => $payload,
-                    'goal_loan_lead_id' => $result['lead']?->id,
-                    'status' => $result['status'],
-                    'error_message' => $result['error'],
-                ]);
-
-                if ($result['status'] === 'ok') {
-                    $success++;
-                } else {
-                    $failed++;
+            foreach (array_slice($rows, 1) as $offset => $raw) {
+                if (! is_array($raw) || ! array_filter($raw, fn ($v) => filled($v))) {
+                    continue;
                 }
-            } catch (\Throwable $e) {
-                $failed++;
-                GoalContactImportRow::create([
-                    'goal_contact_import_id' => $import->id,
-                    'row_number' => $rowNumber,
-                    'payload' => $payload,
-                    'goal_loan_lead_id' => null,
-                    'status' => 'error',
-                    'error_message' => Str::limit($e->getMessage(), 480),
-                ]);
-            }
-        }
 
-        $import->total_rows = (int) $import->total_rows + $total;
-        $import->success_count = (int) $import->success_count + $success;
-        $import->failed_count = (int) $import->failed_count + $failed;
-        $import->status = $this->resolveBatchStatus(
-            (int) $import->total_rows,
-            (int) $import->success_count,
-            (int) $import->failed_count
-        );
-        $import->save();
+                $total++;
+                $rowNumber = $offset + 2;
+                $payload = $this->extractPayload($raw, $indexes);
+
+                try {
+                    $result = $this->createLeadFromRow(
+                        $import,
+                        $actor,
+                        $payload,
+                        $scopedOrgIds,
+                        $defaultOrgUnitId,
+                        $branchMap,
+                        $allowBranchCode,
+                        $seenMobiles
+                    );
+
+                    GoalContactImportRow::create([
+                        'goal_contact_import_id' => $import->id,
+                        'row_number' => $rowNumber,
+                        'payload' => $payload,
+                        'goal_loan_lead_id' => $result['lead']?->id,
+                        'status' => $result['status'],
+                        'error_message' => $result['error'],
+                    ]);
+
+                    if ($result['status'] === 'ok') {
+                        $success++;
+                    } else {
+                        $failed++;
+                    }
+                } catch (\Throwable $e) {
+                    $failed++;
+                    GoalContactImportRow::create([
+                        'goal_contact_import_id' => $import->id,
+                        'row_number' => $rowNumber,
+                        'payload' => $payload,
+                        'goal_loan_lead_id' => null,
+                        'status' => 'error',
+                        'error_message' => Str::limit($e->getMessage(), 480),
+                    ]);
+                }
+            }
+
+            $import->total_rows = $total;
+            $import->success_count = $success;
+            $import->failed_count = $failed;
+            $import->status = $this->resolveBatchStatus($total, $success, $failed);
+            $import->save();
+        });
 
         return $import->fresh(['importer', 'orgUnit']);
     }

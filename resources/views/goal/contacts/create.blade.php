@@ -275,12 +275,12 @@
                         <span class="pill">XLSX</span>
                     </div>
                     <label class="cg-btn-choose" id="cgChooseBtn">
-                        <i class="bi bi-folder2-open"></i> {{ $isEdit ? 'Replace / Add File' : 'Choose File' }}
+                        <i class="bi bi-folder2-open"></i> {{ $isEdit ? 'Replace File' : 'Choose File' }}
                         <input type="file" name="import_file" id="import_file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" @if(! $isEdit) required @endif>
                     </label>
                     <div class="cg-file {{ $isEdit && $import ? 'has-file' : '' }}" id="importFileName">
                         @if($isEdit && $import)
-                            {{ $import->filename }} @if($isEdit)<span style="color:#94a3b8;font-weight:600">(current — choose a file to add more)</span>@endif
+                            {{ $import->filename }} <span style="color:#94a3b8;font-weight:600">(current — choose a file to replace completely)</span>
                         @else
                             No file chosen
                         @endif
@@ -409,7 +409,7 @@
                 </div>
                 <p class="cg-sum-note">
                     @if($isEdit)
-                        {{ $canAssignNow ? 'Open contacts still need assignment. New file rows are added to this campaign.' : 'Campaign is fully assigned to VRMs. You can still update details.' }}
+                        {{ $canAssignNow ? 'Open contacts still need assignment. Replacing the file removes all current contacts and loads the new list only.' : 'Campaign is fully assigned to VRMs. You can still update details.' }}
                     @else
                         Duplicates are allowed and imported as new contacts. Final after Import &amp; Assign.
                     @endif
@@ -610,81 +610,81 @@
         if (submitBtn) submitBtn.disabled = false;
     }
 
-    var currentFileLabel = @json($isEdit && $import ? ((string) $import->filename).' (current — choose a file to add more)' : 'No file chosen');
-    var filePickAllowed = !isEdit;
+    var currentFileLabel = @json($isEdit && $import ? ((string) $import->filename).' (current — choose a file to replace completely)' : 'No file chosen');
+    var pendingReplaceFile = null;
 
-    function confirmReplaceAdd(onYes) {
-        if (!isEdit) {
-            onYes();
-            return;
+    function clearPickedFile() {
+        try { input.value = ''; } catch (err) {}
+        pendingReplaceFile = null;
+        if (isEdit) {
+            nameEl.textContent = currentFileLabel;
+            nameEl.classList.add('has-file');
+            drop.classList.add('has-file');
+            if (submitBtn) submitBtn.disabled = false;
+            window.__cgValidEstimate = {{ (int) $validCount }};
+            setSummary(
+                {{ (int) ($batchSummary['total'] ?? $import?->total_rows ?? 0) }},
+                {{ (int) ($batchSummary['valid'] ?? $import?->success_count ?? 0) }},
+                {{ (int) $unassignedCount }},
+                {{ (int) ($batchSummary['invalid'] ?? $import?->failed_count ?? 0) }}
+            );
+        } else {
+            nameEl.textContent = 'No file chosen';
+            nameEl.classList.remove('has-file');
+            drop.classList.remove('has-file');
+            if (submitBtn) submitBtn.disabled = true;
+            setSummary(0, 0, 0, 0);
         }
-        var title = 'Replace / add file?';
-        var text = 'New rows from this file will be added to the current campaign. Existing assigned contacts stay as they are.';
+    }
+
+    function confirmReplaceFile(file, afterAccept) {
+        var title = 'Replace campaign file?';
+        var text = 'This completely replaces the current list. All existing contacts in this campaign will be removed and only the new file will be kept.';
+        function accept() {
+            pendingReplaceFile = file;
+            afterAccept();
+        }
+        function reject() {
+            clearPickedFile();
+        }
         if (typeof Swal !== 'undefined' && Swal.fire) {
             Swal.fire({
-                icon: 'question',
+                icon: 'warning',
                 title: title,
                 text: text,
                 showCancelButton: true,
-                confirmButtonText: 'Yes, choose file',
+                confirmButtonText: 'Yes, replace completely',
                 cancelButtonText: 'Cancel',
                 confirmButtonColor: '#16a34a',
                 cancelButtonColor: '#94a3b8',
                 reverseButtons: true,
                 focusCancel: true
             }).then(function (result) {
-                if (result.isConfirmed) onYes();
+                if (result.isConfirmed) accept();
+                else reject();
             });
             return;
         }
-        if (window.confirm(title + '\n\n' + text)) onYes();
-    }
-
-    function openFilePicker() {
-        filePickAllowed = true;
-        input.click();
-        window.setTimeout(function () { filePickAllowed = !isEdit; }, 0);
+        if (window.confirm(title + '\n\n' + text)) accept();
+        else reject();
     }
 
     if (input && drop && nameEl) {
-        input.addEventListener('click', function (e) {
-            if (isEdit && !filePickAllowed) {
-                e.preventDefault();
-                confirmReplaceAdd(openFilePicker);
-            }
-        });
         input.addEventListener('change', function () {
             var f = input.files && input.files[0];
-            if (f) setFile(f);
-            else {
-                if (isEdit) {
-                    nameEl.textContent = currentFileLabel;
-                    nameEl.classList.add('has-file');
-                    drop.classList.add('has-file');
-                    if (submitBtn) submitBtn.disabled = false;
-                } else {
-                    nameEl.textContent = 'No file chosen';
-                    nameEl.classList.remove('has-file');
-                    drop.classList.remove('has-file');
-                    if (submitBtn) submitBtn.disabled = true;
-                    setSummary(0, 0, 0, 0);
-                }
+            if (!f) {
+                clearPickedFile();
+                return;
             }
-            filePickAllowed = !isEdit;
+            if (isEdit) {
+                confirmReplaceFile(f, function () { setFile(f); });
+                return;
+            }
+            setFile(f);
         });
-        if (chooseBtn) {
-            chooseBtn.addEventListener('click', function (e) {
-                if (!isEdit) return;
-                e.preventDefault();
-                e.stopPropagation();
-                confirmReplaceAdd(openFilePicker);
-            });
-        }
         drop.addEventListener('click', function (e) {
             if (chooseBtn && (chooseBtn === e.target || chooseBtn.contains(e.target))) return;
-            e.preventDefault();
-            if (isEdit) confirmReplaceAdd(openFilePicker);
-            else openFilePicker();
+            input.click();
         });
         ['dragenter', 'dragover'].forEach(function (evt) {
             drop.addEventListener(evt, function (e) { e.preventDefault(); drop.classList.add('is-drag'); });
@@ -696,7 +696,7 @@
                 if (evt !== 'drop' || !e.dataTransfer || !e.dataTransfer.files[0]) return;
                 var dropped = e.dataTransfer.files[0];
                 if (isEdit) {
-                    confirmReplaceAdd(function () { setFile(dropped); });
+                    confirmReplaceFile(dropped, function () { setFile(dropped); });
                 } else {
                     setFile(dropped);
                 }

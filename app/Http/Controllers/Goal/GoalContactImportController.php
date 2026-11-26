@@ -627,7 +627,7 @@ class GoalContactImportController extends Controller
 
         if ($request->hasFile('import_file')) {
             try {
-                $import = $this->imports->appendUpload(
+                $import = $this->imports->replaceUpload(
                     $import,
                     $actor,
                     $request->file('import_file'),
@@ -635,7 +635,7 @@ class GoalContactImportController extends Controller
                     $canPickBranch,
                     $campaignMeta
                 );
-                $msg = "Campaign updated. Added {$import->success_count} total valid contact(s).";
+                $msg = "Campaign file replaced. {$import->success_count} valid contact(s) loaded.";
             } catch (\Illuminate\Validation\ValidationException $e) {
                 return redirect()
                     ->route('goal.contacts.import.edit', $import)
