@@ -221,7 +221,10 @@
     border:0; color:#fff; background:#16a34a;
     box-shadow:0 12px 22px var(--green-ring);
 }
-.ci-hub .btn-import:hover, .ci-hub .btn-apply:hover { background:#15803d; color:#fff; }
+.ci-hub .btn-import:hover:not(:disabled), .ci-hub .btn-apply:hover { background:#15803d; color:#fff; }
+.ci-hub .btn-import:disabled {
+    opacity:.55; cursor:not-allowed; box-shadow:none; background:#94a3b8;
+}
 .ci-hub .hint {
     font-size:.8rem; color:#475569; line-height:1.4;
     display:inline-flex; align-items:flex-start; gap:6px;
@@ -292,8 +295,41 @@
 }
 .ci-hub .badge-st.ready, .ci-hub .badge-st.partial { background:#dcfce7; color:#166534; }
 .ci-hub .badge-st.assigned { background:#dbeafe; color:#1d4ed8; }
+.ci-hub .badge-st.awaiting-bm { background:#fef3c7; color:#b45309; }
 .ci-hub .badge-st.failed { background:#fee2e2; color:#b91c1c; }
 .ci-hub .badge-st.processing { background:#ffedd5; color:#c2410c; }
+.ci-hub .as-handoff {
+    display:flex; gap:14px; align-items:flex-start;
+    margin:0 0 16px; padding:14px 16px; border-radius:14px;
+    background:#fffbeb; border:1px solid #fde68a; color:#92400e;
+}
+.ci-hub .as-handoff .ico {
+    width:40px; height:40px; border-radius:12px; flex-shrink:0;
+    display:inline-flex; align-items:center; justify-content:center;
+    background:#fef3c7; color:#b45309; font-size:1.15rem;
+}
+.ci-hub .as-handoff h4 { margin:0 0 4px; font-size:.95rem; font-weight:800; color:#92400e; }
+.ci-hub .as-handoff p { margin:0; font-size:.84rem; line-height:1.45; color:#a16207; }
+.ci-hub .as-waiting {
+    margin:0 0 16px; border:1px solid #e8eef2; border-radius:14px; overflow:hidden; background:#fff;
+}
+.ci-hub .as-waiting-head {
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 14px; background:#f8faf9; border-bottom:1px solid #eef3f0;
+}
+.ci-hub .as-waiting-head strong { font-size:.88rem; color:#0f172a; }
+.ci-hub .as-waiting-head span { font-size:.78rem; color:#64748b; font-weight:600; }
+.ci-hub .as-waiting-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+.ci-hub .as-waiting-table th {
+    text-align:left; font-size:.68rem; text-transform:uppercase; letter-spacing:.04em;
+    color:#64748b; padding:10px 14px; border-bottom:1px solid #eef3f0; background:#fbfcfc; font-weight:800;
+}
+.ci-hub .as-waiting-table td { padding:10px 14px; border-bottom:1px solid #f1f5f9; color:#334155; }
+.ci-hub .as-waiting-table tr:last-child td { border-bottom:0; }
+.ci-hub .as-waiting-table .tag {
+    display:inline-flex; align-items:center; gap:4px; padding:.15rem .5rem; border-radius:999px;
+    background:#fef3c7; color:#b45309; font-size:.72rem; font-weight:800;
+}
 .ci-hub .btn-assign {
     height:34px; padding:0 12px; border-radius:10px; font-weight:800; font-size:.8rem;
     display:inline-flex; align-items:center; gap:.35rem; text-decoration:none;
@@ -725,6 +761,15 @@
 @php
     $activeTab = $tab ?? 'import';
     $stats = $batchStats ?? ['total' => 0, 'completed' => 0, 'processing' => 0, 'failed' => 0];
+    $isBmAssigner = (bool) ($isBmAssigner ?? false);
+    $handoff = $handoff ?? ['key' => 'other', 'label' => 'Assignee', 'unit' => 'organisation', 'next' => 'Assign open contacts onward.'];
+    $handoffKey = (string) ($handoff['key'] ?? 'other');
+    $heroSub = match ($handoffKey) {
+        'bm' => 'Contacts sent to your branch appear here — assign them to your VRM team.',
+        'cluster' => 'Contacts sent to your cluster appear here — send to Branch (BM) or assign to VRMs.',
+        'rd' => 'Contacts in your region appear here — send to Cluster, Branch (BM), or VRMs.',
+        default => 'Import contacts, then hand off: Cluster → Branch (BM) → VRMs.',
+    };
 @endphp
 <div class="container-fluid px-3 py-3 ci-hub">
     <div class="ci-head">
@@ -741,7 +786,7 @@
                     <span class="hero-icon" aria-hidden="true"><i class="bi bi-megaphone"></i></span>
                     <div class="hero-copy">
                         <h1 class="hero-title">Campaigns</h1>
-                        <p class="hero-sub">Import contacts, then assign to cluster, branch, or VRM.</p>
+                        <p class="hero-sub">{{ $heroSub }}</p>
                     </div>
                 </div>
             </div>
@@ -840,12 +885,12 @@
                     </div>
 
                     <div class="ci-actions">
-                        <button type="submit" class="btn-import">
-                            <i class="bi bi-cloud-upload me-1"></i> Upload &amp; Import
+                        <button type="submit" class="btn-import" id="ciImportBtn" disabled>
+                            <i class="bi bi-cloud-upload me-1"></i> <span id="ciImportBtnLabel">Import</span>
                         </button>
                         <span class="hint">
                             <i class="bi bi-info-circle"></i>
-                            Upload creates a batch. Next: Assign to cluster, branch, or VRM.
+                            Choose a file first, then click Import. Next: Assign to cluster, branch, or VRM.
                         </span>
                     </div>
                 </form>
@@ -904,7 +949,13 @@
         <div class="ci-card-head" style="padding-bottom:12px;">
             <div>
                 <h2>Recent Batches</h2>
-                <p>Review import results, then assign unassigned contacts</p>
+                <p>
+                    @if(in_array($handoffKey, ['bm', 'cluster', 'rd'], true))
+                        Open contacts parked at your {{ $handoff['unit'] }} show as assigned to you — hand them to the next role
+                    @else
+                        Pipeline: Awaiting Cluster → Awaiting BM → Assigned to VRMs
+                    @endif
+                </p>
             </div>
         </div>
         <div class="stats-row">
@@ -917,7 +968,7 @@
                 <div class="val">{{ $stats['completed'] }}</div>
             </div>
             <div class="stat info">
-                <div class="lbl">Assigned</div>
+                <div class="lbl">Assigned to VRMs</div>
                 <div class="val">{{ $stats['assigned'] ?? 0 }}</div>
             </div>
             <div class="stat warn">
@@ -937,7 +988,13 @@
                         <th>File Name</th>
                         <th>Organisation</th>
                         <th>Results</th>
-                        <th>Unassigned</th>
+                        <th>
+                            @if($handoffKey === 'bm') For your team
+                            @elseif($handoffKey === 'cluster') For your cluster
+                            @elseif($handoffKey === 'rd') In your region
+                            @else Open / next role
+                            @endif
+                        </th>
                         <th>Status</th>
                         <th>Imported On</th>
                         <th class="text-end">Actions</th>
@@ -947,6 +1004,10 @@
                     @forelse($batches as $batch)
                         @php
                             $unassignedN = (int) ($batch->unassigned_count ?? 0);
+                            $orgType = (string) ($batch->orgUnit->type ?? '');
+                            $parkedAtBranch = $orgType === \App\Models\GoalOrgUnit::TYPE_BRANCH;
+                            $parkedAtCluster = $orgType === \App\Models\GoalOrgUnit::TYPE_CLUSTER;
+                            $parkedAtRegion = $orgType === \App\Models\GoalOrgUnit::TYPE_REGION;
                             $isFullyAssigned = (
                                 $batch->status === 'assigned'
                                 || (
@@ -955,21 +1016,44 @@
                                     && $unassignedN === 0
                                 )
                             );
+                            $mineForRole = $unassignedN > 0 && (
+                                ($handoffKey === 'bm' && $parkedAtBranch)
+                                || ($handoffKey === 'cluster' && $parkedAtCluster)
+                                || ($handoffKey === 'rd' && ($parkedAtCluster || $parkedAtRegion || $parkedAtBranch))
+                            );
                             if ($isFullyAssigned) {
-                                $statusLabel = 'Assigned';
+                                $statusLabel = 'Assigned to VRMs';
                                 $statusClass = 'assigned';
+                            } elseif ($mineForRole) {
+                                $statusLabel = 'Assigned to you';
+                                $statusClass = 'awaiting-bm';
+                            } elseif ($unassignedN > 0 && $parkedAtBranch) {
+                                $statusLabel = 'Awaiting BM';
+                                $statusClass = 'awaiting-bm';
+                            } elseif ($unassignedN > 0 && $parkedAtCluster) {
+                                $statusLabel = 'Awaiting Cluster';
+                                $statusClass = 'awaiting-bm';
+                            } elseif ($unassignedN > 0 && $parkedAtRegion) {
+                                $statusLabel = 'Awaiting RD';
+                                $statusClass = 'awaiting-bm';
                             } else {
                                 $statusLabel = match ($batch->status) {
                                     'ready', 'partial' => 'Completed',
                                     'processing' => 'In Progress',
                                     'failed' => 'Failed',
-                                    'assigned' => 'Assigned',
+                                    'assigned' => 'Assigned to VRMs',
                                     default => ucfirst($batch->status),
                                 };
                                 $statusClass = $batch->status;
                             }
                             $ext = strtolower(pathinfo($batch->filename, PATHINFO_EXTENSION));
                             $fileIcon = $ext === 'csv' ? 'bi-filetype-csv' : 'bi-file-earmark-excel';
+                            $assignBtnLabel = match ($handoffKey) {
+                                'bm' => 'Assign to team',
+                                'cluster' => 'Assign onward',
+                                'rd' => 'Assign onward',
+                                default => 'Assign',
+                            };
                         @endphp
                         <tr>
                             <td>{{ $batch->id }}</td>
@@ -986,6 +1070,8 @@
                                 <span class="badge-st {{ $statusClass }}">
                                     @if($statusClass === 'assigned')
                                         <i class="bi bi-people-fill"></i>
+                                    @elseif($statusClass === 'awaiting-bm')
+                                        <i class="bi bi-person-workspace"></i>
                                     @elseif(in_array($statusClass, ['ready', 'partial'], true))
                                         <i class="bi bi-check-circle-fill"></i>
                                     @elseif($statusClass === 'failed')
@@ -1006,7 +1092,7 @@
                                     @endif
                                     @if($canSplit && (int) ($batch->unassigned_count ?? 0) > 0)
                                         <a href="{{ route('goal.contacts.import', ['tab' => 'assign', 'batch' => $batch->id]) }}" class="btn-assign">
-                                            Assign
+                                            {{ $assignBtnLabel }}
                                         </a>
                                     @endif
                                 </div>
@@ -1041,10 +1127,13 @@
         $draftBranch = (int) ($draft['branch_id'] ?? 0);
         $draftVrm = (int) ($draft['vrm_id'] ?? 0);
         $draftVrmIds = array_map('intval', $draft['vrm_ids'] ?? []);
+        $draftClusterIds = array_map('intval', $draft['cluster_ids'] ?? []);
+        $draftBranchIds = array_map('intval', $draft['branch_ids'] ?? []);
         $draftPercents = $draft['percentages'] ?? [];
         $draftCounts = $draft['counts'] ?? [];
         $validCount = (int) ($summary['unassigned'] ?? $unassigned->count());
         $orgTreeJson = $orgTree ?? ['regions' => [], 'clusters' => [], 'branches' => []];
+        $isOrgSplitAlloc = in_array($draftAlloc, ['equal', 'percentage', 'counts'], true);
     @endphp
 
     @if(!$selectedBatch)
@@ -1072,7 +1161,45 @@
                         @endforeach
                     </div>
                 </div>
-                <span class="as-batch-badge"><i class="bi bi-check-circle-fill"></i> Imported</span>
+                @php
+                    $showRoleHandoff = $canSplit && $validCount > 0 && in_array($handoffKey, ['bm', 'cluster', 'rd'], true);
+                    $waitingOrgNames = $unassigned
+                        ->map(fn ($l) => $l->orgUnit?->name)
+                        ->filter()
+                        ->unique()
+                        ->values();
+                    $waitingAtCluster = $unassigned->filter(fn ($l) => ($l->orgUnit->type ?? '') === \App\Models\GoalOrgUnit::TYPE_CLUSTER)->count();
+                    $waitingAtBranch = $unassigned->filter(fn ($l) => ($l->orgUnit->type ?? '') === \App\Models\GoalOrgUnit::TYPE_BRANCH)->count();
+                    $handoffBadge = match ($handoffKey) {
+                        'bm' => 'Assigned to your branch',
+                        'cluster' => 'Assigned to your cluster',
+                        'rd' => 'In your region — action needed',
+                        default => 'Imported',
+                    };
+                    $handoffTitle = match ($handoffKey) {
+                        'bm' => number_format($validCount).' contact(s) assigned to you (BM)',
+                        'cluster' => number_format($validCount).' contact(s) assigned to you (Cluster Head)',
+                        'rd' => number_format($validCount).' contact(s) in your region need assignment',
+                        default => number_format($validCount).' contact(s) ready to assign',
+                    };
+                    $handoffBody = match ($handoffKey) {
+                        'bm' => 'Sent to your branch'.($waitingOrgNames->isNotEmpty() ? ' ('.$waitingOrgNames->implode(', ').')' : '').'. '.$handoff['next'],
+                        'cluster' => 'Sent to your cluster'.($waitingOrgNames->isNotEmpty() ? ' ('.$waitingOrgNames->implode(', ').')' : '').'. '.$handoff['next'],
+                        'rd' => 'Open contacts in your region'.($waitingOrgNames->isNotEmpty() ? ' ('.$waitingOrgNames->implode(', ').')' : '').'. '.$handoff['next'],
+                        default => $handoff['next'],
+                    };
+                    $waitingStatusTag = match (true) {
+                        $handoffKey === 'bm' => 'With BM',
+                        $handoffKey === 'cluster' => 'With Cluster',
+                        $handoffKey === 'rd' => 'With RD',
+                        default => 'Open',
+                    };
+                @endphp
+                @if($showRoleHandoff)
+                    <span class="as-batch-badge" style="background:#fef3c7;color:#b45309;"><i class="bi bi-person-workspace"></i> {{ $handoffBadge }}</span>
+                @else
+                    <span class="as-batch-badge"><i class="bi bi-check-circle-fill"></i> Imported</span>
+                @endif
                 <div class="as-batch-meta">
                     <span>Imported On: <strong>{{ optional($selectedBatch->created_at)->format('d M Y, H:i') }}</strong></span>
                     <span>Total: <strong>{{ number_format((int)$summary['total']) }}</strong></span>
@@ -1084,12 +1211,91 @@
             </button>
         </div>
 
+        @if($showRoleHandoff)
+            <div class="as-handoff">
+                <span class="ico" aria-hidden="true"><i class="bi bi-person-workspace"></i></span>
+                <div>
+                    <h4>{{ $handoffTitle }}</h4>
+                    <p>{{ $handoffBody }}</p>
+                    @if($handoffKey === 'hq' || $handoffKey === 'rd' || $handoffKey === 'cluster')
+                        @if($waitingAtCluster > 0 || $waitingAtBranch > 0)
+                            <p style="margin-top:6px;">
+                                @if($waitingAtCluster > 0)<strong>{{ number_format($waitingAtCluster) }}</strong> at cluster · @endif
+                                @if($waitingAtBranch > 0)<strong>{{ number_format($waitingAtBranch) }}</strong> at branch (BM)@endif
+                            </p>
+                        @endif
+                    @endif
+                </div>
+            </div>
+            <div class="as-waiting">
+                <div class="as-waiting-head">
+                    <strong>Waiting for your assignment</strong>
+                    <span>Showing {{ min(10, $unassigned->count()) }} of {{ number_format($unassigned->count()) }}</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="as-waiting-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Mobile</th>
+                                <th>Organisation</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($unassigned->take(10) as $lead)
+                                @php
+                                    $leadType = (string) ($lead->orgUnit->type ?? '');
+                                    $rowTag = match ($leadType) {
+                                        \App\Models\GoalOrgUnit::TYPE_BRANCH => 'With BM',
+                                        \App\Models\GoalOrgUnit::TYPE_CLUSTER => 'With Cluster',
+                                        \App\Models\GoalOrgUnit::TYPE_REGION => 'With RD',
+                                        default => $waitingStatusTag,
+                                    };
+                                @endphp
+                                <tr>
+                                    <td>{{ $lead->customer_name ?: '—' }}</td>
+                                    <td>{{ $lead->mobile ?: '—' }}</td>
+                                    <td>{{ $lead->orgUnit?->name ?? '—' }}</td>
+                                    <td><span class="tag"><i class="bi bi-person-workspace"></i> {{ $rowTag }}</span></td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @elseif($canSplit && $validCount > 0 && $handoffKey === 'hq')
+            @php
+                $hqCluster = $unassigned->filter(fn ($l) => ($l->orgUnit->type ?? '') === \App\Models\GoalOrgUnit::TYPE_CLUSTER)->count();
+                $hqBranch = $unassigned->filter(fn ($l) => ($l->orgUnit->type ?? '') === \App\Models\GoalOrgUnit::TYPE_BRANCH)->count();
+            @endphp
+            @if($hqCluster > 0 || $hqBranch > 0)
+                <div class="as-handoff">
+                    <span class="ico" aria-hidden="true"><i class="bi bi-diagram-3"></i></span>
+                    <div>
+                        <h4>Handoff pipeline</h4>
+                        <p>
+                            @if($hqCluster > 0)<strong>{{ number_format($hqCluster) }}</strong> awaiting Cluster Head. @endif
+                            @if($hqBranch > 0)<strong>{{ number_format($hqBranch) }}</strong> awaiting BM. @endif
+                            Remaining open contacts can still be assigned from here.
+                        </p>
+                    </div>
+                </div>
+            @endif
+        @endif
+
         {{-- Import Completed summary --}}
         <div class="as-summary">
             <div class="as-summary-left">
                 <span class="as-summary-check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
                 <div class="as-summary-copy">
-                    <p class="as-summary-title">Import Completed</p>
+                    <p class="as-summary-title">
+                        @if($showRoleHandoff)
+                            Ready for {{ $handoff['label'] }} action
+                        @else
+                            Import Completed
+                        @endif
+                    </p>
                     <p class="as-summary-file">File: <span>{{ $selectedBatch->filename }}</span></p>
                 </div>
             </div>
@@ -1105,7 +1311,7 @@
                     <span class="as-stat-ico green" aria-hidden="true"><i class="bi bi-check2"></i></span>
                     <div class="as-stat-body">
                         <span class="as-stat-val">{{ number_format($validCount) }}</span>
-                        <span class="as-stat-lbl">Valid (Ready to Assign)</span>
+                        <span class="as-stat-lbl">{{ $showRoleHandoff ? 'Waiting on you' : 'Valid (Ready to Assign)' }}</span>
                     </div>
                 </div>
                 <div class="as-stat">
@@ -1143,12 +1349,18 @@
                     <div class="as-card-head">
                         <span class="as-card-ico"><i class="bi bi-diagram-3"></i></span>
                         <div>
-                            <h3>Assign Contacts</h3>
+                            <h3>
+                                @if($handoffKey === 'bm') Assign to your VRM team
+                                @elseif($handoffKey === 'cluster') Assign onward from your cluster
+                                @elseif($handoffKey === 'rd') Assign onward from your region
+                                @else Assign Contacts
+                                @endif
+                            </h3>
                             <p>
                                 @if($canPickBranch)
-                                    Send to a cluster, a branch under it, or directly to VRMs.
+                                    Handoff path: <strong>Cluster Head</strong> → <strong>Branch (BM)</strong> → <strong>VRMs</strong>. Or assign directly to VRMs.
                                 @else
-                                    Assign imported contacts to VRMs in your branch.
+                                    Choose one VRM or split across your branch VRMs.
                                 @endif
                             </p>
                         </div>
@@ -1160,7 +1372,7 @@
                             <span class="as-method-top"><i class="bi bi-diagram-3"></i> To Cluster</span>
                         </button>
                         <button type="button" class="as-method {{ $draftMethod === 'branch' ? 'active' : '' }}" data-method="branch" role="tab" aria-selected="{{ $draftMethod === 'branch' ? 'true' : 'false' }}">
-                            <span class="as-method-top"><i class="bi bi-building"></i> To Branch</span>
+                            <span class="as-method-top"><i class="bi bi-building"></i> To Branch (BM)</span>
                         </button>
                         @endif
                         <button type="button" class="as-method {{ $draftMethod === 'vrm' ? 'active' : '' }}" data-method="vrm" role="tab" aria-selected="{{ $draftMethod === 'vrm' ? 'true' : 'false' }}">
@@ -1198,8 +1410,8 @@
                                 <div class="as-dd-menu as-scroll" role="listbox"></div>
                             </div>
                         </div>
-                        <div class="as-field" data-for="cluster,branch,vrm,custom" data-show="cluster">
-                            <label>Cluster <span class="req">*</span></label>
+                        <div class="as-field" data-for="cluster,branch,vrm,custom" data-show="cluster" id="asClusterSingleField">
+                            <label>Cluster <span class="req" id="asClusterReq">*</span></label>
                             <div class="as-dd" data-dd>
                                 <button type="button" class="as-dd-trigger" aria-haspopup="listbox" aria-expanded="false">
                                     <span class="as-dd-ico"><i class="bi bi-diagram-3"></i></span>
@@ -1219,7 +1431,7 @@
                                 <div class="as-dd-menu as-scroll" role="listbox"></div>
                             </div>
                         </div>
-                        <div class="as-field" data-for="branch,vrm,custom" data-show="branch">
+                        <div class="as-field" data-for="branch,vrm,custom" data-show="branch" id="asBranchSingleField">
                             <label><span id="asBranchLabelText">Branch</span> <span class="req" id="asBranchReq">*</span></label>
                             <div class="as-dd" data-dd>
                                 <button type="button" class="as-dd-trigger" aria-haspopup="listbox" aria-expanded="false">
@@ -1275,15 +1487,81 @@
                         </div>
                     </div>
 
-                    <div class="as-custom-vrms {{ $draftMethod === 'custom' ? 'show' : '' }}" id="asCustomVrms">
+                    @if($canPickBranch)
+                    <div class="as-custom-vrms {{ ($draftMethod === 'cluster' && $isOrgSplitAlloc) ? 'show' : '' }}" id="asCustomClusters" data-split-panel="cluster">
+                        <div class="as-vrm-head">
+                            <span>Select Clusters to split</span>
+                            <span class="js-split-head-right">{{ $draftAlloc === 'percentage' ? '%' : ($draftAlloc === 'counts' ? 'Qty' : '') }}</span>
+                        </div>
+                        <div class="as-vrm-list as-scroll">
+                            @forelse(($orgOptions['clusters'] ?? $clusters) as $c)
+                                <label class="as-vrm-row" data-parent="{{ (int)($c->parent_id ?? 0) }}">
+                                    <input type="checkbox" name="cluster_ids[]" value="{{ $c->id }}" class="js-split-target"
+                                        data-parent="{{ (int)($c->parent_id ?? 0) }}"
+                                        @checked(in_array((int)$c->id, $draftClusterIds, true))>
+                                    <span class="nm">{{ $c->name }}{{ $c->code ? ' ('.$c->code.')' : '' }}</span>
+                                    <span class="inputs">
+                                        <input type="number" min="0" max="100" step="1"
+                                               class="pct {{ $draftAlloc === 'percentage' ? '' : 'hidden' }} js-pct"
+                                               name="percentages[{{ $c->id }}]"
+                                               value="{{ $draftPercents[$c->id] ?? '' }}"
+                                               placeholder="%">
+                                        <input type="number" min="0" max="{{ max($validCount, 0) }}" step="1"
+                                               class="cnt {{ $draftAlloc === 'counts' ? '' : 'hidden' }} js-cnt"
+                                               name="counts[{{ $c->id }}]"
+                                               value="{{ $draftCounts[$c->id] ?? '' }}"
+                                               placeholder="0"
+                                               data-valid-total="{{ $validCount }}">
+                                    </span>
+                                </label>
+                            @empty
+                                <div class="text-muted px-2 py-2" style="font-size:.78rem;">No clusters in your scope.</div>
+                            @endforelse
+                        </div>
+                    </div>
+
+                    <div class="as-custom-vrms {{ ($draftMethod === 'branch' && $isOrgSplitAlloc) ? 'show' : '' }}" id="asCustomBranches" data-split-panel="branch">
+                        <div class="as-vrm-head">
+                            <span>Select Branches (BM) to split</span>
+                            <span class="js-split-head-right">{{ $draftAlloc === 'percentage' ? '%' : ($draftAlloc === 'counts' ? 'Qty' : '') }}</span>
+                        </div>
+                        <div class="as-vrm-list as-scroll">
+                            @forelse(($orgOptions['branches'] ?? $branches) as $b)
+                                <label class="as-vrm-row" data-parent="{{ (int)($b->parent_id ?? 0) }}">
+                                    <input type="checkbox" name="branch_ids[]" value="{{ $b->id }}" class="js-split-target"
+                                        data-parent="{{ (int)($b->parent_id ?? 0) }}"
+                                        @checked(in_array((int)$b->id, $draftBranchIds, true))>
+                                    <span class="nm">{{ $b->name }}{{ $b->code ? ' ('.$b->code.')' : '' }}</span>
+                                    <span class="inputs">
+                                        <input type="number" min="0" max="100" step="1"
+                                               class="pct {{ $draftAlloc === 'percentage' ? '' : 'hidden' }} js-pct"
+                                               name="percentages[{{ $b->id }}]"
+                                               value="{{ $draftPercents[$b->id] ?? '' }}"
+                                               placeholder="%">
+                                        <input type="number" min="0" max="{{ max($validCount, 0) }}" step="1"
+                                               class="cnt {{ $draftAlloc === 'counts' ? '' : 'hidden' }} js-cnt"
+                                               name="counts[{{ $b->id }}]"
+                                               value="{{ $draftCounts[$b->id] ?? '' }}"
+                                               placeholder="0"
+                                               data-valid-total="{{ $validCount }}">
+                                    </span>
+                                </label>
+                            @empty
+                                <div class="text-muted px-2 py-2" style="font-size:.78rem;">No branches in your scope.</div>
+                            @endforelse
+                        </div>
+                    </div>
+                    @endif
+
+                    <div class="as-custom-vrms {{ $draftMethod === 'custom' ? 'show' : '' }}" id="asCustomVrms" data-split-panel="vrm">
                         <div class="as-vrm-head">
                             <span>Select VRMs</span>
-                            <span id="asVrmHeadRight">{{ $draftAlloc === 'percentage' ? '%' : ($draftAlloc === 'counts' ? 'Qty' : '') }}</span>
+                            <span class="js-split-head-right" id="asVrmHeadRight">{{ $draftAlloc === 'percentage' ? '%' : ($draftAlloc === 'counts' ? 'Qty' : '') }}</span>
                         </div>
                         <div class="as-vrm-list as-scroll">
                             @forelse($vrms as $vrm)
                                 <label class="as-vrm-row">
-                                    <input type="checkbox" name="vrm_ids[]" value="{{ $vrm->id }}" class="js-custom-vrm"
+                                    <input type="checkbox" name="vrm_ids[]" value="{{ $vrm->id }}" class="js-custom-vrm js-split-target"
                                         @checked(in_array((int)$vrm->id, $draftVrmIds, true))>
                                     <span class="nm">{{ $vrm->name }}</span>
                                     <span class="inputs">
@@ -1304,10 +1582,11 @@
                                 <div class="text-muted px-2 py-2" style="font-size:.78rem;">No VRMs in your scope.</div>
                             @endforelse
                         </div>
-                        <div class="as-split-meter {{ $draftAlloc === 'counts' ? '' : 'd-none' }}" id="asSplitMeter" data-total="{{ $validCount }}">
-                            <span>Allocated: <strong id="asSplitAllocated">0</strong> / {{ number_format($validCount) }}</span>
-                            <span class="muted" id="asSplitMeterHint">Must total {{ number_format($validCount) }}</span>
-                        </div>
+                    </div>
+
+                    <div class="as-split-meter {{ $draftAlloc === 'counts' ? '' : 'd-none' }}" id="asSplitMeter" data-total="{{ $validCount }}">
+                        <span>Allocated: <strong id="asSplitAllocated">0</strong> / {{ number_format($validCount) }}</span>
+                        <span class="muted" id="asSplitMeterHint">Must total {{ number_format($validCount) }}</span>
                     </div>
 
                     <div class="as-options-panel">
@@ -1329,7 +1608,7 @@
                                 </label>
                                 <label class="as-radio">
                                     <input type="radio" name="allocation_ui" value="counts" @checked($draftAlloc === 'counts')>
-                                    <span>Custom count split<span class="muted">Qty per VRM must total {{ number_format($validCount) }}</span></span>
+                                    <span>Custom count split<span class="muted" id="asCountHint">Qty per target must total {{ number_format($validCount) }}</span></span>
                                 </label>
                             </div>
                             <div class="as-opt-col">
@@ -1413,7 +1692,11 @@
                     </button>
                     <button type="submit" class="btn-assign-go" id="assignConfirmBtn"
                             onclick="return confirm('Assign {{ number_format($validCount) }} valid contact(s) now? Invalid and duplicate rows will not be assigned.');">
-                        <i class="bi bi-people-fill"></i> Assign Contacts
+                        <i class="bi bi-people-fill"></i>
+                        @if($handoffKey === 'bm') Assign to VRM team
+                        @elseif(in_array($handoffKey, ['cluster', 'rd'], true)) Assign onward
+                        @else Assign Contacts
+                        @endif
                     </button>
                 </div>
             </div>
@@ -1433,7 +1716,48 @@
     var nameEl = document.getElementById('importFileName');
     var drop = document.getElementById('ciDrop');
     var chooseBtn = document.getElementById('ciChooseBtn');
+    var importBtn = document.getElementById('ciImportBtn');
+    var importBtnLabel = document.getElementById('ciImportBtnLabel');
+    var form = document.getElementById('ciImportForm');
     var allowedExt = ['csv', 'xlsx', 'xls'];
+
+    function notify(type, message, title, preferModal) {
+        var useModal = !!preferModal || !(window.toastr && typeof toastr[type] === 'function');
+        if (!useModal && window.toastr && typeof toastr[type] === 'function') {
+            toastr[type](message);
+            return;
+        }
+        if (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') {
+            Swal.fire({
+                icon: type === 'error' ? 'error' : (type === 'warning' ? 'warning' : 'success'),
+                title: title || (type === 'error' ? 'Upload issue' : (type === 'warning' ? 'Almost there' : 'Ready')),
+                text: message,
+                confirmButtonColor: '#16a34a'
+            });
+            return;
+        }
+        alert(message);
+    }
+
+    function setImportReady(ready, fileName) {
+        if (importBtn) importBtn.disabled = !ready;
+        if (importBtnLabel) importBtnLabel.textContent = 'Import';
+        if (importBtn) {
+            var icon = importBtn.querySelector('i');
+            if (icon) icon.className = ready ? 'bi bi-check2-circle me-1' : 'bi bi-cloud-upload me-1';
+        }
+        if (ready && fileName) {
+            notify('success', 'File selected: ' + fileName + '. Click Import to upload.', 'File ready', false);
+        }
+    }
+
+    // Server flash → visible Swal so import success/failure is obvious
+    @if(session('success'))
+    notify('success', @json(session('success')), 'Import successful', true);
+    @endif
+    @if($errors->any())
+    notify('error', @json($errors->first()), 'Import failed', true);
+    @endif
 
     if (input && nameEl && drop) {
         function isAllowed(file) {
@@ -1449,7 +1773,9 @@
                 nameEl.textContent = 'Please choose a .csv, .xlsx, or .xls file';
                 nameEl.classList.remove('has-file');
                 drop.classList.remove('has-file');
+                setImportReady(false);
                 input.value = '';
+                notify('error', 'Invalid file type. Please upload a .csv, .xlsx, or .xls file.', 'Upload issue');
                 return;
             }
             try {
@@ -1462,6 +1788,7 @@
             nameEl.textContent = file.name + (file.size ? ' · ' + Math.max(1, Math.round(file.size / 1024)) + ' KB' : '');
             nameEl.classList.add('has-file');
             drop.classList.add('has-file');
+            setImportReady(true, file.name);
         }
 
         function showFromInput() {
@@ -1472,7 +1799,23 @@
                 nameEl.textContent = 'No file chosen';
                 nameEl.classList.remove('has-file');
                 drop.classList.remove('has-file');
+                setImportReady(false);
             }
+        }
+
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                var file = input.files && input.files[0];
+                if (!file) {
+                    e.preventDefault();
+                    notify('warning', 'Please choose a file before importing.', 'Almost there');
+                    return false;
+                }
+                if (importBtn) {
+                    importBtn.disabled = true;
+                    if (importBtnLabel) importBtnLabel.textContent = 'Importing…';
+                }
+            });
         }
 
         input.addEventListener('change', showFromInput);
@@ -1556,13 +1899,16 @@
     var vrmField = document.getElementById('asVrmField');
     var statusSel = document.getElementById('asLeadStatus');
     var customBox = document.getElementById('asCustomVrms');
-    var methodLabels = { branch: 'Branch', cluster: 'Cluster', vrm: 'VRM', custom: 'Split to VRMs' };
+    var methodLabels = { branch: 'Branch (BM)', cluster: 'Cluster Head', vrm: 'VRM', custom: 'Split to VRMs' };
     var methodGuides = {
-        cluster: 'Send contacts to a Cluster. They stay at cluster level until a branch/VRM picks them up.',
-        branch: 'Choose Region → Cluster → Branch. Contacts move to that branch under the selected cluster.',
-        vrm: 'Optionally set Region → Cluster → Branch, then assign every valid contact to one VRM.',
-        custom: 'Select Region/Cluster/Branch context, then split contacts across VRMs (equal or %).'
+        cluster: 'Send to one Cluster Head, or use Equal / Custom split across multiple clusters.',
+        branch: 'Send to one Branch Manager, or use Equal / Custom split across multiple BMs.',
+        vrm: 'Assign every valid contact directly to one VRM (skips Cluster / BM handoff).',
+        custom: 'Split contacts across VRMs now (equal, %, or custom counts).'
     };
+    var clusterBox = document.getElementById('asCustomClusters');
+    var branchBox = document.getElementById('asCustomBranches');
+    var countHint = document.getElementById('asCountHint');
 
     function closeAllDd(except) {
         document.querySelectorAll('.as-dd.open').forEach(function (dd) {
@@ -1697,6 +2043,55 @@
         syncDdUi(statusSel);
     }
 
+    function isSplitAlloc(alloc) {
+        return alloc === 'equal' || alloc === 'percentage' || alloc === 'counts';
+    }
+
+    function activeSplitPanel() {
+        var method = methodInput.value;
+        var alloc = allocInput.value || 'all';
+        if (method === 'custom' || (method === 'vrm' && isSplitAlloc(alloc))) return 'vrm';
+        if (method === 'cluster' && isSplitAlloc(alloc)) return 'cluster';
+        if (method === 'branch' && isSplitAlloc(alloc)) return 'branch';
+        return null;
+    }
+
+    function setPanelEnabled(panel, enabled) {
+        if (!panel) return;
+        panel.classList.toggle('show', !!enabled);
+        panel.querySelectorAll('input').forEach(function (inp) {
+            inp.disabled = !enabled;
+        });
+    }
+
+    function syncSplitPanels() {
+        var panel = activeSplitPanel();
+        var alloc = allocInput.value || 'all';
+        setPanelEnabled(clusterBox, panel === 'cluster');
+        setPanelEnabled(branchBox, panel === 'branch');
+        setPanelEnabled(customBox, panel === 'vrm');
+
+        var clusterSingle = document.getElementById('asClusterSingleField');
+        var branchSingle = document.getElementById('asBranchSingleField');
+        var method = methodInput.value;
+        // Hide single pickers only for the method being split; restore when back to "All"
+        if (clusterSingle && method === 'cluster') {
+            clusterSingle.hidden = isSplitAlloc(alloc);
+        }
+        if (branchSingle && method === 'branch') {
+            branchSingle.hidden = isSplitAlloc(alloc);
+        }
+
+        document.querySelectorAll('.js-split-head-right').forEach(function (el) {
+            el.textContent = alloc === 'percentage' ? '%' : (alloc === 'counts' ? 'Qty' : '');
+        });
+        if (countHint) {
+            var unit = panel === 'cluster' ? 'Cluster' : (panel === 'branch' ? 'BM' : 'VRM');
+            countHint.textContent = 'Qty per ' + unit + ' must total {{ number_format($validCount) }}';
+        }
+        updateSplitMeter();
+    }
+
     function setMethod(method) {
         methodInput.value = method;
         methodBtns.forEach(function (b) {
@@ -1710,20 +2105,39 @@
             field.hidden = allowed.indexOf(method) === -1;
         });
 
-        if (customBox) customBox.classList.toggle('show', method === 'custom');
+        // VRM equal/%/counts uses Split to VRMs panel
+        if (method === 'vrm' && isSplitAlloc(allocInput.value || 'all')) {
+            method = 'custom';
+            methodInput.value = 'custom';
+            methodBtns.forEach(function (b) {
+                var on = b.getAttribute('data-method') === 'custom';
+                b.classList.toggle('active', on);
+                b.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            document.querySelectorAll('.as-field[data-for]').forEach(function (field) {
+                var allowed = (field.getAttribute('data-for') || '').split(',').map(function (s) { return s.trim(); });
+                field.hidden = allowed.indexOf('custom') === -1;
+            });
+        }
 
         var guideText = document.getElementById('asMethodGuideText');
-        if (guideText) guideText.textContent = methodGuides[method] || 'Choose where these contacts should go.';
+        if (guideText) guideText.textContent = methodGuides[methodInput.value] || 'Choose where these contacts should go.';
 
         var branchReq = document.getElementById('asBranchReq');
         var branchLabelText = document.getElementById('asBranchLabelText');
+        var alloc = allocInput.value || 'all';
         if (branchReq && branchLabelText) {
-            var branchRequired = method === 'branch';
+            var branchRequired = methodInput.value === 'branch' && !isSplitAlloc(alloc);
             branchReq.style.display = branchRequired ? '' : 'none';
             branchLabelText.textContent = branchRequired ? 'Branch' : 'Branch (optional)';
         }
+        var clusterReq = document.getElementById('asClusterReq');
+        if (clusterReq) {
+            clusterReq.style.display = (methodInput.value === 'cluster' && !isSplitAlloc(alloc)) ? '' : 'none';
+        }
 
-        updateMethodPath(method);
+        syncSplitPanels();
+        updateMethodPath(methodInput.value);
         updatePreview();
     }
 
@@ -1749,20 +2163,35 @@
         }).join('');
     }
 
+    function checkedSplitNames(panel) {
+        var names = [];
+        if (!panel) return names;
+        panel.querySelectorAll('.js-split-target:checked:not(:disabled)').forEach(function (cb) {
+            var row = cb.closest('.as-vrm-row');
+            var label = row ? row.querySelector('.nm') : null;
+            names.push(label ? label.textContent.trim() : cb.value);
+        });
+        return names;
+    }
+
     function updateSplitMeter() {
         var meter = document.getElementById('asSplitMeter');
         if (!meter) return;
         var total = parseInt(meter.getAttribute('data-total') || '0', 10) || 0;
         var sum = 0;
-        document.querySelectorAll('.js-custom-vrm:checked').forEach(function (cb) {
-            var cnt = cb.closest('.as-vrm-row').querySelector('.js-cnt');
-            sum += cnt ? (parseInt(cnt.value || '0', 10) || 0) : 0;
-        });
+        var panelKey = activeSplitPanel();
+        var panel = panelKey === 'cluster' ? clusterBox : (panelKey === 'branch' ? branchBox : customBox);
+        if (panel) {
+            panel.querySelectorAll('.js-split-target:checked:not(:disabled)').forEach(function (cb) {
+                var cnt = cb.closest('.as-vrm-row').querySelector('.js-cnt');
+                sum += cnt && !cnt.disabled ? (parseInt(cnt.value || '0', 10) || 0) : 0;
+            });
+        }
         var allocatedEl = document.getElementById('asSplitAllocated');
         var hintEl = document.getElementById('asSplitMeterHint');
         if (allocatedEl) allocatedEl.textContent = String(sum);
         meter.classList.remove('ok', 'bad', 'd-none');
-        if (allocInput.value !== 'counts') {
+        if (allocInput.value !== 'counts' || !panelKey) {
             meter.classList.add('d-none');
             return;
         }
@@ -1783,16 +2212,14 @@
         document.querySelectorAll('.js-cnt').forEach(function (el) {
             el.classList.toggle('hidden', alloc !== 'counts');
         });
-        var headRight = document.getElementById('asVrmHeadRight');
-        if (headRight) {
-            headRight.textContent = alloc === 'percentage' ? '%' : (alloc === 'counts' ? 'Qty' : '');
-        }
-        if ((alloc === 'equal' || alloc === 'percentage' || alloc === 'counts') && methodInput.value !== 'custom') {
+
+        // Equal/%/counts on VRM tab → use Split to VRMs
+        if (isSplitAlloc(alloc) && methodInput.value === 'vrm') {
             setMethod('custom');
-            updateSplitMeter();
             return;
         }
-        updateSplitMeter();
+        // Stay on Cluster / Branch and show their split pickers
+        syncSplitPanels();
         updatePreview();
     }
 
@@ -1806,23 +2233,32 @@
         var pvVrm = document.getElementById('pvVrm');
         var pvStatus = document.getElementById('pvStatus');
 
-        if (pvMethod) pvMethod.textContent = methodLabels[method] || method;
+        var methodLabel = methodLabels[method] || method;
+        if (isSplitAlloc(alloc) && (method === 'cluster' || method === 'branch' || method === 'custom')) {
+            methodLabel += ' · ' + (alloc === 'equal' ? 'Equal split' : (alloc === 'percentage' ? '% split' : 'Custom counts'));
+        }
+        if (pvMethod) pvMethod.textContent = methodLabel;
         if (pvRegion) pvRegion.textContent = selectedText(regionSel);
-        if (pvCluster) pvCluster.textContent = selectedText(clusterSel);
-        if (pvBranch) pvBranch.textContent = selectedText(branchSel);
         if (pvStatus) pvStatus.textContent = selectedText(statusSel);
+
+        if (method === 'cluster' && isSplitAlloc(alloc)) {
+            var cNames = checkedSplitNames(clusterBox);
+            if (pvCluster) pvCluster.textContent = cNames.length ? cNames.join(', ') : '—';
+            if (pvBranch) pvBranch.textContent = '—';
+        } else if (method === 'branch' && isSplitAlloc(alloc)) {
+            var bNames = checkedSplitNames(branchBox);
+            if (pvCluster) pvCluster.textContent = selectedText(clusterSel);
+            if (pvBranch) pvBranch.textContent = bNames.length ? bNames.join(', ') : '—';
+        } else {
+            if (pvCluster) pvCluster.textContent = selectedText(clusterSel);
+            if (pvBranch) pvBranch.textContent = selectedText(branchSel);
+        }
 
         if (pvVrm) {
             if (method === 'vrm') {
                 pvVrm.textContent = selectedText(vrmSel);
             } else if (method === 'custom') {
-                var names = [];
-                document.querySelectorAll('.js-custom-vrm:checked').forEach(function (cb) {
-                    var row = cb.closest('.as-vrm-row');
-                    var label = row ? row.querySelector('.nm') : null;
-                    names.push(label ? label.textContent.trim() : cb.value);
-                });
-                pvVrm.textContent = names.length ? names.join(', ') : '—';
+                pvVrm.textContent = (checkedSplitNames(customBox).join(', ') || '—');
             } else {
                 pvVrm.textContent = '—';
             }
@@ -1856,7 +2292,7 @@
         });
     });
 
-    document.querySelectorAll('.js-custom-vrm, .js-pct, .js-cnt').forEach(function (el) {
+    document.querySelectorAll('.js-split-target, .js-pct, .js-cnt').forEach(function (el) {
         el.addEventListener('change', function () {
             updateSplitMeter();
             updatePreview();
@@ -1867,20 +2303,61 @@
         });
     });
 
+    function validateActiveSplit(e) {
+        var panelKey = activeSplitPanel();
+        if (!panelKey) return true;
+        var panel = panelKey === 'cluster' ? clusterBox : (panelKey === 'branch' ? branchBox : customBox);
+        var unit = panelKey === 'cluster' ? 'cluster' : (panelKey === 'branch' ? 'branch (BM)' : 'VRM');
+        var checked = panel ? panel.querySelectorAll('.js-split-target:checked:not(:disabled)') : [];
+        if (!checked.length) {
+            e.preventDefault();
+            alert('Select at least one ' + unit + ' to split across.');
+            return false;
+        }
+        if (allocInput.value === 'percentage') {
+            var pctSum = 0;
+            checked.forEach(function (cb) {
+                var pct = cb.closest('.as-vrm-row').querySelector('.js-pct');
+                pctSum += pct && !pct.disabled ? (parseFloat(pct.value) || 0) : 0;
+            });
+            if (Math.abs(pctSum - 100) > 0.5) {
+                e.preventDefault();
+                alert('Percentages for selected ' + unit + 's must total 100%.');
+                return false;
+            }
+        }
+        if (allocInput.value === 'counts') {
+            var meter = document.getElementById('asSplitMeter');
+            var total = meter ? (parseInt(meter.getAttribute('data-total') || '0', 10) || 0) : 0;
+            var cntSum = 0;
+            checked.forEach(function (cb) {
+                var cnt = cb.closest('.as-vrm-row').querySelector('.js-cnt');
+                cntSum += cnt && !cnt.disabled ? (parseInt(cnt.value || '0', 10) || 0) : 0;
+            });
+            if (cntSum !== total) {
+                e.preventDefault();
+                alert('Custom split must total exactly ' + total + ' contacts (currently ' + cntSum + ').');
+                return false;
+            }
+        }
+        return true;
+    }
+
     form.addEventListener('submit', function (e) {
         var submitter = e.submitter;
         var isDraft = submitter && submitter.getAttribute('formaction') && submitter.getAttribute('formaction').indexOf('/draft') !== -1;
         if (isDraft) return;
 
         var method = methodInput.value;
-        if (method === 'cluster') {
+        var alloc = allocInput.value || 'all';
+        if (method === 'cluster' && !isSplitAlloc(alloc)) {
             if (clusterSel && !clusterSel.value) {
                 e.preventDefault();
                 alert('Select a cluster. Contacts will be parked at that cluster.');
                 return;
             }
         }
-        if (method === 'branch') {
+        if (method === 'branch' && !isSplitAlloc(alloc)) {
             if (clusterSel && !clusterSel.value) {
                 e.preventDefault();
                 alert('Select the cluster first, then the branch under it.');
@@ -1897,39 +2374,7 @@
             alert('Select the VRM who should receive these contacts.');
             return;
         }
-        if (method === 'custom') {
-            var checked = document.querySelectorAll('.js-custom-vrm:checked');
-            if (!checked.length) {
-                e.preventDefault();
-                alert('Select at least one VRM for custom rules.');
-                return;
-            }
-            if (allocInput.value === 'percentage') {
-                var pctSum = 0;
-                checked.forEach(function (cb) {
-                    var pct = cb.closest('.as-vrm-row').querySelector('.js-pct');
-                    pctSum += pct ? (parseFloat(pct.value) || 0) : 0;
-                });
-                if (Math.abs(pctSum - 100) > 0.5) {
-                    e.preventDefault();
-                    alert('Percentages for selected VRMs must total 100%.');
-                    return;
-                }
-            }
-            if (allocInput.value === 'counts') {
-                var meter = document.getElementById('asSplitMeter');
-                var total = meter ? (parseInt(meter.getAttribute('data-total') || '0', 10) || 0) : 0;
-                var cntSum = 0;
-                checked.forEach(function (cb) {
-                    var cnt = cb.closest('.as-vrm-row').querySelector('.js-cnt');
-                    cntSum += cnt ? (parseInt(cnt.value || '0', 10) || 0) : 0;
-                });
-                if (cntSum !== total) {
-                    e.preventDefault();
-                    alert('Custom split must total exactly ' + total + ' contacts (currently ' + cntSum + ').');
-                }
-            }
-        }
+        validateActiveSplit(e);
     });
 
     syncCascade();

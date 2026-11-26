@@ -63,7 +63,7 @@ class GoalContactImportController extends Controller
         ];
 
         $batches = (clone $batchBase)
-            ->with(['importer:id,name', 'orgUnit:id,name,code'])
+            ->with(['importer:id,name', 'orgUnit:id,name,code,type'])
             ->withCount([
                 'leads as unassigned_count' => function ($q) use ($scope) {
                     $q->whereNull('assigned_to')
@@ -92,7 +92,7 @@ class GoalContactImportController extends Controller
                 try {
                     $this->assertImportInScope($selectedBatch);
                     $unassigned = $selectedBatch->unassignedLeads()
-                        ->with('orgUnit:id,name,code')
+                        ->with('orgUnit:id,name,code,type')
                         ->when($scope !== [], fn ($q) => $q->whereIn('goal_org_unit_id', $scope))
                         ->orderBy('id')
                         ->get();
@@ -114,7 +114,7 @@ class GoalContactImportController extends Controller
                 $selectedBatchId = (int) $firstOpen->id;
                 $selectedBatch = GoalContactImport::query()->find($selectedBatchId) ?: $firstOpen;
                 $unassigned = $selectedBatch->unassignedLeads()
-                    ->with('orgUnit:id,name,code')
+                    ->with('orgUnit:id,name,code,type')
                     ->when($scope !== [], fn ($q) => $q->whereIn('goal_org_unit_id', $scope))
                     ->orderBy('id')
                     ->get();
@@ -135,6 +135,9 @@ class GoalContactImportController extends Controller
             ])->values(),
         ];
 
+        $handoff = $this->imports->actorHandoffRole($actor);
+        $isBmAssigner = $canSplit && ($handoff['key'] ?? '') === 'bm';
+
         return view('goal.contacts.import', [
             'batches' => $batches,
             'batchStats' => $batchStats,
@@ -144,6 +147,8 @@ class GoalContactImportController extends Controller
             'orgTree' => $orgTree,
             'vrms' => $vrms,
             'canPickBranch' => $canPickBranch,
+            'isBmAssigner' => $isBmAssigner,
+            'handoff' => $handoff,
             'defaultOrgUnitId' => $this->imports->resolveDefaultOrgUnitId($actor, $scope, null),
             'canSplit' => $canSplit,
             'tab' => $tab,
@@ -311,6 +316,10 @@ class GoalContactImportController extends Controller
             'region_id' => 'nullable|integer|exists:goal_org_units,id',
             'cluster_id' => 'nullable|integer|exists:goal_org_units,id',
             'branch_id' => 'nullable|integer|exists:goal_org_units,id',
+            'cluster_ids' => 'nullable|array',
+            'cluster_ids.*' => 'integer|exists:goal_org_units,id',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'integer|exists:goal_org_units,id',
             'vrm_id' => 'nullable|integer|exists:users,id',
             'vrm_ids' => 'nullable|array',
             'vrm_ids.*' => 'integer|exists:users,id',
@@ -334,12 +343,15 @@ class GoalContactImportController extends Controller
                 ->withErrors(['method' => 'Cluster / branch assign is available to Cluster / RD+ only.']);
         }
 
+        $allocation = $data['allocation'] ?? 'all';
         $result = $this->imports->confirmAssignment($import, $actor, $scope, [
             'method' => $method,
-            'allocation' => $data['allocation'] ?? 'all',
+            'allocation' => $allocation,
             'region_id' => isset($data['region_id']) ? (int) $data['region_id'] : null,
             'cluster_id' => isset($data['cluster_id']) ? (int) $data['cluster_id'] : null,
             'branch_id' => isset($data['branch_id']) ? (int) $data['branch_id'] : null,
+            'cluster_ids' => array_map('intval', $data['cluster_ids'] ?? []),
+            'branch_ids' => array_map('intval', $data['branch_ids'] ?? []),
             'vrm_id' => isset($data['vrm_id']) ? (int) $data['vrm_id'] : null,
             'vrm_ids' => array_map('intval', $data['vrm_ids'] ?? []),
             'percentages' => $data['percentages'] ?? [],
@@ -349,9 +361,20 @@ class GoalContactImportController extends Controller
             'skip_duplicates' => $request->boolean('skip_duplicates', true),
         ]);
 
+        $assignedN = (int) ($result['assigned'] ?? 0);
+        $isSplit = in_array($allocation, ['equal', 'percentage', 'counts'], true);
+        $successMsg = match (true) {
+            $method === 'branch' && $isSplit => $assignedN.' contact(s) split across Branch Manager(s). Each BM can assign their share to VRMs.',
+            $method === 'branch' => $assignedN.' contact(s) sent to the Branch Manager. The BM can now assign them to VRMs.',
+            $method === 'cluster' && $isSplit => $assignedN.' contact(s) split across Cluster Head(s). They can assign onward to branches or VRMs.',
+            $method === 'cluster' => $assignedN.' contact(s) sent to the Cluster Head. They can assign onward to branches or VRMs.',
+            in_array($method, ['vrm', 'custom'], true) => $assignedN.' contact(s) assigned to VRM(s).',
+            default => 'Assignment complete.',
+        };
+
         return redirect()
             ->route('goal.contacts.import', ['tab' => 'assign', 'batch' => $import->id])
-            ->with('success', 'Assignment complete.')
+            ->with('success', $successMsg)
             ->with('assign_result', $result);
     }
 
@@ -366,6 +389,10 @@ class GoalContactImportController extends Controller
             'region_id' => 'nullable|integer|exists:goal_org_units,id',
             'cluster_id' => 'nullable|integer|exists:goal_org_units,id',
             'branch_id' => 'nullable|integer|exists:goal_org_units,id',
+            'cluster_ids' => 'nullable|array',
+            'cluster_ids.*' => 'integer|exists:goal_org_units,id',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'integer|exists:goal_org_units,id',
             'vrm_id' => 'nullable|integer|exists:users,id',
             'vrm_ids' => 'nullable|array',
             'vrm_ids.*' => 'integer|exists:users,id',
@@ -385,6 +412,8 @@ class GoalContactImportController extends Controller
             'region_id' => $data['region_id'] ?? null,
             'cluster_id' => $data['cluster_id'] ?? null,
             'branch_id' => $data['branch_id'] ?? null,
+            'cluster_ids' => $data['cluster_ids'] ?? [],
+            'branch_ids' => $data['branch_ids'] ?? [],
             'vrm_id' => $data['vrm_id'] ?? null,
             'vrm_ids' => $data['vrm_ids'] ?? [],
             'percentages' => $data['percentages'] ?? [],
