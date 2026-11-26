@@ -395,12 +395,38 @@ class GoalContactImportService
         // Stamp destination org when provided (region/cluster/branch cascade).
         $branchId = isset($config['branch_id']) ? (int) $config['branch_id'] : null;
         $clusterId = isset($config['cluster_id']) ? (int) $config['cluster_id'] : null;
+        $regionId = isset($config['region_id']) ? (int) $config['region_id'] : null;
 
         $assigned = 0;
         $failed = 0;
 
         try {
-            if ($method === 'branch') {
+            if ($method === 'region') {
+                if (! $this->actorCanAssignRegion($actor)) {
+                    throw ValidationException::withMessages(['method' => 'You cannot assign to a region.']);
+                }
+                $regionIds = array_values(array_filter(array_map('intval', $config['region_ids'] ?? [])));
+                if (in_array($allocation, ['equal', 'percentage', 'counts'], true)) {
+                    if ($regionIds === [] && $regionId) {
+                        $regionIds = [$regionId];
+                    }
+                    if ($regionIds === []) {
+                        throw ValidationException::withMessages(['region_ids' => 'Select at least one region to split across.']);
+                    }
+                    $counts = $this->resolveSplitCounts($leads->count(), $regionIds, $allocation, $config, 'region');
+                    $result = $this->splitToOrgUnits($leads, $actor, $scopedOrgIds, $counts, GoalOrgUnit::TYPE_REGION);
+                    $assigned = (int) ($result['assigned'] ?? 0);
+                    $this->applyLeadStatus($leads, $leadStatus);
+                    $regionId = $regionIds[0] ?? $regionId;
+                } else {
+                    if (! $regionId) {
+                        throw ValidationException::withMessages(['region_id' => 'Select a region.']);
+                    }
+                    $result = $this->assignAllToRegion($leads, $actor, $scopedOrgIds, $regionId);
+                    $assigned = (int) ($result['assigned'] ?? 0);
+                    $this->applyLeadStatus($leads, $leadStatus);
+                }
+            } elseif ($method === 'branch') {
                 $branchIds = array_values(array_filter(array_map('intval', $config['branch_ids'] ?? [])));
                 if (in_array($allocation, ['equal', 'percentage', 'counts'], true)) {
                     if ($branchIds === [] && $branchId) {
@@ -444,42 +470,45 @@ class GoalContactImportService
                     $assigned = (int) ($result['assigned'] ?? 0);
                     $this->applyLeadStatus($leads, $leadStatus);
                 }
-            } elseif ($method === 'vrm') {
-                $vrmId = isset($config['vrm_id']) ? (int) $config['vrm_id'] : 0;
-                if (! $vrmId) {
-                    throw ValidationException::withMessages(['vrm_id' => 'Select a VRM.']);
-                }
-                if ($branchId) {
-                    foreach ($leads as $lead) {
-                        $lead->goal_org_unit_id = $branchId;
-                        $lead->save();
-                    }
-                }
-                $result = $this->assignAllToOneVrm($leads, $actor, $scopedOrgIds, $vrmId, $notify, $leadStatus);
-                $assigned = (int) ($result['assigned'] ?? 0);
-            } else { // custom — equal or percentage across selected VRMs
+            } elseif ($method === 'vrm' || $method === 'custom') {
+                // Single VRM, or split across VRMs (Equal / % / custom count)
                 $vrmIds = array_values(array_filter(array_map('intval', $config['vrm_ids'] ?? [])));
-                if ($vrmIds === []) {
-                    throw ValidationException::withMessages(['vrm_ids' => 'Select at least one VRM for custom rules.']);
-                }
+                $vrmId = isset($config['vrm_id']) ? (int) $config['vrm_id'] : 0;
                 if ($branchId) {
                     foreach ($leads as $lead) {
                         $lead->goal_org_unit_id = $branchId;
                         $lead->save();
                     }
                 }
-                if ($allocation === 'percentage') {
-                    $percents = array_map('floatval', $config['percentages'] ?? []);
-                    $counts = $this->countsFromPercentages($leads->count(), $vrmIds, $percents);
-                    $result = $this->splitCustomToVrms($leads, $actor, $scopedOrgIds, $counts, $notify, $leadStatus);
-                } elseif ($allocation === 'counts') {
-                    $rawCounts = $config['counts'] ?? [];
-                    $counts = $this->countsFromCustomTotals($leads->count(), $vrmIds, $rawCounts);
-                    $result = $this->splitCustomToVrms($leads, $actor, $scopedOrgIds, $counts, $notify, $leadStatus);
+                if (in_array($allocation, ['equal', 'percentage', 'counts'], true) || $method === 'custom') {
+                    if ($vrmIds === [] && $vrmId) {
+                        $vrmIds = [$vrmId];
+                    }
+                    if ($vrmIds === []) {
+                        throw ValidationException::withMessages(['vrm_ids' => 'Select at least one VRM to split across.']);
+                    }
+                    if ($allocation === 'percentage') {
+                        $percents = array_map('floatval', $config['percentages'] ?? []);
+                        $counts = $this->countsFromPercentages($leads->count(), $vrmIds, $percents);
+                        $result = $this->splitCustomToVrms($leads, $actor, $scopedOrgIds, $counts, $notify, $leadStatus);
+                    } elseif ($allocation === 'counts') {
+                        $rawCounts = $config['counts'] ?? [];
+                        $counts = $this->countsFromCustomTotals($leads->count(), $vrmIds, $rawCounts);
+                        $result = $this->splitCustomToVrms($leads, $actor, $scopedOrgIds, $counts, $notify, $leadStatus);
+                    } else {
+                        $result = $this->splitEvenToVrms($leads, $actor, $scopedOrgIds, $vrmIds, $notify, $leadStatus);
+                    }
+                    $assigned = (int) ($result['assigned'] ?? 0);
+                    $method = 'vrm';
                 } else {
-                    $result = $this->splitEvenToVrms($leads, $actor, $scopedOrgIds, $vrmIds, $notify, $leadStatus);
+                    if (! $vrmId) {
+                        throw ValidationException::withMessages(['vrm_id' => 'Select a VRM.']);
+                    }
+                    $result = $this->assignAllToOneVrm($leads, $actor, $scopedOrgIds, $vrmId, $notify, $leadStatus);
+                    $assigned = (int) ($result['assigned'] ?? 0);
                 }
-                $assigned = (int) ($result['assigned'] ?? 0);
+            } else {
+                throw ValidationException::withMessages(['method' => 'Invalid assign method.']);
             }
         } catch (ValidationException $e) {
             throw $e;
@@ -495,6 +524,8 @@ class GoalContactImportService
             $import->goal_org_unit_id = $branchId;
         } elseif ($clusterId) {
             $import->goal_org_unit_id = $clusterId;
+        } elseif ($regionId) {
+            $import->goal_org_unit_id = $regionId;
         }
 
         $remainingUnassigned = $import->unassignedLeads()
@@ -524,6 +555,20 @@ class GoalContactImportService
     {
         $isSplit = in_array($allocation, ['equal', 'percentage', 'counts'], true);
 
+        if ($method === 'region') {
+            $ids = array_values(array_filter(array_map('intval', $config['region_ids'] ?? [])));
+            if ($ids === [] && ! empty($config['region_id'])) {
+                $ids = [(int) $config['region_id']];
+            }
+            $names = GoalOrgUnit::query()->whereIn('id', $ids)->pluck('name')->all();
+            if ($names === []) {
+                return 'Region'.($isSplit ? ' (split)' : '');
+            }
+            $prefix = count($names) > 1 || $isSplit ? 'Regions: ' : 'Region: ';
+
+            return $prefix.implode(', ', $names);
+        }
+
         if ($method === 'branch') {
             $ids = array_values(array_filter(array_map('intval', $config['branch_ids'] ?? [])));
             if ($ids === [] && ! empty($config['branch_id'])) {
@@ -552,22 +597,24 @@ class GoalContactImportService
             return $prefix.implode(', ', $names);
         }
 
-        if ($method === 'vrm') {
+        if ($method === 'vrm' || $method === 'custom') {
+            if ($isSplit || ! empty($config['vrm_ids'])) {
+                $ids = array_values(array_filter(array_map('intval', $config['vrm_ids'] ?? [])));
+                if ($ids === [] && ! empty($config['vrm_id'])) {
+                    $ids = [(int) $config['vrm_id']];
+                }
+                $names = User::query()->whereIn('id', $ids)->pluck('name')->all();
+
+                return $names === [] ? 'VRMs (split)' : 'VRMs: '.implode(', ', $names);
+            }
             $vrm = User::query()->find((int) ($config['vrm_id'] ?? 0));
 
             return $vrm ? 'VRM: '.$vrm->name : 'VRM';
         }
 
-        if ($method === 'custom') {
-            $ids = array_values(array_filter(array_map('intval', $config['vrm_ids'] ?? [])));
-            $names = User::query()->whereIn('id', $ids)->pluck('name')->all();
-
-            return $names === [] ? 'VRMs (split)' : 'VRMs: '.implode(', ', $names);
-        }
-
         $org = $import->orgUnit;
 
-        return $org ? ($org->type === GoalOrgUnit::TYPE_BRANCH ? 'Branch: ' : ($org->type === GoalOrgUnit::TYPE_CLUSTER ? 'Cluster: ' : '')).$org->name : '—';
+        return $org ? ($org->type === GoalOrgUnit::TYPE_BRANCH ? 'Branch: ' : ($org->type === GoalOrgUnit::TYPE_CLUSTER ? 'Cluster: ' : ($org->type === GoalOrgUnit::TYPE_REGION ? 'Region: ' : ''))).$org->name : '—';
     }
 
     /**
@@ -740,7 +787,11 @@ class GoalContactImportService
         foreach ($orgIds as $orgId) {
             if ($scopedOrgIds !== [] && ! in_array($orgId, array_map('intval', $scopedOrgIds), true)) {
                 throw ValidationException::withMessages([
-                    $orgType === GoalOrgUnit::TYPE_BRANCH ? 'branch_ids' : 'cluster_ids' => 'One or more selected units are outside your scope.',
+                    match ($orgType) {
+                        GoalOrgUnit::TYPE_BRANCH => 'branch_ids',
+                        GoalOrgUnit::TYPE_REGION => 'region_ids',
+                        default => 'cluster_ids',
+                    } => 'One or more selected units are outside your scope.',
                 ]);
             }
         }
@@ -754,15 +805,27 @@ class GoalContactImportService
 
         if ($units->count() !== count($orgIds)) {
             throw ValidationException::withMessages([
-                $orgType === GoalOrgUnit::TYPE_BRANCH ? 'branch_ids' : 'cluster_ids' => 'One or more selected units were not found.',
+                match ($orgType) {
+                    GoalOrgUnit::TYPE_BRANCH => 'branch_ids',
+                    GoalOrgUnit::TYPE_REGION => 'region_ids',
+                    default => 'cluster_ids',
+                } => 'One or more selected units were not found.',
             ]);
         }
 
         $queue = $leads->values();
         $cursor = 0;
         $assigned = 0;
-        $label = $orgType === GoalOrgUnit::TYPE_BRANCH ? 'branch' : 'cluster';
-        $awaiting = $orgType === GoalOrgUnit::TYPE_BRANCH ? 'awaiting BM' : 'awaiting Cluster Head';
+        $label = match ($orgType) {
+            GoalOrgUnit::TYPE_BRANCH => 'branch',
+            GoalOrgUnit::TYPE_REGION => 'region',
+            default => 'cluster',
+        };
+        $awaiting = match ($orgType) {
+            GoalOrgUnit::TYPE_BRANCH => 'awaiting BM',
+            GoalOrgUnit::TYPE_REGION => 'awaiting RD',
+            default => 'awaiting Cluster Head',
+        };
 
         foreach ($countsByOrgId as $orgId => $count) {
             $unit = $units->get((int) $orgId);
@@ -1024,6 +1087,57 @@ class GoalContactImportService
     }
 
     /**
+     * Park unassigned leads on a region (awaiting RD / Cluster Head onward).
+     *
+     * @param  Collection<int, GoalLoanLead>  $leads
+     * @param  list<int>  $scopedOrgIds
+     */
+    protected function assignAllToRegion(Collection $leads, User $actor, array $scopedOrgIds, ?int $regionId): array
+    {
+        if (! $regionId) {
+            throw ValidationException::withMessages(['region_id' => 'Select a region.']);
+        }
+        if ($scopedOrgIds !== [] && ! in_array($regionId, array_map('intval', $scopedOrgIds), true)) {
+            throw ValidationException::withMessages(['region_id' => 'Region is outside your scope.']);
+        }
+
+        $region = GoalOrgUnit::query()
+            ->ofType(GoalOrgUnit::TYPE_REGION)
+            ->active()
+            ->find($regionId);
+
+        if (! $region) {
+            throw ValidationException::withMessages(['region_id' => 'Region not found.']);
+        }
+
+        $moved = 0;
+        foreach ($leads as $lead) {
+            $from = $lead->goal_org_unit_id;
+            $lead->goal_org_unit_id = $region->id;
+            $lead->save();
+
+            GoalLoanLeadEvent::record(
+                $lead,
+                'note',
+                'Assigned to region',
+                'Batch assign → '.$region->name.($region->code ? ' ('.$region->code.')' : '').' (awaiting RD)',
+                [
+                    'meta' => [
+                        'from_org_unit_id' => $from,
+                        'to_org_unit_id' => $region->id,
+                        'region_id' => $region->id,
+                        'import_id' => $lead->goal_contact_import_id,
+                        'by' => $actor->id,
+                    ],
+                ]
+            );
+            $moved++;
+        }
+
+        return ['assigned' => $moved, 'mode' => 'region', 'region_id' => $region->id];
+    }
+
+    /**
      * Spread unassigned leads across branches under the selected cluster (still unassigned).
      *
      * @param  Collection<int, GoalLoanLead>  $leads
@@ -1114,7 +1228,7 @@ class GoalContactImportService
                 'key' => 'hq',
                 'label' => 'HQ',
                 'unit' => 'organisation',
-                'next' => 'Send to Cluster, Branch (BM), or VRMs.',
+                'next' => 'Send to Region, Cluster, Branch (BM), or VRMs.',
             ];
         }
 
@@ -1339,6 +1453,17 @@ class GoalContactImportService
         return $actor->isSuperAdmin()
             || in_array($role, [1, 4, 5, 6, 7], true)
             || in_array(strtolower((string) ($actor->job_role ?? '')), ['rd', 'cluster', 'md', 'ceo'], true);
+    }
+
+    /** MD / CEO / Super Admin (and HQ roles) may park contacts on a Region. */
+    public function actorCanAssignRegion(User $actor): bool
+    {
+        $role = (int) ($actor->crm_role_type ?? -1);
+        $job = strtolower((string) ($actor->job_role ?? ''));
+
+        return $actor->isSuperAdmin()
+            || in_array($role, [1, 4, 5], true)
+            || in_array($job, ['md', 'ceo'], true);
     }
 
     /**

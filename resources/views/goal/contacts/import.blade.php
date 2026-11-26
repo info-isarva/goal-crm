@@ -56,12 +56,23 @@
 .cg-alloc label{font-size:.78rem;font-weight:700;color:#475569;display:inline-flex;align-items:center;gap:5px}
 .cg-split{display:none;margin-top:8px;border:1px solid #eef3f0;border-radius:10px;overflow:hidden}
 .cg-split.show{display:block}
-.cg-split-head{display:flex;justify-content:space-between;gap:8px;padding:8px 12px;background:var(--soft);font-size:.78rem;font-weight:800;color:#334155}
-.cg-split-list{max-height:160px;overflow:auto;-webkit-overflow-scrolling:touch}
-.cg-split-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid #f1f5f9;font-size:.82rem}
-.cg-split-row .nm{flex:1;min-width:0;font-weight:600;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cg-split-row input[type=number]{width:64px;flex:0 0 auto;border:1px solid #e2e8f0;border-radius:6px;padding:4px 6px;min-height:32px;font-size:.8rem}
-.cg-split-row .hidden{display:none}
+.cg-split-head{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 12px;background:var(--soft);font-size:.78rem;font-weight:800;color:#334155}
+.cg-split-head .js-split-total{font-weight:700;color:#64748b;font-size:.72rem}
+.cg-split-list{max-height:220px;overflow:auto;-webkit-overflow-scrolling:touch}
+.cg-split-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.cg-split-table th{text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:#64748b;font-weight:800;padding:8px 10px;background:#f8fafc;border-bottom:1px solid #e8eef2;white-space:nowrap}
+.cg-split-table td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;color:#334155}
+.cg-split-table .col-check{width:36px;text-align:center}
+.cg-split-table .col-pct{width:88px}
+.cg-split-table .col-count{width:110px;font-weight:800}
+.cg-split-table .nm{font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cg-split-table input[type=number]{width:72px;border:1px solid #e2e8f0;border-radius:6px;padding:4px 6px;min-height:30px;font-size:.78rem}
+.cg-split-table .js-pct.hidden,.cg-split-table .js-cnt.hidden{display:none!important}
+.cg-split:not(.mode-pct) .col-pct{display:none}
+.cg-split.mode-equal .js-cnt{display:none!important}
+.cg-split.mode-pct .js-cnt{display:none!important}
+.cg-split.mode-counts .js-split-count{display:none!important}
+.cg-split-table .js-split-count{display:inline-block;min-width:2rem;font-variant-numeric:tabular-nums;color:#0f172a}
 .cg-meter{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 12px;font-size:.78rem;font-weight:700;background:#fffbeb;color:#92400e}
 .cg-meter.ok{background:#ecfdf3;color:#166534}
 .cg-meter.bad{background:#fef2f2;color:#b91c1c}
@@ -153,6 +164,21 @@
 .cg-title-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0}
 .cg-btn-add{background:var(--g)!important;border-color:var(--g)!important;color:#fff!important}
 .cg-btn-add:hover{background:var(--gd)!important;color:#fff!important}
+.cg-btn-tpl{background:#0f766e;border-color:#0f766e;color:#fff}
+.cg-btn-tpl:hover{background:#0d9488;border-color:#0d9488;color:#fff}
+.cg-btn-csv{background:#eff6ff;border-color:#93c5fd!important;color:#1d4ed8}
+.cg-btn-csv:hover{background:#dbeafe;color:#1e40af}
+.cg-btn-xlsx{background:#ecfdf3;border-color:#86efac!important;color:#15803d}
+.cg-btn-xlsx:hover{background:#dcfce7;color:#166534}
+.cg-dd{position:relative}
+.cg-dd > summary{list-style:none;cursor:pointer}
+.cg-dd > summary::-webkit-details-marker{display:none}
+.cg-dd > summary::after{content:"";width:.45rem;height:.45rem;margin-left:2px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);opacity:.7}
+.cg-dd[open] > summary::after{transform:rotate(-135deg) translateY(-1px)}
+.cg-dd-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:180px;padding:6px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.12)}
+.cg-dd-menu a{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:8px;font-weight:800;font-size:.82rem;text-decoration:none;border:1px solid transparent;margin-bottom:4px}
+.cg-dd-menu a:last-child{margin-bottom:0}
+.cg-dd-menu a i{font-size:1rem}
 
 @media (min-width:576px){
   .cg-row2{grid-template-columns:1fr 1fr}
@@ -194,7 +220,10 @@
     $canSplit = (bool) ($canSplit ?? false);
     $activeTab = $tab ?? 'import';
     $stats = $batchStats ?? ['total' => 0, 'active' => 0, 'completed' => 0, 'draft' => 0];
-    $defaultMethod = $canPickBranch ? 'branch' : 'vrm';
+    $canAssignRegion = (bool) ($canAssignRegion ?? false);
+    $canAssignCluster = $canPickBranch && ! in_array($handoffKey, ['cluster', 'bm'], true);
+    $canAssignBranch = $canPickBranch && $handoffKey !== 'bm';
+    $defaultMethod = $canAssignRegion ? 'region' : ($canAssignCluster ? 'cluster' : ($canAssignBranch ? 'branch' : 'vrm'));
 @endphp
 <div class="cg-page">
     <ul class="crumbs">
@@ -219,9 +248,19 @@
             </p>
         </div>
         <div class="cg-title-actions">
-            <a class="cg-btn" href="{{ route('goal.contacts.import.template', ['format' => 'csv']) }}">
-                <i class="bi bi-download"></i> <span class="d-none d-sm-inline">Template</span>
-            </a>
+            <details class="cg-dd">
+                <summary class="cg-btn cg-btn-tpl">
+                    <i class="bi bi-download"></i> <span class="d-none d-sm-inline">Template</span>
+                </summary>
+                <div class="cg-dd-menu" role="menu">
+                    <a class="cg-btn-csv" href="{{ route('goal.contacts.import.template', ['format' => 'csv']) }}" role="menuitem">
+                        <i class="bi bi-filetype-csv"></i> Download CSV
+                    </a>
+                    <a class="cg-btn-xlsx" href="{{ route('goal.contacts.import.template', ['format' => 'xlsx']) }}" role="menuitem">
+                        <i class="bi bi-file-earmark-excel"></i> Download Excel
+                    </a>
+                </div>
+            </details>
             @if($activeTab !== 'assign')
             <a class="cg-btn cg-btn-add" href="{{ route('goal.contacts.import.create') }}">
                 <i class="bi bi-plus-lg"></i> Add Campaign
@@ -267,7 +306,11 @@
                 'formAction' => route('goal.contacts.import.split.store', $selectedBatch),
                 'submitLabel' => $isBmAssigner ? 'Assign to VRM team' : 'Assign Contacts',
                 'showAllMethods' => $canPickBranch,
-                'defaultMethod' => $isBmAssigner ? 'vrm' : ($canPickBranch ? 'branch' : 'vrm'),
+                'canAssignRegion' => $canAssignRegion,
+                'canAssignCluster' => $canAssignCluster,
+                'canAssignBranch' => $canAssignBranch,
+                'handoffKey' => $handoffKey,
+                'defaultMethod' => $isBmAssigner ? 'vrm' : $defaultMethod,
                 'validCount' => $validCount,
                 'embedInNew' => false,
             ])

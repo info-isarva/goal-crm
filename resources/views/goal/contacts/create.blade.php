@@ -50,8 +50,26 @@
 .cg-btn-choose input{display:none}
 .cg-file{margin-top:6px;font-size:.75rem;color:#64748b;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cg-file.has-file{color:#166534}
-.cg-tpl{font-size:.75rem;margin-top:8px}
-.cg-tpl a{color:var(--gd);font-weight:700;text-decoration:none}
+.cg-tpl{margin-top:auto;padding:12px 2px 2px;font-size:.78rem;color:#64748b;display:flex;flex-wrap:wrap;align-items:center;gap:8px;border-top:1px solid #eef3f0;padding-top:12px}
+.cg-tpl .cg-tpl-label{font-weight:700}
+.cg-tpl .cg-tpl-links{display:inline-flex;flex-wrap:wrap;gap:8px}
+.cg-tpl a{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 12px;border-radius:8px;font-weight:800;font-size:.75rem;text-decoration:none;border:1px solid transparent}
+.cg-btn-csv{background:#eff6ff;border-color:#93c5fd!important;color:#1d4ed8}
+.cg-btn-csv:hover{background:#dbeafe;color:#1e40af}
+.cg-btn-xlsx{background:#ecfdf3;border-color:#86efac!important;color:#15803d}
+.cg-btn-xlsx:hover{background:#dcfce7;color:#166534}
+.cg-title-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0}
+.cg-btn-tpl{background:#0f766e;border-color:#0f766e;color:#fff}
+.cg-btn-tpl:hover{background:#0d9488;border-color:#0d9488;color:#fff}
+.cg-dd{position:relative}
+.cg-dd > summary{list-style:none;cursor:pointer}
+.cg-dd > summary::-webkit-details-marker{display:none}
+.cg-dd > summary::after{content:"";width:.45rem;height:.45rem;margin-left:2px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);opacity:.7}
+.cg-dd[open] > summary::after{transform:rotate(-135deg) translateY(-1px)}
+.cg-dd-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:180px;padding:6px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.12)}
+.cg-dd-menu a{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:8px;font-weight:800;font-size:.82rem;text-decoration:none;border:1px solid transparent;margin-bottom:4px}
+.cg-dd-menu a:last-child{margin-bottom:0}
+.cg-dd-menu a i{font-size:1rem}
 
 .cg-field{margin-bottom:10px}
 .cg-field label{display:block;font-size:.75rem;font-weight:700;color:#475569;margin-bottom:4px}
@@ -69,12 +87,23 @@
 .cg-alloc label{font-size:.78rem;font-weight:700;color:#475569;display:inline-flex;align-items:center;gap:5px}
 .cg-split{display:none;margin-top:8px;border:1px solid #eef3f0;border-radius:10px;overflow:hidden}
 .cg-split.show{display:block}
-.cg-split-head{display:flex;justify-content:space-between;gap:8px;padding:8px 12px;background:var(--soft);font-size:.78rem;font-weight:800;color:#334155}
-.cg-split-list{max-height:160px;overflow:auto}
-.cg-split-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid #f1f5f9;font-size:.82rem}
-.cg-split-row .nm{flex:1;min-width:0;font-weight:600;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cg-split-row input[type=number]{width:64px;flex:0 0 auto;border:1px solid #e2e8f0;border-radius:6px;padding:4px 6px;min-height:32px;font-size:.8rem}
-.cg-split-row .hidden{display:none}
+.cg-split-head{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 12px;background:var(--soft);font-size:.78rem;font-weight:800;color:#334155}
+.cg-split-head .js-split-total{font-weight:700;color:#64748b;font-size:.72rem}
+.cg-split-list{max-height:220px;overflow:auto}
+.cg-split-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.cg-split-table th{text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:#64748b;font-weight:800;padding:8px 10px;background:#f8fafc;border-bottom:1px solid #e8eef2;white-space:nowrap}
+.cg-split-table td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;color:#334155}
+.cg-split-table .col-check{width:36px;text-align:center}
+.cg-split-table .col-pct{width:88px}
+.cg-split-table .col-count{width:110px;font-weight:800}
+.cg-split-table .nm{font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cg-split-table input[type=number]{width:72px;border:1px solid #e2e8f0;border-radius:6px;padding:4px 6px;min-height:30px;font-size:.78rem}
+.cg-split-table .js-pct.hidden,.cg-split-table .js-cnt.hidden{display:none!important}
+.cg-split:not(.mode-pct) .col-pct{display:none}
+.cg-split.mode-equal .js-cnt{display:none!important}
+.cg-split.mode-pct .js-cnt{display:none!important}
+.cg-split.mode-counts .js-split-count{display:none!important}
+.cg-split-table .js-split-count{display:inline-block;min-width:2rem;font-variant-numeric:tabular-nums;color:#0f172a}
 .cg-meter{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 12px;font-size:.78rem;font-weight:700;background:#fffbeb;color:#92400e}
 .cg-meter.ok{background:#ecfdf3;color:#166534}
 .cg-meter.bad{background:#fef2f2;color:#b91c1c}
@@ -124,7 +153,11 @@
 @section('content')
 @php
     $canPickBranch = (bool) ($canPickBranch ?? false);
-    $defaultMethod = $canPickBranch ? 'branch' : 'vrm';
+    $canAssignRegion = (bool) ($canAssignRegion ?? false);
+    $handoffKey = (string) (($handoff['key'] ?? '') ?: '');
+    $canAssignCluster = $canPickBranch && ! in_array($handoffKey, ['cluster', 'bm'], true);
+    $canAssignBranch = $canPickBranch && $handoffKey !== 'bm';
+    $defaultMethod = $canAssignRegion ? 'region' : ($canAssignCluster ? 'cluster' : ($canAssignBranch ? 'branch' : 'vrm'));
 @endphp
 <div class="cg-page">
     <ul class="crumbs">
@@ -142,7 +175,20 @@
             <h1>Add Campaign</h1>
             <p>Import contacts, set campaign details, assign to Cluster / Branch / VRM, then track from the list.</p>
         </div>
-        <a class="cg-btn" href="{{ route('goal.contacts.import') }}"><i class="bi bi-arrow-left"></i> Back</a>
+        <div class="cg-title-actions">
+            <details class="cg-dd">
+                <summary class="cg-btn cg-btn-tpl"><i class="bi bi-download"></i> Template</summary>
+                <div class="cg-dd-menu" role="menu">
+                    <a class="cg-btn-csv" href="{{ route('goal.contacts.import.template', ['format' => 'csv']) }}" role="menuitem">
+                        <i class="bi bi-filetype-csv"></i> Download CSV
+                    </a>
+                    <a class="cg-btn-xlsx" href="{{ route('goal.contacts.import.template', ['format' => 'xlsx']) }}" role="menuitem">
+                        <i class="bi bi-file-earmark-excel"></i> Download Excel
+                    </a>
+                </div>
+            </details>
+            <a class="cg-btn" href="{{ route('goal.contacts.import') }}"><i class="bi bi-arrow-left"></i> Back</a>
+        </div>
     </div>
 
     @if($errors->any())
@@ -184,9 +230,11 @@
                     <div class="cg-file" id="importFileName">No file chosen</div>
                 </div>
                 <div class="cg-tpl">
-                    Template:
-                    <a href="{{ route('goal.contacts.import.template', ['format' => 'csv']) }}">CSV</a> ·
-                    <a href="{{ route('goal.contacts.import.template', ['format' => 'xlsx']) }}">Excel</a>
+                    <span class="cg-tpl-label">Template</span>
+                    <div class="cg-tpl-links">
+                        <a class="cg-btn-csv" href="{{ route('goal.contacts.import.template', ['format' => 'csv']) }}"><i class="bi bi-filetype-csv"></i> CSV</a>
+                        <a class="cg-btn-xlsx" href="{{ route('goal.contacts.import.template', ['format' => 'xlsx']) }}"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+                    </div>
                 </div>
             </div>
 
@@ -230,15 +278,19 @@
                         <span class="cg-sec-ico assign"><i class="bi bi-people"></i></span>
                         Assign To
                     </h3>
-                    @include('goal.contacts.partials.assign-form', [
-                        'formId' => null,
-                        'formAction' => null,
-                        'submitLabel' => null,
-                        'showAllMethods' => $canPickBranch,
-                        'defaultMethod' => $defaultMethod,
-                        'validCount' => 0,
-                        'embedInNew' => true,
-                    ])
+                                    @include('goal.contacts.partials.assign-form', [
+                                        'formId' => null,
+                                        'formAction' => null,
+                                        'submitLabel' => null,
+                                        'showAllMethods' => $canPickBranch,
+                                        'canAssignRegion' => $canAssignRegion,
+                                        'canAssignCluster' => $canAssignCluster,
+                                        'canAssignBranch' => $canAssignBranch,
+                                        'handoffKey' => $handoffKey,
+                                        'defaultMethod' => $defaultMethod,
+                                        'validCount' => 0,
+                                        'embedInNew' => true,
+                                    ])
                 </div>
             </div>
 
@@ -318,6 +370,18 @@
     var form = document.getElementById('cgCampaignForm');
     var allowed = ['csv', 'xlsx', 'xls'];
 
+    function applyPreviewCounts(total, valid, dup, invalid) {
+        setSummary(total, valid, dup, invalid);
+        window.__cgValidEstimate = valid;
+        document.querySelectorAll('[data-valid-total]').forEach(function (el) {
+            el.setAttribute('data-valid-total', String(valid));
+            el.max = String(valid);
+        });
+        var meter = document.getElementById('asSplitMeter');
+        if (meter) meter.setAttribute('data-total', String(valid));
+        if (typeof window.cgRefreshSplitHints === 'function') window.cgRefreshSplitHints(valid);
+    }
+
     function setSummary(total, valid, dup, invalid) {
         var t = document.getElementById('sumTotal');
         var v = document.getElementById('sumValid');
@@ -336,32 +400,94 @@
         }
     }
 
+    function mobileColIndex(headerRow) {
+        var aliases = ['mobile', 'mobile number', 'phone', 'phone number', 'contact'];
+        for (var i = 0; i < headerRow.length; i++) {
+            var key = String(headerRow[i] == null ? '' : headerRow[i]).trim().toLowerCase().replace(/[_-]+/g, ' ');
+            if (aliases.indexOf(key) !== -1) return i;
+        }
+        return headerRow.length > 1 ? 1 : 0;
+    }
+
+    function summarizeRows(rows) {
+        if (!rows || !rows.length) {
+            applyPreviewCounts(0, 0, 0, 0);
+            return;
+        }
+        var header = rows[0] || [];
+        var mobileIdx = mobileColIndex(header);
+        var mobiles = {};
+        var total = 0, dup = 0, invalid = 0;
+        for (var i = 1; i < rows.length; i++) {
+            var row = rows[i] || [];
+            var hasData = false;
+            for (var c = 0; c < row.length; c++) {
+                if (String(row[c] == null ? '' : row[c]).trim() !== '') { hasData = true; break; }
+            }
+            if (!hasData) continue;
+            total++;
+            var mobile = String(row[mobileIdx] == null ? '' : row[mobileIdx]).replace(/[^0-9]/g, '');
+            if (!mobile || mobile.length < 8) { invalid++; continue; }
+            if (mobiles[mobile]) dup++; else mobiles[mobile] = 1;
+        }
+        applyPreviewCounts(total, Math.max(0, total - dup - invalid), dup, invalid);
+    }
+
     function previewCsv(file) {
         var reader = new FileReader();
         reader.onload = function () {
             var text = String(reader.result || '');
             var lines = text.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; });
-            var total = Math.max(0, lines.length - 1);
-            var mobiles = {};
-            var dup = 0, invalid = 0;
-            for (var i = 1; i < lines.length; i++) {
-                var cols = lines[i].split(',');
-                var mobile = (cols[1] || cols[0] || '').replace(/[^0-9]/g, '');
-                if (!mobile || mobile.length < 8) { invalid++; continue; }
-                if (mobiles[mobile]) dup++; else mobiles[mobile] = 1;
-            }
-            var valid = Math.max(0, total - dup - invalid);
-            setSummary(total, valid, dup, invalid);
-            window.__cgValidEstimate = valid;
-            document.querySelectorAll('[data-valid-total]').forEach(function (el) {
-                el.setAttribute('data-valid-total', String(valid));
-                el.max = String(valid);
+            var rows = lines.map(function (line) {
+                return line.split(',').map(function (cell) { return cell.replace(/^"|"$/g, '').trim(); });
             });
-            var meter = document.getElementById('asSplitMeter');
-            if (meter) meter.setAttribute('data-total', String(valid));
-            if (typeof window.cgRefreshSplitHints === 'function') window.cgRefreshSplitHints(valid);
+            summarizeRows(rows);
         };
         reader.readAsText(file.slice(0, 2 * 1024 * 1024));
+    }
+
+    function loadXlsxLib(done) {
+        if (window.XLSX) { done(); return; }
+        if (window.__cgXlsxLoading) {
+            window.__cgXlsxLoading.push(done);
+            return;
+        }
+        window.__cgXlsxLoading = [done];
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+        s.onload = function () {
+            var q = window.__cgXlsxLoading || [];
+            window.__cgXlsxLoading = null;
+            q.forEach(function (fn) { try { fn(); } catch (e) {} });
+        };
+        s.onerror = function () {
+            window.__cgXlsxLoading = null;
+            notify('error', 'Could not load Excel preview. Summary will show after Import.', 'Preview');
+            setSummary('—', '—', '—', '—');
+        };
+        document.head.appendChild(s);
+    }
+
+    function previewExcel(file) {
+        setSummary('…', '…', '…', '…');
+        loadXlsxLib(function () {
+            var reader = new FileReader();
+            reader.onload = function () {
+                try {
+                    var wb = window.XLSX.read(reader.result, { type: 'array', dense: true });
+                    var sheet = wb.Sheets[wb.SheetNames[0]];
+                    var rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+                    summarizeRows(rows);
+                } catch (e) {
+                    notify('error', 'Could not read Excel file for preview.', 'Preview');
+                    setSummary('—', '—', '—', '—');
+                }
+            };
+            reader.onerror = function () {
+                setSummary('—', '—', '—', '—');
+            };
+            reader.readAsArrayBuffer(file);
+        });
     }
 
     function setFile(file) {
@@ -384,7 +510,7 @@
         if (submitLabel) submitLabel.textContent = 'Import & Assign';
         notify('success', 'File selected: ' + file.name, 'File ready');
         if (ext === 'csv') previewCsv(file);
-        else setSummary('—', '—', '—', '—');
+        else previewExcel(file);
     }
 
     if (input && drop && nameEl) {
