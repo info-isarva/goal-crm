@@ -132,6 +132,7 @@ class GoalContactImportController extends Controller
         $selectedBatchId = (int) $request->query('batch', 0);
         $selectedBatch = null;
         $unassigned = collect();
+        $batchLeads = collect();
         $batchSummary = null;
         $assignDraft = [];
         if ($selectedBatchId > 0) {
@@ -141,11 +142,16 @@ class GoalContactImportController extends Controller
             if ($selectedBatch) {
                 try {
                     $this->assertImportInScope($selectedBatch);
-                    $unassigned = $selectedBatch->unassignedLeads()
-                        ->with('orgUnit:id,name,code,type')
+                    $batchLeads = $selectedBatch->leads()
+                        ->with([
+                            'orgUnit:id,name,code,type',
+                            'assignee:id,name',
+                        ])
                         ->when($scope !== [], fn ($q) => $q->whereIn('goal_org_unit_id', $scope))
                         ->orderBy('id')
+                        ->limit(500)
                         ->get();
+                    $unassigned = $batchLeads->whereNull('assigned_to')->values();
                     $batchSummary = $this->imports->batchSummary($selectedBatch, $scope);
                     $assignDraft = is_array($selectedBatch->assign_draft) ? $selectedBatch->assign_draft : [];
                 } catch (\Throwable $e) {
@@ -162,12 +168,19 @@ class GoalContactImportController extends Controller
                 ?: $batches->first();
             if ($firstOpen) {
                 $selectedBatchId = (int) $firstOpen->id;
-                $selectedBatch = GoalContactImport::query()->find($selectedBatchId) ?: $firstOpen;
-                $unassigned = $selectedBatch->unassignedLeads()
-                    ->with('orgUnit:id,name,code,type')
+                $selectedBatch = GoalContactImport::query()
+                    ->with(['orgUnit:id,name,code,type'])
+                    ->find($selectedBatchId) ?: $firstOpen;
+                $batchLeads = $selectedBatch->leads()
+                    ->with([
+                        'orgUnit:id,name,code,type',
+                        'assignee:id,name',
+                    ])
                     ->when($scope !== [], fn ($q) => $q->whereIn('goal_org_unit_id', $scope))
                     ->orderBy('id')
+                    ->limit(500)
                     ->get();
+                $unassigned = $batchLeads->whereNull('assigned_to')->values();
                 $batchSummary = $this->imports->batchSummary($selectedBatch, $scope);
                 $assignDraft = is_array($selectedBatch->assign_draft ?? null) ? $selectedBatch->assign_draft : [];
             }
@@ -206,6 +219,7 @@ class GoalContactImportController extends Controller
             'selectedBatchId' => $selectedBatchId,
             'selectedBatch' => $selectedBatch,
             'unassigned' => $unassigned,
+            'batchLeads' => $batchLeads,
             'batchSummary' => $batchSummary,
             'assignDraft' => $assignDraft,
             'assignResult' => session('assign_result'),

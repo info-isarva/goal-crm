@@ -194,6 +194,25 @@
 .cg-view-modal .cg-vm-grid span{display:block;color:#64748b;font-weight:700;font-size:.72rem;margin-bottom:2px}
 .cg-view-modal .cg-vm-desc{margin:12px 0 0;font-size:.84rem;color:#475569;line-height:1.45}
 .cg-view-modal .cg-vm-foot{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:12px 18px 16px;border-top:1px solid #eef3f0}
+.cg-assign-layout{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:1100px){.cg-assign-layout{grid-template-columns:minmax(280px,.95fr) minmax(360px,1.2fr);align-items:start}}
+.cg-loaded{border:1px solid #e8eef2;border-radius:12px;overflow:hidden;background:#fff}
+.cg-loaded-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;background:#f8faf9;border-bottom:1px solid #eef3f0}
+.cg-loaded-head h4{margin:0;font-size:.9rem;font-weight:800;color:#0f172a}
+.cg-loaded-head p{margin:2px 0 0;font-size:.72rem;color:#64748b}
+.cg-loaded-pills{display:flex;flex-wrap:wrap;gap:6px}
+.cg-loaded-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;font-size:.7rem;font-weight:800;background:#e2e8f0;color:#334155}
+.cg-loaded-pill.open{background:#ffedd5;color:#c2410c}
+.cg-loaded-pill.done{background:#dcfce7;color:#166534}
+.cg-loaded-table-wrap{max-height:360px;overflow:auto}
+.cg-loaded-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.cg-loaded-table th{position:sticky;top:0;background:#fbfcfc;text-align:left;font-size:.66rem;text-transform:uppercase;letter-spacing:.03em;color:#64748b;font-weight:800;padding:8px 10px;border-bottom:1px solid #e8eef2;white-space:nowrap}
+.cg-loaded-table td{padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:middle}
+.cg-loaded-table .nm{font-weight:700;color:#0f172a}
+.cg-loaded-table .muted{color:#94a3b8}
+.cg-st{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:.68rem;font-weight:800}
+.cg-st.open{background:#fff7ed;color:#c2410c}
+.cg-st.done{background:#ecfdf3;color:#166534}
 .cg-handoff{margin:0 0 12px;padding:12px 14px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;display:flex;gap:10px;align-items:flex-start}
 .cg-handoff h4{margin:0 0 4px;font-size:.9rem;font-weight:800}
 .cg-handoff p{margin:0;font-size:.8rem}
@@ -323,6 +342,10 @@
         $focusBatch = !empty($selectedBatch) && $activeTab === 'assign';
         $summary = $batchSummary ?? ['total' => 0, 'valid' => 0, 'duplicates' => 0, 'invalid' => 0, 'unassigned' => 0];
         $validCount = (int) ($summary['unassigned'] ?? ($unassigned->count() ?? 0));
+        $batchLeads = $batchLeads ?? collect();
+        $loadedTotal = $batchLeads->count();
+        $loadedAssigned = $batchLeads->whereNotNull('assigned_to')->count();
+        $loadedOpen = $batchLeads->whereNull('assigned_to')->count();
     @endphp
 
     {{-- Assign onward (focused page) --}}
@@ -337,26 +360,94 @@
             </div>
         @endif
         <div class="cg-card" style="margin-bottom:14px;padding:16px 18px">
-            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px">
                 <div>
                     <h3 style="margin:0;font-size:1rem;font-weight:800">Assign: {{ $selectedBatch->displayName() }}</h3>
-                    <p style="margin:2px 0 0;font-size:.78rem;color:#64748b">{{ $selectedBatch->filename }} · {{ number_format($validCount) }} open</p>
+                    <p style="margin:2px 0 0;font-size:.78rem;color:#64748b">{{ $selectedBatch->filename }} · {{ number_format($loadedOpen) }} open of {{ number_format($loadedTotal) }} loaded</p>
                 </div>
                 <a href="{{ route('goal.contacts.import') }}" class="cg-btn"><i class="bi bi-arrow-left"></i> Back to Campaigns</a>
             </div>
-            @include('goal.contacts.partials.assign-form', [
-                'formId' => 'assignForm',
-                'formAction' => route('goal.contacts.import.split.store', $selectedBatch),
-                'submitLabel' => $isBmAssigner ? 'Assign to VRM team' : 'Assign Contacts',
-                'showAllMethods' => $canPickBranch,
-                'canAssignRegion' => $canAssignRegion,
-                'canAssignCluster' => $canAssignCluster,
-                'canAssignBranch' => $canAssignBranch,
-                'handoffKey' => $handoffKey,
-                'defaultMethod' => $isBmAssigner ? 'vrm' : $defaultMethod,
-                'validCount' => $validCount,
-                'embedInNew' => false,
-            ])
+
+            <div class="cg-assign-layout">
+                <div class="cg-loaded">
+                    <div class="cg-loaded-head">
+                        <div>
+                            <h4>Loaded contacts</h4>
+                            <p>Check who is already assigned before splitting</p>
+                        </div>
+                        <div class="cg-loaded-pills">
+                            <span class="cg-loaded-pill">Total {{ number_format($loadedTotal) }}</span>
+                            <span class="cg-loaded-pill open">Open {{ number_format($loadedOpen) }}</span>
+                            <span class="cg-loaded-pill done">Assigned {{ number_format($loadedAssigned) }}</span>
+                        </div>
+                    </div>
+                    <div class="cg-loaded-table-wrap">
+                        <table class="cg-loaded-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th>Mobile</th>
+                                    <th>Org</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($batchLeads as $li => $lead)
+                                    @php
+                                        $isAssigned = filled($lead->assigned_to);
+                                        $orgName = optional($lead->orgUnit)->name ?: '—';
+                                        $assigneeName = optional($lead->assignee)->name;
+                                    @endphp
+                                    <tr>
+                                        <td class="muted">{{ $li + 1 }}</td>
+                                        <td class="nm">{{ $lead->customer_name ?: '—' }}</td>
+                                        <td>{{ $lead->mobile ?: '—' }}</td>
+                                        <td>{{ $orgName }}</td>
+                                        <td>
+                                            @if($isAssigned)
+                                                <span class="cg-st done" title="{{ $assigneeName }}">
+                                                    <i class="bi bi-check2-circle"></i> Assigned{{ $assigneeName ? ': '.$assigneeName : '' }}
+                                                </span>
+                                            @else
+                                                <span class="cg-st open"><i class="bi bi-hourglass-split"></i> Open</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">No contacts loaded for this campaign.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div>
+                    @if($loadedOpen > 0)
+                        @include('goal.contacts.partials.assign-form', [
+                            'formId' => 'assignForm',
+                            'formAction' => route('goal.contacts.import.split.store', $selectedBatch),
+                            'submitLabel' => $isBmAssigner ? 'Assign to VRM team' : 'Assign Contacts',
+                            'showAllMethods' => $canPickBranch,
+                            'canAssignRegion' => $canAssignRegion,
+                            'canAssignCluster' => $canAssignCluster,
+                            'canAssignBranch' => $canAssignBranch,
+                            'handoffKey' => $handoffKey,
+                            'defaultMethod' => $isBmAssigner ? 'vrm' : $defaultMethod,
+                            'validCount' => $validCount,
+                            'embedInNew' => false,
+                        ])
+                    @else
+                        <div style="padding:18px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;text-align:center">
+                            <i class="bi bi-check2-circle" style="font-size:1.6rem;color:#16a34a"></i>
+                            <p style="margin:8px 0 4px;font-weight:800;color:#0f172a">All loaded contacts are already assigned</p>
+                            <p style="margin:0;font-size:.8rem;color:#64748b">Nothing left to split for this campaign.</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
         </div>
     @endif
 
