@@ -155,7 +155,7 @@
 .cg-prog.is-draft .bar>span{background:#ea580c}
 .cg-prog.is-failed .bar>span{background:#dc2626}
 .cg-prog .txt{font-size:.72rem;color:#64748b;font-weight:600}
-.cg-ico{width:34px;height:34px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;color:#475569;text-decoration:none;font-size:.85rem;vertical-align:middle}
+.cg-ico{width:34px;height:34px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;color:#475569;text-decoration:none;font-size:.85rem;vertical-align:middle;cursor:pointer;padding:0;line-height:1;font:inherit}
 .cg-ico:hover{filter:brightness(.96)}
 .cg-ico.tone-view{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
 .cg-ico.tone-view:hover{background:#dbeafe;color:#1e40af}
@@ -171,6 +171,29 @@
 .cg-btn-assign:hover{background:#15803d;border-color:#15803d;color:#fff}
 .cg-btn-assign.tone-await{background:#d97706;border-color:#d97706}
 .cg-btn-assign.tone-await:hover{background:#b45309;border-color:#b45309}
+.cg-view-modal{position:fixed;inset:0;z-index:1080;display:none;align-items:center;justify-content:center;padding:16px}
+.cg-view-modal.open{display:flex}
+.cg-view-modal .cg-vm-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.45)}
+.cg-view-modal .cg-vm-dialog{position:relative;z-index:1;width:min(560px,100%);max-height:min(86vh,720px);overflow:auto;background:#fff;border-radius:14px;border:1px solid #e8eef2;box-shadow:0 24px 60px rgba(15,23,42,.22)}
+.cg-view-modal .cg-vm-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #eef3f0}
+.cg-view-modal .cg-vm-head h3{margin:0;font-size:1.05rem;font-weight:800;color:#0f172a;line-height:1.3}
+.cg-view-modal .cg-vm-head p{margin:4px 0 0;font-size:.8rem;color:#64748b}
+.cg-view-modal .cg-vm-close{width:34px;height:34px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#475569;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.cg-view-modal .cg-vm-close:hover{background:#f8fafc}
+.cg-view-modal .cg-vm-body{padding:16px 18px}
+.cg-view-modal .cg-vm-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:14px}
+@media(min-width:480px){.cg-view-modal .cg-vm-stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.cg-view-modal .cg-vm-stat{padding:10px;border-radius:10px;border:1px solid #e8eef2;border-left:3px solid #94a3b8;background:#fff}
+.cg-view-modal .cg-vm-stat .l{margin:0;font-size:.65rem;font-weight:700;color:#64748b;text-transform:uppercase}
+.cg-view-modal .cg-vm-stat .v{margin:2px 0 0;font-size:1.15rem;font-weight:800;color:#0f172a}
+.cg-view-modal .cg-vm-stat.ok{border-left-color:#16a34a}.cg-view-modal .cg-vm-stat.ok .v{color:#15803d}
+.cg-view-modal .cg-vm-stat.warn{border-left-color:#ea580c}.cg-view-modal .cg-vm-stat.warn .v{color:#c2410c}
+.cg-view-modal .cg-vm-stat.bad{border-left-color:#dc2626}.cg-view-modal .cg-vm-stat.bad .v{color:#b91c1c}
+.cg-view-modal .cg-vm-grid{display:grid;grid-template-columns:1fr;gap:10px;font-size:.84rem;color:#334155}
+@media(min-width:480px){.cg-view-modal .cg-vm-grid{grid-template-columns:1fr 1fr}}
+.cg-view-modal .cg-vm-grid span{display:block;color:#64748b;font-weight:700;font-size:.72rem;margin-bottom:2px}
+.cg-view-modal .cg-vm-desc{margin:12px 0 0;font-size:.84rem;color:#475569;line-height:1.45}
+.cg-view-modal .cg-vm-foot{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:12px 18px 16px;border-top:1px solid #eef3f0}
 .cg-handoff{margin:0 0 12px;padding:12px 14px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;display:flex;gap:10px;align-items:flex-start}
 .cg-handoff h4{margin:0 0 4px;font-size:.9rem;font-weight:800}
 .cg-handoff p{margin:0;font-size:.8rem}
@@ -296,12 +319,14 @@
         </div>
     @endif
 
-    {{-- Assign onward panel for existing campaign --}}
-    @if($activeTab === 'assign' && $canSplit && !empty($selectedBatch))
-        @php
-            $summary = $batchSummary ?? ['total' => 0, 'valid' => 0, 'duplicates' => 0, 'invalid' => 0, 'unassigned' => 0];
-            $validCount = (int) ($summary['unassigned'] ?? ($unassigned->count() ?? 0));
-        @endphp
+    @php
+        $focusBatch = !empty($selectedBatch) && $activeTab === 'assign';
+        $summary = $batchSummary ?? ['total' => 0, 'valid' => 0, 'duplicates' => 0, 'invalid' => 0, 'unassigned' => 0];
+        $validCount = (int) ($summary['unassigned'] ?? ($unassigned->count() ?? 0));
+    @endphp
+
+    {{-- Assign onward (focused page) --}}
+    @if($focusBatch && $canSplit)
         @if($validCount > 0 && in_array($handoffKey, ['bm', 'cluster', 'rd'], true))
             <div class="cg-handoff">
                 <i class="bi bi-person-workspace" style="font-size:1.2rem"></i>
@@ -317,7 +342,7 @@
                     <h3 style="margin:0;font-size:1rem;font-weight:800">Assign: {{ $selectedBatch->displayName() }}</h3>
                     <p style="margin:2px 0 0;font-size:.78rem;color:#64748b">{{ $selectedBatch->filename }} · {{ number_format($validCount) }} open</p>
                 </div>
-                <a href="{{ route('goal.contacts.import') }}" class="cg-btn">Back to Campaigns</a>
+                <a href="{{ route('goal.contacts.import') }}" class="cg-btn"><i class="bi bi-arrow-left"></i> Back to Campaigns</a>
             </div>
             @include('goal.contacts.partials.assign-form', [
                 'formId' => 'assignForm',
@@ -335,6 +360,7 @@
         </div>
     @endif
 
+@if(! $focusBatch)
     {{-- KPI cards --}}
     <div class="cg-kpi-row">
         <div class="cg-kpi-card tone-total">
@@ -468,6 +494,33 @@
                                 default => 'view',
                             };
                             $progTone = in_array($statusClass, ['completed', 'await', 'draft', 'failed', 'active'], true) ? $statusClass : '';
+
+                            // List Assign: handoff owners always; higher authority (HQ / RD / Cluster) can also
+                            // re-assign open contacts (e.g. change Branch while Awaiting BM).
+                            $showAssignBtn = false;
+                            $assignBtnLabel = 'Assign';
+                            if ($canSplit && $unassignedN > 0) {
+                                if ($handoffKey === 'bm' && $orgType === \App\Models\GoalOrgUnit::TYPE_BRANCH) {
+                                    $showAssignBtn = true;
+                                    $assignBtnLabel = 'Assign to team';
+                                } elseif ($handoffKey === 'cluster') {
+                                    $showAssignBtn = true;
+                                    $assignBtnLabel = $orgType === \App\Models\GoalOrgUnit::TYPE_CLUSTER
+                                        ? 'Assign onward'
+                                        : 'Re-assign';
+                                } elseif ($handoffKey === 'rd') {
+                                    $showAssignBtn = true;
+                                    $assignBtnLabel = $orgType === \App\Models\GoalOrgUnit::TYPE_REGION
+                                        ? 'Assign onward'
+                                        : 'Re-assign';
+                                } elseif (in_array($handoffKey, ['hq', 'other'], true)) {
+                                    $showAssignBtn = true;
+                                    $assignBtnLabel = in_array($orgType, [
+                                        \App\Models\GoalOrgUnit::TYPE_BRANCH,
+                                        \App\Models\GoalOrgUnit::TYPE_CLUSTER,
+                                    ], true) ? 'Re-assign' : 'Finish assign';
+                                }
+                            }
                         @endphp
                         <tr>
                             <td>{{ $batches->firstItem() + $i }}</td>
@@ -494,26 +547,41 @@
                                 </div>
                             </td>
                             <td style="white-space:nowrap">
-                                @if($canSplit && $unassignedN > 0)
-                                    <a class="cg-btn cg-btn-assign {{ $statusClass === 'await' ? 'tone-await' : '' }}" href="{{ route('goal.contacts.import', ['tab' => 'assign', 'batch' => $batch->id]) }}">
-                                        {{ $isBmAssigner ? 'Assign to team' : 'Assign' }}
+                                @if($showAssignBtn)
+                                    <a class="cg-btn cg-btn-assign tone-await" href="{{ route('goal.contacts.import', ['tab' => 'assign', 'batch' => $batch->id]) }}" aria-label="{{ $assignBtnLabel }}">
+                                        {{ $assignBtnLabel }}
                                     </a>
                                 @endif
                                 @if($batch->failed_count > 0)
-                                    <a class="cg-ico tone-errors" href="{{ route('goal.contacts.import.errors', $batch) }}" title="Error report"><i class="bi bi-download"></i></a>
+                                    <a class="cg-ico tone-errors" href="{{ route('goal.contacts.import.errors', $batch) }}" aria-label="Error report"><i class="bi bi-download"></i></a>
                                 @endif
-                                <a class="cg-ico tone-{{ $tone }}" href="{{ route('goal.contacts.import', ['tab' => 'assign', 'batch' => $batch->id]) }}" title="View"><i class="bi bi-eye"></i></a>
+                                <button type="button"
+                                    class="cg-ico tone-{{ $tone }} js-cg-view"
+                                    aria-label="View campaign"
+                                    data-name="{{ e($batch->displayName()) }}"
+                                    data-file="{{ e($batch->filename) }}"
+                                    data-imported="{{ optional($batch->created_at)->format('d M Y, H:i') }}"
+                                    data-total="{{ (int) $batch->total_rows }}"
+                                    data-valid="{{ $validN }}"
+                                    data-open="{{ $unassignedN }}"
+                                    data-invalid="{{ $invN }}"
+                                    data-assigned-to="{{ e($assignedLabel) }}"
+                                    data-assigned-on="{{ optional($batch->assigned_at)->format('d M Y, H:i') ?: '—' }}"
+                                    data-source="{{ e($batch->lead_source ?: '—') }}"
+                                    data-status="{{ e($statusLabel) }}"
+                                    data-desc="{{ e($batch->description ?: '') }}"
+                                    data-assign-url="{{ $showAssignBtn ? route('goal.contacts.import', ['tab' => 'assign', 'batch' => $batch->id]) : '' }}"
+                                    data-assign-label="{{ e($assignBtnLabel) }}"
+                                ><i class="bi bi-eye"></i></button>
                             </td>
                         </tr>
                     @empty
                         <tr>
                             <td colspan="10" class="text-center text-muted py-5">
                                 No campaigns yet.
-                                @if($activeTab !== 'assign')
-                                    <a class="cg-btn cg-btn-add" style="margin-left:8px" href="{{ route('goal.contacts.import.create') }}">
-                                        <i class="bi bi-plus-lg"></i> Add Campaign
-                                    </a>
-                                @endif
+                                <a class="cg-btn cg-btn-add" style="margin-left:8px" href="{{ route('goal.contacts.import.create') }}">
+                                    <i class="bi bi-plus-lg"></i> Add Campaign
+                                </a>
                             </td>
                         </tr>
                     @endforelse
@@ -524,6 +592,40 @@
             <div class="p-3">{{ $batches->links() }}</div>
         @endif
     </div>
+@endif
+
+{{-- Campaign view popup --}}
+<div class="cg-view-modal" id="cgViewModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="cgVmTitle">
+    <div class="cg-vm-backdrop" data-cg-close></div>
+    <div class="cg-vm-dialog">
+        <div class="cg-vm-head">
+            <div style="min-width:0">
+                <h3 id="cgVmTitle">Campaign</h3>
+                <p id="cgVmSub">—</p>
+            </div>
+            <button type="button" class="cg-vm-close" data-cg-close aria-label="Close"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="cg-vm-body">
+            <div class="cg-vm-stats">
+                <div class="cg-vm-stat"><p class="l">Total</p><p class="v" id="cgVmTotal">0</p></div>
+                <div class="cg-vm-stat ok"><p class="l">Valid</p><p class="v" id="cgVmValid">0</p></div>
+                <div class="cg-vm-stat warn"><p class="l">Open</p><p class="v" id="cgVmOpen">0</p></div>
+                <div class="cg-vm-stat bad"><p class="l">Invalid</p><p class="v" id="cgVmInvalid">0</p></div>
+            </div>
+            <div class="cg-vm-grid">
+                <div><span>Assigned to</span><div id="cgVmAssignedTo">—</div></div>
+                <div><span>Assigned on</span><div id="cgVmAssignedOn">—</div></div>
+                <div><span>Lead source</span><div id="cgVmSource">—</div></div>
+                <div><span>Status</span><div id="cgVmStatus">—</div></div>
+            </div>
+            <p class="cg-vm-desc" id="cgVmDesc" hidden></p>
+        </div>
+        <div class="cg-vm-foot">
+            <button type="button" class="cg-btn" data-cg-close>Close</button>
+            <a class="cg-btn cg-btn-assign tone-await" id="cgVmAssign" href="#" hidden>Assign onward</a>
+        </div>
+    </div>
+</div>
 </div>
 @endsection
 
@@ -544,6 +646,58 @@
     @if($errors->any())
     notify('error', @json($errors->first()), 'Error');
     @endif
+
+    var modal = document.getElementById('cgViewModal');
+    if (!modal) return;
+
+    function fmt(n) {
+        n = parseInt(n, 10) || 0;
+        return n.toLocaleString();
+    }
+    function openView(btn) {
+        document.getElementById('cgVmTitle').textContent = btn.getAttribute('data-name') || 'Campaign';
+        document.getElementById('cgVmSub').textContent =
+            (btn.getAttribute('data-file') || '') + ' · Imported ' + (btn.getAttribute('data-imported') || '—');
+        document.getElementById('cgVmTotal').textContent = fmt(btn.getAttribute('data-total'));
+        document.getElementById('cgVmValid').textContent = fmt(btn.getAttribute('data-valid'));
+        document.getElementById('cgVmOpen').textContent = fmt(btn.getAttribute('data-open'));
+        document.getElementById('cgVmInvalid').textContent = fmt(btn.getAttribute('data-invalid'));
+        document.getElementById('cgVmAssignedTo').textContent = btn.getAttribute('data-assigned-to') || '—';
+        document.getElementById('cgVmAssignedOn').textContent = btn.getAttribute('data-assigned-on') || '—';
+        document.getElementById('cgVmSource').textContent = btn.getAttribute('data-source') || '—';
+        document.getElementById('cgVmStatus').textContent = btn.getAttribute('data-status') || '—';
+        var desc = (btn.getAttribute('data-desc') || '').trim();
+        var descEl = document.getElementById('cgVmDesc');
+        if (desc) { descEl.hidden = false; descEl.textContent = desc; }
+        else { descEl.hidden = true; descEl.textContent = ''; }
+        var assign = document.getElementById('cgVmAssign');
+        var assignUrl = btn.getAttribute('data-assign-url') || '';
+        if (assignUrl) {
+            assign.hidden = false;
+            assign.href = assignUrl;
+            assign.textContent = btn.getAttribute('data-assign-label') || 'Assign onward';
+        } else {
+            assign.hidden = true;
+            assign.removeAttribute('href');
+        }
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeView() {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+    document.querySelectorAll('.js-cg-view').forEach(function (btn) {
+        btn.addEventListener('click', function () { openView(btn); });
+    });
+    modal.querySelectorAll('[data-cg-close]').forEach(function (el) {
+        el.addEventListener('click', closeView);
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal.classList.contains('open')) closeView();
+    });
 })();
 </script>
 @endpush

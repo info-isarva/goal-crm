@@ -122,11 +122,11 @@ class GoalContactImportController extends Controller
             'processing' => $allForStats->where('status', 'processing')->count(),
         ];
 
-        $tab = in_array($request->query('tab'), ['import', 'assign'], true)
+        $tab = in_array($request->query('tab'), ['import', 'assign', 'view'], true)
             ? $request->query('tab')
             : 'import';
         if ($tab === 'assign' && ! $canSplit) {
-            $tab = 'import';
+            $tab = 'view';
         }
 
         $selectedBatchId = (int) $request->query('batch', 0);
@@ -135,7 +135,9 @@ class GoalContactImportController extends Controller
         $batchSummary = null;
         $assignDraft = [];
         if ($selectedBatchId > 0) {
-            $selectedBatch = GoalContactImport::query()->find($selectedBatchId);
+            $selectedBatch = GoalContactImport::query()
+                ->with(['orgUnit:id,name,code,type'])
+                ->find($selectedBatchId);
             if ($selectedBatch) {
                 try {
                     $this->assertImportInScope($selectedBatch);
