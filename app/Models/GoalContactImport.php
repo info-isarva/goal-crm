@@ -14,18 +14,50 @@ class GoalContactImport extends Model
         'imported_by',
         'goal_org_unit_id',
         'filename',
+        'campaign_name',
+        'description',
+        'lead_source',
         'source',
         'total_rows',
         'success_count',
         'failed_count',
         'status',
         'default_lead_status',
+        'assign_method',
+        'assigned_label',
+        'assigned_at',
         'assign_draft',
     ];
 
     protected $casts = [
         'assign_draft' => 'array',
+        'assigned_at' => 'datetime',
     ];
+
+    public function displayName(): string
+    {
+        $name = trim((string) ($this->campaign_name ?? ''));
+
+        return $name !== '' ? $name : (string) $this->filename;
+    }
+
+    public function campaignStatusLabel(int $unassignedCount = 0): string
+    {
+        if ($this->status === 'processing') {
+            return 'Draft';
+        }
+        if ($this->status === 'failed') {
+            return 'Failed';
+        }
+        if ($this->status === 'assigned' || ((int) $this->success_count > 0 && $unassignedCount === 0)) {
+            return 'Completed';
+        }
+        if ((int) $this->success_count > 0) {
+            return 'Active';
+        }
+
+        return 'Draft';
+    }
 
     public function importer(): BelongsTo
     {

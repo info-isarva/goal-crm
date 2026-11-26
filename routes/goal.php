@@ -96,6 +96,7 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::post('allocation/{lead}', [GoalAllocationController::class, 'assign'])->name('allocation.assign');
 
     Route::get('contacts/import', [GoalContactImportController::class, 'index'])->name('contacts.import');
+    Route::get('contacts/import/create', [GoalContactImportController::class, 'create'])->name('contacts.import.create');
     Route::post('contacts/import', [GoalContactImportController::class, 'store'])->name('contacts.import.store');
     Route::get('contacts/import/template', [GoalContactImportController::class, 'template'])->name('contacts.import.template');
     Route::get('contacts/import/{import}', [GoalContactImportController::class, 'show'])->name('contacts.import.show');

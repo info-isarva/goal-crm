@@ -90,13 +90,17 @@ class GoalContactImportService
     /**
      * @param  list<int>  $scopedOrgIds
      */
+    /**
+     * @param  array{campaign_name?:string,description?:string,lead_source?:string}  $campaign
+     */
     public function processUpload(
         User $actor,
         UploadedFile $file,
         array $scopedOrgIds,
         ?int $defaultOrgUnitId,
         string $defaultLeadStatus = 'Future Prospect',
-        bool $allowBranchCode = true
+        bool $allowBranchCode = true,
+        array $campaign = []
     ): GoalContactImport {
         $meta = $this->detectSource($file);
         if ($meta['readerType'] === null && ! in_array($meta['extension'], ['csv', 'xlsx', 'xls'], true)) {
@@ -129,11 +133,19 @@ class GoalContactImportService
 
         $defaultOrgUnitId = $this->resolveDefaultOrgUnitId($actor, $scopedOrgIds, $defaultOrgUnitId);
         $branchMap = $this->branchCodeMap($scopedOrgIds);
+        $campaignName = trim((string) ($campaign['campaign_name'] ?? ''));
+        $leadSource = trim((string) ($campaign['lead_source'] ?? 'Imported List'));
+        if ($leadSource === '') {
+            $leadSource = 'Imported List';
+        }
 
         $import = GoalContactImport::create([
             'imported_by' => $actor->id,
             'goal_org_unit_id' => $defaultOrgUnitId,
             'filename' => $file->getClientOriginalName() ?: 'contacts.'.$meta['extension'],
+            'campaign_name' => $campaignName !== '' ? $campaignName : null,
+            'description' => filled($campaign['description'] ?? null) ? (string) $campaign['description'] : null,
+            'lead_source' => $leadSource,
             'source' => in_array($meta['extension'], ['csv', 'xlsx', 'xls'], true) ? $meta['extension'] : 'csv',
             'total_rows' => 0,
             'success_count' => 0,
@@ -268,7 +280,8 @@ class GoalContactImportService
 
         $email = trim((string) ($payload['email'] ?? ''));
         $product = trim((string) ($payload['product'] ?? ''));
-        $source = trim((string) ($payload['source'] ?? '')) ?: 'Import';
+        $source = trim((string) ($payload['source'] ?? ''))
+            ?: (trim((string) ($import->lead_source ?? '')) ?: 'Import');
         $notes = trim((string) ($payload['notes'] ?? ''));
         $loanAmount = $this->parseAmount($payload['loan_amount'] ?? null);
         $status = $import->default_lead_status ?: 'Future Prospect';
@@ -477,6 +490,7 @@ class GoalContactImportService
 
         $import->assign_draft = null;
         $import->default_lead_status = $leadStatus;
+        $import->assign_method = $method;
         if ($branchId) {
             $import->goal_org_unit_id = $branchId;
         } elseif ($clusterId) {
@@ -490,6 +504,8 @@ class GoalContactImportService
             $import->status = 'assigned';
         }
 
+        $import->assigned_label = $this->buildAssignedLabel($method, $allocation, $config, $import);
+        $import->assigned_at = now();
         $import->save();
 
         return [
@@ -499,6 +515,59 @@ class GoalContactImportService
             'mode' => $method,
             'valid' => $valid,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    protected function buildAssignedLabel(string $method, string $allocation, array $config, GoalContactImport $import): string
+    {
+        $isSplit = in_array($allocation, ['equal', 'percentage', 'counts'], true);
+
+        if ($method === 'branch') {
+            $ids = array_values(array_filter(array_map('intval', $config['branch_ids'] ?? [])));
+            if ($ids === [] && ! empty($config['branch_id'])) {
+                $ids = [(int) $config['branch_id']];
+            }
+            $names = GoalOrgUnit::query()->whereIn('id', $ids)->pluck('name')->all();
+            if ($names === []) {
+                return 'Branch'.($isSplit ? ' (split)' : '');
+            }
+            $prefix = count($names) > 1 || $isSplit ? 'Branches: ' : 'Branch: ';
+
+            return $prefix.implode(', ', $names);
+        }
+
+        if ($method === 'cluster') {
+            $ids = array_values(array_filter(array_map('intval', $config['cluster_ids'] ?? [])));
+            if ($ids === [] && ! empty($config['cluster_id'])) {
+                $ids = [(int) $config['cluster_id']];
+            }
+            $names = GoalOrgUnit::query()->whereIn('id', $ids)->pluck('name')->all();
+            if ($names === []) {
+                return 'Cluster'.($isSplit ? ' (split)' : '');
+            }
+            $prefix = count($names) > 1 || $isSplit ? 'Clusters: ' : 'Cluster: ';
+
+            return $prefix.implode(', ', $names);
+        }
+
+        if ($method === 'vrm') {
+            $vrm = User::query()->find((int) ($config['vrm_id'] ?? 0));
+
+            return $vrm ? 'VRM: '.$vrm->name : 'VRM';
+        }
+
+        if ($method === 'custom') {
+            $ids = array_values(array_filter(array_map('intval', $config['vrm_ids'] ?? [])));
+            $names = User::query()->whereIn('id', $ids)->pluck('name')->all();
+
+            return $names === [] ? 'VRMs (split)' : 'VRMs: '.implode(', ', $names);
+        }
+
+        $org = $import->orgUnit;
+
+        return $org ? ($org->type === GoalOrgUnit::TYPE_BRANCH ? 'Branch: ' : ($org->type === GoalOrgUnit::TYPE_CLUSTER ? 'Cluster: ' : '')).$org->name : '—';
     }
 
     /**

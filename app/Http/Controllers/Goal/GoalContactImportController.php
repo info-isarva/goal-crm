@@ -44,35 +44,82 @@ class GoalContactImportController extends Controller
                 });
             });
 
-        $batchStats = [
-            'total' => (clone $batchBase)->count(),
-            'completed' => (clone $batchBase)->whereIn('status', ['ready', 'partial', 'assigned'])->count(),
-            'assigned' => (clone $batchBase)->where(function ($q) use ($scope) {
-                $q->where('status', 'assigned')
-                    ->orWhere(function ($inner) use ($scope) {
-                        $inner->whereIn('status', ['ready', 'partial'])
-                            ->where('success_count', '>', 0)
-                            ->whereDoesntHave('leads', function ($l) use ($scope) {
-                                $l->whereNull('assigned_to')
-                                    ->when($scope !== [], fn ($x) => $x->whereIn('goal_org_unit_id', $scope));
-                            });
-                    });
-            })->count(),
-            'processing' => (clone $batchBase)->where('status', 'processing')->count(),
-            'failed' => (clone $batchBase)->where('status', 'failed')->count(),
-        ];
+        $search = trim((string) $request->query('q', ''));
+        $filterStatus = (string) $request->query('status', '');
+        $filterRegion = (int) $request->query('region_id', 0);
+        $filterCluster = (int) $request->query('cluster_id', 0);
+        $filterBranch = (int) $request->query('branch_id', 0);
+        $filterDate = (string) $request->query('import_date', '');
 
-        $batches = (clone $batchBase)
+        $listQuery = (clone $batchBase)
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('campaign_name', 'like', '%'.$search.'%')
+                        ->orWhere('filename', 'like', '%'.$search.'%');
+                });
+            })
+            ->when($filterBranch > 0, fn ($q) => $q->where('goal_org_unit_id', $filterBranch))
+            ->when($filterCluster > 0 && $filterBranch === 0, function ($q) use ($filterCluster) {
+                $cluster = \App\Models\GoalOrgUnit::query()->find($filterCluster);
+                if ($cluster) {
+                    $ids = array_merge([(int) $cluster->id], array_map('intval', $cluster->descendantIds()));
+                    $q->whereIn('goal_org_unit_id', $ids);
+                }
+            })
+            ->when($filterRegion > 0 && $filterCluster === 0 && $filterBranch === 0, function ($q) use ($filterRegion) {
+                $region = \App\Models\GoalOrgUnit::query()->find($filterRegion);
+                if ($region) {
+                    $ids = array_merge([(int) $region->id], array_map('intval', $region->descendantIds()));
+                    $q->whereIn('goal_org_unit_id', $ids);
+                }
+            })
+            ->when($filterDate !== '', fn ($q) => $q->whereDate('created_at', $filterDate));
+
+        $batches = (clone $listQuery)
             ->with(['importer:id,name', 'orgUnit:id,name,code,type'])
             ->withCount([
                 'leads as unassigned_count' => function ($q) use ($scope) {
                     $q->whereNull('assigned_to')
                         ->when($scope !== [], fn ($inner) => $inner->whereIn('goal_org_unit_id', $scope));
                 },
+                'rows as duplicate_count' => fn ($q) => $q->where('status', 'duplicate'),
+                'rows as invalid_count' => fn ($q) => $q->where('status', 'error'),
+                'leads as assigned_people_count' => fn ($q) => $q->whereNotNull('assigned_to'),
             ])
             ->latest()
             ->paginate(15)
             ->withQueryString();
+
+        // Campaign status chips (Active / Completed / Draft) derived after counts
+        if ($filterStatus !== '') {
+            $batches->setCollection(
+                $batches->getCollection()->filter(function ($batch) use ($filterStatus) {
+                    $label = strtolower($batch->campaignStatusLabel((int) ($batch->unassigned_count ?? 0)));
+
+                    return $label === strtolower($filterStatus);
+                })->values()
+            );
+        }
+
+        $allForStats = (clone $batchBase)
+            ->withCount([
+                'leads as unassigned_count' => function ($q) use ($scope) {
+                    $q->whereNull('assigned_to')
+                        ->when($scope !== [], fn ($inner) => $inner->whereIn('goal_org_unit_id', $scope));
+                },
+            ])
+            ->get(['id', 'status', 'success_count']);
+
+        $batchStats = [
+            'total' => $allForStats->count(),
+            'active' => $allForStats->filter(fn ($b) => $b->campaignStatusLabel((int) ($b->unassigned_count ?? 0)) === 'Active')->count(),
+            'completed' => $allForStats->filter(fn ($b) => $b->campaignStatusLabel((int) ($b->unassigned_count ?? 0)) === 'Completed')->count(),
+            'draft' => $allForStats->filter(fn ($b) => $b->campaignStatusLabel((int) ($b->unassigned_count ?? 0)) === 'Draft')->count(),
+            'failed' => $allForStats->where('status', 'failed')->count(),
+            // legacy keys kept for safety
+            'assigned' => $allForStats->filter(fn ($b) => $b->campaignStatusLabel((int) ($b->unassigned_count ?? 0)) === 'Completed')->count(),
+            'processing' => $allForStats->where('status', 'processing')->count(),
+        ];
 
         $tab = in_array($request->query('tab'), ['import', 'assign'], true)
             ? $request->query('tab')
@@ -161,6 +208,34 @@ class GoalContactImportController extends Controller
         ]);
     }
 
+    public function create()
+    {
+        $this->requireGoalPermission('import_contacts_guard');
+
+        $actor = auth()->user();
+        $scope = $this->scopedOrgIds();
+        $canPickBranch = $this->imports->actorCanPickBranch($actor);
+        $canSplit = $actor->hasCrmPermission('split_contacts_guard');
+        $branches = $this->imports->branchesInScope($scope);
+        $clusters = $canPickBranch ? $this->imports->clustersInScope($scope) : collect();
+        $orgOptions = $canPickBranch
+            ? $this->imports->orgOptionsInScope($scope)
+            : ['regions' => collect(), 'clusters' => collect(), 'branches' => $branches];
+        $vrms = $canSplit ? $this->imports->vrmsInScope($scope) : collect();
+        $handoff = $this->imports->actorHandoffRole($actor);
+
+        return view('goal.contacts.create', [
+            'branches' => $branches,
+            'clusters' => $clusters,
+            'orgOptions' => $orgOptions,
+            'vrms' => $vrms,
+            'canPickBranch' => $canPickBranch,
+            'canSplit' => $canSplit,
+            'handoff' => $handoff,
+            'defaultOrgUnitId' => $this->imports->resolveDefaultOrgUnitId($actor, $scope, null),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $this->requireGoalPermission('import_contacts_guard');
@@ -168,36 +243,92 @@ class GoalContactImportController extends Controller
         $actor = auth()->user();
         $scope = $this->scopedOrgIds();
         $canPickBranch = $this->imports->actorCanPickBranch($actor);
+        $canSplit = $actor->hasCrmPermission('split_contacts_guard');
 
-        $request->validate([
+        $data = $request->validate([
             'import_file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+            'campaign_name' => 'required|string|max:180',
+            'lead_source' => 'nullable|string|max:80',
+            'lead_status' => 'nullable|in:Future Prospect,Pending BM Allocation',
+            'description' => 'nullable|string|max:2000',
+            'method' => 'nullable|in:branch,cluster,vrm,custom',
+            'allocation' => 'nullable|in:all,equal,percentage,counts',
+            'region_id' => 'nullable|integer|exists:goal_org_units,id',
+            'cluster_id' => 'nullable|integer|exists:goal_org_units,id',
+            'branch_id' => 'nullable|integer|exists:goal_org_units,id',
+            'cluster_ids' => 'nullable|array',
+            'cluster_ids.*' => 'integer|exists:goal_org_units,id',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'integer|exists:goal_org_units,id',
+            'vrm_id' => 'nullable|integer|exists:users,id',
+            'vrm_ids' => 'nullable|array',
+            'vrm_ids.*' => 'integer|exists:users,id',
+            'percentages' => 'nullable|array',
+            'percentages.*' => 'nullable|numeric|min:0|max:100',
+            'counts' => 'nullable|array',
+            'counts.*' => 'nullable|integer|min:0',
+            'notify' => 'nullable|boolean',
         ]);
 
-        // Upload-only: org/status are decided later on Assign. Soft-hold under actor default org.
+        $leadStatus = $data['lead_status'] ?? 'Future Prospect';
+        $method = $data['method'] ?? ($canPickBranch ? 'branch' : 'vrm');
+        if (in_array($method, ['branch', 'cluster'], true) && ! $canPickBranch) {
+            $method = 'vrm';
+        }
+
         $import = $this->imports->processUpload(
             $actor,
             $request->file('import_file'),
             $scope,
             $this->imports->resolveDefaultOrgUnitId($actor, $scope, null),
-            'Future Prospect',
-            $canPickBranch
+            $leadStatus,
+            $canPickBranch,
+            [
+                'campaign_name' => $data['campaign_name'],
+                'description' => $data['description'] ?? null,
+                'lead_source' => $data['lead_source'] ?? 'Imported List',
+            ]
         );
 
-        $msg = "Import complete: {$import->success_count} created";
+        $msg = "Campaign imported: {$import->success_count} valid contact(s)";
         if ($import->failed_count > 0) {
             $msg .= ", {$import->failed_count} failed/skipped";
         }
         $msg .= '.';
 
-        $canSplit = $actor->hasCrmPermission('split_contacts_guard');
-        if ($canSplit && $import->success_count > 0) {
-            return redirect()
-                ->route('goal.contacts.import', ['tab' => 'assign', 'batch' => $import->id])
-                ->with('success', $msg.' Continue on Assign to send contacts to a cluster, branch, or VRM.');
+        if ($canSplit && $import->success_count > 0 && $method) {
+            try {
+                $result = $this->imports->confirmAssignment($import, $actor, $scope, [
+                    'method' => $method,
+                    'allocation' => $data['allocation'] ?? 'all',
+                    'region_id' => isset($data['region_id']) ? (int) $data['region_id'] : null,
+                    'cluster_id' => isset($data['cluster_id']) ? (int) $data['cluster_id'] : null,
+                    'branch_id' => isset($data['branch_id']) ? (int) $data['branch_id'] : null,
+                    'cluster_ids' => array_map('intval', $data['cluster_ids'] ?? []),
+                    'branch_ids' => array_map('intval', $data['branch_ids'] ?? []),
+                    'vrm_id' => isset($data['vrm_id']) ? (int) $data['vrm_id'] : null,
+                    'vrm_ids' => array_map('intval', $data['vrm_ids'] ?? []),
+                    'percentages' => $data['percentages'] ?? [],
+                    'counts' => $data['counts'] ?? [],
+                    'lead_status' => $leadStatus,
+                    'notify' => $request->boolean('notify'),
+                ]);
+                $msg .= ' Assigned '.(int) ($result['assigned'] ?? 0).' contact(s).';
+
+                return redirect()
+                    ->route('goal.contacts.import')
+                    ->with('success', $msg)
+                    ->with('assign_result', $result);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                return redirect()
+                    ->route('goal.contacts.import', ['tab' => 'assign', 'batch' => $import->id])
+                    ->with('success', $msg.' Assign step needs attention.')
+                    ->withErrors($e->errors());
+            }
         }
 
         return redirect()
-            ->route('goal.contacts.import', ['tab' => 'import'])
+            ->route('goal.contacts.import')
             ->with('success', $msg);
     }
 
