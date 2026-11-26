@@ -298,37 +298,65 @@
 }
 .gd-page .open:hover{background:var(--theme-50);color:var(--theme-primary-hover)}
 
-/* Recent leads table — reference card */
+/* Recent leads table — flush to panel (no inset gap) */
+.gd-page .leads-panel{overflow:hidden}
 .gd-page .leads-panel .panel-h{padding:1.1rem 1.25rem;border-bottom:1px solid #eef2f7}
 .gd-page .leads-panel .panel-ico.blue{
     background:linear-gradient(145deg,var(--theme-primary-deep) 0%,var(--theme-primary) 100%);
     box-shadow:0 6px 14px var(--theme-primary-ring);
 }
-.gd-page .leads-table-wrap{padding:0 0 .35rem}
-.gd-page .leads-table{width:100%;margin:0;border-collapse:separate;border-spacing:0}
+.gd-page .leads-panel .leads-table-wrap{
+    padding:0;margin:0;border:0;border-radius:0;background:transparent;overflow:visible;
+}
+.gd-page .leads-panel .table-responsive{margin:0;padding:0;border:0;overflow-x:auto}
+.gd-page .leads-table{
+    width:100%;margin:0;border-collapse:collapse;border-spacing:0;table-layout:fixed;
+}
+.gd-page .leads-table col.c-lead{width:32%}
+.gd-page .leads-table col.c-product{width:12%}
+.gd-page .leads-table col.c-branch{width:16%}
+.gd-page .leads-table col.c-received{width:18%}
+.gd-page .leads-table col.c-status{width:16%}
+.gd-page .leads-table col.c-actions{width:56px}
 .gd-page .leads-table thead th{
     font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:#475569;font-weight:700;
-    padding:.8rem 1.15rem;border-bottom:1px solid #e8eef5;background:#f1f5f9;white-space:nowrap;text-align:left;
+    padding:.75rem .9rem;border-bottom:1px solid #e8eef5;background:#f1f5f9 !important;white-space:nowrap;text-align:left;
 }
 .gd-page .leads-table tbody td{
-    padding:.95rem 1.15rem;border-bottom:1px solid #f1f5f9;vertical-align:middle;font-size:.875rem;color:#334155;
+    padding:.85rem .9rem;border-bottom:1px solid #f1f5f9 !important;vertical-align:middle;font-size:.875rem;color:#334155;
+    background:#fff;
 }
-.gd-page .leads-table tbody tr:last-child td{border-bottom:none}
-.gd-page .leads-table tbody tr:hover{background:#f8fafc}
+.gd-page .leads-table thead th:first-child,
+.gd-page .leads-table tbody td:first-child{padding-left:1.25rem}
+.gd-page .leads-table thead th:last-child,
+.gd-page .leads-table tbody td:last-child{padding-right:1.25rem;width:56px;text-align:right}
+.gd-page .leads-table tbody tr:last-child td{border-bottom:none !important}
+.gd-page .leads-table tbody tr:hover td{background:#f8fafc !important}
+.gd-page .lead-cell{display:flex;align-items:center;gap:.75rem;min-width:0}
 .gd-page .lead-avatar{
     width:38px;height:38px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
     background:var(--theme-primary);color:#fff;font-size:.82rem;font-weight:800;flex-shrink:0;
 }
+.gd-page .lead-avatar.av2{background:#7c3aed}
+.gd-page .lead-avatar.av3{background:#0ea5e9}
+.gd-page .lead-avatar.av4{background:#14b8a6}
+.gd-page .lead-avatar.av5{background:#f59e0b}
 .gd-page .lead-name-cell{display:flex;flex-direction:column;gap:.12rem;min-width:0}
-.gd-page .lead-name{font-weight:700;color:#0f172a;line-height:1.2}
-.gd-page .lead-sub{font-size:.75rem;color:#94a3b8;line-height:1.25}
+.gd-page .lead-name{
+    font-weight:700;color:#0f172a;line-height:1.2;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.gd-page .lead-sub{
+    font-size:.75rem;color:#94a3b8;line-height:1.25;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
 .gd-page .pill-product{
     display:inline-flex;align-items:center;padding:.28rem .7rem;border-radius:999px;
     font-size:.74rem;font-weight:700;background:var(--theme-100);color:var(--theme-primary-hover);white-space:nowrap;
 }
 .gd-page .pill-status{
     display:inline-flex;align-items:center;padding:.28rem .7rem;border-radius:999px;
-    font-size:.74rem;font-weight:700;background:#ffedd5;color:#c2410c;white-space:nowrap;max-width:180px;
+    font-size:.74rem;font-weight:700;background:#ffedd5;color:#c2410c;white-space:nowrap;max-width:100%;
     overflow:hidden;text-overflow:ellipsis;
 }
 .gd-page .pill-status.ok{background:#dcfce7;color:#15803d}
@@ -339,7 +367,10 @@
     display:inline-flex;align-items:center;gap:.4rem;color:#64748b;font-size:.82rem;white-space:nowrap;
 }
 .gd-page .received-cell i{font-size:.9rem;color:#94a3b8}
-.gd-page .branch-cell{color:#475569;font-weight:500}
+.gd-page .branch-cell{
+    color:#475569;font-weight:500;display:block;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
 .gd-page .btn-more{
     width:34px;height:34px;border:1px solid #e2e8f0;background:#fff;border-radius:10px;
     color:#94a3b8;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;
@@ -359,7 +390,13 @@
     .gd-page .panel-h{flex-wrap:wrap}
     .gd-page .qa-grid{grid-template-columns:1fr 1fr}
     .gd-page .snap-stats{grid-template-columns:1fr}
-    .gd-page .leads-table th,.gd-page .leads-table td{padding:.75rem .65rem}
+    .gd-page .leads-table{table-layout:auto}
+    .gd-page .leads-table thead th,
+    .gd-page .leads-table tbody td{padding:.7rem .65rem}
+    .gd-page .leads-table thead th:first-child,
+    .gd-page .leads-table tbody td:first-child{padding-left:.85rem}
+    .gd-page .leads-table thead th:last-child,
+    .gd-page .leads-table tbody td:last-child{padding-right:.85rem}
 }
 </style>
 @endpush
@@ -671,10 +708,17 @@ SVG;
                 <div class="leads-table-wrap">
                     <div class="table-responsive">
                         <table class="leads-table">
+                            <colgroup>
+                                <col class="c-lead">
+                                <col class="c-product">
+                                <col class="c-branch">
+                                <col class="c-received">
+                                <col class="c-status">
+                                <col class="c-actions">
+                            </colgroup>
                             <thead>
                                 <tr>
-                                    <th>Lead ID</th>
-                                    <th>Lead Name</th>
+                                    <th>Lead</th>
                                     <th>Product</th>
                                     <th>Branch</th>
                                     <th>Received On</th>
@@ -686,12 +730,12 @@ SVG;
                             @forelse($dash['recent_leads'] as $i => $lead)
                                 <tr>
                                     <td>
-                                        <span class="lead-avatar {{ $avClass($i) }}">{{ $initial($lead['customer']) }}</span>
-                                    </td>
-                                    <td>
-                                        <div class="lead-name-cell">
-                                            <span class="lead-name">{{ $lead['customer'] }}</span>
-                                            <span class="lead-sub">{{ $lead['ref'] }} · {{ ucfirst($lead['source']) }} · {{ ucfirst($lead['type']) }}</span>
+                                        <div class="lead-cell">
+                                            <span class="lead-avatar {{ $avClass($i) }}">{{ $initial($lead['customer']) }}</span>
+                                            <div class="lead-name-cell">
+                                                <span class="lead-name">{{ $lead['customer'] }}</span>
+                                                <span class="lead-sub">{{ $lead['ref'] }} · {{ ucfirst($lead['source']) }} · {{ ucfirst($lead['type']) }}</span>
+                                            </div>
                                         </div>
                                     </td>
                                     <td><span class="pill-product">{{ $lead['product'] !== '—' ? $lead['product'] : 'Loan' }}</span></td>
@@ -703,7 +747,7 @@ SVG;
                                         </span>
                                     </td>
                                     <td><span class="pill-status {{ $statusTone($lead['status']) }}">{{ $lead['status'] }}</span></td>
-                                    <td class="text-end">
+                                    <td>
                                         <a href="{{ $lead['href'] }}" class="btn-more" title="Open lead">
                                             <i class="bi bi-three-dots-vertical"></i>
                                         </a>
@@ -711,7 +755,7 @@ SVG;
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7">
+                                    <td colspan="6">
                                         <div class="empty-state" style="min-height:140px">
                                             <div class="illus"><i class="bi bi-inbox"></i></div>
                                             <p>No recent leads</p>
