@@ -812,12 +812,52 @@ document.addEventListener('DOMContentLoaded', function () {
             form.addEventListener('submit', function (e) {
                 var submitter = e.submitter;
                 if (submitter && submitter.getAttribute('formaction') && submitter.getAttribute('formaction').indexOf('/draft') !== -1) return;
-                if (!window.cgValidateAssign(e, false)) {
-                    var btn = document.getElementById('cgSubmitBtn');
-                    var lbl = document.getElementById('cgSubmitLabel');
-                    if (btn) btn.disabled = false;
-                    if (lbl) lbl.textContent = 'Import & Assign';
+
+                // Create/Edit page owns Swal confirm on #cgCampaignForm
+                if (form.id === 'cgCampaignForm') {
+                    if (!form.__cgAllowSubmit) return;
+                    if (!window.cgValidateAssign(e, false)) {
+                        form.__cgAllowSubmit = false;
+                        var btn = document.getElementById('cgSubmitBtn');
+                        var lbl = document.getElementById('cgSubmitLabel');
+                        if (btn) btn.disabled = false;
+                        if (lbl) lbl.textContent = form.getAttribute('data-edit') === '1' ? 'Save & Assign' : 'Import & Assign';
+                    }
+                    return;
                 }
+
+                // Standalone assign form — validate then Swal confirm
+                if (form.__cgAllowSubmit) {
+                    window.setTimeout(function () { form.__cgAllowSubmit = false; }, 0);
+                    return;
+                }
+                e.preventDefault();
+                if (!window.cgValidateAssign({ preventDefault: function () {}, __cgAssignChecked: false, __cgAssignOk: false }, true)) {
+                    return;
+                }
+                function proceedAssign() {
+                    form.__cgAllowSubmit = true;
+                    if (typeof form.requestSubmit === 'function') form.requestSubmit(submitter || undefined);
+                    else HTMLFormElement.prototype.submit.call(form);
+                }
+                if (typeof Swal !== 'undefined' && Swal.fire) {
+                    Swal.fire({
+                        icon: 'question',
+                        title: 'Assign contacts?',
+                        text: 'This will assign the selected contacts as configured.',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, assign',
+                        cancelButtonText: 'Cancel',
+                        confirmButtonColor: '#16a34a',
+                        cancelButtonColor: '#94a3b8',
+                        reverseButtons: true,
+                        focusCancel: true
+                    }).then(function (result) {
+                        if (result.isConfirmed) proceedAssign();
+                    });
+                    return;
+                }
+                if (window.confirm('Assign contacts?')) proceedAssign();
             });
         }
 

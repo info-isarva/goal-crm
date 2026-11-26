@@ -125,6 +125,10 @@ class GoalContactImportController extends Controller
         $tab = in_array($request->query('tab'), ['import', 'assign', 'view'], true)
             ? $request->query('tab')
             : 'import';
+        // Assign / Finish assign opens the same create-style edit page
+        if ($tab === 'assign' && (int) $request->query('batch', 0) > 0) {
+            return redirect()->route('goal.contacts.import.edit', (int) $request->query('batch'));
+        }
         if ($tab === 'assign' && ! $canSplit) {
             $tab = 'view';
         }
@@ -366,7 +370,7 @@ class GoalContactImportController extends Controller
                     ->with('assign_result', $result);
             } catch (\Illuminate\Validation\ValidationException $e) {
                 return redirect()
-                    ->route('goal.contacts.import', ['tab' => 'assign', 'batch' => $import->id])
+                    ->route('goal.contacts.import.edit', $import)
                     ->with('success', $msg.' Assign step needs attention.')
                     ->withErrors($e->errors());
             }
@@ -422,10 +426,11 @@ class GoalContactImportController extends Controller
         $this->requireGoalPermission('import_contacts_guard');
         $this->assertImportInScope($import);
 
-        return redirect()->route('goal.contacts.import', [
-            'tab' => auth()->user()->hasCrmPermission('split_contacts_guard') ? 'assign' : 'import',
-            'batch' => $import->id,
-        ]);
+        if (auth()->user()->hasCrmPermission('split_contacts_guard')) {
+            return redirect()->route('goal.contacts.import.edit', $import);
+        }
+
+        return redirect()->route('goal.contacts.import');
     }
 
     public function errors(GoalContactImport $import)
@@ -466,15 +471,238 @@ class GoalContactImportController extends Controller
         ]);
     }
 
+    public function edit(GoalContactImport $import)
+    {
+        $this->requireGoalPermission('import_contacts_guard');
+        $this->assertImportInScope($import);
+
+        $actor = auth()->user();
+        $scope = $this->scopedOrgIds();
+        $canPickBranch = $this->imports->actorCanPickBranch($actor);
+        $canAssignRegion = $this->imports->actorCanAssignRegion($actor);
+        $canSplit = $actor->hasCrmPermission('split_contacts_guard');
+        $branches = $this->imports->branchesInScope($scope);
+        $clusters = $canPickBranch ? $this->imports->clustersInScope($scope) : collect();
+        $orgOptions = $canPickBranch
+            ? $this->imports->orgOptionsInScope($scope)
+            : ['regions' => collect(), 'clusters' => collect(), 'branches' => $branches];
+        $vrms = $canSplit ? $this->imports->vrmsInScope($scope) : collect();
+        $handoff = $this->imports->actorHandoffRole($actor);
+        $handoffKey = (string) ($handoff['key'] ?? '');
+        $canAssignCluster = $this->imports->actorCanAssignCluster($actor);
+        $canAssignBranch = $this->imports->actorCanAssignBranch($actor);
+
+        $summary = $this->imports->batchSummary($import, $scope);
+        $unassignedCount = (int) ($summary['unassigned'] ?? 0);
+        $validCount = $unassignedCount;
+        $assignedToVrm = (int) ($summary['valid'] ?? $import->success_count) > 0
+            && $unassignedCount === 0;
+
+        $batchLeads = $import->leads()
+            ->with(['orgUnit:id,name,code,type,parent_id'])
+            ->when($scope !== [], fn ($q) => $q->whereIn('goal_org_unit_id', $scope))
+            ->whereNull('assigned_to')
+            ->orderBy('id')
+            ->limit(500)
+            ->get();
+
+        $preselectedRegionId = 0;
+        $preselectedClusterId = 0;
+        $preselectedBranchId = 0;
+        $preselectedTargetIds = [];
+        $preselectedMethod = $canAssignRegion ? 'region' : (
+            $canAssignCluster ? 'cluster' : ($canAssignBranch ? 'branch' : 'vrm')
+        );
+        $preselectedAlloc = 'all';
+
+        if ($batchLeads->isNotEmpty()) {
+            $orgUnits = $batchLeads->pluck('orgUnit')->filter()->unique('id')->values();
+            $orgIds = $orgUnits->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+            $types = $orgUnits->pluck('type')->unique()->values();
+            $sameType = $types->count() === 1 ? (string) $types->first() : '';
+
+            if ($sameType === \App\Models\GoalOrgUnit::TYPE_REGION) {
+                $preselectedMethod = 'region';
+                $preselectedTargetIds = $orgIds;
+                $preselectedRegionId = count($orgIds) === 1 ? $orgIds[0] : 0;
+                $preselectedAlloc = count($orgIds) > 1 ? 'equal' : 'all';
+            } elseif ($sameType === \App\Models\GoalOrgUnit::TYPE_CLUSTER) {
+                $preselectedMethod = 'cluster';
+                $preselectedTargetIds = $orgIds;
+                $preselectedClusterId = count($orgIds) === 1 ? $orgIds[0] : 0;
+                $preselectedRegionId = (int) ($orgUnits->first()->parent_id ?? 0);
+                $preselectedAlloc = count($orgIds) > 1 ? 'equal' : 'all';
+            } elseif ($sameType === \App\Models\GoalOrgUnit::TYPE_BRANCH) {
+                $preselectedMethod = 'branch';
+                $preselectedTargetIds = $orgIds;
+                $preselectedBranchId = count($orgIds) === 1 ? $orgIds[0] : 0;
+                $preselectedClusterId = (int) ($orgUnits->first()->parent_id ?? 0);
+                $preselectedAlloc = count($orgIds) > 1 ? 'equal' : 'all';
+            }
+        } elseif ($assignedToVrm) {
+            $preselectedMethod = 'vrm';
+        }
+
+        return view('goal.contacts.create', [
+            'import' => $import,
+            'isEdit' => true,
+            'branches' => $branches,
+            'clusters' => $clusters,
+            'orgOptions' => $orgOptions,
+            'vrms' => $vrms,
+            'canPickBranch' => $canPickBranch,
+            'canAssignRegion' => $canAssignRegion,
+            'canAssignCluster' => $canAssignCluster,
+            'canAssignBranch' => $canAssignBranch,
+            'canSplit' => $canSplit,
+            'handoff' => $handoff,
+            'handoffKey' => $handoffKey,
+            'defaultOrgUnitId' => $this->imports->resolveDefaultOrgUnitId($actor, $scope, null),
+            'batchSummary' => $summary,
+            'unassignedCount' => $unassignedCount,
+            'validCount' => $validCount,
+            'assignedToVrm' => $assignedToVrm,
+            'canAssignNow' => $canSplit && $unassignedCount > 0 && ! $assignedToVrm,
+            'defaultMethod' => $preselectedMethod,
+            'defaultAlloc' => $preselectedAlloc,
+            'preselectedRegionId' => $preselectedRegionId,
+            'preselectedClusterId' => $preselectedClusterId,
+            'preselectedBranchId' => $preselectedBranchId,
+            'preselectedTargetIds' => $preselectedTargetIds,
+        ]);
+    }
+
+    public function update(Request $request, GoalContactImport $import)
+    {
+        $this->requireGoalPermission('import_contacts_guard');
+        $this->assertImportInScope($import);
+
+        $actor = auth()->user();
+        $scope = $this->scopedOrgIds();
+        $canPickBranch = $this->imports->actorCanPickBranch($actor);
+        $canSplit = $actor->hasCrmPermission('split_contacts_guard');
+
+        $data = $request->validate([
+            'import_file' => 'nullable|file|mimes:xlsx,xls,csv|max:10240',
+            'campaign_name' => 'required|string|max:180',
+            'lead_source' => 'nullable|string|max:80',
+            'lead_status' => 'nullable|in:Future Prospect,Pending BM Allocation',
+            'description' => 'nullable|string|max:2000',
+            'method' => 'nullable|in:region,branch,cluster,vrm,custom',
+            'allocation' => 'nullable|in:all,equal,percentage,counts',
+            'region_id' => 'nullable|integer|exists:goal_org_units,id',
+            'cluster_id' => 'nullable|integer|exists:goal_org_units,id',
+            'branch_id' => 'nullable|integer|exists:goal_org_units,id',
+            'region_ids' => 'nullable|array',
+            'region_ids.*' => 'integer|exists:goal_org_units,id',
+            'cluster_ids' => 'nullable|array',
+            'cluster_ids.*' => 'integer|exists:goal_org_units,id',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'integer|exists:goal_org_units,id',
+            'vrm_id' => 'nullable|integer|exists:users,id',
+            'vrm_ids' => 'nullable|array',
+            'vrm_ids.*' => 'integer|exists:users,id',
+            'percentages' => 'nullable|array',
+            'percentages.*' => 'nullable|numeric|min:0|max:100',
+            'counts' => 'nullable|array',
+            'counts.*' => 'nullable|integer|min:0',
+            'notify' => 'nullable|boolean',
+        ]);
+
+        $leadStatus = $data['lead_status'] ?? ($import->default_lead_status ?: 'Future Prospect');
+        $campaignMeta = [
+            'campaign_name' => $data['campaign_name'],
+            'description' => $data['description'] ?? null,
+            'lead_source' => $data['lead_source'] ?? ($import->lead_source ?: 'Imported List'),
+            'lead_status' => $leadStatus,
+        ];
+
+        $import->campaign_name = $campaignMeta['campaign_name'];
+        $import->description = $campaignMeta['description'];
+        $import->lead_source = $campaignMeta['lead_source'];
+        $import->default_lead_status = $leadStatus;
+        $import->save();
+
+        $msg = 'Campaign updated.';
+
+        if ($request->hasFile('import_file')) {
+            try {
+                $import = $this->imports->appendUpload(
+                    $import,
+                    $actor,
+                    $request->file('import_file'),
+                    $scope,
+                    $canPickBranch,
+                    $campaignMeta
+                );
+                $msg = "Campaign updated. Added {$import->success_count} total valid contact(s).";
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                return redirect()
+                    ->route('goal.contacts.import.edit', $import)
+                    ->withInput()
+                    ->withErrors($e->errors());
+            }
+        }
+
+        $summary = $this->imports->batchSummary($import, $scope);
+        $unassignedCount = (int) ($summary['unassigned'] ?? 0);
+        $method = $data['method'] ?? null;
+
+        if ($canSplit && $unassignedCount > 0 && $method) {
+            try {
+                $this->imports->assertAssignMethodAllowed($actor, (string) $method);
+                $result = $this->imports->confirmAssignment($import, $actor, $scope, [
+                    'method' => $method,
+                    'allocation' => $data['allocation'] ?? 'all',
+                    'region_id' => isset($data['region_id']) ? (int) $data['region_id'] : null,
+                    'cluster_id' => isset($data['cluster_id']) ? (int) $data['cluster_id'] : null,
+                    'branch_id' => isset($data['branch_id']) ? (int) $data['branch_id'] : null,
+                    'region_ids' => array_map('intval', $data['region_ids'] ?? []),
+                    'cluster_ids' => array_map('intval', $data['cluster_ids'] ?? []),
+                    'branch_ids' => array_map('intval', $data['branch_ids'] ?? []),
+                    'vrm_id' => isset($data['vrm_id']) ? (int) $data['vrm_id'] : null,
+                    'vrm_ids' => array_map('intval', $data['vrm_ids'] ?? []),
+                    'percentages' => $data['percentages'] ?? [],
+                    'counts' => $data['counts'] ?? [],
+                    'lead_status' => $leadStatus,
+                    'notify' => $request->boolean('notify'),
+                ]);
+                $assignedN = (int) ($result['assigned'] ?? 0);
+                $msg .= ' Assigned '.$assignedN.' contact(s).';
+
+                $summary = $this->imports->batchSummary($import->fresh(), $scope);
+                $stillOpen = (int) ($summary['unassigned'] ?? 0);
+                if ($stillOpen > 0) {
+                    return redirect()
+                        ->route('goal.contacts.import.edit', $import)
+                        ->with('success', $msg)
+                        ->with('assign_result', $result);
+                }
+
+                return redirect()
+                    ->route('goal.contacts.import')
+                    ->with('success', $msg)
+                    ->with('assign_result', $result);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                return redirect()
+                    ->route('goal.contacts.import.edit', $import)
+                    ->withInput()
+                    ->withErrors($e->errors())
+                    ->with('success', $msg.' Assign step needs attention.');
+            }
+        }
+
+        return redirect()
+            ->route('goal.contacts.import')
+            ->with('success', $msg);
+    }
+
     public function splitForm(GoalContactImport $import)
     {
         $this->requireGoalPermission('split_contacts_guard');
         $this->assertImportInScope($import);
 
-        return redirect()->route('goal.contacts.import', [
-            'tab' => 'assign',
-            'batch' => $import->id,
-        ]);
+        return redirect()->route('goal.contacts.import.edit', $import);
     }
 
     public function split(Request $request, GoalContactImport $import)
@@ -520,7 +748,7 @@ class GoalContactImportController extends Controller
             $this->imports->assertAssignMethodAllowed($actor, (string) $method);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()
-                ->route('goal.contacts.import', ['tab' => 'assign', 'batch' => $import->id])
+                ->route('goal.contacts.import.edit', $import)
                 ->withErrors($e->errors());
         }
 
@@ -545,7 +773,7 @@ class GoalContactImportController extends Controller
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()
-                ->route('goal.contacts.import', ['tab' => 'assign', 'batch' => $import->id])
+                ->route('goal.contacts.import.edit', $import)
                 ->withErrors($e->errors());
         }
 
@@ -562,8 +790,17 @@ class GoalContactImportController extends Controller
             default => 'Assignment complete.',
         };
 
+        $summary = $this->imports->batchSummary($import->fresh(), $scope);
+        $stillOpen = (int) ($summary['unassigned'] ?? 0);
+        if ($stillOpen > 0) {
+            return redirect()
+                ->route('goal.contacts.import.edit', $import)
+                ->with('success', $successMsg)
+                ->with('assign_result', $result);
+        }
+
         return redirect()
-            ->route('goal.contacts.import', ['tab' => 'assign', 'batch' => $import->id])
+            ->route('goal.contacts.import')
             ->with('success', $successMsg)
             ->with('assign_result', $result);
     }
@@ -621,7 +858,7 @@ class GoalContactImportController extends Controller
         $import->save();
 
         return redirect()
-            ->route('goal.contacts.import', ['tab' => 'assign', 'batch' => $import->id])
+            ->route('goal.contacts.import.edit', $import)
             ->with('success', 'Assignment draft saved. Contacts were not assigned yet.');
     }
 

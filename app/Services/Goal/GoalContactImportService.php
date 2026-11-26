@@ -219,6 +219,136 @@ class GoalContactImportService
     }
 
     /**
+     * Append contacts from a new file into an existing campaign (edit flow).
+     *
+     * @param  list<int>  $scopedOrgIds
+     * @param  array{campaign_name?:string,description?:string,lead_source?:string,lead_status?:string}  $campaign
+     */
+    public function appendUpload(
+        GoalContactImport $import,
+        User $actor,
+        UploadedFile $file,
+        array $scopedOrgIds,
+        bool $allowBranchCode = true,
+        array $campaign = []
+    ): GoalContactImport {
+        $meta = $this->detectSource($file);
+        if ($meta['readerType'] === null && ! in_array($meta['extension'], ['csv', 'xlsx', 'xls'], true)) {
+            throw ValidationException::withMessages([
+                'import_file' => 'Unsupported file type. Upload CSV or Excel.',
+            ]);
+        }
+
+        try {
+            $sheets = Excel::toArray(null, $file, null, $meta['readerType']);
+            $rows = $sheets[0] ?? [];
+        } catch (\Throwable $e) {
+            throw ValidationException::withMessages([
+                'import_file' => 'Unable to read the file. Please use the sample template.',
+            ]);
+        }
+
+        if (count($rows) < 2) {
+            throw ValidationException::withMessages([
+                'import_file' => 'The file has no data rows.',
+            ]);
+        }
+
+        $indexes = $this->mapHeaderIndexes($rows[0] ?? []);
+        if (! isset($indexes['mobile'])) {
+            throw ValidationException::withMessages([
+                'import_file' => 'Required column missing: mobile (or phone).',
+            ]);
+        }
+
+        $defaultOrgUnitId = $this->resolveDefaultOrgUnitId($actor, $scopedOrgIds, (int) ($import->goal_org_unit_id ?? 0) ?: null);
+        $branchMap = $this->branchCodeMap($scopedOrgIds);
+        $seenMobiles = [];
+        $success = 0;
+        $failed = 0;
+        $total = 0;
+        $rowBase = (int) $import->rows()->max('row_number');
+
+        if (array_key_exists('campaign_name', $campaign)) {
+            $name = trim((string) ($campaign['campaign_name'] ?? ''));
+            $import->campaign_name = $name !== '' ? $name : $import->campaign_name;
+        }
+        if (array_key_exists('description', $campaign)) {
+            $import->description = filled($campaign['description'] ?? null) ? (string) $campaign['description'] : null;
+        }
+        if (array_key_exists('lead_source', $campaign)) {
+            $src = trim((string) ($campaign['lead_source'] ?? ''));
+            $import->lead_source = $src !== '' ? $src : ($import->lead_source ?: 'Imported List');
+        }
+        if (! empty($campaign['lead_status']) && in_array($campaign['lead_status'], ['Future Prospect', 'Pending BM Allocation'], true)) {
+            $import->default_lead_status = $campaign['lead_status'];
+        }
+
+        $import->filename = $file->getClientOriginalName() ?: $import->filename;
+        $import->source = in_array($meta['extension'], ['csv', 'xlsx', 'xls'], true) ? $meta['extension'] : ($import->source ?: 'csv');
+
+        foreach (array_slice($rows, 1) as $offset => $raw) {
+            if (! is_array($raw) || ! array_filter($raw, fn ($v) => filled($v))) {
+                continue;
+            }
+
+            $total++;
+            $rowNumber = $rowBase + $offset + 1;
+            $payload = $this->extractPayload($raw, $indexes);
+
+            try {
+                $result = $this->createLeadFromRow(
+                    $import,
+                    $actor,
+                    $payload,
+                    $scopedOrgIds,
+                    $defaultOrgUnitId,
+                    $branchMap,
+                    $allowBranchCode,
+                    $seenMobiles
+                );
+
+                GoalContactImportRow::create([
+                    'goal_contact_import_id' => $import->id,
+                    'row_number' => $rowNumber,
+                    'payload' => $payload,
+                    'goal_loan_lead_id' => $result['lead']?->id,
+                    'status' => $result['status'],
+                    'error_message' => $result['error'],
+                ]);
+
+                if ($result['status'] === 'ok') {
+                    $success++;
+                } else {
+                    $failed++;
+                }
+            } catch (\Throwable $e) {
+                $failed++;
+                GoalContactImportRow::create([
+                    'goal_contact_import_id' => $import->id,
+                    'row_number' => $rowNumber,
+                    'payload' => $payload,
+                    'goal_loan_lead_id' => null,
+                    'status' => 'error',
+                    'error_message' => Str::limit($e->getMessage(), 480),
+                ]);
+            }
+        }
+
+        $import->total_rows = (int) $import->total_rows + $total;
+        $import->success_count = (int) $import->success_count + $success;
+        $import->failed_count = (int) $import->failed_count + $failed;
+        $import->status = $this->resolveBatchStatus(
+            (int) $import->total_rows,
+            (int) $import->success_count,
+            (int) $import->failed_count
+        );
+        $import->save();
+
+        return $import->fresh(['importer', 'orgUnit']);
+    }
+
+    /**
      * @param  list<int>  $scopedOrgIds
      * @param  array<string, true>  $seenMobiles
      * @return array{lead:?GoalLoanLead,status:string,error:?string}

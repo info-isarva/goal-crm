@@ -99,6 +99,8 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::get('contacts/import/create', [GoalContactImportController::class, 'create'])->name('contacts.import.create');
     Route::post('contacts/import', [GoalContactImportController::class, 'store'])->name('contacts.import.store');
     Route::get('contacts/import/template', [GoalContactImportController::class, 'template'])->name('contacts.import.template');
+    Route::get('contacts/import/{import}/edit', [GoalContactImportController::class, 'edit'])->name('contacts.import.edit');
+    Route::post('contacts/import/{import}', [GoalContactImportController::class, 'update'])->name('contacts.import.update');
     Route::get('contacts/import/{import}', [GoalContactImportController::class, 'show'])->name('contacts.import.show');
     Route::get('contacts/import/{import}/errors', [GoalContactImportController::class, 'errors'])->name('contacts.import.errors');
     Route::get('contacts/import/{import}/split', [GoalContactImportController::class, 'splitForm'])->name('contacts.import.split');

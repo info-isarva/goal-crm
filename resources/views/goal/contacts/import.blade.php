@@ -363,9 +363,6 @@
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
     @if($errors->any())
         <div class="alert alert-danger">
             <ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
@@ -679,7 +676,6 @@
                     @forelse($batches as $i => $batch)
                         @php
                             $unassignedN = (int) ($batch->unassigned_count ?? 0);
-                            $dupN = (int) ($batch->duplicate_count ?? 0);
                             $invN = (int) ($batch->invalid_count ?? 0);
                             $assignedPeople = (int) ($batch->assigned_people_count ?? 0);
                             $statusLabel = $batch->campaignStatusLabel($unassignedN);
@@ -755,7 +751,6 @@
                                 <div class="cg-recs">
                                     <span>Total <b>{{ number_format((int)$batch->total_rows) }}</b></span>
                                     <span>Valid <b>{{ number_format($validN) }}</b></span>
-                                    <span>Dup <b>{{ number_format($dupN) }}</b></span>
                                     <span>Invalid <b>{{ number_format($invN) }}</b></span>
                                 </div>
                             </td>
@@ -770,7 +765,7 @@
                             </td>
                             <td style="white-space:nowrap">
                                 @if($showAssignBtn)
-                                    <a class="cg-btn cg-btn-assign tone-await" href="{{ route('goal.contacts.import', ['tab' => 'assign', 'batch' => $batch->id]) }}" aria-label="{{ $assignBtnLabel }}">
+                                    <a class="cg-btn cg-btn-assign tone-await" href="{{ route('goal.contacts.import.edit', $batch) }}" aria-label="{{ $assignBtnLabel }}">
                                         {{ $assignBtnLabel }}
                                     </a>
                                 @endif
@@ -792,7 +787,7 @@
                                     data-source="{{ e($batch->lead_source ?: '—') }}"
                                     data-status="{{ e($statusLabel) }}"
                                     data-desc="{{ e($batch->description ?: '') }}"
-                                    data-assign-url="{{ $showAssignBtn ? route('goal.contacts.import', ['tab' => 'assign', 'batch' => $batch->id]) : '' }}"
+                                    data-assign-url="{{ $showAssignBtn ? route('goal.contacts.import.edit', $batch) : '' }}"
                                     data-assign-label="{{ e($assignBtnLabel) }}"
                                 ><i class="bi bi-eye"></i></button>
                             </td>

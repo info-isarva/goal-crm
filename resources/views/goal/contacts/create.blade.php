@@ -183,12 +183,32 @@
 
 @section('content')
 @php
+    $isEdit = (bool) ($isEdit ?? false);
+    $import = $import ?? null;
     $canPickBranch = (bool) ($canPickBranch ?? false);
     $canAssignRegion = (bool) ($canAssignRegion ?? false);
-    $handoffKey = (string) (($handoff['key'] ?? '') ?: '');
-    $canAssignCluster = $canPickBranch && ! in_array($handoffKey, ['cluster', 'bm'], true);
-    $canAssignBranch = $canPickBranch && $handoffKey !== 'bm';
-    $defaultMethod = $canAssignRegion ? 'region' : ($canAssignCluster ? 'cluster' : ($canAssignBranch ? 'branch' : 'vrm'));
+    $handoffKey = (string) (($handoff['key'] ?? $handoffKey ?? '') ?: '');
+    $canAssignCluster = (bool) ($canAssignCluster ?? ($canPickBranch && ! in_array($handoffKey, ['cluster', 'bm'], true)));
+    $canAssignBranch = (bool) ($canAssignBranch ?? ($canPickBranch && $handoffKey !== 'bm'));
+    $defaultMethod = $defaultMethod ?? ($canAssignRegion ? 'region' : ($canAssignCluster ? 'cluster' : ($canAssignBranch ? 'branch' : 'vrm')));
+    $defaultAlloc = $defaultAlloc ?? 'all';
+    $unassignedCount = (int) ($unassignedCount ?? 0);
+    $validCount = (int) ($validCount ?? ($batchSummary['unassigned'] ?? 0));
+    $assignedToVrm = (bool) ($assignedToVrm ?? false);
+    $canAssignNow = (bool) ($canAssignNow ?? (! $isEdit));
+    $batchSummary = $batchSummary ?? ['total' => 0, 'valid' => 0, 'duplicates' => 0, 'invalid' => 0, 'unassigned' => 0];
+    $pageTitle = $isEdit ? 'Edit Campaign' : 'Add Campaign';
+    $pageSub = $isEdit
+        ? ($canAssignNow
+            ? 'Update file or details, then finish assigning open contacts.'
+            : 'Update campaign details. All contacts are already assigned to VRMs.')
+        : 'Import contacts, set campaign details, assign to Cluster / Branch / VRM, then track from the list.';
+    $formAction = $isEdit
+        ? route('goal.contacts.import.update', $import)
+        : route('goal.contacts.import.store');
+    $submitLabel = $isEdit
+        ? ($canAssignNow ? 'Save & Assign' : 'Save Campaign')
+        : 'Import & Assign';
 @endphp
 <div class="cg-page">
     <ul class="crumbs">
@@ -198,13 +218,13 @@
         <li>›</li>
         <li><a href="{{ route('goal.contacts.import') }}">Campaigns</a></li>
         <li>›</li>
-        <li class="cur">Add Campaign</li>
+        <li class="cur">{{ $pageTitle }}</li>
     </ul>
 
     <div class="title-row">
         <div style="min-width:0;flex:1">
-            <h1>Add Campaign</h1>
-            <p>Import contacts, set campaign details, assign to Cluster / Branch / VRM, then track from the list.</p>
+            <h1>{{ $pageTitle }}</h1>
+            <p>{{ $pageSub }}</p>
         </div>
         <div class="cg-title-actions">
             <details class="cg-dd">
@@ -228,16 +248,16 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('goal.contacts.import.store') }}" enctype="multipart/form-data" id="cgCampaignForm" class="cg-card">
+    <form method="POST" action="{{ $formAction }}" enctype="multipart/form-data" id="cgCampaignForm" class="cg-card" data-edit="{{ $isEdit ? '1' : '0' }}" data-can-assign="{{ $canAssignNow ? '1' : '0' }}">
         @csrf
-        <div class="cg-flow" aria-label="Campaign create flow">
+        <div class="cg-flow" aria-label="Campaign {{ $isEdit ? 'edit' : 'create' }} flow">
             <div class="cg-flow-item on"><i class="bi bi-cloud-arrow-up"></i> Upload</div>
             <span class="cg-flow-sep">→</span>
             <div class="cg-flow-item on"><i class="bi bi-card-text"></i> Details</div>
             <span class="cg-flow-sep">→</span>
-            <div class="cg-flow-item on"><i class="bi bi-diagram-3"></i> Assign</div>
+            <div class="cg-flow-item {{ $canAssignNow || ! $isEdit ? 'on' : '' }}"><i class="bi bi-diagram-3"></i> Assign</div>
             <span class="cg-flow-sep">→</span>
-            <div class="cg-flow-item"><i class="bi bi-graph-up"></i> Track later</div>
+            <div class="cg-flow-item {{ $isEdit ? 'on' : '' }}"><i class="bi bi-graph-up"></i> Track later</div>
         </div>
 
         <div class="cg-grid">
@@ -255,10 +275,16 @@
                         <span class="pill">XLSX</span>
                     </div>
                     <label class="cg-btn-choose" id="cgChooseBtn">
-                        <i class="bi bi-folder2-open"></i> Choose File
-                        <input type="file" name="import_file" id="import_file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+                        <i class="bi bi-folder2-open"></i> {{ $isEdit ? 'Replace / Add File' : 'Choose File' }}
+                        <input type="file" name="import_file" id="import_file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" @if(! $isEdit) required @endif>
                     </label>
-                    <div class="cg-file" id="importFileName">No file chosen</div>
+                    <div class="cg-file {{ $isEdit && $import ? 'has-file' : '' }}" id="importFileName">
+                        @if($isEdit && $import)
+                            {{ $import->filename }} @if($isEdit)<span style="color:#94a3b8;font-weight:600">(current — choose a file to add more)</span>@endif
+                        @else
+                            No file chosen
+                        @endif
+                    </div>
                 </div>
                 <div class="cg-tpl">
                     <span class="cg-tpl-label">Template</span>
@@ -277,52 +303,73 @@
                     </h3>
                     <div class="cg-field">
                         <label>Campaign Name <span class="req">*</span></label>
-                        <input type="text" name="campaign_name" id="cgCampaignName" value="{{ old('campaign_name') }}" placeholder="e.g. Personal Loan – Digi Campaign" required>
+                        <input type="text" name="campaign_name" id="cgCampaignName" value="{{ old('campaign_name', $import?->campaign_name ?? '') }}" placeholder="e.g. Personal Loan – Digi Campaign" required>
                     </div>
                     <div class="cg-row2">
                         <div class="cg-field">
                             <label>Lead Source</label>
+                            @php $leadSourceVal = old('lead_source', $import?->lead_source ?? 'Imported List'); @endphp
                             <select name="lead_source" class="js-select2" data-search="false" data-allow-clear="false">
-                                <option value="Imported List" @selected(old('lead_source', 'Imported List') === 'Imported List')>Imported List</option>
-                                <option value="Digital" @selected(old('lead_source') === 'Digital')>Digital</option>
-                                <option value="Partner" @selected(old('lead_source') === 'Partner')>Partner</option>
-                                <option value="Referral" @selected(old('lead_source') === 'Referral')>Referral</option>
-                                <option value="Other" @selected(old('lead_source') === 'Other')>Other</option>
+                                <option value="Imported List" @selected($leadSourceVal === 'Imported List')>Imported List</option>
+                                <option value="Digital" @selected($leadSourceVal === 'Digital')>Digital</option>
+                                <option value="Partner" @selected($leadSourceVal === 'Partner')>Partner</option>
+                                <option value="Referral" @selected($leadSourceVal === 'Referral')>Referral</option>
+                                <option value="Other" @selected($leadSourceVal === 'Other')>Other</option>
                             </select>
                         </div>
                         <div class="cg-field">
                             <label>Lead Status</label>
+                            @php $leadStatusVal = old('lead_status', $import?->default_lead_status ?? 'Future Prospect'); @endphp
                             <select name="lead_status" class="js-select2" data-search="false" data-allow-clear="false">
-                                <option value="Future Prospect" @selected(old('lead_status', 'Future Prospect') === 'Future Prospect')>Future Prospect (dialer)</option>
-                                <option value="Pending BM Allocation" @selected(old('lead_status') === 'Pending BM Allocation')>Pending BM Allocation</option>
+                                <option value="Future Prospect" @selected($leadStatusVal === 'Future Prospect')>Future Prospect (dialer)</option>
+                                <option value="Pending BM Allocation" @selected($leadStatusVal === 'Pending BM Allocation')>Pending BM Allocation</option>
                             </select>
                         </div>
                     </div>
                     <div class="cg-field" style="margin-bottom:0">
                         <label>Description</label>
-                        <textarea name="description" rows="2" placeholder="Short note…">{{ old('description') }}</textarea>
+                        <textarea name="description" rows="2" placeholder="Short note…">{{ old('description', $import?->description ?? '') }}</textarea>
                     </div>
                 </div>
 
+                @if($canAssignNow)
                 <div class="cg-mid-section">
                     <h3>
                         <span class="cg-sec-ico assign"><i class="bi bi-people"></i></span>
                         Assign To
                     </h3>
-                                    @include('goal.contacts.partials.assign-form', [
-                                        'formId' => null,
-                                        'formAction' => null,
-                                        'submitLabel' => null,
-                                        'showAllMethods' => $canPickBranch,
-                                        'canAssignRegion' => $canAssignRegion,
-                                        'canAssignCluster' => $canAssignCluster,
-                                        'canAssignBranch' => $canAssignBranch,
-                                        'handoffKey' => $handoffKey,
-                                        'defaultMethod' => $defaultMethod,
-                                        'validCount' => 0,
-                                        'embedInNew' => true,
-                                    ])
+                    @include('goal.contacts.partials.assign-form', [
+                        'formId' => null,
+                        'formAction' => null,
+                        'submitLabel' => null,
+                        'showAllMethods' => $canPickBranch,
+                        'canAssignRegion' => $canAssignRegion,
+                        'canAssignCluster' => $canAssignCluster,
+                        'canAssignBranch' => $canAssignBranch,
+                        'handoffKey' => $handoffKey,
+                        'defaultMethod' => $defaultMethod,
+                        'defaultAlloc' => $defaultAlloc,
+                        'validCount' => $validCount,
+                        'embedInNew' => true,
+                        'preselectedRegionId' => $preselectedRegionId ?? 0,
+                        'preselectedClusterId' => $preselectedClusterId ?? 0,
+                        'preselectedBranchId' => $preselectedBranchId ?? 0,
+                        'preselectedTargetIds' => $preselectedTargetIds ?? [],
+                    ])
                 </div>
+                @elseif($isEdit && $assignedToVrm)
+                <div class="cg-mid-section">
+                    <h3>
+                        <span class="cg-sec-ico assign"><i class="bi bi-people"></i></span>
+                        Assign To
+                    </h3>
+                    <div style="padding:14px 12px;border:1px dashed #86efac;border-radius:10px;background:#f0fdf4;text-align:center">
+                        <i class="bi bi-check2-circle" style="font-size:1.35rem;color:#16a34a"></i>
+                        <p style="margin:8px 0 2px;font-weight:800;color:#166534">Assigned to VRM</p>
+                        <p style="margin:0;font-size:.78rem;color:#64748b">All contacts are assigned. Assign is closed for this campaign.</p>
+                    </div>
+                </div>
+                @endif
             </div>
 
             <div class="cg-block cg-block-sum">
@@ -335,41 +382,49 @@
                         <span class="sum-ico"><i class="bi bi-people-fill"></i></span>
                         <div class="sum-meta">
                             <p class="l">Total</p>
-                            <p class="v" id="sumTotal">0</p>
+                            <p class="v" id="sumTotal">{{ $isEdit ? number_format((int) ($batchSummary['total'] ?? $import->total_rows ?? 0)) : '0' }}</p>
                         </div>
                     </div>
                     <div class="cg-sum-card tone-ok">
                         <span class="sum-ico"><i class="bi bi-check2-circle"></i></span>
                         <div class="sum-meta">
                             <p class="l">Valid</p>
-                            <p class="v" id="sumValid">0</p>
+                            <p class="v" id="sumValid">{{ $isEdit ? number_format((int) ($batchSummary['valid'] ?? $import->success_count ?? 0)) : '0' }}</p>
                         </div>
                     </div>
                     <div class="cg-sum-card tone-warn">
-                        <span class="sum-ico"><i class="bi bi-files"></i></span>
+                        <span class="sum-ico"><i class="bi bi-hourglass-split"></i></span>
                         <div class="sum-meta">
-                            <p class="l">Duplicates</p>
-                            <p class="v" id="sumDup">0</p>
+                            <p class="l">Open</p>
+                            <p class="v" id="sumDup">{{ $isEdit ? number_format($unassignedCount) : '0' }}</p>
                         </div>
                     </div>
                     <div class="cg-sum-card tone-bad">
                         <span class="sum-ico"><i class="bi bi-x-octagon"></i></span>
                         <div class="sum-meta">
                             <p class="l">Invalid</p>
-                            <p class="v" id="sumInvalid">0</p>
+                            <p class="v" id="sumInvalid">{{ $isEdit ? number_format((int) ($batchSummary['invalid'] ?? $import->failed_count ?? 0)) : '0' }}</p>
                         </div>
                     </div>
                 </div>
-                <p class="cg-sum-note">Duplicates are allowed and imported as new contacts. Final after Import &amp; Assign.</p>
+                <p class="cg-sum-note">
+                    @if($isEdit)
+                        {{ $canAssignNow ? 'Open contacts still need assignment. New file rows are added to this campaign.' : 'Campaign is fully assigned to VRMs. You can still update details.' }}
+                    @else
+                        Duplicates are allowed and imported as new contacts. Final after Import &amp; Assign.
+                    @endif
+                </p>
             </div>
         </div>
 
         <div class="cg-actions">
             <a class="cg-btn" href="{{ route('goal.contacts.import') }}">Cancel</a>
             <div class="cg-actions-right">
+                @unless($isEdit)
                 <button type="reset" class="cg-btn" id="cgResetBtn"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
-                <button type="submit" class="cg-btn cg-btn-primary" id="cgSubmitBtn" disabled>
-                    <i class="bi bi-cloud-upload"></i> <span id="cgSubmitLabel">Import &amp; Assign</span>
+                @endunless
+                <button type="submit" class="cg-btn cg-btn-primary" id="cgSubmitBtn" @if(! $isEdit) disabled @endif>
+                    <i class="bi bi-{{ $isEdit ? 'check2-circle' : 'cloud-upload' }}"></i> <span id="cgSubmitLabel">{{ $submitLabel }}</span>
                 </button>
             </div>
         </div>
@@ -391,6 +446,9 @@
     @if($errors->any())
     notify('error', @json($errors->first()), 'Error');
     @endif
+    @if(session('success'))
+    notify('success', @json(session('success')), 'Success');
+    @endif
 
     var input = document.getElementById('import_file');
     var nameEl = document.getElementById('importFileName');
@@ -400,6 +458,9 @@
     var submitLabel = document.getElementById('cgSubmitLabel');
     var form = document.getElementById('cgCampaignForm');
     var allowed = ['csv', 'xlsx', 'xls'];
+    var isEdit = form && form.getAttribute('data-edit') === '1';
+    var canAssignNow = !form || form.getAttribute('data-can-assign') !== '0';
+    var defaultSubmitLabel = @json($submitLabel);
 
     function applyPreviewCounts(total, valid, dup, invalid) {
         setSummary(total, valid, dup, invalid);
@@ -537,27 +598,93 @@
         nameEl.classList.add('has-file');
         drop.classList.add('has-file');
         if (submitBtn) submitBtn.disabled = false;
-        if (submitLabel) submitLabel.textContent = 'Import & Assign';
+        if (submitLabel) submitLabel.textContent = defaultSubmitLabel;
         notify('success', 'File selected: ' + file.name, 'File ready');
         if (ext === 'csv') previewCsv(file);
         else previewExcel(file);
     }
 
+    if (isEdit) {
+        window.__cgValidEstimate = {{ (int) $validCount }};
+        if (drop) drop.classList.add('has-file');
+        if (submitBtn) submitBtn.disabled = false;
+    }
+
+    var currentFileLabel = @json($isEdit && $import ? ((string) $import->filename).' (current — choose a file to add more)' : 'No file chosen');
+    var filePickAllowed = !isEdit;
+
+    function confirmReplaceAdd(onYes) {
+        if (!isEdit) {
+            onYes();
+            return;
+        }
+        var title = 'Replace / add file?';
+        var text = 'New rows from this file will be added to the current campaign. Existing assigned contacts stay as they are.';
+        if (typeof Swal !== 'undefined' && Swal.fire) {
+            Swal.fire({
+                icon: 'question',
+                title: title,
+                text: text,
+                showCancelButton: true,
+                confirmButtonText: 'Yes, choose file',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#16a34a',
+                cancelButtonColor: '#94a3b8',
+                reverseButtons: true,
+                focusCancel: true
+            }).then(function (result) {
+                if (result.isConfirmed) onYes();
+            });
+            return;
+        }
+        if (window.confirm(title + '\n\n' + text)) onYes();
+    }
+
+    function openFilePicker() {
+        filePickAllowed = true;
+        input.click();
+        window.setTimeout(function () { filePickAllowed = !isEdit; }, 0);
+    }
+
     if (input && drop && nameEl) {
+        input.addEventListener('click', function (e) {
+            if (isEdit && !filePickAllowed) {
+                e.preventDefault();
+                confirmReplaceAdd(openFilePicker);
+            }
+        });
         input.addEventListener('change', function () {
             var f = input.files && input.files[0];
             if (f) setFile(f);
             else {
-                nameEl.textContent = 'No file chosen';
-                nameEl.classList.remove('has-file');
-                drop.classList.remove('has-file');
-                if (submitBtn) submitBtn.disabled = true;
-                setSummary(0, 0, 0, 0);
+                if (isEdit) {
+                    nameEl.textContent = currentFileLabel;
+                    nameEl.classList.add('has-file');
+                    drop.classList.add('has-file');
+                    if (submitBtn) submitBtn.disabled = false;
+                } else {
+                    nameEl.textContent = 'No file chosen';
+                    nameEl.classList.remove('has-file');
+                    drop.classList.remove('has-file');
+                    if (submitBtn) submitBtn.disabled = true;
+                    setSummary(0, 0, 0, 0);
+                }
             }
+            filePickAllowed = !isEdit;
         });
+        if (chooseBtn) {
+            chooseBtn.addEventListener('click', function (e) {
+                if (!isEdit) return;
+                e.preventDefault();
+                e.stopPropagation();
+                confirmReplaceAdd(openFilePicker);
+            });
+        }
         drop.addEventListener('click', function (e) {
             if (chooseBtn && (chooseBtn === e.target || chooseBtn.contains(e.target))) return;
-            input.click();
+            e.preventDefault();
+            if (isEdit) confirmReplaceAdd(openFilePicker);
+            else openFilePicker();
         });
         ['dragenter', 'dragover'].forEach(function (evt) {
             drop.addEventListener(evt, function (e) { e.preventDefault(); drop.classList.add('is-drag'); });
@@ -566,20 +693,36 @@
             drop.addEventListener(evt, function (e) {
                 e.preventDefault();
                 drop.classList.remove('is-drag');
-                if (evt === 'drop' && e.dataTransfer && e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+                if (evt !== 'drop' || !e.dataTransfer || !e.dataTransfer.files[0]) return;
+                var dropped = e.dataTransfer.files[0];
+                if (isEdit) {
+                    confirmReplaceAdd(function () { setFile(dropped); });
+                } else {
+                    setFile(dropped);
+                }
             });
         });
     }
 
     if (form) {
         form.addEventListener('submit', function (e) {
+            // Confirmed pass — allow browser submit (flag cleared next tick for assign-form)
+            if (form.__cgAllowSubmit) {
+                if (submitBtn) { submitBtn.disabled = true; }
+                if (submitLabel) submitLabel.textContent = isEdit ? 'Saving…' : 'Importing…';
+                window.setTimeout(function () { form.__cgAllowSubmit = false; }, 0);
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
             function stop(msg) {
-                e.preventDefault();
                 notify('error', msg, 'Almost there');
                 if (submitBtn) submitBtn.disabled = false;
-                if (submitLabel) submitLabel.textContent = 'Import & Assign';
+                if (submitLabel) submitLabel.textContent = defaultSubmitLabel;
             }
-            if (!input.files || !input.files[0]) {
+            if (!isEdit && (!input.files || !input.files[0])) {
                 stop('Please choose a file first.');
                 return;
             }
@@ -589,31 +732,82 @@
                 if (name.focus) name.focus();
                 return;
             }
-            var sumValidEl = document.getElementById('sumValid');
-            var sumTxt = sumValidEl ? String(sumValidEl.textContent || '').trim() : '';
-            var previewReady = sumTxt !== '' && sumTxt !== '—' && sumTxt !== '…';
-            var validEst = typeof window.__cgValidEstimate === 'number'
-                ? window.__cgValidEstimate
-                : (previewReady ? (parseInt(sumTxt, 10) || 0) : null);
-            if (validEst === 0) {
-                stop('No valid contacts in the file. Fix the list or choose another file.');
+            if (!isEdit) {
+                var sumValidEl = document.getElementById('sumValid');
+                var sumTxt = sumValidEl ? String(sumValidEl.textContent || '').trim() : '';
+                var previewReady = sumTxt !== '' && sumTxt !== '—' && sumTxt !== '…';
+                var validEst = typeof window.__cgValidEstimate === 'number'
+                    ? window.__cgValidEstimate
+                    : (previewReady ? (parseInt(sumTxt, 10) || 0) : null);
+                if (validEst === 0) {
+                    stop('No valid contacts in the file. Fix the list or choose another file.');
+                    return;
+                }
+            }
+            if (canAssignNow && typeof window.cgValidateAssign === 'function') {
+                var fake = { preventDefault: function () {}, __cgAssignChecked: false, __cgAssignOk: false };
+                if (!window.cgValidateAssign(fake, true)) {
+                    if (submitBtn) submitBtn.disabled = false;
+                    if (submitLabel) submitLabel.textContent = defaultSubmitLabel;
+                    return;
+                }
+            }
+
+            var confirmTitle = isEdit
+                ? (canAssignNow ? 'Save & assign campaign?' : 'Save campaign changes?')
+                : 'Import & assign campaign?';
+            var confirmText = isEdit
+                ? (canAssignNow
+                    ? 'This will save campaign details and assign open contacts.'
+                    : 'This will update the campaign details.')
+                : 'This will import the file and assign contacts as selected.';
+            var confirmBtn = isEdit
+                ? (canAssignNow ? 'Yes, save & assign' : 'Yes, save')
+                : 'Yes, import & assign';
+
+            function proceed() {
+                form.__cgAllowSubmit = true;
+                if (submitBtn) { submitBtn.disabled = true; }
+                if (submitLabel) submitLabel.textContent = isEdit ? 'Saving…' : 'Importing…';
+                if (typeof form.requestSubmit === 'function') form.requestSubmit(submitBtn || undefined);
+                else HTMLFormElement.prototype.submit.call(form);
+            }
+
+            if (typeof Swal !== 'undefined' && Swal.fire) {
+                Swal.fire({
+                    icon: 'question',
+                    title: confirmTitle,
+                    text: confirmText,
+                    showCancelButton: true,
+                    confirmButtonText: confirmBtn,
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#16a34a',
+                    cancelButtonColor: '#94a3b8',
+                    reverseButtons: true,
+                    focusCancel: true
+                }).then(function (result) {
+                    if (result.isConfirmed) proceed();
+                    else {
+                        if (submitBtn) submitBtn.disabled = false;
+                        if (submitLabel) submitLabel.textContent = defaultSubmitLabel;
+                    }
+                });
                 return;
             }
-            if (typeof window.cgValidateAssign === 'function' && !window.cgValidateAssign(e, true)) {
+
+            if (window.confirm(confirmTitle + '\n\n' + confirmText)) proceed();
+            else {
                 if (submitBtn) submitBtn.disabled = false;
-                if (submitLabel) submitLabel.textContent = 'Import & Assign';
-                return;
+                if (submitLabel) submitLabel.textContent = defaultSubmitLabel;
             }
-            if (submitBtn) { submitBtn.disabled = true; }
-            if (submitLabel) submitLabel.textContent = 'Importing…';
-        });
+        }, true);
         form.addEventListener('reset', function () {
             setTimeout(function () {
                 nameEl.textContent = 'No file chosen';
                 nameEl.classList.remove('has-file');
                 drop.classList.remove('has-file');
                 if (submitBtn) submitBtn.disabled = true;
-                if (submitLabel) submitLabel.textContent = 'Import & Assign';
+                if (submitLabel) submitLabel.textContent = defaultSubmitLabel;
                 setSummary(0, 0, 0, 0);
             }, 0);
         });
