@@ -11,7 +11,9 @@ use App\Models\GoalOrgUnit;
 use App\Models\GoalVrmCallLog;
 use App\Models\GoalVrmDisposition;
 use App\Models\Product;
+use App\Models\User;
 use App\Support\PhoneNumber;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -31,31 +33,116 @@ class GoalVrmController extends Controller
             'q' => 'nullable|string|max:150',
             'disposition' => ['nullable', Rule::in($dispositionNames)],
             'disposition_filter' => ['nullable', Rule::in($dispositionNames)],
-            'lead_status' => 'nullable|in:all,yes,no',
+            'has_lead' => 'nullable|in:all,yes,no',
             'callbacks_due' => 'nullable|in:1,0',
+            'interest_level' => ['nullable', Rule::in(GoalVrmCallLog::allowedInterestLevels())],
             'from_date' => 'nullable|date',
             'to_date' => 'nullable|date|after_or_equal:from_date',
             'date_filter' => 'nullable|date',
             'per_page' => 'nullable|in:10,25,50,100',
             'log_call' => 'nullable',
+            'tab' => 'nullable|in:calls,assigned,analytics',
+            'call_status' => 'nullable|in:all,pending,called,connected,not_connected,callback',
+            'vrm_id' => 'nullable|integer',
+            'branch_id' => 'nullable|integer',
+            // Assigned-tab lead status master value, or calls-tab shortcut (yes/no/all/hot).
+            'lead_status' => 'nullable|string|max:80',
         ]);
+
+        $canSeeAssignedContacts = $this->canSeeAssignedContactsTab();
+        $isBmAssignedView = $this->isBmCaller();
+        $defaultTab = 'calls';
+        $tabInput = $validated['tab'] ?? $defaultTab;
+        $activeTab = in_array($tabInput, ['assigned', 'calls', 'analytics'], true) ? $tabInput : $defaultTab;
+        if ($activeTab === 'assigned' && ! $canSeeAssignedContacts) {
+            return redirect()->route('goal.vrm.index', ['tab' => 'calls']);
+        }
+
+        $filterBranchId = (int) ($validated['branch_id'] ?? 0);
+        $allowedBranchIds = $this->allowedBranchIds();
+        if ($filterBranchId > 0 && ! in_array($filterBranchId, $allowedBranchIds, true)) {
+            $filterBranchId = 0;
+        }
+        // VRMs are scoped to their own branch — ignore branch filter from query string.
+        if ($this->isVrmCaller()) {
+            $filterBranchId = 0;
+        }
+        $filterAssignedLeadStatus = trim((string) ($validated['lead_status'] ?? ''));
+        // Calls-tab shortcuts should not filter the assigned contacts lead-status dropdown.
+        if (in_array($filterAssignedLeadStatus, ['all', 'yes', 'no', 'hot'], true)) {
+            $filterAssignedLeadStatus = '';
+        }
 
         $visibleUserIds = $this->visibleCallLogUserIds();
         $seesTeamLogs = count($visibleUserIds) > 1;
+        $assignedVrmIds = $canSeeAssignedContacts ? $this->assignedContactVrmIds() : [];
+        $vrmOptions = $canSeeAssignedContacts && $isBmAssignedView
+            ? $this->branchVrmOptions()
+            : collect();
+        $filterVrmId = (int) ($validated['vrm_id'] ?? 0);
+        if ($filterVrmId > 0 && ! in_array($filterVrmId, $assignedVrmIds, true)) {
+            $filterVrmId = 0;
+        }
 
         $assignedContactsBase = GoalLoanLead::query()
-            ->whereIn('assigned_to', $visibleUserIds)
+            ->when($assignedVrmIds !== [], fn ($q) => $q->whereIn('assigned_to', $assignedVrmIds))
+            ->when($assignedVrmIds === [], fn ($q) => $q->whereRaw('1 = 0'))
             ->whereNotIn('status', ['Closed / Lost', 'Closed', 'Rejected', 'Cancelled', 'Disbursed']);
 
-        $assignedContactsCount = (clone $assignedContactsBase)->count();
-        $pendingToCallCount = (clone $assignedContactsBase)
-            ->whereDoesntHave('vrmCalls')
-            ->count();
+        $assignedContactsCount = $canSeeAssignedContacts ? (clone $assignedContactsBase)->count() : 0;
+        $pendingToCallCount = $canSeeAssignedContacts
+            ? (clone $assignedContactsBase)->whereDoesntHave('vrmCalls')->count()
+            : 0;
+
+        // Per-VRM totals for BM filter chips / summary
+        $vrmAssignedCounts = [];
+        if ($canSeeAssignedContacts && $isBmAssignedView && $vrmOptions->isNotEmpty()) {
+            $counts = (clone $assignedContactsBase)
+                ->selectRaw('assigned_to, COUNT(*) as total')
+                ->groupBy('assigned_to')
+                ->pluck('total', 'assigned_to');
+            foreach ($vrmOptions as $vrm) {
+                $vrmAssignedCounts[(int) $vrm->id] = (int) ($counts[(int) $vrm->id] ?? 0);
+            }
+        }
+
+        // Progress card: VRM = own assigned queue; BM = branch VRMs' assigned total; MD+ = hidden.
+        $showCallingProgress = $canSeeAssignedContacts;
+        $progressUserIds = $this->isVrmCaller()
+            ? [(int) auth()->id()]
+            : ($this->isBmCaller() ? $assignedVrmIds : []);
 
         $todayCount = GoalVrmCallLog::query()
             ->whereIn('user_id', $visibleUserIds)
             ->whereDate('called_at', today())
             ->count();
+
+        $todayProgressCount = $showCallingProgress && $progressUserIds !== []
+            ? GoalVrmCallLog::query()
+                ->whereIn('user_id', $progressUserIds)
+                ->whereDate('called_at', today())
+                ->count()
+            : 0;
+        $progressTarget = $showCallingProgress ? (int) $assignedContactsCount : 0;
+        $callingProgress = [
+            'show' => $showCallingProgress,
+            'completed' => $todayProgressCount,
+            'target' => $progressTarget,
+            'pending' => max(0, $progressTarget - $todayProgressCount),
+            'pct' => $progressTarget > 0
+                ? min(100, round(($todayProgressCount / $progressTarget) * 100, 1))
+                : 0.0,
+        ];
+
+        $assignedLeadStatuses = $canSeeAssignedContacts
+            ? (clone $assignedContactsBase)
+                ->whereNotNull('status')
+                ->where('status', '!=', '')
+                ->distinct()
+                ->orderBy('status')
+                ->pluck('status')
+                ->values()
+            : collect();
 
         $callbacksDueCount = GoalVrmCallLog::query()
             ->whereIn('user_id', $visibleUserIds)
@@ -72,7 +159,11 @@ class GoalVrmController extends Controller
 
         $totalCalls = (clone $summaryQuery)->count();
         $hotLeadCount = (clone $summaryQuery)
-            ->whereRaw('LOWER(disposition) = ?', ['hot lead'])
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(disposition) = ?', ['hot lead'])
+                    ->orWhere('interest_level', 'Hot')
+                    ->orWhereRaw('LOWER(disposition) = ?', ['interested']);
+            })
             ->count();
         $callbackCount = (clone $summaryQuery)->where('disposition', 'Callback')->count();
         $leadsCreatedCount = (clone $summaryQuery)->whereNotNull('goal_loan_lead_id')->count();
@@ -81,8 +172,211 @@ class GoalVrmController extends Controller
         $logs = (clone $baseQuery)
             ->with(['orgUnit', 'lead.orgUnit', 'user:id,name,crm_role_type,goal_org_unit_id', 'user.crmRole:id,name', 'user.orgUnit:id,name'])
             ->latest('called_at')
-            ->paginate($perPage)
+            ->paginate($perPage, ['*'], 'calls_page')
             ->withQueryString();
+
+        $assignedContacts = new \Illuminate\Pagination\LengthAwarePaginator([], 0, $perPage);
+        $assignedContactGroups = collect();
+        $callStatus = (string) ($validated['call_status'] ?? 'all');
+
+        if ($canSeeAssignedContacts) {
+            $assignedQuery = (clone $assignedContactsBase)
+                ->with([
+                    'orgUnit:id,name,code',
+                    'assignee:id,name',
+                    'assigner:id,name',
+                    'vrmCalls' => fn ($q) => $q->latest('called_at')->limit(1),
+                ])
+                ->withCount('vrmCalls');
+
+            if ($isBmAssignedView && $filterVrmId > 0) {
+                $assignedQuery->where('assigned_to', $filterVrmId);
+            }
+
+            if ($request->filled('q') && $activeTab === 'assigned') {
+                $q = trim((string) $request->input('q'));
+                $digits = preg_replace('/\D+/', '', $q) ?: '';
+                $assignedQuery->where(function ($inner) use ($q, $digits) {
+                    $inner->where('customer_name', 'like', '%'.$q.'%')
+                        ->orWhere('ref_no', 'like', '%'.$q.'%');
+                    if ($digits !== '') {
+                        $inner->orWhere('mobile', 'like', '%'.$digits.'%');
+                    }
+                });
+            }
+
+            if ($callStatus === 'pending') {
+                $assignedQuery->whereDoesntHave('vrmCalls');
+            } elseif ($callStatus === 'called') {
+                $assignedQuery->whereHas('vrmCalls');
+            } elseif ($callStatus === 'connected') {
+                $assignedQuery->whereHas('vrmCalls', function ($q) {
+                    $q->whereIn('disposition', ['Interested', 'Not Interested', 'Callback', 'Hot lead']);
+                });
+            } elseif ($callStatus === 'not_connected') {
+                $assignedQuery->whereHas('vrmCalls', function ($q) {
+                    $q->whereIn('disposition', ['No Answer', 'Busy', 'Invalid Number']);
+                });
+            } elseif ($callStatus === 'callback') {
+                $assignedQuery->where(function ($q) {
+                    $q->where('disposition', 'Callback')
+                        ->orWhereHas('vrmCalls', fn ($c) => $c->where('disposition', 'Callback'));
+                });
+            }
+
+            if ($filterAssignedLeadStatus !== '') {
+                $assignedQuery->where('status', $filterAssignedLeadStatus);
+            }
+
+            if ($filterBranchId > 0) {
+                $assignedQuery->where('goal_org_unit_id', $filterBranchId);
+            }
+
+            if ($isBmAssignedView) {
+                $assignedQuery
+                    ->orderBy('assigned_to')
+                    ->orderByDesc('assigned_at')
+                    ->orderByDesc('id');
+            } else {
+                $assignedQuery
+                    ->orderByRaw('DATE(assigned_at) DESC')
+                    ->orderByDesc('assigned_by')
+                    ->orderByDesc('assigned_at')
+                    ->orderByDesc('id');
+            }
+
+            $assignedContacts = $assignedQuery
+                ->paginate($perPage, ['*'], 'assigned_page')
+                ->withQueryString();
+
+            $assignedContactGroups = $assignedContacts
+                ->getCollection()
+                ->groupBy(function ($contact) use ($isBmAssignedView) {
+                    if ($isBmAssignedView) {
+                        return 'vrm|'.(int) ($contact->assigned_to ?? 0);
+                    }
+                    $dateKey = optional($contact->assigned_at)->format('Y-m-d') ?: 'none';
+                    $byKey = (int) ($contact->assigned_by ?? 0);
+
+                    return $dateKey.'|'.$byKey;
+                })
+                ->map(function ($rows, $key) use ($isBmAssignedView) {
+                    $first = $rows->first();
+
+                    return [
+                        'key' => $key,
+                        'mode' => $isBmAssignedView ? 'vrm' : 'date',
+                        'vrm_name' => optional($first?->assignee)->name ?: 'Unassigned VRM',
+                        'vrm_id' => (int) ($first?->assigned_to ?? 0),
+                        'assigned_on' => optional($first?->assigned_at)->format('d M Y') ?: '—',
+                        'assigned_on_raw' => optional($first?->assigned_at)->format('Y-m-d'),
+                        'assigned_by' => optional($first?->assigner)->name ?: '—',
+                        'assigned_by_id' => (int) ($first?->assigned_by ?? 0),
+                        'is_today' => optional($first?->assigned_at)->isToday() ?? false,
+                        'total' => $rows->count(),
+                        'pending' => $rows->filter(fn ($c) => (int) ($c->vrm_calls_count ?? 0) === 0)->count(),
+                        'contacts' => $rows->values(),
+                    ];
+                })
+                ->values();
+        }
+
+        $analyticsFrom = $request->filled('from_date')
+            ? Carbon::parse($request->input('from_date'))->startOfDay()
+            : now()->startOfMonth()->startOfDay();
+        $analyticsTo = $request->filled('to_date')
+            ? Carbon::parse($request->input('to_date'))->endOfDay()
+            : now()->endOfDay();
+
+        $analyticsCallBase = GoalVrmCallLog::query()
+            ->whereIn('user_id', $visibleUserIds)
+            ->whereBetween('called_at', [$analyticsFrom, $analyticsTo]);
+
+        $connectedDispositions = ['Interested', 'Not Interested', 'Callback', 'Hot lead'];
+        $notConnectedDispositions = ['No Answer', 'Busy', 'Invalid Number'];
+
+        $analyticsInterested = (clone $analyticsCallBase)
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(disposition) = ?', ['interested'])
+                    ->orWhereRaw('LOWER(disposition) = ?', ['hot lead'])
+                    ->orWhereIn('interest_level', ['Hot', 'Warm']);
+            })
+            ->count();
+
+        $analyticsTotalCalls = (clone $analyticsCallBase)->count();
+        $analyticsConnected = (clone $analyticsCallBase)->whereIn('disposition', $connectedDispositions)->count();
+        $analyticsNotConnected = (clone $analyticsCallBase)->whereIn('disposition', $notConnectedDispositions)->count();
+        $analyticsCallbacks = (clone $analyticsCallBase)->where('disposition', 'Callback')->count();
+        $analyticsLeadsCreated = (clone $analyticsCallBase)->whereNotNull('goal_loan_lead_id')->count();
+        $analyticsConversionPct = $analyticsTotalCalls > 0
+            ? round(($analyticsLeadsCreated / $analyticsTotalCalls) * 100, 1)
+            : 0.0;
+
+        $analyticsDispositionCounts = (clone $analyticsCallBase)
+            ->selectRaw('disposition, COUNT(*) as total')
+            ->groupBy('disposition')
+            ->orderByDesc('total')
+            ->pluck('total', 'disposition')
+            ->all();
+
+        $analyticsInterestCounts = (clone $analyticsCallBase)
+            ->whereNotNull('interest_level')
+            ->selectRaw('interest_level, COUNT(*) as total')
+            ->groupBy('interest_level')
+            ->orderByDesc('total')
+            ->pluck('total', 'interest_level')
+            ->all();
+
+        $dailyTrendRows = (clone $analyticsCallBase)
+            ->selectRaw('DATE(called_at) as call_day, COUNT(*) as total')
+            ->groupBy('call_day')
+            ->orderBy('call_day')
+            ->get();
+
+        $analyticsDailyTrend = [
+            'labels' => $dailyTrendRows->map(fn ($r) => Carbon::parse($r->call_day)->format('d M'))->values()->all(),
+            'values' => $dailyTrendRows->map(fn ($r) => (int) $r->total)->values()->all(),
+        ];
+
+        $followUpDue = (clone $analyticsCallBase)
+            ->whereNotNull('callback_at')
+            ->where('callback_at', '<=', now())
+            ->count();
+        $followUpUpcoming = (clone $analyticsCallBase)
+            ->whereNotNull('callback_at')
+            ->where('callback_at', '>', now())
+            ->count();
+
+        $leadConversionRows = (clone $analyticsCallBase)
+            ->whereNotNull('goal_loan_lead_id')
+            ->selectRaw('DATE(called_at) as call_day, COUNT(*) as total')
+            ->groupBy('call_day')
+            ->orderBy('call_day')
+            ->get();
+
+        $analyticsLeadTrend = [
+            'labels' => $leadConversionRows->map(fn ($r) => Carbon::parse($r->call_day)->format('d M'))->values()->all(),
+            'values' => $leadConversionRows->map(fn ($r) => (int) $r->total)->values()->all(),
+        ];
+
+        $callAnalytics = [
+            'from' => $analyticsFrom->format('Y-m-d'),
+            'to' => $analyticsTo->format('Y-m-d'),
+            'assigned_contacts' => $assignedContactsCount,
+            'total_calls' => $analyticsTotalCalls,
+            'connected' => $analyticsConnected,
+            'not_connected' => $analyticsNotConnected,
+            'interested' => $analyticsInterested,
+            'callbacks' => $analyticsCallbacks,
+            'leads_created' => $analyticsLeadsCreated,
+            'conversion_pct' => $analyticsConversionPct,
+            'disposition_counts' => $analyticsDispositionCounts,
+            'interest_counts' => $analyticsInterestCounts,
+            'daily_trend' => $analyticsDailyTrend,
+            'lead_trend' => $analyticsLeadTrend,
+            'follow_up_due' => $followUpDue,
+            'follow_up_upcoming' => $followUpUpcoming,
+        ];
 
         $branches = $this->selectableBranches();
         $branchLocked = $this->isBranchLockedToOwn();
@@ -101,6 +395,20 @@ class GoalVrmController extends Controller
             'callbackCount',
             'leadsCreatedCount',
             'logs',
+            'assignedContacts',
+            'assignedContactGroups',
+            'activeTab',
+            'callStatus',
+            'canSeeAssignedContacts',
+            'isBmAssignedView',
+            'vrmOptions',
+            'vrmAssignedCounts',
+            'filterVrmId',
+            'filterBranchId',
+            'filterAssignedLeadStatus',
+            'assignedLeadStatuses',
+            'callingProgress',
+            'callAnalytics',
             'perPage',
             'branches',
             'branchLocked',
@@ -522,11 +830,26 @@ class GoalVrmController extends Controller
             $query->where('disposition', $disposition);
         }
 
-        $leadStatus = $request->input('lead_status', 'all');
-        if ($leadStatus === 'yes') {
+        $hasLead = (string) $request->input('has_lead', '');
+        $leadStatus = (string) $request->input('lead_status', 'all');
+        if ($hasLead === '' && in_array($leadStatus, ['yes', 'no', 'all'], true)) {
+            $hasLead = $leadStatus;
+        }
+        if ($hasLead === 'yes' || $leadStatus === 'yes') {
             $query->whereNotNull('goal_loan_lead_id');
-        } elseif ($leadStatus === 'no') {
+        } elseif ($hasLead === 'no' || $leadStatus === 'no') {
             $query->whereNull('goal_loan_lead_id');
+        } elseif ($leadStatus === 'hot') {
+            $query->where(function ($q) {
+                $q->whereRaw('LOWER(disposition) = ?', ['hot lead'])
+                    ->orWhere('interest_level', 'Hot')
+                    ->orWhereRaw('LOWER(disposition) = ?', ['interested']);
+            });
+        }
+
+        $interestLevel = trim((string) $request->input('interest_level', ''));
+        if ($interestLevel !== '' && in_array($interestLevel, GoalVrmCallLog::allowedInterestLevels(), true)) {
+            $query->where('interest_level', $interestLevel);
         }
 
         if ($request->input('callbacks_due') === '1') {
@@ -594,13 +917,32 @@ class GoalVrmController extends Controller
     public function store(Request $request)
     {
         $this->requireGoalPermission('vrm_calling_guard');
+
+        $request->merge([
+            'called_at' => $this->normalizeDateTimeInput($request->input('called_at')),
+            'callback_at' => $this->normalizeDateTimeInput($request->input('callback_at')),
+        ]);
+
+        $callbackRequired = in_array($request->input('disposition'), ['Callback'], true);
+        $notesRequired = in_array($request->input('disposition'), ['Invalid Number'], true);
+
         $data = $request->validate([
             'customer_name' => 'required|string|max:150',
             'mobile' => PhoneNumber::mobileRules(true),
             'goal_loan_lead_id' => 'nullable|integer|exists:goal_loan_leads,id',
             'disposition' => ['required', Rule::in(GoalVrmCallLog::allowedDispositionNames())],
-            'callback_at' => 'nullable|date',
-            'notes' => 'nullable|string',
+            'called_at' => 'nullable|date',
+            'callback_at' => [
+                Rule::requiredIf(fn () => $callbackRequired),
+                'nullable',
+                'date',
+                'after_or_equal:'.now()->startOfDay()->toDateTimeString(),
+            ],
+            'notes' => [
+                Rule::requiredIf(fn () => $notesRequired),
+                'nullable',
+                'string',
+            ],
             'create_lead' => 'nullable|boolean',
             'product' => [
                 Rule::requiredIf(fn () => $request->boolean('create_lead') && ! $request->filled('goal_loan_lead_id')),
@@ -616,10 +958,15 @@ class GoalVrmController extends Controller
                 'min:0',
             ],
             'goal_org_unit_id' => ['nullable', Rule::in($this->allowedBranchIds())],
+            'interest_level' => ['nullable', Rule::in(GoalVrmCallLog::allowedInterestLevels())],
+            'duration_seconds' => 'nullable|integer|min:0|max:86400',
             'save_and_new' => 'nullable|boolean',
         ], array_merge(PhoneNumber::messages('mobile'), [
             'product.required' => 'Please select a product when creating a lead.',
             'loan_amount.required' => 'Please enter loan amount when creating a lead.',
+            'callback_at.required' => 'Follow-up date and time are required for callbacks.',
+            'callback_at.after_or_equal' => 'Follow-up date cannot be in the past.',
+            'notes.required' => 'Remarks are required for this disposition.',
         ]));
 
         $data['goal_org_unit_id'] = $this->resolveBranchId($data['goal_org_unit_id'] ?? null);
@@ -693,28 +1040,39 @@ class GoalVrmController extends Controller
             $leadId = $lead->id;
         }
 
-        GoalVrmCallLog::create([
-            'user_id' => auth()->id(),
-            'goal_loan_lead_id' => $leadId,
-            'goal_org_unit_id' => $data['goal_org_unit_id'] ?? auth()->user()->goal_org_unit_id,
-            'customer_name' => $data['customer_name'],
-            'mobile' => $data['mobile'] ?? null,
-            'disposition' => $data['disposition'],
-            'called_at' => now(),
-            'callback_at' => $data['callback_at'] ?? null,
-            'notes' => $data['notes'] ?? null,
-        ]);
+        $calledAt = ! empty($data['called_at'])
+            ? Carbon::parse($data['called_at'])
+            : now();
 
-        $message = 'Call logged' . ($leadId ? ' and lead created.' : '.');
+        \Illuminate\Support\Facades\DB::transaction(function () use ($data, $leadId, $calledAt) {
+            GoalVrmCallLog::create([
+                'user_id' => auth()->id(),
+                'goal_loan_lead_id' => $leadId,
+                'goal_org_unit_id' => $data['goal_org_unit_id'] ?? auth()->user()->goal_org_unit_id,
+                'customer_name' => $data['customer_name'],
+                'mobile' => $data['mobile'] ?? null,
+                'disposition' => $data['disposition'],
+                'interest_level' => $data['interest_level'] ?? null,
+                'duration_seconds' => isset($data['duration_seconds']) ? (int) $data['duration_seconds'] : null,
+                'called_at' => $calledAt,
+                'callback_at' => $data['callback_at'] ?? null,
+                'notes' => $data['notes'] ?? null,
+            ]);
+        });
+
+        $message = 'Call logged' . ($leadId ? ' and lead linked.' : '.');
+        $returnTab = $request->input('return_tab') === 'assigned' ? 'assigned' : 'calls';
 
         if ($request->boolean('save_and_new')) {
             return redirect()
-                ->route('goal.vrm.index', ['log_call' => 1])
+                ->route('goal.vrm.index', ['tab' => $returnTab, 'log_call' => 1])
                 ->with('success', $message)
                 ->with('reopen_log_call', true);
         }
 
-        return redirect()->route('goal.vrm.index')->with('success', $message);
+        return redirect()
+            ->route('goal.vrm.index', ['tab' => $returnTab])
+            ->with('success', $message);
     }
 
     public function storeQuickDisposition(Request $request)
@@ -891,6 +1249,31 @@ class GoalVrmController extends Controller
             ->get(['id', 'name', 'creates_lead', 'maps_to_lead_type', 'sort_order']);
     }
 
+    protected function normalizeDateTimeInput(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return null;
+        }
+        if (preg_match('/^(\d{2})-(\d{2})-(\d{4})(?:\s+(\d{2}):(\d{2})(?::\d{2})?)?$/', $raw, $m)) {
+            $normalized = $m[3].'-'.$m[2].'-'.$m[1];
+            if (! empty($m[4])) {
+                $normalized .= ' '.$m[4].':'.$m[5].':00';
+            }
+
+            return $normalized;
+        }
+
+        try {
+            return Carbon::parse($raw)->format('Y-m-d H:i:s');
+        } catch (\Throwable) {
+            return $raw;
+        }
+    }
+
     /**
      * @return list<int>
      */
@@ -916,7 +1299,74 @@ class GoalVrmController extends Controller
     /** VRM role (type 9) may only use their assigned branch. */
     protected function isBranchLockedToOwn(): bool
     {
-        return (int) (auth()->user()->crm_role_type ?? -1) === 9;
+        return $this->isVrmCaller();
+    }
+
+    protected function isVrmCaller(): bool
+    {
+        $user = auth()->user();
+        $role = (int) ($user->crm_role_type ?? -1);
+        $job = strtolower((string) ($user->job_role ?? ''));
+
+        return $role === 9 || $job === 'vrm';
+    }
+
+    protected function isBmCaller(): bool
+    {
+        $user = auth()->user();
+        $role = (int) ($user->crm_role_type ?? -1);
+        $job = strtolower((string) ($user->job_role ?? ''));
+
+        return $role === 8 || $job === 'bm';
+    }
+
+    /** Assigned Contacts tab is only for BM (branch VRMs) and VRM (own queue). */
+    protected function canSeeAssignedContactsTab(): bool
+    {
+        return $this->isBmCaller() || $this->isVrmCaller();
+    }
+
+    /**
+     * VRM IDs whose assigned contacts appear in the Assigned Contacts tab.
+     *
+     * @return list<int>
+     */
+    protected function assignedContactVrmIds(): array
+    {
+        if ($this->isVrmCaller()) {
+            return [(int) auth()->id()];
+        }
+
+        if ($this->isBmCaller()) {
+            return $this->branchVrmOptions()->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+        }
+
+        return [];
+    }
+
+    /**
+     * VRMs under the current BM branch / org scope.
+     *
+     * @return \Illuminate\Support\Collection<int, User>
+     */
+    protected function branchVrmOptions()
+    {
+        $user = auth()->user();
+        $orgIds = array_map('intval', $user->goalScopedOrgUnitIds());
+        $own = (int) ($user->goal_org_unit_id ?? 0);
+        if ($orgIds === [] && $own > 0) {
+            $orgIds = [$own];
+        }
+
+        return User::query()
+            ->where('status', 1)
+            ->where(function ($q) {
+                $q->where('crm_role_type', 9)
+                    ->orWhere('job_role', 'vrm');
+            })
+            ->when($orgIds !== [], fn ($q) => $q->whereIn('goal_org_unit_id', $orgIds))
+            ->orderBy('name')
+            ->get(['id', 'name', 'goal_org_unit_id', 'crm_role_type', 'job_role']);
     }
 
     /** Quick-add / Masters: Super Admin, Admin, or Manage Products permission. */

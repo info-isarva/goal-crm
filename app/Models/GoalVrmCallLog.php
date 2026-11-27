@@ -13,14 +13,21 @@ class GoalVrmCallLog extends Model
 
     protected $fillable = [
         'user_id', 'goal_loan_lead_id', 'goal_org_unit_id', 'customer_name', 'mobile',
-        'disposition', 'called_at', 'callback_at', 'notes',
+        'disposition', 'interest_level', 'duration_seconds', 'called_at', 'callback_at', 'notes',
     ];
 
     protected $casts = [
         'called_at' => 'datetime',
         'callback_at' => 'datetime',
         'deleted_at' => 'datetime',
+        'duration_seconds' => 'integer',
     ];
+
+    /** @return list<string> */
+    public static function allowedInterestLevels(): array
+    {
+        return ['Hot', 'Warm', 'Cold'];
+    }
 
     /** @deprecated Prefer GoalVrmDisposition::activeNames() — kept as seed/fallback list */
     public const DISPOSITIONS = [
