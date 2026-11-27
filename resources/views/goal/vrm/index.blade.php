@@ -86,19 +86,49 @@
 }
 .vrm-page .chart-panel .chart-wrap { position: relative; height: 220px; }
 .vrm-page .callback-overdue { color: #b45309 !important; font-weight: 700; }
+.vrm-page .filter-grid.calls-filters {
+    grid-template-columns: minmax(180px, 1.4fr) repeat(2, minmax(130px, 1fr)) minmax(220px, 1.2fr) auto;
+}
 .vrm-page .filter-grid.assigned-filters {
-    grid-template-columns: repeat(5, minmax(120px, 1fr)) auto;
+    grid-template-columns: minmax(180px, 1.4fr) minmax(140px, 1fr) minmax(140px, 1fr) auto;
 }
 .vrm-page .filter-grid.assigned-filters.no-branch {
-    grid-template-columns: repeat(4, minmax(120px, 1fr)) auto;
+    grid-template-columns: minmax(180px, 1.4fr) minmax(140px, 1fr) auto;
 }
 .vrm-page .filter-grid.assigned-filters.bm-filters {
-    grid-template-columns: repeat(5, minmax(120px, 1fr)) auto;
+    grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(130px, 1fr)) auto;
+}
+.vrm-page .filter-grid.analytics-filters {
+    grid-template-columns: minmax(240px, 1fr) auto;
+}
+.vrm-page .filter-grid .date-range-wrap {
+    position: relative;
+    width: 100%;
+    cursor: pointer;
+}
+.vrm-page .filter-grid .date-range-wrap .bi-calendar3 {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: #94a3b8; font-size: .9rem; z-index: 3; pointer-events: none;
+}
+.vrm-page .filter-grid .date-range-wrap .form-control,
+.vrm-page .filter-grid .date-range-wrap .flatpickr-input,
+.vrm-page .filter-grid .date-range-wrap input.flatpickr-alt {
+    width: 100%;
+    min-height: 38px;
+    height: 38px;
+    padding-left: 2rem !important;
+    cursor: pointer;
+    background: #fff;
+}
+.vrm-page .flatpickr-calendar {
+    z-index: 20050 !important;
 }
 @media (max-width: 1199.98px) {
+    .vrm-page .filter-grid.calls-filters,
     .vrm-page .filter-grid.assigned-filters,
     .vrm-page .filter-grid.assigned-filters.no-branch,
-    .vrm-page .filter-grid.assigned-filters.bm-filters {
+    .vrm-page .filter-grid.assigned-filters.bm-filters,
+    .vrm-page .filter-grid.analytics-filters {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
@@ -590,24 +620,19 @@
     width: 100%; max-width: 100%;
 }
 .vrm-page .calls-table-wrap .dataTables_wrapper {
-    width: 100%; overflow: visible;
+    width: 100%;
+    overflow: visible;
 }
 .vrm-page .calls-table-wrap table,
 .vrm-page .calls-table-wrap table.table,
 .vrm-page .calls-table-wrap #vrmCallsTable,
 .vrm-page .calls-table-wrap #vrmAssignedTable {
-    width: 100% !important;
-    min-width: 1080px !important;
-    table-layout: fixed !important;
+    width: max-content !important;
+    min-width: 100% !important;
+    table-layout: auto !important;
     margin: 0 !important;
     border-collapse: separate;
     border-spacing: 0;
-}
-.vrm-page .calls-table-wrap #vrmCallsTable,
-.vrm-page .calls-table-wrap #vrmAssignedTable,
-.vrm-page .calls-table-wrap .dataTables_scrollHead table,
-.vrm-page .calls-table-wrap .dataTables_scrollBody table {
-    width: 100% !important;
 }
 .vrm-page .calls-table-wrap thead th,
 .vrm-page .calls-table-wrap tbody td {
@@ -615,41 +640,60 @@
     vertical-align: middle !important;
     box-sizing: border-box !important;
     text-align: left;
-    padding: 0.75rem 0.85rem !important;
+    padding: 0.75rem 0.9rem !important;
 }
 .vrm-page .calls-table-wrap thead th {
     background: #f1f5f9;
 }
-.vrm-page .calls-table-wrap #vrmAssignedTable th.col-num,
-.vrm-page .calls-table-wrap #vrmAssignedTable td.col-num,
-.vrm-page .calls-table-wrap #vrmCallsTable th.col-num,
-.vrm-page .calls-table-wrap #vrmCallsTable td.col-num,
-.vrm-page .calls-table-wrap th:first-child,
-.vrm-page .calls-table-wrap td.col-num {
-    width: 48px !important;
-    min-width: 48px !important;
-    max-width: 48px !important;
+.vrm-page .calls-table-wrap td.col-num,
+.vrm-page .calls-table-wrap th.col-num {
+    width: 1%;
     text-align: center !important;
     color: #64748b;
     font-weight: 700;
 }
-.vrm-page .calls-table-wrap #vrmAssignedTable td.col-customer,
-.vrm-page .calls-table-wrap #vrmAssignedTable th:nth-child(2) {
-    white-space: normal;
-    width: 160px !important;
-    min-width: 140px;
+.vrm-page .calls-table-wrap td.col-actions,
+.vrm-page .calls-table-wrap th.col-actions {
+    width: 1%;
+    text-align: right !important;
+    white-space: nowrap;
 }
-.vrm-page .calls-table-wrap #vrmAssignedTable .cust-name {
-    font-weight: 700; color: #0f172a; line-height: 1.25;
+.vrm-page .calls-table-wrap td.col-actions .action-group {
+    justify-content: flex-end;
+    flex-wrap: nowrap;
 }
-.vrm-page .calls-table-wrap #vrmAssignedTable .cust-ref {
-    font-size: .72rem; color: #94a3b8; margin-top: 2px;
+.vrm-page .calls-table-wrap .when-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 150px;
 }
-.vrm-page .calls-table-wrap #vrmAssignedTable .mobile-cell {
-    display: inline-flex; align-items: center; gap: 6px; color: #0f172a; text-decoration: none; font-weight: 600;
+.vrm-page .calls-table-wrap .when-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
 }
-.vrm-page .calls-table-wrap #vrmAssignedTable .mobile-cell i { color: var(--g); font-size: .9rem; }
-.vrm-page .calls-table-wrap #vrmAssignedTable .mobile-cell:hover { color: var(--gd); }
+.vrm-page .calls-table-wrap .cust-name {
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.25;
+}
+.vrm-page .calls-table-wrap .cust-ref {
+    font-size: .72rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+.vrm-page .calls-table-wrap .mobile-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #0f172a;
+    text-decoration: none;
+    font-weight: 600;
+}
+.vrm-page .calls-table-wrap .mobile-cell i { color: var(--g); font-size: .9rem; }
+.vrm-page .calls-table-wrap .mobile-cell:hover { color: var(--gd); }
 .vrm-page .lead-status-pill {
     display: inline-flex; align-items: center;
     padding: 3px 10px; border-radius: 999px;
@@ -661,22 +705,7 @@
 .vrm-page .lead-status-pill.tone-warn { background: #ffedd5; color: #c2410c; }
 .vrm-page .lead-status-pill.tone-bad { background: #fee2e2; color: #b91c1c; }
 .vrm-page .lead-status-pill.tone-muted { background: #f1f5f9; color: #64748b; }
-.vrm-page .calls-table-wrap #vrmAssignedTable th.col-actions,
-.vrm-page .calls-table-wrap #vrmAssignedTable td.col-actions,
-.vrm-page .calls-table-wrap #vrmCallsTable th.col-actions,
-.vrm-page .calls-table-wrap #vrmCallsTable td.col-actions {
-    width: 120px !important;
-    min-width: 120px !important;
-    max-width: 130px !important;
-    text-align: right !important;
-}
-.vrm-page .calls-table-wrap #vrmAssignedTable td.col-actions .action-group,
-.vrm-page .calls-table-wrap #vrmCallsTable td.col-actions .action-group {
-    justify-content: flex-end;
-}
-.vrm-page .calls-table-wrap #vrmAssignedTable .when-cell {
-    max-width: 150px;
-}
+/* Neutralize DataTables default sort sprites; keep a compact indicator */
 .vrm-page .calls-table-wrap table.dataTable thead th {
     position: relative;
 }
@@ -684,26 +713,39 @@
 .vrm-page .calls-table-wrap table.dataTable thead .sorting_asc,
 .vrm-page .calls-table-wrap table.dataTable thead .sorting_desc {
     background-image: none !important;
-    padding-right: 1.6rem !important;
+    padding-right: 1.25rem !important;
+}
+.vrm-page .calls-table-wrap table.dataTable thead .sorting:before,
+.vrm-page .calls-table-wrap table.dataTable thead .sorting_asc:before,
+.vrm-page .calls-table-wrap table.dataTable thead .sorting_desc:before {
+    display: none !important;
+    content: none !important;
 }
 .vrm-page .calls-table-wrap table.dataTable thead .sorting:after,
 .vrm-page .calls-table-wrap table.dataTable thead .sorting_asc:after,
 .vrm-page .calls-table-wrap table.dataTable thead .sorting_desc:after {
-    position: absolute;
-    right: 0.55rem;
-    top: 50%;
-    transform: translateY(-50%);
-    font-family: bootstrap-icons !important;
-    font-size: 0.7rem;
-    color: #94a3b8;
-    opacity: 0.9;
+    position: absolute !important;
+    right: 0.4rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    display: block !important;
+    font-size: 0.62rem !important;
+    line-height: 1 !important;
+    color: #94a3b8 !important;
+    opacity: 0.9 !important;
+    content: "⇅" !important;
+    font-family: inherit !important;
+    border: 0 !important;
+    bottom: auto !important;
+    left: auto !important;
 }
-.vrm-page .calls-table-wrap table.dataTable thead .sorting:after { content: "\F282"; }
-.vrm-page .calls-table-wrap table.dataTable thead .sorting_asc:after { content: "\F148"; color: var(--g); }
-.vrm-page .calls-table-wrap table.dataTable thead .sorting_desc:after { content: "\F128"; color: var(--g); }
+.vrm-page .calls-table-wrap table.dataTable thead .sorting_asc:after { content: "▲" !important; color: var(--g) !important; }
+.vrm-page .calls-table-wrap table.dataTable thead .sorting_desc:after { content: "▼" !important; color: var(--g) !important; }
 .vrm-page .calls-table-wrap .notes-cell {
     white-space: nowrap;
     max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .vrm-page .table { margin: 0; border-collapse: separate; border-spacing: 0; }
 .vrm-page .table thead th {
@@ -807,11 +849,32 @@
     border-color: #dbe3ee; background: #fff; color: #64748b;
 }
 .vrm-page .action-btn.lead:hover { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
-.tooltip.vrm-action-tooltip .tooltip-inner {
-    background: #0f172a; font-size: 0.75rem; font-weight: 600;
-    border-radius: 8px; padding: 6px 10px;
+.vrm-action-tip {
+    position: fixed;
+    z-index: 30000;
+    background: #0f172a;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    border-radius: 8px;
+    padding: 6px 10px;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.22);
+    opacity: 0;
+    transition: opacity .12s ease;
 }
-.tooltip.vrm-action-tooltip.bs-tooltip-top .tooltip-arrow::before { border-top-color: #0f172a; }
+.vrm-action-tip.is-on { opacity: 1; }
+.vrm-action-tip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #0f172a;
+}
 .vrm-page .empty-state { padding: 2.5rem 1rem; text-align: center; color: #94a3b8; }
 .vrm-page .empty-state i {
     width: 48px; height: 48px; border-radius: 14px; margin: 0 auto 0.75rem;
@@ -1551,8 +1614,24 @@
 
     @if($activeTab !== 'analytics')
     <div class="filter-card">
+        @php
+            $vrmFromDate = (string) request('from_date', '');
+            $vrmToDate = (string) request('to_date', '');
+            $vrmDateRangeLabel = '';
+            if ($vrmFromDate !== '' || $vrmToDate !== '') {
+                try {
+                    $fromLabel = $vrmFromDate !== '' ? \Carbon\Carbon::parse($vrmFromDate)->format('d M Y') : '';
+                    $toLabel = $vrmToDate !== '' ? \Carbon\Carbon::parse($vrmToDate)->format('d M Y') : $fromLabel;
+                    $vrmDateRangeLabel = $fromLabel !== ''
+                        ? ($toLabel !== '' && $toLabel !== $fromLabel ? $fromLabel.' – '.$toLabel : $fromLabel)
+                        : $toLabel;
+                } catch (\Throwable $e) {
+                    $vrmDateRangeLabel = '';
+                }
+            }
+        @endphp
         <form method="GET" action="{{ route('goal.vrm.index') }}" id="vrmFilterForm"
-              class="filter-grid {{ $activeTab === 'assigned' ? 'assigned-filters'.(!empty($branchLocked) ? ' no-branch' : '').(!empty($isBmAssignedView) ? ' bm-filters' : '') : '' }}">
+              class="filter-grid {{ $activeTab === 'assigned' ? 'assigned-filters'.(!empty($branchLocked) ? ' no-branch' : '').(!empty($isBmAssignedView) ? ' bm-filters' : '') : 'calls-filters' }}">
             <input type="hidden" name="tab" value="{{ $activeTab }}">
             <div>
                 <label for="q">Customer Search</label>
@@ -1570,16 +1649,6 @@
                     <option value="connected" @selected($callStatus === 'connected')>Called – Connected</option>
                     <option value="not_connected" @selected($callStatus === 'not_connected')>Called – Not Connected</option>
                     <option value="callback" @selected($callStatus === 'callback')>Callback Scheduled</option>
-                </select>
-            </div>
-            <div>
-                <label for="assigned_lead_status">Lead Status</label>
-                <select name="lead_status" id="assigned_lead_status" class="form-select js-select2"
-                        data-placeholder="All lead statuses" data-allow-clear="true">
-                    <option value="">All</option>
-                    @foreach($assignedLeadStatuses as $st)
-                        <option value="{{ $st }}" @selected($filterAssignedLeadStatus === $st)>{{ $st }}</option>
-                    @endforeach
                 </select>
             </div>
             {{-- Branch filter is for BM/managers only — VRMs are locked to their own branch --}}
@@ -1631,14 +1700,16 @@
                 </select>
             </div>
             <div>
-                <label for="from_date">From Date</label>
-                <input type="text" name="from_date" id="from_date" class="form-control js-datepicker"
-                       placeholder="dd-mm-yyyy" value="{{ request('from_date') }}" autocomplete="off">
-            </div>
-            <div>
-                <label for="to_date">To Date</label>
-                <input type="text" name="to_date" id="to_date" class="form-control js-datepicker"
-                       placeholder="dd-mm-yyyy" value="{{ request('to_date') }}" autocomplete="off">
+                <label for="vrmDateRange">Date Range</label>
+                <div class="date-range-wrap" data-vrm-daterange>
+                    <i class="bi bi-calendar3" aria-hidden="true"></i>
+                    <input type="text" id="vrmDateRange" class="form-control js-vrm-daterange"
+                           placeholder="Select date range" value=""
+                           readonly autocomplete="off"
+                           data-from="{{ $vrmFromDate }}" data-to="{{ $vrmToDate }}">
+                    <input type="hidden" name="from_date" id="from_date" value="{{ $vrmFromDate }}">
+                    <input type="hidden" name="to_date" id="to_date" value="{{ $vrmToDate }}">
+                </div>
             </div>
             @endif
             <div class="filter-actions">
@@ -1654,18 +1725,34 @@
         </form>
     </div>
     @else
+    @php
+        $vrmFromDate = request('from_date', $callAnalytics['from'] ?? '');
+        $vrmToDate = request('to_date', $callAnalytics['to'] ?? '');
+        $vrmDateRangeLabel = '';
+        if ($vrmFromDate || $vrmToDate) {
+            try {
+                $fromLabel = $vrmFromDate ? \Carbon\Carbon::parse($vrmFromDate)->format('d M Y') : '';
+                $toLabel = $vrmToDate ? \Carbon\Carbon::parse($vrmToDate)->format('d M Y') : $fromLabel;
+                $vrmDateRangeLabel = trim($fromLabel.($toLabel && $toLabel !== $fromLabel ? ' – '.$toLabel : ($fromLabel ? ' – '.$fromLabel : '')));
+            } catch (\Throwable $e) {
+                $vrmDateRangeLabel = '';
+            }
+        }
+    @endphp
     <div class="filter-card">
-        <form method="GET" action="{{ route('goal.vrm.index') }}" id="vrmAnalyticsFilterForm" class="filter-grid">
+        <form method="GET" action="{{ route('goal.vrm.index') }}" id="vrmAnalyticsFilterForm" class="filter-grid analytics-filters">
             <input type="hidden" name="tab" value="analytics">
             <div>
-                <label for="analytics_from_date">From Date</label>
-                <input type="text" name="from_date" id="analytics_from_date" class="form-control js-datepicker"
-                       placeholder="dd-mm-yyyy" value="{{ request('from_date', $callAnalytics['from'] ?? '') }}" autocomplete="off">
-            </div>
-            <div>
-                <label for="analytics_to_date">To Date</label>
-                <input type="text" name="to_date" id="analytics_to_date" class="form-control js-datepicker"
-                       placeholder="dd-mm-yyyy" value="{{ request('to_date', $callAnalytics['to'] ?? '') }}" autocomplete="off">
+                <label for="vrmAnalyticsDateRange">Date Range</label>
+                <div class="date-range-wrap" data-vrm-daterange>
+                    <i class="bi bi-calendar3" aria-hidden="true"></i>
+                    <input type="text" id="vrmAnalyticsDateRange" class="form-control js-vrm-daterange"
+                           placeholder="Select date range" value=""
+                           readonly autocomplete="off"
+                           data-from="{{ $vrmFromDate }}" data-to="{{ $vrmToDate }}">
+                    <input type="hidden" name="from_date" id="analytics_from_date" value="{{ $vrmFromDate }}">
+                    <input type="hidden" name="to_date" id="analytics_to_date" value="{{ $vrmToDate }}">
+                </div>
             </div>
             <div class="filter-actions">
                 <div>
@@ -1909,6 +1996,8 @@
                                     <div class="action-group">
                                         <button type="button"
                                             class="btn-log-row js-log-assigned"
+                                            data-tip="Log Call"
+                                            aria-label="Log Call"
                                             title="Log Call"
                                             data-id="{{ (int) $contact->id }}"
                                             data-name="{{ e($contact->customer_name) }}"
@@ -2230,18 +2319,16 @@
                                 <div class="action-group">
                                     <button type="button"
                                             class="action-btn view btn-view-call"
-                                            data-bs-toggle="tooltip"
-                                            data-bs-placement="top"
-                                            data-bs-title="View details"
+                                            data-tip="View details"
+                                            aria-label="View details"
                                             data-url="{{ route('goal.vrm.calls.show', $log) }}">
                                         <i class="bi bi-eye"></i>
                                     </button>
                                     @if($isOwnLog)
                                     <button type="button"
                                             class="action-btn edit btn-edit-call"
-                                            data-bs-toggle="tooltip"
-                                            data-bs-placement="top"
-                                            data-bs-title="Edit"
+                                            data-tip="Edit"
+                                            aria-label="Edit"
                                             data-id="{{ $log->id }}"
                                             data-update-url="{{ route('goal.vrm.calls.update', $log) }}"
                                             data-customer="{{ $log->customer_name }}"
@@ -2265,9 +2352,8 @@
                                         @method('DELETE')
                                         <button type="submit"
                                                 class="action-btn delete"
-                                                data-bs-toggle="tooltip"
-                                                data-bs-placement="top"
-                                                data-bs-title="Delete">
+                                                data-tip="Delete"
+                                                aria-label="Delete">
                                             <i class="bi bi-trash3-fill"></i>
                                         </button>
                                     </form>
@@ -2276,9 +2362,8 @@
                                     @if($log->goal_loan_lead_id)
                                         <a href="{{ route('goal.leads.show', $log->goal_loan_lead_id) }}"
                                            class="action-btn lead"
-                                           data-bs-toggle="tooltip"
-                                           data-bs-placement="top"
-                                           data-bs-title="Open lead">
+                                           data-tip="Open lead"
+                                           aria-label="Open lead">
                                             <i class="bi bi-box-arrow-up-right"></i>
                                         </a>
                                     @endif
@@ -2605,20 +2690,142 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
 @push('scripts')
 <script>
 (function () {
-    // Soft action-button tooltips
-    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
-        document.querySelectorAll('.vrm-page [data-bs-toggle="tooltip"]').forEach(function (el) {
-            bootstrap.Tooltip.getOrCreateInstance(el, {
-                container: 'body',
-                customClass: 'vrm-action-tooltip',
-                trigger: 'hover focus',
-                delay: { show: 80, hide: 40 }
-            });
-            el.addEventListener('click', function () {
-                const tip = bootstrap.Tooltip.getInstance(el);
-                if (tip) tip.hide();
-            });
+    // Lightweight action tooltips (Bootstrap Tooltip is not bundled in this app)
+    (function initVrmActionTips() {
+        let tipEl = null;
+        let showTimer = null;
+
+        function ensureTip() {
+            if (tipEl) return tipEl;
+            tipEl = document.createElement('div');
+            tipEl.className = 'vrm-action-tip';
+            tipEl.setAttribute('role', 'tooltip');
+            document.body.appendChild(tipEl);
+            return tipEl;
+        }
+
+        function hideTip() {
+            if (showTimer) {
+                clearTimeout(showTimer);
+                showTimer = null;
+            }
+            if (tipEl) tipEl.classList.remove('is-on');
+        }
+
+        function showTip(anchor) {
+            const text = (anchor.getAttribute('data-tip') || anchor.getAttribute('aria-label') || '').trim();
+            if (!text) return;
+            const tip = ensureTip();
+            tip.textContent = text;
+            tip.classList.remove('is-on');
+            tip.style.visibility = 'hidden';
+            tip.style.display = 'block';
+            const rect = anchor.getBoundingClientRect();
+            const tipW = tip.offsetWidth || 0;
+            const tipH = tip.offsetHeight || 0;
+            tip.style.left = Math.round(rect.left + rect.width / 2 - tipW / 2) + 'px';
+            tip.style.top = Math.round(rect.top - tipH - 10) + 'px';
+            tip.style.visibility = '';
+            showTimer = setTimeout(function () {
+                tip.classList.add('is-on');
+            }, 60);
+        }
+
+        document.addEventListener('mouseover', function (e) {
+            const anchor = e.target.closest('.vrm-page [data-tip]');
+            if (!anchor) return;
+            showTip(anchor);
         });
+        document.addEventListener('mouseout', function (e) {
+            const anchor = e.target.closest('.vrm-page [data-tip]');
+            if (!anchor) return;
+            const to = e.relatedTarget;
+            if (to && anchor.contains(to)) return;
+            hideTip();
+        });
+        document.addEventListener('focusin', function (e) {
+            const anchor = e.target.closest('.vrm-page [data-tip]');
+            if (anchor) showTip(anchor);
+        });
+        document.addEventListener('focusout', function (e) {
+            const anchor = e.target.closest('.vrm-page [data-tip]');
+            if (anchor) hideTip();
+        });
+        document.addEventListener('scroll', hideTip, true);
+        window.addEventListener('resize', hideTip);
+    })();
+
+    // Single date-range picker → hidden from_date / to_date
+    function initVrmDateRanges() {
+        const fp = window.flatpickr;
+        if (typeof fp !== 'function') return;
+
+        document.querySelectorAll('.js-vrm-daterange').forEach(function (rangeEl) {
+            const wrap = rangeEl.closest('[data-vrm-daterange]');
+            const fromEl = wrap ? wrap.querySelector('input[name="from_date"]') : null;
+            const toEl = wrap ? wrap.querySelector('input[name="to_date"]') : null;
+            if (!fromEl || !toEl) return;
+            if (rangeEl._flatpickr) {
+                try { rangeEl._flatpickr.destroy(); } catch (e) {}
+            }
+
+            const fromVal = rangeEl.getAttribute('data-from') || fromEl.value || '';
+            const toVal = rangeEl.getAttribute('data-to') || toEl.value || '';
+            const defaults = [];
+            if (fromVal) defaults.push(fromVal);
+            if (toVal) defaults.push(toVal);
+
+            const instance = fp(rangeEl, {
+                mode: 'range',
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'd M Y',
+                allowInput: false,
+                clickOpens: true,
+                disableMobile: true,
+                static: false,
+                defaultDate: defaults.length ? defaults : null,
+                appendTo: document.body,
+                onReady: function (_d, _s, inst) {
+                    if (inst.altInput) {
+                        inst.altInput.classList.add('form-control', 'flatpickr-alt');
+                        inst.altInput.placeholder = rangeEl.getAttribute('placeholder') || 'Select date range';
+                        inst.altInput.readOnly = true;
+                    }
+                    // Keep calendar above filter cards / select2
+                    if (inst.calendarContainer) {
+                        inst.calendarContainer.style.zIndex = '20050';
+                    }
+                },
+                onChange: function (selectedDates, _str, inst) {
+                    fromEl.value = selectedDates[0] ? inst.formatDate(selectedDates[0], 'Y-m-d') : '';
+                    toEl.value = selectedDates[1]
+                        ? inst.formatDate(selectedDates[1], 'Y-m-d')
+                        : (selectedDates[0] ? inst.formatDate(selectedDates[0], 'Y-m-d') : '');
+                },
+                onClose: function (selectedDates, _str, inst) {
+                    if (selectedDates.length === 1) {
+                        fromEl.value = inst.formatDate(selectedDates[0], 'Y-m-d');
+                        toEl.value = fromEl.value;
+                    }
+                }
+            });
+
+            if (wrap && !wrap.dataset.fpBound) {
+                wrap.dataset.fpBound = '1';
+                wrap.addEventListener('click', function (e) {
+                    if (e.target.closest('.flatpickr-calendar')) return;
+                    const fpInst = rangeEl._flatpickr;
+                    if (fpInst && typeof fpInst.open === 'function') fpInst.open();
+                });
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initVrmDateRanges);
+    } else {
+        initVrmDateRanges();
     }
 
     const $ = window.jQuery;
@@ -2709,7 +2916,9 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
 
                 $pop.find('.col-toggle').on('change', function () {
                     tableApi.column(parseInt(this.dataset.col, 10)).visible(this.checked);
-                    tableApi.columns.adjust();
+                    const $tbl = $(tableApi.table().node());
+                    $tbl.find('th, td').css({ width: '', minWidth: '', maxWidth: '' });
+                    $tbl.css('width', 'max-content');
                 });
             });
         }
@@ -2730,7 +2939,7 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
                 info: false,
                 searching: true,
                 ordering: true,
-                autoWidth: false,
+                autoWidth: true,
                 scrollX: false,
                 order: [],
                 columnDefs: [
@@ -2741,7 +2950,9 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
                 dom: 't',
                 language: { emptyTable: 'No call logs found.' }
             });
-            setTimeout(function () { dt.columns.adjust(); }, 0);
+            // Drop inline widths DataTables injects — they desync header/body
+            $('#vrmCallsTable').find('th, td').css({ width: '', minWidth: '', maxWidth: '' });
+            $('#vrmCallsTable').css('width', 'max-content');
 
             $('#callsTableSearch').on('keyup', function () {
                 dt.search(this.value).draw();
@@ -2767,7 +2978,7 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
                 info: false,
                 searching: true,
                 ordering: true,
-                autoWidth: false,
+                autoWidth: true,
                 scrollX: false,
                 order: [],
                 columnDefs: [
@@ -2778,7 +2989,8 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
                 dom: 't',
                 language: { emptyTable: 'No assigned contacts found.' }
             });
-            setTimeout(function () { assignedDt.columns.adjust(); }, 0);
+            $('#vrmAssignedTable').find('th, td').css({ width: '', minWidth: '', maxWidth: '' });
+            $('#vrmAssignedTable').css('width', 'max-content');
 
             $('#assignedTableSearch').on('keyup', function () {
                 assignedDt.search(this.value).draw();
