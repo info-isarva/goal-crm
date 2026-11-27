@@ -17,6 +17,16 @@
     };
 
     $activeTab = in_array(($tab ?? 'pending'), ['pending', 'assigned'], true) ? $tab : 'pending';
+    $showBranchMeta = (bool) ($showBranchMeta ?? false);
+    $branchOwnersByBranchId = $branchOwnersByBranchId ?? [];
+    $branchOwnerLabel = function (int $branchId) use ($branchOwnersByBranchId, $salesLabel) {
+        $owner = $branchOwnersByBranchId[$branchId] ?? null;
+        if (!$owner) {
+            return '—';
+        }
+
+        return $salesLabel($owner);
+    };
     $kpis = $kpis ?? [
         'pending' => $pending->count(),
         'assigned_today' => 0,
@@ -66,7 +76,7 @@
 .ba-page .ba-link-btn.primary:hover{color:#fff;filter:brightness(1.05)}
 .ba-page a.ba-kpi{text-decoration:none;color:inherit;cursor:pointer;transition:transform .15s,box-shadow .15s}
 .ba-page a.ba-kpi:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(148,163,184,.18)}
-.ba-page a.ba-kpi.is-active{outline:2px solid var(--theme-primary);outline-offset:1px}
+.ba-page a.ba-kpi.is-active{outline:none;box-shadow:none}
 .ba-page .ba-hero-ico{
     width:52px;height:52px;border-radius:16px;flex-shrink:0;color:#fff;
     background:linear-gradient(145deg,var(--theme-primary),#4f46e5);
@@ -454,7 +464,8 @@ body > .select2-container .select2-dropdown{
 @section('content')
 <div class="container-fluid p-4 ba-page"
      data-bulk-url="{{ route('goal.allocation.bulk') }}"
-     data-csrf="{{ csrf_token() }}">
+     data-csrf="{{ csrf_token() }}"
+     data-show-branch-meta="{{ $showBranchMeta ? '1' : '0' }}">
     <div class="ba-hero">
         <div class="ba-hero-row">
             <div class="ba-hero-left">
@@ -610,6 +621,9 @@ body > .select2-container .select2-dropdown{
                         <th>Ref</th>
                         <th>Customer</th>
                         <th>Branch</th>
+                        @if($showBranchMeta)
+                            <th>Branch Owner</th>
+                        @endif
                         <th>Lead Type</th>
                         <th>Priority</th>
                         <th>Received On</th>
@@ -624,6 +638,7 @@ body > .select2-container .select2-dropdown{
                         $initial = strtoupper(substr($lead->customer_name ?? '?', 0, 1));
                         $branchId = (int) ($lead->goal_org_unit_id ?? 0);
                         $branchName = $lead->orgUnit?->name ?? '—';
+                        $ownerLabel = $showBranchMeta ? $branchOwnerLabel($branchId) : '';
                         $type = strtolower((string) ($lead->lead_type ?? ''));
                     @endphp
                     <tr class="pending-row"
@@ -632,7 +647,7 @@ body > .select2-container .select2-dropdown{
                         data-branch-name="{{ strtolower($branchName) }}"
                         data-lead-type="{{ $type }}"
                         data-priority="{{ $priority }}"
-                        data-search="{{ strtolower($lead->ref_no . ' ' . $lead->customer_name) }}">
+                        data-search="{{ strtolower(trim($lead->ref_no . ' ' . $lead->customer_name . ' ' . $branchName . ' ' . $ownerLabel)) }}">
                         <td class="ba-col-check">
                             <input type="checkbox" class="form-check-input pending-cb" value="{{ $lead->id }}" aria-label="Select {{ $lead->ref_no }}">
                         </td>
@@ -644,6 +659,15 @@ body > .select2-container .select2-dropdown{
                             </span>
                         </td>
                         <td><span class="meta"><i class="bi bi-building"></i>{{ $branchName }}</span></td>
+                        @if($showBranchMeta)
+                            <td>
+                                @if($ownerLabel !== '—')
+                                    <span class="pill pill-slate">{{ $ownerLabel }}</span>
+                                @else
+                                    —
+                                @endif
+                            </td>
+                        @endif
                         <td>
                             @if($type === 'immediate')
                                 <span class="pill pill-green">Immediate</span>
@@ -679,7 +703,7 @@ body > .select2-container .select2-dropdown{
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9">
+                        <td colspan="{{ $showBranchMeta ? 10 : 9 }}">
                             <div class="ba-empty">
                                 <span class="illus" aria-hidden="true"><i class="bi bi-inbox"></i></span>
                                 <strong>No pending allocations</strong>
@@ -715,6 +739,10 @@ body > .select2-container .select2-dropdown{
                     <tr>
                         <th>Ref</th>
                         <th>Customer</th>
+                        @if($showBranchMeta)
+                            <th>Branch</th>
+                            <th>Branch Owner</th>
+                        @endif
                         <th>Current Assignee</th>
                         <th>Reassigned To</th>
                         <th>Reassign Reason</th>
@@ -727,10 +755,15 @@ body > .select2-container .select2-dropdown{
                     @php
                         $last = $lead->assignments->first();
                         $initial = strtoupper(substr($lead->customer_name ?? '?', 0, 1));
-                        $search = strtolower(implode(' ', [
+                        $branchId = (int) ($lead->goal_org_unit_id ?? 0);
+                        $branchName = $lead->orgUnit?->name ?? '—';
+                        $ownerLabel = $showBranchMeta ? $branchOwnerLabel($branchId) : '';
+                        $search = strtolower(implode(' ', array_filter([
                             $lead->ref_no, $lead->customer_name,
+                            $showBranchMeta ? $branchName : null,
+                            $showBranchMeta ? $ownerLabel : null,
                             $lead->assignee?->name, $last?->toUser?->name, $last?->reason,
-                        ]));
+                        ])));
                     @endphp
                     <tr class="assigned-row" data-search="{{ $search }}">
                         <td><a class="ref-link" href="{{ route('goal.leads.show', $lead) }}">{{ $lead->ref_no }}</a></td>
@@ -740,6 +773,16 @@ body > .select2-container .select2-dropdown{
                                 <span>{{ $lead->customer_name }}</span>
                             </span>
                         </td>
+                        @if($showBranchMeta)
+                            <td><span class="meta"><i class="bi bi-building"></i>{{ $branchName }}</span></td>
+                            <td>
+                                @if($ownerLabel !== '—')
+                                    <span class="pill pill-slate">{{ $ownerLabel }}</span>
+                                @else
+                                    —
+                                @endif
+                            </td>
+                        @endif
                         <td>{{ $salesLabel($lead->assignee) }}</td>
                         <td>
                             @if($last?->toUser)
@@ -762,7 +805,7 @@ body > .select2-container .select2-dropdown{
                                     data-lead-ref="{{ $lead->ref_no }}"
                                     data-customer="{{ $lead->customer_name }}"
                                     data-current="{{ $salesLabel($lead->assignee) }}"
-                                    data-branch-id="{{ (int) ($lead->goal_org_unit_id ?? 0) }}">
+                                    data-branch-id="{{ $branchId }}">
                                     <i class="bi bi-arrow-left-right"></i> Reassign
                                 </button>
                             </div>
@@ -770,7 +813,7 @@ body > .select2-container .select2-dropdown{
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7">
+                        <td colspan="{{ $showBranchMeta ? 9 : 7 }}">
                             <div class="ba-empty">
                                 <span class="illus" aria-hidden="true"><i class="bi bi-people"></i></span>
                                 <strong>No recently assigned leads</strong>
@@ -1255,18 +1298,19 @@ window.BA_SALES = @json($salesPayload);
                     }
                 }
             };
+            var showBranchMeta = page.getAttribute('data-show-branch-meta') === '1';
             if ($('#pendingTable tbody tr.pending-row').length) {
                 $('#pendingTable').DataTable($.extend({}, common, {
                     columnDefs: [
-                        { orderable: false, targets: [0, 7, 8] }
+                        { orderable: false, targets: showBranchMeta ? [0, 8, 9] : [0, 7, 8] }
                     ],
-                    order: [[6, 'desc']]
+                    order: [[showBranchMeta ? 7 : 6, 'desc']]
                 }));
             }
             if ($('#assignedTable tbody tr.assigned-row').length) {
                 $('#assignedTable').DataTable($.extend({}, common, {
-                    columnDefs: [{ orderable: false, targets: [6] }],
-                    order: [[5, 'desc']]
+                    columnDefs: [{ orderable: false, targets: [showBranchMeta ? 8 : 6] }],
+                    order: [[showBranchMeta ? 7 : 5, 'desc']]
                 }));
             }
         }

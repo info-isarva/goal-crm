@@ -151,9 +151,8 @@ class GoalContactImportService
             'success_count' => 0,
             'failed_count' => 0,
             'status' => 'processing',
-            'default_lead_status' => in_array($defaultLeadStatus, ['Future Prospect', 'Pending BM Allocation'], true)
-                ? $defaultLeadStatus
-                : 'Future Prospect',
+            // Always dialer contacts — VRM creates loan leads only after interest.
+            'default_lead_status' => 'Future Prospect',
         ]);
 
         $success = 0;
@@ -424,8 +423,9 @@ class GoalContactImportService
             ?: (trim((string) ($import->lead_source ?? '')) ?: 'Import');
         $notes = trim((string) ($payload['notes'] ?? ''));
         $loanAmount = $this->parseAmount($payload['loan_amount'] ?? null);
-        $status = $import->default_lead_status ?: 'Future Prospect';
-        $leadType = $status === 'Pending BM Allocation' ? 'immediate' : 'future';
+        // Campaign rows are dialer contacts for VRM Calling — not pipeline leads yet.
+        $status = 'Future Prospect';
+        $leadType = 'future';
 
         $lead = GoalLoanLead::create([
             'ref_no' => 'LD-'.now()->format('ymd').'-'.Str::upper(Str::random(4)),
@@ -448,10 +448,10 @@ class GoalContactImportService
 
         GoalLoanLeadEvent::record(
             $lead,
-            'status_change',
-            'Lead Imported',
-            'Imported via contact batch #'.$import->id.' · Source: '.$source,
-            ['from_status' => null, 'to_status' => $status, 'meta' => ['import_id' => $import->id]]
+            'note',
+            'Campaign Contact Imported',
+            'Imported via campaign #'.$import->id.' · Source: '.$source.' · For VRM dialing (not a loan lead yet)',
+            ['meta' => ['import_id' => $import->id, 'dialing_contact' => true]]
         );
 
         return ['lead' => $lead, 'status' => 'ok', 'error' => null];

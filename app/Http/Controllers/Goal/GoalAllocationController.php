@@ -57,13 +57,46 @@ class GoalAllocationController extends Controller
             ? $request->input('tab')
             : (session('tab', 'pending'));
 
+        $actorRole = GoalDashboardService::ROLE_KEYS[(int) (auth()->user()->crm_role_type ?? -1)] ?? null;
+        // Higher authority (MD / CEO / RD / Cluster / HQ-style) sees Branch + Branch Owner columns.
+        $showBranchMeta = ! in_array($actorRole, ['bm', 'jsm', 'sm', 'ssm', 'vrm'], true);
+
+        $branchOwnersByBranchId = [];
+        if ($showBranchMeta) {
+            $branchIds = $branches->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $leadBranchIds = $pending->pluck('goal_org_unit_id')
+                ->merge($assigned->pluck('goal_org_unit_id'))
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+            $allBranchIds = array_values(array_unique(array_merge($branchIds, $leadBranchIds)));
+            if ($allBranchIds !== []) {
+                $branchOwnersByBranchId = User::query()
+                    ->where('status', 1)
+                    ->where(function ($q) {
+                        $q->where('crm_role_type', 8)
+                            ->orWhereIn('job_role', ['bm', 'branch_manager']);
+                    })
+                    ->whereIn('goal_org_unit_id', $allBranchIds)
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'job_role', 'crm_role_type', 'goal_org_unit_id'])
+                    ->groupBy(fn (User $u) => (int) $u->goal_org_unit_id)
+                    ->map(fn (Collection $group) => $group->first())
+                    ->all();
+            }
+        }
+
         return view('goal.allocation.index', compact(
             'pending',
             'assigned',
             'sales',
             'branches',
             'tab',
-            'kpis'
+            'kpis',
+            'showBranchMeta',
+            'branchOwnersByBranchId'
         ));
     }
 
@@ -179,7 +212,12 @@ class GoalAllocationController extends Controller
             fwrite($out, "\xEF\xBB\xBF");
 
             if ($tab === 'assigned') {
-                fputcsv($out, ['Ref', 'Customer', 'Branch', 'Assignee', 'Assigned At', 'Status', 'Lead Type']);
+                $actorRole = GoalDashboardService::ROLE_KEYS[(int) (auth()->user()->crm_role_type ?? -1)] ?? null;
+                $showBranchMeta = ! in_array($actorRole, ['bm', 'jsm', 'sm', 'ssm', 'vrm'], true);
+                $headers = $showBranchMeta
+                    ? ['Ref', 'Customer', 'Branch', 'Branch Owner', 'Assignee', 'Assigned At', 'Status', 'Lead Type']
+                    : ['Ref', 'Customer', 'Branch', 'Assignee', 'Assigned At', 'Status', 'Lead Type'];
+                fputcsv($out, $headers);
                 $rows = GoalLoanLead::query()
                     ->with(['assignee', 'orgUnit'])
                     ->whereNotNull('assigned_to')
@@ -187,16 +225,40 @@ class GoalAllocationController extends Controller
                     ->latest('assigned_at')
                     ->limit(5000)
                     ->get();
+                $ownersByBranch = [];
+                if ($showBranchMeta) {
+                    $branchIds = $rows->pluck('goal_org_unit_id')->map(fn ($id) => (int) $id)->filter()->unique()->values()->all();
+                    if ($branchIds !== []) {
+                        $ownersByBranch = User::query()
+                            ->where('status', 1)
+                            ->where(function ($q) {
+                                $q->where('crm_role_type', 8)
+                                    ->orWhereIn('job_role', ['bm', 'branch_manager']);
+                            })
+                            ->whereIn('goal_org_unit_id', $branchIds)
+                            ->orderBy('name')
+                            ->get(['id', 'name', 'goal_org_unit_id'])
+                            ->groupBy(fn (User $u) => (int) $u->goal_org_unit_id)
+                            ->map(fn (Collection $g) => $g->first()?->name)
+                            ->all();
+                    }
+                }
                 foreach ($rows as $lead) {
-                    fputcsv($out, [
+                    $row = [
                         $lead->ref_no,
                         $lead->customer_name,
                         $lead->orgUnit?->name,
+                    ];
+                    if ($showBranchMeta) {
+                        $row[] = $ownersByBranch[(int) ($lead->goal_org_unit_id ?? 0)] ?? '';
+                    }
+                    $row = array_merge($row, [
                         $lead->assignee?->name,
                         optional($lead->assigned_at)->format('Y-m-d H:i'),
                         $lead->status,
                         $lead->lead_type,
                     ]);
+                    fputcsv($out, $row);
                 }
             } else {
                 fputcsv($out, ['Ref', 'Customer', 'Mobile', 'Branch', 'Lead Type', 'Status', 'Received On']);

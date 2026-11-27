@@ -1994,6 +1994,10 @@
                                 </td>
                                 <td class="actions-cell col-actions" data-label="Actions">
                                     <div class="action-group">
+                                        @php
+                                            $isDialingContact = $contact->goal_contact_import_id
+                                                && in_array($contact->status, ['Future Prospect', 'Assigned', 'New'], true);
+                                        @endphp
                                         <button type="button"
                                             class="btn-log-row js-log-assigned"
                                             data-tip="Log Call"
@@ -2007,7 +2011,8 @@
                                             data-product="{{ e($contact->product) }}"
                                             data-amount="{{ $contact->loan_amount !== null ? (float) $contact->loan_amount : '' }}"
                                             data-branch-id="{{ (int) ($contact->goal_org_unit_id ?? 0) }}"
-                                            data-branch-name="{{ e(optional($contact->orgUnit)->name) }}">
+                                            data-branch-name="{{ e(optional($contact->orgUnit)->name) }}"
+                                            data-dialing-contact="{{ $isDialingContact ? '1' : '0' }}">
                                             <i class="bi bi-telephone-plus"></i> Log Call
                                         </button>
                                     </div>
@@ -3131,7 +3136,10 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
         hideSuggestMenus();
 
         const leadId = document.getElementById('goal_loan_lead_id');
-        if (leadId) leadId.value = '';
+        if (leadId) {
+            leadId.value = '';
+            leadId.setAttribute('data-dialing-contact', '0');
+        }
         setContactSourceHint(null);
 
         const clearIds = [
@@ -3229,7 +3237,10 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
 
     function clearAssignedSelection(opts) {
         const options = opts || {};
-        if (leadIdInput) leadIdInput.value = '';
+        if (leadIdInput) {
+            leadIdInput.value = '';
+            leadIdInput.setAttribute('data-dialing-contact', '0');
+        }
         if (!options.keepHint) setContactSourceHint(null);
         // Drop lead-linked fields so a new contact does not keep previous product/amount.
         if (!options.keepLeadFields) {
@@ -3249,7 +3260,14 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
     function applyAssignedContact(item) {
         if (!item) return;
         selectingContact = true;
-        if (leadIdInput) leadIdInput.value = String(item.id || '');
+        const dialing = item.is_dialing_contact === true
+            || item.is_dialing_contact === 1
+            || item.is_dialing_contact === '1'
+            || String(item.dialing_contact || '') === '1';
+        if (leadIdInput) {
+            leadIdInput.value = String(item.id || '');
+            leadIdInput.setAttribute('data-dialing-contact', dialing ? '1' : '0');
+        }
         if (nameInput) nameInput.value = item.customer_name || '';
         if (mobileInput) mobileInput.value = (item.mobile || '').replace(/\D+/g, '').slice(0, 10);
         const branchSel = document.getElementById('goal_org_unit_id');
@@ -3269,15 +3287,9 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
         if (loanAmt && item.loan_amount != null && item.loan_amount !== '') {
             loanAmt.value = item.loan_amount;
         }
-        const createLead = document.getElementById('create_lead');
-        if (createLead) {
-            createLead.checked = false;
-            createLead.disabled = true;
-        }
-        const label = document.getElementById('create_lead_label');
-        if (label) label.textContent = 'Lead already assigned — call will link to this contact';
         setContactSourceHint('assigned', item);
         hideSuggestMenus();
+        syncCreateLeadAvailability({ autoCheck: true });
         syncLeadRequiredFields();
         setTimeout(function () { selectingContact = false; }, 0);
     }
@@ -3295,7 +3307,8 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
                 product: btn.getAttribute('data-product') || '',
                 loan_amount: btn.getAttribute('data-amount') || '',
                 goal_org_unit_id: parseInt(btn.getAttribute('data-branch-id') || '0', 10) || null,
-                branch_name: btn.getAttribute('data-branch-name') || ''
+                branch_name: btn.getAttribute('data-branch-name') || '',
+                is_dialing_contact: btn.getAttribute('data-dialing-contact') === '1'
             };
             const returnTab = document.getElementById('return_tab');
             if (returnTab) returnTab.value = 'assigned';
@@ -3449,15 +3462,20 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
         const createLead = document.getElementById('create_lead');
         const label = document.getElementById('create_lead_label');
         if (!createLead) return;
-        const assignedSelected = !!(document.getElementById('goal_loan_lead_id')?.value);
-        if (assignedSelected) {
+        const leadIdEl = document.getElementById('goal_loan_lead_id');
+        const assignedSelected = !!(leadIdEl && leadIdEl.value);
+        // Campaign/import contacts are dialer rows — VRM can still convert to a real lead.
+        const isDialingContact = assignedSelected && String(leadIdEl.getAttribute('data-dialing-contact') || '') === '1';
+        const allows = dispositionAllowsCreateLead();
+
+        if (assignedSelected && !isDialingContact) {
             createLead.checked = false;
             createLead.disabled = true;
-            if (label) label.textContent = 'Lead already assigned — call will link to this contact';
+            if (label) label.textContent = 'Already a pipeline lead — call will link to this record';
             syncLeadRequiredFields();
             return;
         }
-        const allows = dispositionAllowsCreateLead();
+
         createLead.disabled = !allows;
         if (!allows) {
             createLead.checked = false;
@@ -3467,7 +3485,9 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
         }
         if (label) {
             label.textContent = allows
-                ? 'Create lead from this disposition'
+                ? (isDialingContact
+                    ? 'Create loan lead from this interested contact'
+                    : 'Create lead from this disposition')
                 : 'Create lead (not available for this disposition)';
         }
         syncLeadRequiredFields();

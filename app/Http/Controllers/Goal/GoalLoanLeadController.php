@@ -56,6 +56,10 @@ class GoalLoanLeadController extends Controller
             $baseQuery->whereIn('goal_org_unit_id', $scope);
         }
 
+        // Campaign uploads create contact rows in goal_loan_leads for VRM dialing.
+        // Keep those in Campaigns / VRM Calling until they enter the loan pipeline.
+        $this->excludeCampaignDialingContacts($baseQuery);
+
         // VRM: only leads they created (not the whole branch).
         if ($this->isBranchLockedToOwn()) {
             $baseQuery->where('created_by', auth()->id());
@@ -102,7 +106,14 @@ class GoalLoanLeadController extends Controller
 
         $perPage = (int) ($validated['per_page'] ?? 25);
         $leads = (clone $baseQuery)
-            ->with(['loanCase:id,goal_loan_lead_id,case_no'])
+            ->with([
+                'assignee:id,name,crm_role_type',
+                'assignee.crmRole:id,name',
+                'creator:id,name,crm_role_type',
+                'creator.crmRole:id,name',
+                'orgUnit:id,name,type',
+                'loanCase:id,goal_loan_lead_id,case_no',
+            ])
             ->latest()
             ->paginate($perPage)
             ->withQueryString();
@@ -142,7 +153,13 @@ class GoalLoanLeadController extends Controller
         foreach ($leads as $lead) {
             $leadNextById[$lead->id] = $this->manageableNextStatuses($lead);
             $leadEditableById[$lead->id] = $this->canEditLeadDetails($lead);
+
+            // Keep current org unit selectable even if it is a region/cluster (legacy / HQ assigns).
+            if ($lead->orgUnit && ! $branches->contains(fn ($b) => (int) $b->id === (int) $lead->orgUnit->id)) {
+                $branches->push($lead->orgUnit);
+            }
         }
+        $branches = $branches->unique('id')->sortBy('name')->values();
 
         $branchLocked = $this->isBranchLockedToOwn();
         if ($branchLocked) {
@@ -855,6 +872,55 @@ class GoalLoanLeadController extends Controller
         }
 
         return in_array(strtolower((string) ($user->job_role ?? '')), ['jsm', 'sm', 'ssm'], true);
+    }
+
+    /**
+     * Campaign / contact-import rows are dialing contacts (Campaigns + VRM Calling).
+     * Only show them on Loan Leads once they enter the sales pipeline.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\GoalLoanLead>  $query
+     */
+    protected function excludeCampaignDialingContacts($query): void
+    {
+        $vrmRoleType = 9; // GoalDashboardService::ROLE_KEYS
+        $pipelineStatuses = [
+            'Pending BM Allocation',
+            'Contact Pending',
+            'Qualified',
+            'Documents Pending',
+            'Ready for Bank Login',
+            'Bank Login',
+            'Closed / Lost',
+        ];
+        $createLeadDispositions = GoalVrmDisposition::query()
+            ->where('creates_lead', true)
+            ->pluck('name')
+            ->map(fn ($n) => (string) $n)
+            ->all();
+
+        $query->where(function ($q) use ($vrmRoleType, $pipelineStatuses, $createLeadDispositions) {
+            $q->whereNull('goal_contact_import_id')
+                ->orWhereIn('status', $pipelineStatuses)
+                ->orWhere(function ($assigned) use ($vrmRoleType) {
+                    // Assigned to sales (not VRM) = real BM-allocated lead.
+                    $assigned->where('status', 'Assigned')
+                        ->whereNotNull('assigned_to')
+                        ->whereHas('assignee', function ($user) use ($vrmRoleType) {
+                            $user->where(function ($role) use ($vrmRoleType) {
+                                $role->whereNull('crm_role_type')
+                                    ->orWhere('crm_role_type', '!=', $vrmRoleType);
+                            });
+                        });
+                });
+
+            // VRM converted a dialer contact (e.g. Callback → Future Prospect lead).
+            if ($createLeadDispositions !== []) {
+                $q->orWhere(function ($converted) use ($createLeadDispositions) {
+                    $converted->where('status', 'Future Prospect')
+                        ->whereIn('disposition', $createLeadDispositions);
+                });
+            }
+        });
     }
 
     /**

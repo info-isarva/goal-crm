@@ -207,6 +207,17 @@
 .ll-page .action-btn.status{border-color:#bbf7d0;background:#f0fdf4;color:#15803d}
 .ll-page .action-btn.allocate{border-color:#ddd6fe;background:#f5f3ff;color:#6d28d9}
 .ll-page .action-btn.case{border-color:#e2e8f0;background:#f8fafc;color:#64748b}
+.ll-action-tip{
+    position:fixed;z-index:30000;background:#0f172a;color:#fff;
+    font-size:.75rem;font-weight:600;line-height:1.2;border-radius:8px;
+    padding:6px 10px;white-space:nowrap;pointer-events:none;
+    box-shadow:0 8px 20px rgba(15,23,42,.22);opacity:0;transition:opacity .12s ease;
+}
+.ll-action-tip.is-on{opacity:1}
+.ll-action-tip::after{
+    content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+    border:6px solid transparent;border-top-color:#0f172a;
+}
 
 .ll-lead-modal .modal-content{
     border:none;border-radius:16px;overflow:hidden;
@@ -300,17 +311,93 @@
     padding:12px 14px;border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc;
 }
 .ll-lead-modal .current-status-box .label{font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em}
-.ll-lead-modal .ll-status-hint{
+.ll-lead-modal .ll-status-hint,
+.ll-status-drawer .ll-status-hint{
     display:flex;gap:8px;align-items:flex-start;padding:12px 14px;border-radius:12px;
     background:var(--theme-50);border:1px solid var(--theme-200);color:#475569;font-size:.82rem;margin-top:4px;
 }
-.ll-lead-modal .ll-status-hint i{color:var(--theme-primary);flex-shrink:0;margin-top:2px}
+.ll-lead-modal .ll-status-hint i,
+.ll-status-drawer .ll-status-hint i{color:var(--theme-primary);flex-shrink:0;margin-top:2px}
 .ll-lead-modal .field-grid{
     display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px 18px;
 }
 @media (max-width:767.98px){
     .ll-lead-modal .field-grid{grid-template-columns:1fr}
 }
+
+/* Update Status — right side card (not modal) */
+.ll-status-backdrop{
+    position:fixed;inset:0;z-index:10640;background:rgba(15,23,42,.35);
+    opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease;
+}
+.ll-status-backdrop.is-open{opacity:1;visibility:visible}
+.ll-status-drawer{
+    position:fixed;top:0;right:0;bottom:0;z-index:10650;
+    width:min(420px,100vw);max-width:100%;
+    background:#fff;box-shadow:-12px 0 40px rgba(15,23,42,.18);
+    display:flex;flex-direction:column;
+    transform:translateX(104%);transition:transform .22s ease;
+}
+.ll-status-drawer.is-open{transform:translateX(0)}
+.ll-status-drawer .ll-drawer-head{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+    padding:18px 20px 14px;border-bottom:1px solid #e8edf5;background:#fff;flex-shrink:0;
+}
+.ll-status-drawer .modal-title-wrap{display:flex;align-items:flex-start;gap:12px;min-width:0}
+.ll-status-drawer .modal-icon{
+    width:40px;height:40px;border-radius:12px;background:var(--theme-100);color:var(--theme-primary);
+    display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;
+}
+.ll-status-drawer .modal-title{margin:0;font-size:1.05rem;font-weight:800;color:#0f172a}
+.ll-status-drawer .modal-sub{margin-top:2px;font-size:.8rem;color:#64748b;line-height:1.35}
+.ll-status-drawer .modal-close{
+    width:34px;height:34px;border:0;border-radius:10px;background:#f1f5f9;color:#475569;
+    display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
+}
+.ll-status-drawer .modal-close:hover{background:#e2e8f0;color:#0f172a}
+.ll-status-drawer .ll-drawer-body{
+    flex:1 1 auto;overflow:auto;padding:16px 20px 12px;-webkit-overflow-scrolling:touch;
+}
+.ll-status-drawer .ll-drawer-foot{
+    display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;
+    padding:14px 20px;border-top:1px solid #e8edf5;background:#fff;
+}
+.ll-status-drawer .current-status-box{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:12px 14px;border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc;
+}
+.ll-status-drawer .current-status-box .label{font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em}
+.ll-status-drawer .form-label{font-size:.82rem;font-weight:700;color:#334155;margin-bottom:6px}
+.ll-status-drawer .form-label .req{color:#dc2626}
+.ll-status-drawer .form-control,.ll-status-drawer .form-select{
+    border-radius:10px;border:1px solid #d1d5db;min-height:42px;
+}
+.ll-status-drawer .input-icon{position:relative}
+.ll-status-drawer .input-icon > i{
+    position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;z-index:1;
+}
+.ll-status-drawer .input-icon .form-control{padding-left:2.15rem}
+.ll-status-drawer .btn-save{
+    background:var(--theme-primary);color:#fff;border:none;border-radius:10px;
+    height:42px;padding:0 16px;font-weight:700;display:inline-flex;align-items:center;gap:6px;
+}
+.ll-status-drawer .btn-save:hover{background:var(--theme-primary-hover);color:#fff}
+.ll-status-drawer .btn-save:disabled{opacity:.55;cursor:not-allowed}
+.ll-status-drawer .btn-cancel{
+    border:1px solid var(--theme-300);background:#fff;color:var(--theme-primary);border-radius:10px;
+    height:42px;padding:0 14px;font-weight:600;
+}
+.ll-status-drawer .select2-container{width:100%!important}
+.ll-status-drawer .status-pill{
+    display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;
+    font-size:.75rem;font-weight:700;line-height:1.2;background:#f1f5f9;color:#334155;
+}
+.ll-status-drawer .status-pill.pending{background:#fef3c7;color:#b45309}
+.ll-status-drawer .status-pill.future{background:#ede9fe;color:#6d28d9}
+.ll-status-drawer .status-pill.closed{background:#fee2e2;color:#b91c1c}
+.ll-status-drawer .status-pill.active{background:#dcfce7;color:#15803d}
+.ll-status-drawer .status-pill.assigned{background:#e0f2fe;color:#0369a1}
+body.ll-status-open{overflow:hidden}
 
 .ll-page .table-footer-bar{
     display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
@@ -675,16 +762,16 @@
                                 <div class="action-group">
                                     <a href="{{ route('goal.leads.show', $lead) }}"
                                        class="action-btn view"
-                                       data-bs-toggle="tooltip"
-                                       data-bs-title="View details">
+                                       data-tip="View details"
+                                       aria-label="View details">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     @if(!empty($canManage))
-                                        @if($canEditThis || $canStatus)
+                                        @if($canEditThis)
                                         <button type="button"
                                                 class="action-btn edit btn-ll-edit"
-                                                data-bs-toggle="tooltip"
-                                                data-bs-title="Edit lead"
+                                                data-tip="Edit lead"
+                                                aria-label="Edit lead"
                                                 data-update-url="{{ route('goal.leads.update', $lead) }}"
                                                 data-ref="{{ $lead->ref_no }}"
                                                 data-customer="{{ $lead->customer_name }}"
@@ -695,19 +782,29 @@
                                                 data-source="{{ $lead->source }}"
                                                 data-branch-id="{{ $lead->goal_org_unit_id }}"
                                                 data-branch-name="{{ $lead->orgUnit?->name ?? '' }}"
-                                                data-disposition="{{ $lead->disposition }}"
-                                                data-consent="{{ $lead->consent_recorded ? '1' : '0' }}"
+                                                data-disposition="{{ $lead->disposition }}">
+                                            <i class="bi bi-pencil-fill"></i>
+                                        </button>
+                                        @endif
+                                        @if($canStatus)
+                                        <button type="button"
+                                                class="action-btn status btn-ll-status"
+                                                data-tip="Update status"
+                                                aria-label="Update status"
+                                                data-transition-url="{{ route('goal.leads.transition', $lead) }}"
+                                                data-ref="{{ $lead->ref_no }}"
                                                 data-lead-id="{{ $lead->id }}"
                                                 data-current-status="{{ $lead->status }}"
-                                                data-can-edit="{{ $canEditThis ? '1' : '0' }}"
-                                                data-follow-up="{{ optional($lead->follow_up_at)->format('d-m-Y H:i') }}">
-                                            <i class="bi bi-pencil-fill"></i>
+                                                data-product="{{ $lead->product }}"
+                                                data-consent="{{ $lead->consent_recorded ? '1' : '0' }}"
+                                                data-follow-up="{{ optional($lead->follow_up_at)->format('Y-m-d H:i') }}">
+                                            <i class="bi bi-signpost-2"></i>
                                         </button>
                                         @endif
                                         <button type="button"
                                                 class="action-btn note btn-ll-note"
-                                                data-bs-toggle="tooltip"
-                                                data-bs-title="Add note"
+                                                data-tip="Add note"
+                                                aria-label="Add note"
                                                 data-note-url="{{ route('goal.leads.notes', $lead) }}"
                                                 data-ref="{{ $lead->ref_no }}">
                                             <i class="bi bi-journal-plus"></i>
@@ -716,16 +813,16 @@
                                     @if($needsAllocation)
                                         <a href="{{ route('goal.allocation.index', ['q' => $lead->ref_no]) }}"
                                            class="action-btn allocate"
-                                           data-bs-toggle="tooltip"
-                                           data-bs-title="Allocate to sales">
+                                           data-tip="Allocate to sales"
+                                           aria-label="Allocate to sales">
                                             <i class="bi bi-person-check"></i>
                                         </a>
                                     @endif
                                     @if($lead->loanCase)
                                         <a href="{{ route('goal.cases.show', $lead->loanCase) }}"
                                            class="action-btn case"
-                                           data-bs-toggle="tooltip"
-                                           data-bs-title="View case {{ $lead->loanCase->case_no }}">
+                                           data-tip="View case {{ $lead->loanCase->case_no }}"
+                                           aria-label="View case {{ $lead->loanCase->case_no }}">
                                             <i class="bi bi-folder2-open"></i>
                                         </a>
                                     @endif
@@ -923,7 +1020,7 @@
 @endif
 
 @if($canManage)
-{{-- Edit lead (call-edit style + workflow status) --}}
+{{-- Edit lead (details only; status has its own action) --}}
 <div class="modal fade ll-lead-modal" id="llEditLeadModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <form method="POST" id="llEditLeadForm" class="modal-content">
@@ -938,7 +1035,7 @@
                     <span class="modal-icon"><i class="bi bi-pencil-square"></i></span>
                     <div>
                         <h5 class="modal-title">Edit Lead</h5>
-                        <div class="modal-sub" id="llEditLeadSub">Update customer, loan details and workflow status.</div>
+                        <div class="modal-sub" id="llEditLeadSub">Update customer and loan details.</div>
                     </div>
                 </div>
                 <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
@@ -998,19 +1095,6 @@
                                 </select>
                             @endif
                         </div>
-                        <div class="field">
-                            <label class="form-label">Current status</label>
-                            <div class="current-status-box" style="min-height:42px;padding:8px 12px;">
-                                <div id="ll_edit_current_wrap"></div>
-                            </div>
-                        </div>
-                        <div class="field" id="ll_edit_status_wrap">
-                            <label class="form-label" for="ll_edit_to_status">Move to</label>
-                            <select name="to_status" id="ll_edit_to_status" class="form-select js-select2 no-select2"
-                                    data-select2-skip="1" data-placeholder="Keep current status" data-search="false">
-                                <option value="">Keep current status</option>
-                            </select>
-                        </div>
                     </div>
                 </div>
 
@@ -1027,29 +1111,6 @@
                                     <option value="{{ $p->product_name }}">{{ $p->product_name }}</option>
                                 @endforeach
                             </select>
-                        </div>
-                        <div class="field" id="ll_edit_follow_wrap" style="display:none;">
-                            <label class="form-label" for="ll_edit_follow_up">Follow-up <span class="req">*</span></label>
-                            <div class="input-icon">
-                                <i class="bi bi-calendar3"></i>
-                                <input type="text" name="follow_up_at" id="ll_edit_follow_up"
-                                       class="form-control js-datetimepicker"
-                                       placeholder="dd-mm-yyyy --:--" autocomplete="off">
-                            </div>
-                        </div>
-                        <div class="field" id="ll_edit_closure_wrap" style="display:none;">
-                            <label class="form-label" for="ll_edit_closure">Closure reason <span class="req">*</span></label>
-                            <div class="input-icon">
-                                <i class="bi bi-x-octagon"></i>
-                                <input name="closure_reason" id="ll_edit_closure" class="form-control"
-                                       placeholder="Required when closing">
-                            </div>
-                        </div>
-                        <div class="field check-align d-flex align-items-end">
-                            <div class="form-check mb-2">
-                                <input type="checkbox" class="form-check-input" name="consent_recorded" value="1" id="ll_edit_consent">
-                                <label class="form-check-label" for="ll_edit_consent">Consent recorded</label>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -1076,11 +1137,6 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="ll-status-hint" id="ll_edit_status_hint">
-                    <i class="bi bi-info-circle"></i>
-                    <span>Allocation to sales is done from <strong>BM Allocation</strong>. Moving to Documents Pending creates the case automatically.</span>
-                </div>
             </div>
 
             <div class="modal-footer">
@@ -1090,6 +1146,81 @@
         </form>
     </div>
 </div>
+
+{{-- Update status — right side card --}}
+<div class="ll-status-backdrop" id="llStatusBackdrop" hidden></div>
+<aside class="ll-status-drawer" id="llStatusLeadModal" aria-hidden="true" aria-labelledby="llStatusLeadTitle">
+    <form method="POST" id="llStatusLeadForm" style="display:flex;flex-direction:column;height:100%;min-height:0;">
+        @csrf
+        <div class="ll-drawer-head">
+            <div class="modal-title-wrap">
+                <span class="modal-icon"><i class="bi bi-signpost-2"></i></span>
+                <div>
+                    <h5 class="modal-title" id="llStatusLeadTitle">Update Lead Status</h5>
+                    <div class="modal-sub" id="llStatusLeadSub">Move this lead to the next workflow stage.</div>
+                </div>
+            </div>
+            <button type="button" class="modal-close js-ll-status-close" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="ll-drawer-body">
+            <div class="current-status-box mb-3">
+                <div>
+                    <div class="label">Current status</div>
+                    <div id="ll_status_current_wrap" class="mt-1"></div>
+                </div>
+            </div>
+            <div class="field mb-3" id="ll_status_move_wrap">
+                <label class="form-label" for="ll_status_to_status">Move to <span class="req">*</span></label>
+                <select name="to_status" id="ll_status_to_status" class="form-select js-select2 no-select2"
+                        data-select2-skip="1" data-placeholder="Select status" data-search="false" required>
+                    <option value="">Select status</option>
+                </select>
+            </div>
+            <div class="field mb-3" id="ll_status_follow_wrap" style="display:none;">
+                <label class="form-label" for="ll_status_follow_up">Follow-up <span class="req" id="ll_status_follow_req">*</span></label>
+                <div class="input-icon">
+                    <i class="bi bi-calendar3"></i>
+                    <input type="text" name="follow_up_at" id="ll_status_follow_up"
+                           class="form-control js-datetimepicker" data-min-date="today"
+                           placeholder="dd-mm-yyyy --:--" autocomplete="off">
+                </div>
+                <div class="form-text">Required when moving to Future Prospect.</div>
+            </div>
+            <div class="field mb-3">
+                <label class="form-label" for="ll_status_product">Product</label>
+                <select name="product" id="ll_status_product" class="form-select js-select2 no-select2"
+                        data-select2-skip="1" data-placeholder="Select product" data-allow-clear="true">
+                    <option value=""></option>
+                    @foreach($products as $p)
+                        <option value="{{ $p->product_name }}">{{ $p->product_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="field mb-3" id="ll_status_consent_wrap">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" name="consent_recorded" value="1" id="ll_status_consent">
+                    <label class="form-check-label" for="ll_status_consent">Consent recorded <span class="req d-none" id="ll_status_consent_req">*</span></label>
+                </div>
+                <div class="form-text" id="ll_status_consent_hint" style="display:none;">Required when moving to Qualified.</div>
+            </div>
+            <div class="field mb-3" id="ll_status_closure_wrap" style="display:none;">
+                <label class="form-label" for="ll_status_closure">Closure reason <span class="req">*</span></label>
+                <div class="input-icon">
+                    <i class="bi bi-x-octagon"></i>
+                    <input name="closure_reason" id="ll_status_closure" class="form-control" placeholder="Required when closing">
+                </div>
+            </div>
+            <div class="ll-status-hint">
+                <i class="bi bi-info-circle"></i>
+                <span>Allocation to sales is done from <strong>BM Allocation</strong>. Moving to Documents Pending creates the case automatically.</span>
+            </div>
+        </div>
+        <div class="ll-drawer-foot">
+            <button type="button" class="btn-cancel js-ll-status-close">Cancel</button>
+            <button type="submit" class="btn-save" id="ll_status_submit"><i class="bi bi-check2"></i> Apply</button>
+        </div>
+    </form>
+</aside>
 
 {{-- Add note --}}
 <div class="modal fade ll-lead-modal" id="llNoteLeadModal" tabindex="-1" aria-hidden="true">
@@ -1124,11 +1255,70 @@
 @push('scripts')
 <script>
 (function () {
-    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
-        document.querySelectorAll('.ll-page [data-bs-toggle="tooltip"]').forEach(function (el) {
-            bootstrap.Tooltip.getOrCreateInstance(el, { container: 'body', trigger: 'hover focus' });
+    // Lightweight action tooltips (Bootstrap Tooltip is not bundled in this app)
+    (function initLlActionTips() {
+        let tipEl = null;
+        let showTimer = null;
+
+        function ensureTip() {
+            if (tipEl) return tipEl;
+            tipEl = document.createElement('div');
+            tipEl.className = 'll-action-tip';
+            tipEl.setAttribute('role', 'tooltip');
+            document.body.appendChild(tipEl);
+            return tipEl;
+        }
+
+        function hideTip() {
+            if (showTimer) {
+                clearTimeout(showTimer);
+                showTimer = null;
+            }
+            if (tipEl) tipEl.classList.remove('is-on');
+        }
+
+        function showTip(anchor) {
+            const text = (anchor.getAttribute('data-tip') || anchor.getAttribute('aria-label') || '').trim();
+            if (!text) return;
+            const tip = ensureTip();
+            tip.textContent = text;
+            tip.classList.remove('is-on');
+            tip.style.visibility = 'hidden';
+            tip.style.display = 'block';
+            const rect = anchor.getBoundingClientRect();
+            const tipW = tip.offsetWidth || 0;
+            const tipH = tip.offsetHeight || 0;
+            tip.style.left = Math.round(rect.left + rect.width / 2 - tipW / 2) + 'px';
+            tip.style.top = Math.round(rect.top - tipH - 10) + 'px';
+            tip.style.visibility = '';
+            showTimer = setTimeout(function () {
+                tip.classList.add('is-on');
+            }, 60);
+        }
+
+        document.addEventListener('mouseover', function (e) {
+            const anchor = e.target.closest('.ll-page [data-tip]');
+            if (!anchor) return;
+            showTip(anchor);
         });
-    }
+        document.addEventListener('mouseout', function (e) {
+            const anchor = e.target.closest('.ll-page [data-tip]');
+            if (!anchor) return;
+            const to = e.relatedTarget;
+            if (to && anchor.contains(to)) return;
+            hideTip();
+        });
+        document.addEventListener('focusin', function (e) {
+            const anchor = e.target.closest('.ll-page [data-tip]');
+            if (anchor) showTip(anchor);
+        });
+        document.addEventListener('focusout', function (e) {
+            const anchor = e.target.closest('.ll-page [data-tip]');
+            if (anchor) hideTip();
+        });
+        document.addEventListener('scroll', hideTip, true);
+        window.addEventListener('resize', hideTip);
+    })();
 
     const sourceEl = document.getElementById('create_source');
     const partnerWrap = document.getElementById('channelPartnerWrap');
@@ -1237,62 +1427,126 @@
         return '';
     }
 
-    function syncLlEditStatusFields() {
-        const to = (document.getElementById('ll_edit_to_status')?.value || '');
-        const followWrap = document.getElementById('ll_edit_follow_wrap');
-        const closureWrap = document.getElementById('ll_edit_closure_wrap');
-        const followInput = document.getElementById('ll_edit_follow_up');
-        const closureInput = document.getElementById('ll_edit_closure');
+    const llLeadNextById = @json($leadNextById ?? []);
+
+    function syncLlStatusFields() {
+        const to = (document.getElementById('ll_status_to_status')?.value || '');
+        const followWrap = document.getElementById('ll_status_follow_wrap');
+        const closureWrap = document.getElementById('ll_status_closure_wrap');
+        const followInput = document.getElementById('ll_status_follow_up');
+        const closureInput = document.getElementById('ll_status_closure');
+        const consentReq = document.getElementById('ll_status_consent_req');
+        const consentHint = document.getElementById('ll_status_consent_hint');
         if (followWrap) followWrap.style.display = to === 'Future Prospect' ? '' : 'none';
         if (closureWrap) closureWrap.style.display = to === 'Closed / Lost' ? '' : 'none';
         if (followInput) followInput.required = to === 'Future Prospect';
-        if (closureInput) closureInput.required = to === 'Closed / Lost';
-        if (to !== 'Future Prospect' && followInput) followInput.value = followInput.value;
-        if (to !== 'Closed / Lost' && closureInput) closureInput.value = '';
+        if (closureInput) {
+            closureInput.required = to === 'Closed / Lost';
+            if (to !== 'Closed / Lost') closureInput.value = '';
+        }
+        const needConsent = to === 'Qualified';
+        if (consentReq) consentReq.classList.toggle('d-none', !needConsent);
+        if (consentHint) consentHint.style.display = needConsent ? '' : 'none';
     }
 
-    const llLeadNextById = @json($leadNextById ?? []);
-
-    function rebuildMoveToOptions(next, modalEl) {
-        const toEl = document.getElementById('ll_edit_to_status');
-        const statusWrap = document.getElementById('ll_edit_status_wrap');
+    function rebuildStatusMoveToOptions(next, modalEl) {
+        const toEl = document.getElementById('ll_status_to_status');
+        const moveWrap = document.getElementById('ll_status_move_wrap');
+        const submitBtn = document.getElementById('ll_status_submit');
         if (!toEl) return;
         const $ = window.jQuery;
         const $to = $ ? $(toEl) : null;
         if ($to && $to.hasClass('select2-hidden-accessible')) {
             $to.select2('destroy');
         }
-        // Allow manual Select2 init for this control (skipped on page load).
         toEl.classList.remove('no-select2');
         toEl.removeAttribute('data-select2-skip');
 
         const options = Array.isArray(next) ? next.slice() : [];
         toEl.innerHTML = '';
-        const keep = document.createElement('option');
-        keep.value = '';
-        keep.textContent = 'Keep current status';
-        toEl.appendChild(keep);
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = options.length ? 'Select status' : 'No transitions available';
+        toEl.appendChild(placeholder);
         options.forEach(function (s) {
             const opt = document.createElement('option');
             opt.value = s;
             opt.textContent = s;
             toEl.appendChild(opt);
         });
-        toEl.value = '';
-        if (statusWrap) statusWrap.style.display = options.length ? '' : 'none';
+        toEl.value = options.length === 1 ? options[0] : '';
+        if (moveWrap) moveWrap.style.display = options.length ? '' : 'none';
+        if (submitBtn) submitBtn.disabled = !options.length;
 
-        const parent = modalEl || document.getElementById('llEditLeadModal') || document.body;
+        const parent = modalEl || document.getElementById('llStatusLeadModal') || document.body;
         if ($ && $.fn.select2) {
             $to.select2({
                 width: '100%',
                 dropdownParent: $(parent),
                 minimumResultsForSearch: Infinity,
-                placeholder: 'Keep current status',
+                placeholder: 'Select status',
                 allowClear: false
             });
-            $to.val('').trigger('change');
+            $to.val(toEl.value || null).trigger('change');
         }
-        syncLlEditStatusFields();
+        syncLlStatusFields();
+    }
+
+    function initSelectInModal(el, modalEl, value) {
+        if (!el) return;
+        const $ = window.jQuery;
+        if ($ && $(el).hasClass('select2-hidden-accessible')) {
+            $(el).select2('destroy');
+        }
+        el.classList.remove('no-select2');
+        el.removeAttribute('data-select2-skip');
+        if (window.IsarvaSelect2 && typeof window.IsarvaSelect2.initOne === 'function') {
+            window.IsarvaSelect2.initOne(el);
+        } else if ($ && $.fn.select2) {
+            $(el).select2({
+                width: '100%',
+                dropdownParent: $(modalEl || document.body),
+                allowClear: true,
+                placeholder: el.getAttribute('data-placeholder') || ''
+            });
+        }
+        if ($) {
+            $(el).val(value || null).trigger('change');
+        } else {
+            el.value = value || '';
+        }
+    }
+
+    function openLlStatusDrawer() {
+        const drawer = document.getElementById('llStatusLeadModal');
+        const backdrop = document.getElementById('llStatusBackdrop');
+        if (!drawer) return;
+        if (drawer.parentElement !== document.body) document.body.appendChild(drawer);
+        if (backdrop && backdrop.parentElement !== document.body) document.body.appendChild(backdrop);
+        if (backdrop) {
+            backdrop.hidden = false;
+            requestAnimationFrame(function () { backdrop.classList.add('is-open'); });
+        }
+        drawer.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(function () { drawer.classList.add('is-open'); });
+        document.body.classList.add('ll-status-open');
+        drawer.dispatchEvent(new CustomEvent('shown.ll.status', { bubbles: true }));
+    }
+
+    function closeLlStatusDrawer() {
+        const drawer = document.getElementById('llStatusLeadModal');
+        const backdrop = document.getElementById('llStatusBackdrop');
+        if (drawer) {
+            drawer.classList.remove('is-open');
+            drawer.setAttribute('aria-hidden', 'true');
+        }
+        if (backdrop) {
+            backdrop.classList.remove('is-open');
+            setTimeout(function () {
+                if (backdrop && !backdrop.classList.contains('is-open')) backdrop.hidden = true;
+            }, 220);
+        }
+        document.body.classList.remove('ll-status-open');
     }
 
     document.addEventListener('click', function (e) {
@@ -1304,7 +1558,7 @@
             if (!form || !modal || typeof bootstrap === 'undefined') return;
             form.action = editBtn.getAttribute('data-update-url') || '';
             document.getElementById('llEditLeadSub').textContent =
-                'Update details and status for ' + (editBtn.getAttribute('data-ref') || 'this lead') + '.';
+                'Update details for ' + (editBtn.getAttribute('data-ref') || 'this lead') + '.';
 
             setVal('ll_edit_customer_name', editBtn.getAttribute('data-customer'));
             setVal('ll_edit_mobile', editBtn.getAttribute('data-mobile'));
@@ -1312,56 +1566,72 @@
             setVal('ll_edit_product', editBtn.getAttribute('data-product'));
             setVal('ll_edit_loan_amount', editBtn.getAttribute('data-loan-amount'));
             setVal('ll_edit_source', editBtn.getAttribute('data-source') || @json($defaultSourceName));
-            setVal('ll_edit_branch', editBtn.getAttribute('data-branch-id'));
+
+            const branchId = editBtn.getAttribute('data-branch-id') || '';
+            const branchName = editBtn.getAttribute('data-branch-name') || '';
+            const branchEl = document.getElementById('ll_edit_branch');
+            if (branchEl && branchEl.tagName === 'SELECT' && branchId) {
+                const hasOpt = Array.from(branchEl.options).some(function (o) { return String(o.value) === String(branchId); });
+                if (!hasOpt) {
+                    branchEl.add(new Option(branchName || ('Unit #' + branchId), branchId, true, true));
+                }
+            }
+            setVal('ll_edit_branch', branchId);
             const branchLabel = document.getElementById('ll_edit_branch_label');
             if (branchLabel) {
-                branchLabel.value = editBtn.getAttribute('data-branch-name')
-                    || editBtn.getAttribute('data-branch-id')
-                    || 'Your branch';
+                branchLabel.value = branchName || branchId || 'Your branch';
             }
-            const disposition = editBtn.getAttribute('data-disposition') || '';
+
+            const disposition = (editBtn.getAttribute('data-disposition') || '').trim();
             setVal('ll_edit_disposition', disposition);
             const dispositionLabel = document.getElementById('ll_edit_disposition_label');
-            if (dispositionLabel) dispositionLabel.value = disposition || '-';
+            if (dispositionLabel) dispositionLabel.value = disposition || 'Not set';
             setVal('ll_edit_notes', '');
-            setVal('ll_edit_follow_up', editBtn.getAttribute('data-follow-up'));
-            setVal('ll_edit_closure', '');
-            const consent = document.getElementById('ll_edit_consent');
-            if (consent) consent.checked = editBtn.getAttribute('data-consent') === '1';
 
-            const current = editBtn.getAttribute('data-current-status') || '';
-            const currentWrap = document.getElementById('ll_edit_current_wrap');
-            if (currentWrap) {
-                currentWrap.innerHTML = '<span class="status-pill ' + statusTone(current) + '">' + escapeHtml(current || '-') + '</span>';
-            }
-            const leadId = String(editBtn.getAttribute('data-lead-id') || '');
-            const next = llLeadNextById[leadId] || llLeadNextById[Number(leadId)] || [];
-
-            const canEdit = editBtn.getAttribute('data-can-edit') === '1';
-            ['ll_edit_customer_name', 'll_edit_mobile', 'll_edit_loan_amount', 'll_edit_notes'].forEach(function (id) {
-                const el = document.getElementById(id);
-                if (el) el.readOnly = !canEdit;
-            });
             const productEl = document.getElementById('ll_edit_product');
-            if (productEl) productEl.disabled = false;
-
             const onShown = function () {
                 modal.removeEventListener('shown.bs.modal', onShown);
-                rebuildMoveToOptions(next, modal);
-                if (window.IsarvaSelect2 && typeof window.IsarvaSelect2.initOne === 'function' && productEl) {
-                    if (window.jQuery && window.jQuery(productEl).hasClass('select2-hidden-accessible')) {
-                        window.jQuery(productEl).select2('destroy');
-                    }
-                    productEl.classList.remove('no-select2');
-                    productEl.removeAttribute('data-select2-skip');
-                    window.IsarvaSelect2.initOne(productEl);
-                    if (window.jQuery) {
-                        window.jQuery(productEl).val(editBtn.getAttribute('data-product') || null).trigger('change');
-                    }
+                initSelectInModal(productEl, modal, editBtn.getAttribute('data-product'));
+                if (branchEl && branchEl.tagName === 'SELECT') {
+                    initSelectInModal(branchEl, modal, branchId);
                 }
             };
             modal.addEventListener('shown.bs.modal', onShown);
             bootstrap.Modal.getOrCreateInstance(modal).show();
+            return;
+        }
+
+        const statusBtn = e.target.closest('.btn-ll-status');
+        if (statusBtn) {
+            e.preventDefault();
+            const form = document.getElementById('llStatusLeadForm');
+            const drawer = document.getElementById('llStatusLeadModal');
+            if (!form || !drawer) return;
+            form.action = statusBtn.getAttribute('data-transition-url') || '';
+            document.getElementById('llStatusLeadSub').textContent =
+                'Update status for ' + (statusBtn.getAttribute('data-ref') || 'this lead') + '.';
+
+            const current = statusBtn.getAttribute('data-current-status') || '';
+            const currentWrap = document.getElementById('ll_status_current_wrap');
+            if (currentWrap) {
+                currentWrap.innerHTML = '<span class="status-pill ' + statusTone(current) + '">' + escapeHtml(current || '-') + '</span>';
+            }
+            const consent = document.getElementById('ll_status_consent');
+            if (consent) consent.checked = statusBtn.getAttribute('data-consent') === '1';
+            setVal('ll_status_follow_up', statusBtn.getAttribute('data-follow-up'));
+            setVal('ll_status_closure', '');
+
+            const leadId = String(statusBtn.getAttribute('data-lead-id') || '');
+            const next = llLeadNextById[leadId] || llLeadNextById[Number(leadId)] || [];
+            const productEl = document.getElementById('ll_status_product');
+
+            const onShown = function () {
+                drawer.removeEventListener('shown.ll.status', onShown);
+                rebuildStatusMoveToOptions(next, drawer);
+                initSelectInModal(productEl, drawer, statusBtn.getAttribute('data-product'));
+            };
+            drawer.addEventListener('shown.ll.status', onShown);
+            openLlStatusDrawer();
             return;
         }
 
@@ -1379,10 +1649,23 @@
         }
     });
 
-    document.getElementById('ll_edit_to_status')?.addEventListener('change', syncLlEditStatusFields);
+    document.getElementById('ll_status_to_status')?.addEventListener('change', syncLlStatusFields);
     if (window.jQuery) {
-        window.jQuery(document).on('change', '#ll_edit_to_status', syncLlEditStatusFields);
+        window.jQuery(document).on('change', '#ll_status_to_status', syncLlStatusFields);
     }
+
+    document.querySelectorAll('.js-ll-status-close').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            closeLlStatusDrawer();
+        });
+    });
+    document.getElementById('llStatusBackdrop')?.addEventListener('click', closeLlStatusDrawer);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && document.body.classList.contains('ll-status-open')) {
+            closeLlStatusDrawer();
+        }
+    });
 })();
 </script>
 @endpush

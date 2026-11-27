@@ -7,9 +7,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Goal\Concerns\AuthorizesGoal;
 use App\Library\MpdfDocument;
 use App\Models\GoalLoanLead;
+use App\Models\GoalLoanLeadEvent;
 use App\Models\GoalOrgUnit;
 use App\Models\GoalVrmCallLog;
 use App\Models\GoalVrmDisposition;
+use App\Models\LeadSource;
 use App\Models\Product;
 use App\Models\User;
 use App\Support\PhoneNumber;
@@ -897,20 +899,29 @@ class GoalVrmController extends Controller
             ->orderByDesc('assigned_at')
             ->orderByDesc('id')
             ->limit(12)
-            ->get(['id', 'ref_no', 'customer_name', 'mobile', 'product', 'loan_amount', 'status', 'goal_org_unit_id', 'assigned_to']);
+            ->get([
+                'id', 'ref_no', 'customer_name', 'mobile', 'product', 'loan_amount',
+                'status', 'goal_org_unit_id', 'assigned_to', 'goal_contact_import_id',
+            ]);
 
         return response()->json([
-            'data' => $leads->map(fn (GoalLoanLead $lead) => [
-                'id' => (int) $lead->id,
-                'ref_no' => $lead->ref_no,
-                'customer_name' => $lead->customer_name,
-                'mobile' => $lead->mobile,
-                'product' => $lead->product,
-                'loan_amount' => $lead->loan_amount !== null ? (float) $lead->loan_amount : null,
-                'status' => $lead->status,
-                'goal_org_unit_id' => $lead->goal_org_unit_id ? (int) $lead->goal_org_unit_id : null,
-                'branch_name' => $lead->orgUnit?->name,
-            ])->values(),
+            'data' => $leads->map(function (GoalLoanLead $lead) {
+                $isDialing = $lead->goal_contact_import_id
+                    && in_array($lead->status, ['Future Prospect', 'Assigned', 'New'], true);
+
+                return [
+                    'id' => (int) $lead->id,
+                    'ref_no' => $lead->ref_no,
+                    'customer_name' => $lead->customer_name,
+                    'mobile' => $lead->mobile,
+                    'product' => $lead->product,
+                    'loan_amount' => $lead->loan_amount !== null ? (float) $lead->loan_amount : null,
+                    'status' => $lead->status,
+                    'goal_org_unit_id' => $lead->goal_org_unit_id ? (int) $lead->goal_org_unit_id : null,
+                    'branch_name' => $lead->orgUnit?->name,
+                    'is_dialing_contact' => (bool) $isDialing,
+                ];
+            })->values(),
         ]);
     }
 
@@ -977,6 +988,7 @@ class GoalVrmController extends Controller
             : in_array($data['disposition'], ['Interested', 'Callback'], true);
 
         $leadId = null;
+        $promotedFromContact = false;
         $assignedLeadId = (int) ($data['goal_loan_lead_id'] ?? 0);
         if ($assignedLeadId > 0) {
             $assignedLead = GoalLoanLead::query()->find($assignedLeadId);
@@ -996,7 +1008,57 @@ class GoalVrmController extends Controller
             if (! empty($data['disposition'])) {
                 $assignedLead->disposition = $data['disposition'];
             }
-            if ($assignedLead->isDirty()) {
+
+            // Campaign / import contacts are dialer rows until VRM marks interest and creates a lead.
+            $isDialingContact = $assignedLead->goal_contact_import_id
+                && in_array($assignedLead->status, ['Future Prospect', 'Assigned', 'New'], true);
+            $wantsCreateLead = $request->boolean('create_lead') && $canCreateLeadFromDisposition;
+            if ($isDialingContact && $wantsCreateLead) {
+                $this->requireGoalPermission('create_lead_guard');
+                $fromStatus = $assignedLead->status;
+                $leadType = $dispositionMaster
+                    ? $dispositionMaster->resolveLeadType()
+                    : ($data['disposition'] === 'Callback' ? 'future' : 'immediate');
+                $toStatus = $leadType === 'immediate' ? 'Pending BM Allocation' : 'Future Prospect';
+
+                if (! empty($data['product'])) {
+                    $assignedLead->product = $data['product'];
+                }
+                if (array_key_exists('loan_amount', $data) && $data['loan_amount'] !== null && $data['loan_amount'] !== '') {
+                    $assignedLead->loan_amount = $data['loan_amount'];
+                }
+                $assignedLead->lead_type = $leadType;
+                $assignedLead->status = $toStatus;
+                $assignedLead->source = LeadSource::resolveCanonicalName('VRM')
+                    ?: (LeadSource::resolveCanonicalName($assignedLead->source) ?: ($assignedLead->source ?: 'VRM'));
+                $assignedLead->created_by = $assignedLead->created_by ?: auth()->id();
+
+                // Immediate interest → BM queue (clear VRM owner). Callbacks stay with VRM for follow-up.
+                if ($toStatus === 'Pending BM Allocation') {
+                    $assignedLead->assigned_to = null;
+                    $assignedLead->assigned_by = null;
+                    $assignedLead->assigned_at = null;
+                }
+
+                $assignedLead->save();
+                app(\App\Services\Goal\GoalPartyService::class)->attachLead($assignedLead);
+                GoalLoanLeadEvent::record(
+                    $assignedLead,
+                    'status_change',
+                    'Lead Created from VRM Call',
+                    $fromStatus.' -> '.$toStatus.' · Disposition: '.$data['disposition'],
+                    [
+                        'from_status' => $fromStatus,
+                        'to_status' => $toStatus,
+                        'meta' => [
+                            'from_contact' => true,
+                            'import_id' => $assignedLead->goal_contact_import_id,
+                            'disposition' => $data['disposition'],
+                        ],
+                    ]
+                );
+                $promotedFromContact = true;
+            } elseif ($assignedLead->isDirty()) {
                 $assignedLead->save();
             }
         } elseif ($request->boolean('create_lead') && $canCreateLeadFromDisposition) {
@@ -1060,7 +1122,12 @@ class GoalVrmController extends Controller
             ]);
         });
 
-        $message = 'Call logged' . ($leadId ? ' and lead linked.' : '.');
+        $message = 'Call logged.';
+        if ($promotedFromContact) {
+            $message = 'Call logged and lead created for BM / pipeline.';
+        } elseif ($leadId) {
+            $message = 'Call logged and lead linked.';
+        }
         $returnTab = $request->input('return_tab') === 'assigned' ? 'assigned' : 'calls';
 
         if ($request->boolean('save_and_new')) {

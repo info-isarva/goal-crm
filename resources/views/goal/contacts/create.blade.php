@@ -324,11 +324,11 @@
                         </div>
                         <div class="cg-field">
                             <label>Lead Status</label>
-                            @php $leadStatusVal = old('lead_status', $import?->default_lead_status ?? 'Future Prospect'); @endphp
-                            <select name="lead_status" class="js-select2" data-search="false" data-allow-clear="false">
-                                <option value="Future Prospect" @selected($leadStatusVal === 'Future Prospect')>Future Prospect (dialer)</option>
-                                <option value="Pending BM Allocation" @selected($leadStatusVal === 'Pending BM Allocation')>Pending BM Allocation</option>
-                            </select>
+                            {{-- Campaigns are dialer contacts for VRM only; leads are created after interest. --}}
+                            <input type="hidden" name="lead_status" value="Future Prospect">
+                            <div class="form-control" style="display:flex;align-items:center;min-height:38px;background:#f8fafc;color:#475569;font-size:.88rem;">
+                                Dialer contacts for VRM — lead is created only when VRM marks interest
+                            </div>
                         </div>
                     </div>
                     <div class="cg-field" style="margin-bottom:0">
