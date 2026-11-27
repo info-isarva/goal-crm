@@ -594,40 +594,50 @@
 }
 .vrm-page .calls-table-wrap table,
 .vrm-page .calls-table-wrap table.table,
-.vrm-page .calls-table-wrap #vrmCallsTable {
-    width: 100% !important;
-    min-width: 980px !important;
-    table-layout: auto;
-    margin: 0 !important;
-}
+.vrm-page .calls-table-wrap #vrmCallsTable,
 .vrm-page .calls-table-wrap #vrmAssignedTable {
     width: 100% !important;
     min-width: 1080px !important;
-    table-layout: auto !important;
+    table-layout: fixed !important;
     margin: 0 !important;
     border-collapse: separate;
     border-spacing: 0;
 }
-.vrm-page .calls-table-wrap #vrmAssignedTable thead th,
-.vrm-page .calls-table-wrap #vrmAssignedTable tbody td {
+.vrm-page .calls-table-wrap #vrmCallsTable,
+.vrm-page .calls-table-wrap #vrmAssignedTable,
+.vrm-page .calls-table-wrap .dataTables_scrollHead table,
+.vrm-page .calls-table-wrap .dataTables_scrollBody table {
+    width: 100% !important;
+}
+.vrm-page .calls-table-wrap thead th,
+.vrm-page .calls-table-wrap tbody td {
     white-space: nowrap;
     vertical-align: middle !important;
-    box-sizing: border-box;
+    box-sizing: border-box !important;
     text-align: left;
+    padding: 0.75rem 0.85rem !important;
 }
-.vrm-page .calls-table-wrap #vrmAssignedTable thead th {
-    padding: 0.65rem 0.7rem;
-    background: #f8fafc;
-}
-.vrm-page .calls-table-wrap #vrmAssignedTable tbody td {
-    padding: 0.7rem 0.7rem;
+.vrm-page .calls-table-wrap thead th {
+    background: #f1f5f9;
 }
 .vrm-page .calls-table-wrap #vrmAssignedTable th.col-num,
-.vrm-page .calls-table-wrap #vrmAssignedTable td.col-num {
-    width: 40px; min-width: 40px; text-align: center; color: #64748b; font-weight: 700;
+.vrm-page .calls-table-wrap #vrmAssignedTable td.col-num,
+.vrm-page .calls-table-wrap #vrmCallsTable th.col-num,
+.vrm-page .calls-table-wrap #vrmCallsTable td.col-num,
+.vrm-page .calls-table-wrap th:first-child,
+.vrm-page .calls-table-wrap td.col-num {
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    text-align: center !important;
+    color: #64748b;
+    font-weight: 700;
 }
-.vrm-page .calls-table-wrap #vrmAssignedTable td.col-customer {
-    white-space: normal; min-width: 150px;
+.vrm-page .calls-table-wrap #vrmAssignedTable td.col-customer,
+.vrm-page .calls-table-wrap #vrmAssignedTable th:nth-child(2) {
+    white-space: normal;
+    width: 160px !important;
+    min-width: 140px;
 }
 .vrm-page .calls-table-wrap #vrmAssignedTable .cust-name {
     font-weight: 700; color: #0f172a; line-height: 1.25;
@@ -652,20 +662,45 @@
 .vrm-page .lead-status-pill.tone-bad { background: #fee2e2; color: #b91c1c; }
 .vrm-page .lead-status-pill.tone-muted { background: #f1f5f9; color: #64748b; }
 .vrm-page .calls-table-wrap #vrmAssignedTable th.col-actions,
-.vrm-page .calls-table-wrap #vrmAssignedTable td.col-actions {
-    width: 118px; min-width: 118px; text-align: right;
+.vrm-page .calls-table-wrap #vrmAssignedTable td.col-actions,
+.vrm-page .calls-table-wrap #vrmCallsTable th.col-actions,
+.vrm-page .calls-table-wrap #vrmCallsTable td.col-actions {
+    width: 120px !important;
+    min-width: 120px !important;
+    max-width: 130px !important;
+    text-align: right !important;
 }
-.vrm-page .calls-table-wrap #vrmAssignedTable tr.assign-group-row td {
-    white-space: normal;
+.vrm-page .calls-table-wrap #vrmAssignedTable td.col-actions .action-group,
+.vrm-page .calls-table-wrap #vrmCallsTable td.col-actions .action-group {
+    justify-content: flex-end;
 }
-.vrm-page .calls-table-wrap #vrmAssignedTable tr.assign-contact-row td {
-    border-bottom: 0;
-    border-top: 0;
+.vrm-page .calls-table-wrap #vrmAssignedTable .when-cell {
+    max-width: 150px;
 }
-.vrm-page .calls-table-wrap table th,
-.vrm-page .calls-table-wrap table td {
-    white-space: nowrap;
+.vrm-page .calls-table-wrap table.dataTable thead th {
+    position: relative;
 }
+.vrm-page .calls-table-wrap table.dataTable thead .sorting,
+.vrm-page .calls-table-wrap table.dataTable thead .sorting_asc,
+.vrm-page .calls-table-wrap table.dataTable thead .sorting_desc {
+    background-image: none !important;
+    padding-right: 1.6rem !important;
+}
+.vrm-page .calls-table-wrap table.dataTable thead .sorting:after,
+.vrm-page .calls-table-wrap table.dataTable thead .sorting_asc:after,
+.vrm-page .calls-table-wrap table.dataTable thead .sorting_desc:after {
+    position: absolute;
+    right: 0.55rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: bootstrap-icons !important;
+    font-size: 0.7rem;
+    color: #94a3b8;
+    opacity: 0.9;
+}
+.vrm-page .calls-table-wrap table.dataTable thead .sorting:after { content: "\F282"; }
+.vrm-page .calls-table-wrap table.dataTable thead .sorting_asc:after { content: "\F148"; color: var(--g); }
+.vrm-page .calls-table-wrap table.dataTable thead .sorting_desc:after { content: "\F128"; color: var(--g); }
 .vrm-page .calls-table-wrap .notes-cell {
     white-space: nowrap;
     max-width: 180px;
@@ -1861,16 +1896,13 @@
                                     @endif
                                 </td>
                                 <td data-label="Assigned On">
-                                    <div class="when-cell">
-                                        <span class="when-icon"><i class="bi bi-calendar3"></i></span>
-                                        <div class="when-text">
-                                            <div class="when-main">{{ $assignedLabel }}</div>
-                                            @if($assignedByName)
-                                                <div class="when-sub">by {{ $assignedByName }}</div>
-                                            @elseif($assignedExact)
-                                                <div class="when-sub">{{ $assignedExact }}</div>
-                                            @endif
-                                        </div>
+                                    <div class="when-text">
+                                        <div class="when-main">{{ $assignedLabel }}</div>
+                                        @if($assignedByName)
+                                            <div class="when-sub">by {{ $assignedByName }}</div>
+                                        @elseif($assignedExact)
+                                            <div class="when-sub">{{ $assignedExact }}</div>
+                                        @endif
                                     </div>
                                 </td>
                                 <td class="actions-cell col-actions" data-label="Actions">
@@ -2677,6 +2709,7 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
 
                 $pop.find('.col-toggle').on('change', function () {
                     tableApi.column(parseInt(this.dataset.col, 10)).visible(this.checked);
+                    tableApi.columns.adjust();
                 });
             });
         }
@@ -2698,12 +2731,17 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
                 searching: true,
                 ordering: true,
                 autoWidth: false,
-                scrollX: true,
+                scrollX: false,
                 order: [],
-                columnDefs: [{ orderable: false, targets: [actionsCol] }],
+                columnDefs: [
+                    { orderable: false, targets: [actionsCol] },
+                    { className: 'col-num', targets: [0] },
+                    { className: 'col-actions', targets: [actionsCol] }
+                ],
                 dom: 't',
                 language: { emptyTable: 'No call logs found.' }
             });
+            setTimeout(function () { dt.columns.adjust(); }, 0);
 
             $('#callsTableSearch').on('keyup', function () {
                 dt.search(this.value).draw();
@@ -2730,12 +2768,17 @@ window.__vrmDispositionMeta = @json($dispositionMeta);
                 searching: true,
                 ordering: true,
                 autoWidth: false,
-                scrollX: true,
+                scrollX: false,
                 order: [],
-                columnDefs: [{ orderable: false, targets: [assignedActionsCol] }],
+                columnDefs: [
+                    { orderable: false, targets: [assignedActionsCol] },
+                    { className: 'col-num', targets: [0] },
+                    { className: 'col-actions', targets: [assignedActionsCol] }
+                ],
                 dom: 't',
                 language: { emptyTable: 'No assigned contacts found.' }
             });
+            setTimeout(function () { assignedDt.columns.adjust(); }, 0);
 
             $('#assignedTableSearch').on('keyup', function () {
                 assignedDt.search(this.value).draw();
