@@ -388,15 +388,57 @@
     height:42px;padding:0 14px;font-weight:600;
 }
 .ll-status-drawer .select2-container{width:100%!important}
-.ll-status-drawer .status-pill{
-    display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;
-    font-size:.75rem;font-weight:700;line-height:1.2;background:#f1f5f9;color:#334155;
+.ll-status-drawer .status-pill,
+.ll-status-drawer .source-pill,
+.ll-status-drawer .product-pill,
+.ll-status-drawer .branch-pill,
+.ll-status-drawer .assign-pill,
+.ll-status-drawer .disp-pill{
+    display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;
+    font-size:.72rem;font-weight:700;line-height:1.2;background:#f1f5f9;color:#334155;max-width:100%;
 }
 .ll-status-drawer .status-pill.pending{background:#fef3c7;color:#b45309}
 .ll-status-drawer .status-pill.future{background:#ede9fe;color:#6d28d9}
 .ll-status-drawer .status-pill.closed{background:#fee2e2;color:#b91c1c}
 .ll-status-drawer .status-pill.active{background:#dcfce7;color:#15803d}
 .ll-status-drawer .status-pill.assigned{background:#e0f2fe;color:#0369a1}
+.ll-status-drawer .source-pill.vrm{background:#dcfce7;color:#15803d}
+.ll-status-drawer .source-pill.channel{background:#ede9fe;color:#6d28d9}
+.ll-status-drawer .source-pill.manual{background:#f1f5f9;color:#475569}
+.ll-status-drawer .product-pill{background:#ecfeff;color:#0e7490;border:1px solid #cffafe}
+.ll-status-drawer .branch-pill{background:#f1f5f9;color:#475569}
+.ll-status-drawer .assign-pill{background:#eff6ff;color:#1d4ed8}
+.ll-status-drawer .assign-pill.empty{background:#fff7ed;color:#c2410c;border:1px dashed #fdba74}
+.ll-status-drawer .disp-pill{background:#faf5ff;color:#7e22ce}
+.ll-status-drawer .ll-cust-card{
+    display:flex;flex-direction:column;gap:12px;padding:14px;margin-bottom:14px;
+    border:1px solid #e2e8f0;border-radius:14px;background:linear-gradient(180deg,#f8fafc 0%,#fff 70%);
+}
+.ll-status-drawer .ll-cust-top{display:flex;align-items:flex-start;gap:12px;min-width:0}
+.ll-status-drawer .ll-cust-avatar{
+    width:46px;height:46px;border-radius:14px;flex-shrink:0;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:var(--theme-100);color:var(--theme-primary);font-weight:800;font-size:.95rem;
+}
+.ll-status-drawer .ll-cust-meta{min-width:0;flex:1}
+.ll-status-drawer .ll-cust-name{font-size:1rem;font-weight:800;color:#0f172a;line-height:1.25;word-break:break-word}
+.ll-status-drawer .ll-cust-ref{
+    margin-top:2px;font-size:.75rem;font-weight:700;color:#64748b;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+.ll-status-drawer .ll-cust-rows{
+    display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 10px;
+}
+.ll-status-drawer .ll-cust-row{
+    display:flex;align-items:center;gap:6px;min-width:0;font-size:.8rem;color:#475569;line-height:1.25;
+}
+.ll-status-drawer .ll-cust-row i{color:var(--theme-primary);flex-shrink:0;font-size:.85rem}
+.ll-status-drawer .ll-cust-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ll-status-drawer .ll-cust-badges{display:flex;flex-wrap:wrap;gap:6px}
+.ll-status-drawer .ll-section-label{
+    font-size:.72rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#64748b;margin:2px 0 10px;
+}
+.ll-status-drawer textarea.form-control{min-height:88px;resize:vertical;padding-top:10px;padding-bottom:10px}
 body.ll-status-open{overflow:hidden}
 
 .ll-page .table-footer-bar{
@@ -556,6 +598,7 @@ body.ll-status-open{overflow:hidden}
     $canManage = !empty($canManage);
     $canAllocate = !empty($canAllocate);
     $branchLocked = !empty($branchLocked);
+    $branchChangeLocked = !empty($branchChangeLocked) || $branchLocked;
     $leadNextById = $leadNextById ?? [];
     $leadEditableById = $leadEditableById ?? [];
     $tableColCount = 9;
@@ -794,8 +837,18 @@ body.ll-status-open{overflow:hidden}
                                                 data-transition-url="{{ route('goal.leads.transition', $lead) }}"
                                                 data-ref="{{ $lead->ref_no }}"
                                                 data-lead-id="{{ $lead->id }}"
+                                                data-customer="{{ $lead->customer_name }}"
+                                                data-mobile="{{ $lead->mobile }}"
                                                 data-current-status="{{ $lead->status }}"
+                                                data-status-tone="{{ $statusClass($lead->status) }}"
+                                                data-source="{{ $lead->source }}"
+                                                data-source-tone="{{ $sourceClass($lead->source) }}"
                                                 data-product="{{ $lead->product }}"
+                                                data-amount="{{ $amountFormatted ?? '' }}"
+                                                data-branch-name="{{ $lead->orgUnit?->name ?? '' }}"
+                                                data-assignee="{{ $lead->assignee?->name ?? '' }}"
+                                                data-assignee-role="{{ $assigneeRole ?? '' }}"
+                                                data-disposition="{{ $lead->disposition }}"
                                                 data-consent="{{ $lead->consent_recorded ? '1' : '0' }}"
                                                 data-follow-up="{{ optional($lead->follow_up_at)->format('Y-m-d H:i') }}">
                                             <i class="bi bi-signpost-2"></i>
@@ -970,10 +1023,9 @@ body.ll-status-open{overflow:hidden}
                         <div class="col-md-4">
                             <label class="form-label">Branch</label>
                             @php
-                                $branchLocked = !empty($branchLocked);
                                 $defaultBranchId = old('goal_org_unit_id', auth()->user()->goal_org_unit_id);
                             @endphp
-                            @if($branchLocked)
+                            @if($branchChangeLocked)
                                 <input type="hidden" name="goal_org_unit_id" value="{{ $defaultBranchId }}">
                                 <input type="text" class="form-control" value="{{ optional($branches->firstWhere('id', (int) $defaultBranchId))->name ?? optional(auth()->user()->orgUnit)->name ?? 'Your branch' }}" readonly disabled>
                             @else
@@ -1078,7 +1130,7 @@ body.ll-status-open{overflow:hidden}
                         </div>
                         <div class="field">
                             <label class="form-label" for="ll_edit_branch">Branch</label>
-                            @if($branchLocked)
+                            @if($branchChangeLocked)
                                 <input type="hidden" name="goal_org_unit_id" id="ll_edit_branch" value="">
                                 <div class="input-icon">
                                     <i class="bi bi-building"></i>
@@ -1163,6 +1215,24 @@ body.ll-status-open{overflow:hidden}
             <button type="button" class="modal-close js-ll-status-close" aria-label="Close"><i class="bi bi-x-lg"></i></button>
         </div>
         <div class="ll-drawer-body">
+            <div class="ll-cust-card" id="ll_status_customer_card">
+                <div class="ll-cust-top">
+                    <span class="ll-cust-avatar" id="ll_status_avatar">?</span>
+                    <div class="ll-cust-meta">
+                        <div class="ll-cust-name" id="ll_status_customer_name">—</div>
+                        <div class="ll-cust-ref" id="ll_status_ref">—</div>
+                    </div>
+                </div>
+                <div class="ll-cust-rows">
+                    <div class="ll-cust-row"><i class="bi bi-telephone"></i><span id="ll_status_mobile">—</span></div>
+                    <div class="ll-cust-row"><i class="bi bi-building"></i><span id="ll_status_branch">—</span></div>
+                    <div class="ll-cust-row"><i class="bi bi-person-badge"></i><span id="ll_status_assignee">—</span></div>
+                    <div class="ll-cust-row" id="ll_status_amount_row" style="display:none;"><i class="bi bi-cash-coin"></i><span id="ll_status_amount">—</span></div>
+                </div>
+                <div class="ll-cust-badges" id="ll_status_badges"></div>
+            </div>
+
+            <div class="ll-section-label">Workflow</div>
             <div class="current-status-box mb-3">
                 <div>
                     <div class="label">Current status</div>
@@ -1209,6 +1279,11 @@ body.ll-status-open{overflow:hidden}
                     <i class="bi bi-x-octagon"></i>
                     <input name="closure_reason" id="ll_status_closure" class="form-control" placeholder="Required when closing">
                 </div>
+            </div>
+            <div class="field mb-3">
+                <label class="form-label" for="ll_status_note">Note</label>
+                <textarea name="note" id="ll_status_note" class="form-control" rows="3" maxlength="2000"
+                          placeholder="Optional remarks for this status change..."></textarea>
             </div>
             <div class="ll-status-hint">
                 <i class="bi bi-info-circle"></i>
@@ -1608,18 +1683,64 @@ body.ll-status-open{overflow:hidden}
             const drawer = document.getElementById('llStatusLeadModal');
             if (!form || !drawer) return;
             form.action = statusBtn.getAttribute('data-transition-url') || '';
-            document.getElementById('llStatusLeadSub').textContent =
-                'Update status for ' + (statusBtn.getAttribute('data-ref') || 'this lead') + '.';
+
+            const ref = statusBtn.getAttribute('data-ref') || 'this lead';
+            const customer = (statusBtn.getAttribute('data-customer') || '').trim() || 'Customer';
+            document.getElementById('llStatusLeadSub').textContent = 'Update status for ' + ref + '.';
+
+            const initials = (function (name) {
+                const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+                if (!parts.length) return '?';
+                return ((parts[0][0] || '') + (parts[1] ? parts[1][0] : '')).toUpperCase() || '?';
+            })(customer);
+
+            const setText = function (id, value, fallback) {
+                const el = document.getElementById(id);
+                if (el) el.textContent = (value && String(value).trim()) ? String(value).trim() : (fallback || '—');
+            };
+            setText('ll_status_avatar', initials, '?');
+            setText('ll_status_customer_name', customer, '—');
+            setText('ll_status_ref', ref, '—');
+            setText('ll_status_mobile', statusBtn.getAttribute('data-mobile'), 'No mobile');
+            setText('ll_status_branch', statusBtn.getAttribute('data-branch-name'), 'No branch');
+            const assignee = (statusBtn.getAttribute('data-assignee') || '').trim();
+            const assigneeRole = (statusBtn.getAttribute('data-assignee-role') || '').trim();
+            setText(
+                'll_status_assignee',
+                assignee ? (assignee + (assigneeRole ? ' · ' + assigneeRole : '')) : '',
+                'Unassigned'
+            );
+            const amount = (statusBtn.getAttribute('data-amount') || '').trim();
+            const amountRow = document.getElementById('ll_status_amount_row');
+            if (amountRow) amountRow.style.display = amount ? '' : 'none';
+            if (amount) setText('ll_status_amount', 'Rs. ' + amount, '—');
 
             const current = statusBtn.getAttribute('data-current-status') || '';
+            const statusToneClass = statusBtn.getAttribute('data-status-tone') || statusTone(current);
+            const source = (statusBtn.getAttribute('data-source') || '').trim();
+            const sourceTone = statusBtn.getAttribute('data-source-tone') || 'manual';
+            const product = (statusBtn.getAttribute('data-product') || '').trim();
+            const disposition = (statusBtn.getAttribute('data-disposition') || '').trim();
+            const badges = document.getElementById('ll_status_badges');
+            if (badges) {
+                const bits = [];
+                if (current) bits.push('<span class="status-pill ' + escapeHtml(statusToneClass) + '"><i class="bi bi-flag"></i> ' + escapeHtml(current) + '</span>');
+                if (source) bits.push('<span class="source-pill ' + escapeHtml(sourceTone) + '"><i class="bi bi-broadcast"></i> ' + escapeHtml(source) + '</span>');
+                if (product) bits.push('<span class="product-pill"><i class="bi bi-box-seam"></i> ' + escapeHtml(product) + '</span>');
+                if (disposition) bits.push('<span class="disp-pill"><i class="bi bi-tag"></i> ' + escapeHtml(disposition) + '</span>');
+                if (!assignee) bits.push('<span class="assign-pill empty"><i class="bi bi-person-x"></i> Unassigned</span>');
+                badges.innerHTML = bits.join('');
+            }
+
             const currentWrap = document.getElementById('ll_status_current_wrap');
             if (currentWrap) {
-                currentWrap.innerHTML = '<span class="status-pill ' + statusTone(current) + '">' + escapeHtml(current || '-') + '</span>';
+                currentWrap.innerHTML = '<span class="status-pill ' + statusToneClass + '">' + escapeHtml(current || '-') + '</span>';
             }
             const consent = document.getElementById('ll_status_consent');
             if (consent) consent.checked = statusBtn.getAttribute('data-consent') === '1';
             setVal('ll_status_follow_up', statusBtn.getAttribute('data-follow-up'));
             setVal('ll_status_closure', '');
+            setVal('ll_status_note', '');
 
             const leadId = String(statusBtn.getAttribute('data-lead-id') || '');
             const next = llLeadNextById[leadId] || llLeadNextById[Number(leadId)] || [];
@@ -1628,7 +1749,7 @@ body.ll-status-open{overflow:hidden}
             const onShown = function () {
                 drawer.removeEventListener('shown.ll.status', onShown);
                 rebuildStatusMoveToOptions(next, drawer);
-                initSelectInModal(productEl, drawer, statusBtn.getAttribute('data-product'));
+                initSelectInModal(productEl, drawer, product);
             };
             drawer.addEventListener('shown.ll.status', onShown);
             openLlStatusDrawer();

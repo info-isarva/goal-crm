@@ -1393,6 +1393,7 @@ class GoalLoanCaseController extends Controller
             $case->branch_mis = $this->mergeWorkspaceJson($case->branch_mis, $data['branch_mis'] ?? null);
         }
         $case->save();
+        $this->syncLinkedLeadFromCase($case);
 
         GoalCaseAudit::record($case, 'updated', 'Case details updated', auth()->user(), [
             'from' => json_encode($before),
@@ -2138,6 +2139,63 @@ class GoalLoanCaseController extends Controller
             'bm_reco' => $bmReco,
             'documents' => $this->documentsForProduct($lead->product),
         ];
+    }
+
+    /**
+     * Keep Loan Leads list in sync when Case Workspace updates customer / product fields.
+     */
+    protected function syncLinkedLeadFromCase(GoalLoanCase $case): void
+    {
+        if (! $case->goal_loan_lead_id) {
+            return;
+        }
+
+        $lead = $case->relationLoaded('lead')
+            ? $case->lead
+            : GoalLoanLead::query()->find($case->goal_loan_lead_id);
+
+        if (! $lead) {
+            return;
+        }
+
+        $name = trim((string) ($case->customer_name ?? ''));
+        if ($name === '') {
+            $name = trim((string) data_get($case->customer_details, 'applicant.name', ''));
+        }
+        $mobile = preg_replace('/\D+/', '', (string) ($case->mobile ?? ''));
+        if ($mobile === '') {
+            $mobile = preg_replace('/\D+/', '', (string) data_get($case->customer_details, 'applicant.mobile', ''));
+        }
+        $email = trim((string) data_get($case->customer_details, 'applicant.email', ''));
+
+        $dirty = false;
+        if ($name !== '' && (string) $lead->customer_name !== $name) {
+            $lead->customer_name = \Illuminate\Support\Str::limit($name, 150, '');
+            $dirty = true;
+        }
+        if ($mobile !== '' && (string) $lead->mobile !== $mobile) {
+            $lead->mobile = $mobile;
+            $dirty = true;
+        }
+        if ($email !== '' && (string) ($lead->email ?? '') !== $email) {
+            $lead->email = \Illuminate\Support\Str::limit($email, 150, '');
+            $dirty = true;
+        }
+        if (filled($case->product) && (string) ($lead->product ?? '') !== (string) $case->product) {
+            $lead->product = $case->product;
+            $dirty = true;
+        }
+        if ($case->loan_amount !== null && (string) ($lead->loan_amount ?? '') !== (string) $case->loan_amount) {
+            $lead->loan_amount = $case->loan_amount;
+            $dirty = true;
+        }
+
+        if (! $dirty) {
+            return;
+        }
+
+        $lead->save();
+        app(\App\Services\Goal\GoalPartyService::class)->attachLead($lead);
     }
 
     protected function sourceLabel(?string $source): string

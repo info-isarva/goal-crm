@@ -162,9 +162,13 @@ class GoalLoanLeadController extends Controller
         $branches = $branches->unique('id')->sortBy('name')->values();
 
         $branchLocked = $this->isBranchLockedToOwn();
-        if ($branchLocked) {
+        $branchChangeLocked = ! $this->canChangeLeadBranch();
+        if ($branchLocked || $branchChangeLocked) {
             $ownBranchId = (int) (auth()->user()->goal_org_unit_id ?? 0);
-            $branches = $branches->filter(fn ($b) => (int) $b->id === $ownBranchId)->values();
+            // Keep current lead branches visible as labels even when change is locked.
+            if ($branchLocked && $ownBranchId > 0) {
+                $branches = $branches->filter(fn ($b) => (int) $b->id === $ownBranchId)->values();
+            }
         }
 
         return view('goal.leads.index', compact(
@@ -185,7 +189,8 @@ class GoalLoanLeadController extends Controller
             'openCreate',
             'leadNextById',
             'leadEditableById',
-            'branchLocked'
+            'branchLocked',
+            'branchChangeLocked'
         ));
     }
 
@@ -342,6 +347,7 @@ class GoalLoanLeadController extends Controller
         $needsAllocation = $lead->status === 'Pending BM Allocation' && $canAllocate;
         $canEditLead = $this->canEditLeadDetails($lead);
         $branchLocked = $this->isBranchLockedToOwn();
+        $branchChangeLocked = ! $this->canChangeLeadBranch();
         if ($branchLocked) {
             $ownBranchId = (int) (auth()->user()->goal_org_unit_id ?? 0);
             $branches = $branches->filter(fn ($b) => (int) $b->id === $ownBranchId)->values();
@@ -375,7 +381,8 @@ class GoalLoanLeadController extends Controller
             'linkedLeads',
             'linkedCases',
             'leadSources',
-            'branchLocked'
+            'branchLocked',
+            'branchChangeLocked'
         ));
     }
 
@@ -421,17 +428,22 @@ class GoalLoanLeadController extends Controller
                 $data['source'] = LeadSource::resolveCanonicalName($data['source']) ?: $data['source'];
             }
 
-            // Match call-log edit: VRM cannot change branch/source/disposition.
+            // VRM cannot change branch/source/disposition. BM / sales cannot change branch.
             if ($this->isBranchLockedToOwn()) {
                 $data['goal_org_unit_id'] = $lead->goal_org_unit_id
                     ?: $this->resolveLockedBranchId(null);
                 $data['source'] = $lead->source;
                 $data['disposition'] = $lead->disposition;
             } else {
-                $data['goal_org_unit_id'] = $this->resolveLockedBranchId($data['goal_org_unit_id'] ?? null);
                 $data['disposition'] = $lead->disposition;
                 if (empty($data['source'])) {
                     $data['source'] = $lead->source;
+                }
+                if (! $this->canChangeLeadBranch()) {
+                    $data['goal_org_unit_id'] = $lead->goal_org_unit_id
+                        ?: $this->resolveLockedBranchId(null);
+                } else {
+                    $data['goal_org_unit_id'] = $this->resolveLockedBranchId($data['goal_org_unit_id'] ?? null);
                 }
             }
             if (empty($data['lead_type'])) {
@@ -702,6 +714,7 @@ class GoalLoanLeadController extends Controller
             'closure_reason' => 'nullable|string|max:255',
             'consent_recorded' => 'nullable|boolean',
             'product' => 'nullable|string|max:100',
+            'note' => 'nullable|string|max:2000',
         ], [
             'follow_up_at.after_or_equal' => 'Follow-up must be today or a future date/time.',
         ]);
@@ -711,15 +724,20 @@ class GoalLoanLeadController extends Controller
             return $result;
         }
 
+        $messages = [is_string($result) && $result !== '' ? $result : 'Lead status updated.'];
+        if (trim((string) ($data['note'] ?? '')) !== '') {
+            $messages[] = 'Note added.';
+        }
+
         return back()
-            ->with('success', is_string($result) && $result !== '' ? $result : 'Lead status updated.')
+            ->with('success', implode(' ', $messages))
             ->with('ld_tab', 'overview');
     }
 
     /**
      * Apply a workflow status change. Returns success message string, or RedirectResponse on error/case-create.
      *
-     * @param  array{to_status:string,follow_up_at?:mixed,closure_reason?:mixed,product?:mixed,consent_recorded?:bool}  $data
+     * @param  array{to_status:string,follow_up_at?:mixed,closure_reason?:mixed,product?:mixed,consent_recorded?:bool,note?:mixed}  $data
      */
     protected function applyLeadTransition(Request $request, GoalLoanLead $lead, array $data): \Illuminate\Http\RedirectResponse|string
     {
@@ -766,6 +784,16 @@ class GoalLoanLeadController extends Controller
             $lead->product = $data['product'];
         }
         $lead->save();
+
+        $note = trim((string) ($data['note'] ?? $request->input('note') ?? ''));
+        if ($note !== '') {
+            $stamp = now()->format('d M Y, h:i a');
+            $author = auth()->user()->name ?? 'User';
+            $block = '[' . $stamp . ' · ' . $author . '] ' . $note;
+            $lead->notes = trim(($lead->notes ? $lead->notes . "\n\n" : '') . $block);
+            $lead->save();
+            GoalLoanLeadEvent::record($lead, 'note', 'Note Added', $note);
+        }
 
         GoalLoanLeadEvent::record(
             $lead,
@@ -858,6 +886,34 @@ class GoalLoanLeadController extends Controller
             || strtolower((string) ($user->job_role ?? '')) === 'vrm';
     }
 
+    /**
+     * Who may change lead branch on create/edit.
+     * BM / VRM / JSM / SM / SSM (and similar ops roles) cannot; MD / CEO / RD / Cluster can.
+     */
+    protected function canChangeLeadBranch(): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        $role = (int) ($user->crm_role_type ?? -1);
+        // md/ceo/rd/cluster (+ legacy type 1)
+        if (in_array($role, [0, 1, 4, 5, 6, 7], true)) {
+            return true;
+        }
+
+        $job = strtolower((string) ($user->job_role ?? ''));
+        if (in_array($job, ['md', 'managing_director', 'ceo', 'rd', 'regional_director', 'cluster', 'cluster_head'], true)) {
+            return true;
+        }
+
+        return false;
+    }
+
     /** JSM / SM / SSM — sales assignees see only their own allocated leads. */
     protected function isSalesAssigneeRole(): bool
     {
@@ -924,13 +980,14 @@ class GoalLoanLeadController extends Controller
     }
 
     /**
-     * Resolve branch for create/update. VRM always gets own branch.
+     * Resolve branch for create/update.
+     * VRM / BM / sales: own branch only. Higher authority may pick a requested branch.
      */
     protected function resolveLockedBranchId(mixed $requested): ?int
     {
         $own = (int) (auth()->user()->goal_org_unit_id ?? 0);
 
-        if ($this->isBranchLockedToOwn()) {
+        if ($this->isBranchLockedToOwn() || ! $this->canChangeLeadBranch()) {
             return $own > 0 ? $own : null;
         }
 
@@ -942,14 +999,39 @@ class GoalLoanLeadController extends Controller
     }
 
     /**
+     * Case already exists / lead moved into case workflow — lock edit + status from Loan Leads.
+     */
+    protected function leadLockedAfterCase(GoalLoanLead $lead): bool
+    {
+        if ($lead->relationLoaded('loanCase')) {
+            if ($lead->loanCase) {
+                return true;
+            }
+        } elseif ($lead->loanCase()->exists()) {
+            return true;
+        }
+
+        return in_array($lead->status, [
+            'Documents Pending',
+            'Ready for Bank Login',
+            'Bank Login',
+        ], true);
+    }
+
+    /**
      * Who may edit customer/loan fields on a lead.
      * Before allocation: VRM/creator + managers.
      * After allocation: assigned sales + BM/managers only (VRM view/notes only).
+     * After case creation: nobody edits from Loan Leads.
      */
     protected function canEditLeadDetails(GoalLoanLead $lead): bool
     {
         $user = auth()->user();
         if (! $user || ! $user->hasCrmPermission('view_leads_guard')) {
+            return false;
+        }
+
+        if ($this->leadLockedAfterCase($lead)) {
             return false;
         }
 
@@ -978,12 +1060,17 @@ class GoalLoanLeadController extends Controller
     /**
      * Statuses the current user may pick for this lead.
      * - Assigned is never manual (BM Allocation only).
-     * - VRM may only withdraw (Closed / Lost) before allocation; after assign, sales/BM own the workflow.
+     * - After case creation: no status updates from Loan Leads.
+     * - VRM: no status updates once lead is assigned to sales; before that only Closed / Lost.
      *
      * @return list<string>
      */
     protected function manageableNextStatuses(GoalLoanLead $lead): array
     {
+        if ($this->leadLockedAfterCase($lead)) {
+            return [];
+        }
+
         $next = GoalWorkflow::LEAD_TRANSITIONS[$lead->status] ?? [];
         $next = array_values(array_filter($next, fn ($status) => $status !== 'Assigned'));
         if ($next === []) {
@@ -1007,9 +1094,11 @@ class GoalLoanLeadController extends Controller
             return $next;
         }
 
-        // VRM: may only close/lost while waiting for BM allocation (or future queue).
-        // After BM allocates, VRM cannot change workflow status.
+        // VRM: once assigned to anyone, no status changes. Before assign, may only close/lost.
         if ($role === 9 || strtolower((string) ($user->job_role ?? '')) === 'vrm') {
+            if ((int) ($lead->assigned_to ?? 0) > 0) {
+                return [];
+            }
             if (! in_array($lead->status, ['Pending BM Allocation', 'Future Prospect', 'New'], true)) {
                 return [];
             }

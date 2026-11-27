@@ -774,7 +774,9 @@
                     Actions
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    @if(!empty($next))
                     <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#transitionModal"><i class="bi bi-signpost-2 me-2"></i>Update status</button></li>
+                    @endif
                     <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#addNoteModal"><i class="bi bi-journal-plus me-2"></i>Add note</button></li>
                     <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#rescheduleModal"><i class="bi bi-calendar-event me-2"></i>Reschedule follow-up</button></li>
                     <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#logVisitModal"><i class="bi bi-geo-alt me-2"></i>Log customer visit</button></li>
@@ -1344,6 +1346,7 @@
                         <label class="form-label">Source</label>
                         @php
                             $branchLocked = !empty($branchLocked);
+                            $branchChangeLocked = !empty($branchChangeLocked) || $branchLocked;
                             $currentSource = old('source', $lead->source);
                             $showSources = $leadSources ?? collect();
                             if ($currentSource && ! $showSources->contains(fn ($s) => $s->name === $currentSource)) {
@@ -1377,7 +1380,7 @@
                         @endphp
                         <div class="ld-input-ico">
                             <i class="bi bi-building"></i>
-                            @if($branchLocked)
+                            @if($branchChangeLocked)
                                 <input type="hidden" name="goal_org_unit_id" value="{{ $editBranchId }}">
                                 <input type="text" class="form-control" value="{{ $editBranchName }}" readonly disabled>
                             @else
