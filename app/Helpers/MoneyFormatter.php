@@ -76,15 +76,39 @@ class MoneyFormatter
     }
 
     /**
+     * Parse a numeric / Indian-formatted money string (e.g. "2,00,000.00") to float.
+     * Plain (float)"2,00,000" becomes 2.0 in PHP — always strip grouping first.
+     */
+    public static function parseAmount($amount): ?float
+    {
+        if ($amount === null || $amount === '') {
+            return null;
+        }
+        if (is_int($amount) || is_float($amount)) {
+            return (float) $amount;
+        }
+
+        $raw = trim((string) $amount);
+        $neg = str_starts_with($raw, '-');
+        $raw = preg_replace('/[^\d.]/', '', $raw) ?? '';
+        if ($raw === '' || $raw === '.') {
+            return null;
+        }
+
+        return ($neg ? -1 : 1) * (float) $raw;
+    }
+
+    /**
      * Format amount in Indian numbering system (e.g. 3,90,000.00).
      */
     public static function formatIndian($amount, $decimals = 2): string
     {
-        if ($amount === null || $amount === '') {
+        $parsed = self::parseAmount($amount);
+        if ($parsed === null) {
             return '';
         }
 
-        $amount = (float) $amount;
+        $amount = $parsed;
         $negative = $amount < 0;
         $amount = abs($amount);
 

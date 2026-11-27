@@ -28,7 +28,8 @@
     $canDispositions = $can('manage_dispositions_guard') || $isSuper;
     $canSources = $can('manage_sources_guard') || $can('manage_crm_lead_source_guard') || $isSuper;
     $canPurposes = $can('manage_purposes_guard') || $isSuper;
-    $canMasters = $canProducts || $canDispositions || $canSources || $canPurposes;
+    $canBanks = $can('manage_banks_guard') || $isSuper;
+    $canMasters = $canProducts || $canDispositions || $canSources || $canPurposes || $canBanks;
     $canAuditLogs = $isSuper || $can('view_audit_logs_guard') || $can('view_crm_activity_log_guard')
         || $can('manage_users_guard') || $can('manage_roles_guard');
     $canAnalytics = $isSuper || $can('goal_analytics_guard') || $can('mis_reports_guard')
@@ -284,7 +285,14 @@
     </a>
 </li>
 @endif
-@elseif(!$isFullGoalNav && ($canDispositions || $canSources || $canPurposes))
+@if($canBanks)
+<li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('goal.masters.banks.*') ? 'active' : '' }}" href="{{ route('goal.masters.banks.index') }}">
+        <i class="bi bi-bank"></i> <span class="nav-label">Banks</span>
+    </a>
+</li>
+@endif
+@elseif(!$isFullGoalNav && ($canDispositions || $canSources || $canPurposes || $canBanks))
 @if($canDispositions)
 <li class="nav-item">
     <a class="nav-link {{ request()->routeIs('goal.masters.dispositions.*') ? 'active' : '' }}" href="{{ route('goal.masters.dispositions.index') }}">
@@ -303,6 +311,13 @@
 <li class="nav-item">
     <a class="nav-link {{ request()->routeIs('goal.masters.purposes.*') ? 'active' : '' }}" href="{{ route('goal.masters.purposes.index') }}">
         <i class="bi bi-bullseye"></i> <span class="nav-label">Purposes</span>
+    </a>
+</li>
+@endif
+@if($canBanks)
+<li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('goal.masters.banks.*') ? 'active' : '' }}" href="{{ route('goal.masters.banks.index') }}">
+        <i class="bi bi-bank"></i> <span class="nav-label">Banks</span>
     </a>
 </li>
 @endif

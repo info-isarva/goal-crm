@@ -234,9 +234,9 @@
 .lc-page .branch-cell i{color:#94a3b8}
 .lc-page .reco-cell{font-weight:700;color:#0f172a}
 .lc-page .status-pill{
-    display:inline-flex;align-items:center;justify-content:center;
+    display:inline-flex;align-items:center;justify-content:center;gap:4px;
     padding:.3rem .75rem;border-radius:999px;font-size:.74rem;font-weight:700;
-    background:#f1f5f9;color:#334155;
+    background:#f1f5f9;color:#334155;border:0;
 }
 .lc-page .status-pill.in-process{background:var(--theme-100);color:var(--theme-primary-hover)}
 .lc-page .status-pill.bank-query{background:#ffedd5;color:#c2410c}
@@ -244,6 +244,9 @@
 .lc-page .status-pill.disbursed{background:#ccfbf1;color:#0f766e}
 .lc-page .status-pill.rejected{background:#fee2e2;color:#b91c1c}
 .lc-page .status-pill.draft{background:#f1f5f9;color:#64748b}
+.lc-page .status-pill.pending-approval{background:#ffedd5;color:#c2410c}
+.lc-page .status-pill.ready,
+.lc-page .status-pill.login{background:#e0f2fe;color:#0369a1}
 .lc-page .updated-cell{
     display:inline-flex;align-items:center;gap:6px;color:#64748b;font-weight:600;font-size:.82rem;
 }
@@ -419,15 +422,34 @@
     $statusLabel = function ($status) {
         return $status === 'Processing' ? 'In Process' : $status;
     };
+    /** Case workflow status, refined by BM reco while still Draft. */
+    $displayCaseStatus = function ($case) {
+        $status = (string) ($case->status ?? 'Draft');
+        if ($status !== 'Draft') {
+            return $status;
+        }
+        $reco = (string) (data_get($case->bm_reco, 'approval_status')
+            ?: data_get($case->bm_reco, 'status')
+            ?: 'Draft');
+        return match ($reco) {
+            'Submitted' => 'Pending Approval',
+            'Rejected' => 'Reco Rejected',
+            'Approved' => 'Ready for Login',
+            default => 'Draft',
+        };
+    };
     $statusClass = function ($status) {
         return match ($status) {
             'Processing' => 'in-process',
             'Bank Query' => 'bank-query',
             'Sanctioned' => 'sanctioned',
-            'Disbursed' => 'disbursed',
-            'Rejected' => 'rejected',
+            'Disbursed', 'PMS' => 'disbursed',
+            'Rejected', 'Closed', 'Reco Rejected' => 'rejected',
+            'Ready for Login' => 'ready',
+            'Bank Login' => 'login',
+            'Pending Approval' => 'pending-approval',
             'Draft' => 'draft',
-            default => '',
+            default => 'draft',
         };
     };
     $productClass = function ($product) {
@@ -450,8 +472,7 @@
         return $a . $b;
     };
     $bmReco = function ($case) {
-        $amount = data_get($case->bm_reco, 'amount');
-        return $amount !== null && $amount !== '' ? (float) $amount : null;
+        return \App\Helpers\MoneyFormatter::parseAmount(data_get($case->bm_reco, 'amount'));
     };
     $roleLabel = function ($user) {
         if (!$user) return null;
@@ -915,7 +936,8 @@
                                 </td>
                             @endif
                             <td data-label="Case Status">
-                                <span class="status-pill {{ $statusClass($case->status) }}">{{ $statusLabel($case->status) }}</span>
+                                @php $listStatus = $displayCaseStatus($case); @endphp
+                                <span class="status-pill {{ $statusClass($listStatus) }}">{{ $statusLabel($listStatus) }}</span>
                             </td>
                             <td data-label="Updated On">
                                 <span class="updated-cell">
@@ -957,7 +979,7 @@
                                 <div class="empty-state">
                                     <div class="illus"><i class="bi {{ $moduleView['icon'] ?? 'bi-briefcase' }}"></i></div>
                                     <div>No cases found.</div>
-                                    <div class="small mt-1">Create a case or convert a Qualified lead to Documents Pending.</div>
+                                    <div class="small mt-1">Create a case from a lead, or open Create Case.</div>
                                 </div>
                             </td>
                         </tr>
@@ -979,6 +1001,7 @@
         </div>
     </div>
 </div>
+
 @endsection
 
 @push('scripts')

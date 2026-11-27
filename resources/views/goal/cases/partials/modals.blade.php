@@ -53,8 +53,9 @@
                         </datalist>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Application Reference</label>
-                        <input type="text" name="application_ref" class="form-control" maxlength="100" placeholder="Pending allocation if blank">
+                        <label class="form-label">Bank Login ID <span class="text-danger">*</span></label>
+                        <input type="text" name="application_ref" class="form-control" required maxlength="100" placeholder="Bank login / application ID">
+                        <div class="form-text">ID issued by the bank when the case is logged in.</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Login Date</label>
@@ -92,6 +93,75 @@
         </form>
     </div>
 </div>
+
+{{-- Set / Edit Bank Login ID --}}
+@if($canEdit)
+<style>
+#cwBankLoginIdModal .modal-content{border:0;border-radius:16px;overflow:hidden;box-shadow:0 20px 48px rgba(15,23,42,.18)}
+#cwBankLoginIdModal .modal-header{
+    display:flex;align-items:center;gap:10px;padding:1rem 1.15rem;border-bottom:1px solid #eef2f7;background:#fff;
+}
+#cwBankLoginIdModal .modal-title{margin:0;font-size:1.05rem;font-weight:700;color:#0f172a}
+#cwBankLoginIdModal .modal-close{
+    margin-left:auto;width:34px;height:34px;border:0;border-radius:10px;background:#f1f5f9;color:#64748b;
+    display:inline-flex;align-items:center;justify-content:center;
+}
+#cwBankLoginIdModal .modal-close:hover{background:#e2e8f0;color:#0f172a}
+#cwBankLoginIdModal .modal-body{padding:1.1rem 1.15rem 1rem;background:#fff}
+#cwBankLoginIdModal .cw-login-lender{
+    display:inline-flex;align-items:center;gap:6px;margin-bottom:.75rem;padding:.35rem .65rem;border-radius:999px;
+    background:#ecfeff;border:1px solid #a5f3fc;color:#0e7490;font-size:.78rem;font-weight:700;
+}
+#cwBankLoginIdModal .form-label{font-size:.82rem;font-weight:700;color:#334155;margin-bottom:.35rem}
+#cwBankLoginIdModal .form-control{
+    height:44px;border-radius:10px;border:1px solid #dbe3f0;font-size:.9rem;font-weight:600;
+}
+#cwBankLoginIdModal .form-control:focus{
+    border-color:#14b8a6;box-shadow:0 0 0 3px rgba(20,184,166,.18);
+}
+#cwBankLoginIdModal .form-text{margin-top:.4rem;font-size:.75rem;color:#64748b}
+#cwBankLoginIdModal .modal-footer{
+    display:flex;justify-content:flex-end;align-items:center;gap:10px;
+    padding:.9rem 1.15rem;border-top:1px solid #eef2f7;background:#f8fafc;
+}
+#cwBankLoginIdModal .btn-login-cancel,
+#cwBankLoginIdModal .btn-login-save{
+    height:42px;padding:0 16px;border-radius:10px;font-size:.86rem;font-weight:700;
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap;
+}
+#cwBankLoginIdModal .btn-login-cancel{
+    border:1px solid #cbd5e1;background:#fff;color:#475569;
+}
+#cwBankLoginIdModal .btn-login-cancel:hover{background:#f1f5f9;border-color:#94a3b8;color:#0f172a}
+#cwBankLoginIdModal .btn-login-save{
+    border:0;background:#0d9488;color:#fff;box-shadow:0 6px 14px rgba(13,148,136,.28);
+}
+#cwBankLoginIdModal .btn-login-save:hover{background:#0f766e;color:#fff}
+#cwBankLoginIdModal .btn-login-save i{font-size:1rem}
+</style>
+<div class="modal fade" id="cwBankLoginIdModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" action="" id="cwBankLoginIdForm" class="modal-content js-cw-ajax-save" data-no-loader data-ajax-reload="1">
+            @csrf
+            @method('PATCH')
+            <div class="modal-header">
+                <h5 class="modal-title">Bank Login ID</h5>
+                <button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="cw-login-lender" id="cwBankLoginIdLender"><i class="bi bi-bank2"></i> <span>—</span></div>
+                <label class="form-label" for="cwBankLoginIdInput">Bank Login ID <span class="text-danger">*</span></label>
+                <input type="text" name="application_ref" id="cwBankLoginIdInput" class="form-control" required maxlength="100" placeholder="Enter bank login / application ID" autocomplete="off">
+                <div class="form-text">ID issued by the bank when this lender application is logged in.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-login-cancel" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn-login-save"><i class="bi bi-check2"></i> Save Login ID</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
 
 {{-- Add Document (checklist item, no file) --}}
 <style>
@@ -538,6 +608,28 @@
             if (btn) applyLenderAppId(btn.getAttribute('data-app-id'));
         });
     });
+
+    var loginIdModal = document.getElementById('cwBankLoginIdModal');
+    if (loginIdModal) {
+        loginIdModal.addEventListener('show.bs.modal', function (e) {
+            var btn = e.relatedTarget;
+            if (!btn) return;
+            var form = document.getElementById('cwBankLoginIdForm');
+            var input = document.getElementById('cwBankLoginIdInput');
+            var lenderEl = document.getElementById('cwBankLoginIdLender');
+            var action = btn.getAttribute('data-login-id-action') || '';
+            var current = btn.getAttribute('data-login-id') || '';
+            var lender = btn.getAttribute('data-lender-name') || 'Lender application';
+            if (form) form.action = action;
+            if (input) input.value = current;
+            if (lenderEl) {
+                var nameSpan = lenderEl.querySelector('span');
+                if (nameSpan) nameSpan.textContent = lender;
+                else lenderEl.textContent = lender;
+            }
+            setTimeout(function () { if (input) input.focus(); }, 180);
+        });
+    }
 })();
 </script>
 @endpush

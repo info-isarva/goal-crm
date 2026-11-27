@@ -58,13 +58,26 @@
             default => strtoupper((string) ($user->job_role ?: 'User')),
         };
     };
-    $statusClass = match ($case->status) {
+    $displayCaseStatus = (string) ($case->status ?? 'Draft');
+    if ($displayCaseStatus === 'Draft') {
+        $recoHdr = (string) (data_get($case->bm_reco, 'approval_status')
+            ?: data_get($case->bm_reco, 'status')
+            ?: 'Draft');
+        $displayCaseStatus = match ($recoHdr) {
+            'Submitted' => 'Pending Approval',
+            'Rejected' => 'Reco Rejected',
+            'Approved' => 'Ready for Login',
+            default => 'Draft',
+        };
+    }
+    $statusClass = match ($displayCaseStatus) {
         'Draft' => 'draft',
+        'Pending Approval' => 'query',
         'Ready for Login', 'Bank Login' => 'login',
         'Bank Query', 'Processing' => 'process',
         'Sanctioned' => 'ok',
         'Disbursed', 'PMS' => 'done',
-        'Rejected', 'Closed' => 'bad',
+        'Rejected', 'Closed', 'Reco Rejected' => 'bad',
         default => 'draft',
     };
     $fmtInr = function ($n) {
@@ -256,6 +269,14 @@
 .cw-page .cw-lender-table tbody td.text-end{text-align:right !important}
 .cw-page .cw-lender-table .cw-lender-name{font-weight:600;color:#0f172a}
 .cw-page .cw-lender-table .cw-lender-amt{font-variant-numeric:tabular-nums;font-weight:600}
+.cw-page .cw-login-id{
+    display:inline-flex;align-items:center;max-width:100%;padding:.2rem .55rem;border-radius:8px;
+    background:#ecfdf5;border:1px solid #a7f3d0;color:#047857;font-size:.78rem;font-weight:700;
+    font-variant-numeric:tabular-nums;word-break:break-all;
+}
+.cw-page .cw-login-id.is-missing{
+    background:#fff7ed;border-color:#fed7aa;color:#c2410c;font-weight:600;
+}
 .cw-page .cw-lender-table .status-pill{display:inline-flex;max-width:100%}
 .cw-page .cw-lender-table tbody tr{background:#fff}
 .cw-page .cw-lender-table tbody tr:nth-child(even) td{background:#fff}
@@ -635,16 +656,75 @@
     flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:12px;
 }
 .cw-page .tl-title{font-size:.88rem;font-weight:600;color:#0f172a;line-height:1.35}
+.cw-page .tl-copy{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.cw-page .tl-detail{font-size:.78rem;font-weight:500;color:#64748b;line-height:1.35}
+.cw-page .tl-detail-reject{color:#be123c;font-weight:600}
 .cw-page .tl-time{font-size:.78rem;font-weight:500;color:#64748B;white-space:nowrap;flex-shrink:0}
 .cw-page .query-alert{border-left:4px solid #f59e0b}
 .cw-page .cw-pane.active .cw-footer{
-    position:sticky;bottom:58px;z-index:30;width:100%;
-    margin:8px 0;border:1px solid var(--cw-border);border-radius:16px;overflow:hidden;
+    position:sticky;bottom:58px;z-index:40;width:100%;
+    margin:1rem 0 0;border:1px solid var(--cw-border);border-radius:16px;overflow:visible;
     background:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
     box-shadow:
         0 1px 2px rgba(15,23,42,.04),
         0 10px 28px rgba(148,163,184,.16),
         0 22px 48px rgba(148,163,184,.10);
+}
+.cw-page .cw-pane.active .cw-footer.cw-reco-sticky-bar{
+    background:linear-gradient(180deg,#f0fdfa 0%,#ffffff 42%);
+    border-color:#99f6e4;
+    flex-wrap:nowrap;gap:12px;
+}
+.cw-page .cw-pane.active .cw-footer.cw-reco-sticky-bar.is-rejected{
+    background:linear-gradient(180deg,#fff1f2 0%,#ffffff 48%);
+    border-color:#fecdd3;
+}
+.cw-page .cw-pane.active .cw-footer.cw-reco-sticky-bar.is-submitted{
+    background:linear-gradient(180deg,#fff7ed 0%,#ffffff 48%);
+    border-color:#fed7aa;
+}
+.cw-page .cw-pane.active .cw-footer.cw-reco-sticky-bar.is-approved{
+    background:linear-gradient(180deg,#ecfdf5 0%,#ffffff 48%);
+    border-color:#a7f3d0;
+}
+.cw-page .cw-reco-sticky-hint{
+    flex:1 1 auto;min-width:0;line-height:1.35;font-size:.82rem;color:#64748b;
+}
+.cw-page .cw-reco-sticky-hint strong{color:#0f172a}
+.cw-page .cw-reco-sticky-hint .cw-reco-sticky-reason{
+    display:block;margin-top:2px;color:#be123c;font-weight:600;
+}
+.cw-page .cw-reco-sticky-actions{
+    margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;flex-wrap:nowrap;
+}
+.cw-page .cw-reco-review-group{
+    display:inline-flex;align-items:center;gap:8px;padding:4px;border-radius:12px;
+    background:#fff;border:1px solid #fecdd3;
+}
+.cw-page .cw-reco-reject-input{
+    width:220px;min-width:160px;height:38px;border-radius:8px;border:1px solid transparent;
+    padding:0 12px;font-size:.84rem;background:#fff7f7;color:#0f172a;
+}
+.cw-page .cw-reco-reject-input:focus{
+    outline:0;border-color:#fda4af;background:#fff;box-shadow:0 0 0 3px rgba(244,63,94,.15);
+}
+.cw-page .cw-reco-review-group .btn-reco-reject{height:38px;padding:0 14px}
+@media (max-width:900px){
+    .cw-page .cw-pane.active .cw-footer.cw-reco-sticky-bar{flex-wrap:wrap}
+    .cw-page .cw-reco-sticky-actions{flex-wrap:wrap;width:100%;margin-left:0}
+    .cw-page .cw-reco-review-group{width:100%}
+    .cw-page .cw-reco-reject-input{flex:1 1 140px;width:auto}
+}
+/* Leave room so last fields can scroll clear of the sticky save bar */
+.cw-page .cw-pane.active form.js-cw-ajax-save > .cw-reco,
+.cw-page .cw-pane.active form.js-cw-ajax-save > .cw-cust,
+.cw-page .cw-pane.active form.js-cw-ajax-save > #cwCustomerLayout{
+    padding-bottom:120px;
+}
+.cw-page .cw-pane.active .cw-card-tw,
+.cw-page .cw-pane.active .cw-reco-bt-grid,
+.cw-page .cw-pane.active .cw-field-row{
+    scroll-margin-bottom:140px;
 }
 .cw-page .cw-footer{display:none}
 .cw-page .btn-save{
@@ -652,6 +732,21 @@
     background:var(--theme-primary-hover);display:inline-flex;align-items:center;gap:6px;
 }
 .cw-page .btn-save:hover{background:var(--theme-primary-deep);color:#fff}
+.cw-page .btn-reco-submit{
+    height:42px;padding:0 18px;border-radius:10px;font-weight:700;font-size:.86rem;border:0;color:#fff;
+    background:#c2410c;display:inline-flex;align-items:center;gap:6px;
+}
+.cw-page .btn-reco-submit:hover{background:#9a3412;color:#fff}
+.cw-page .btn-reco-approve{
+    height:42px;padding:0 18px;border-radius:10px;font-weight:700;font-size:.86rem;border:0;color:#fff;
+    background:#15803d;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+}
+.cw-page .btn-reco-approve:hover{background:#166534;color:#fff}
+.cw-page .btn-reco-reject{
+    height:42px;padding:0 18px;border-radius:10px;font-weight:700;font-size:.86rem;border:0;color:#fff;
+    background:#dc2626;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+}
+.cw-page .btn-reco-reject:hover{background:#b91c1c;color:#fff}
 .cw-page .cust-layout .cust-card{
     border-radius:16px !important;border:1px solid #E8EEF5 !important;
     box-shadow:
@@ -690,21 +785,33 @@
     min-height:31px !important;height:31px !important;
 }
 /* Select2 (sm) inside Customer tab — beat global select2-theme 38px */
-.cw-page .cust-layout .select2-container{width:100%!important;font-size:.875rem}
-.cw-page .cust-layout .select2-container--default .select2-selection--single{
+.cw-page .cust-layout .select2-container,
+.cw-page .cw-cust .select2-container{width:100%!important;font-size:.875rem}
+.cw-page .cust-layout .select2-container--default .select2-selection--single,
+.cw-page .cw-cust .select2-container--default .select2-selection--single{
     height:31px !important;min-height:31px !important;
     border:1px solid #E2E8F0 !important;border-radius:.375rem !important;background-color:#fff;
+    display:flex!important;align-items:center;
 }
-.cw-page .cust-layout .select2-container--default .select2-selection--single .select2-selection__rendered{
-    color:#0f172a;line-height:29px !important;padding-left:.5rem;padding-right:1.75rem;
+.cw-page .cust-layout .select2-container--default .select2-selection--single .select2-selection__rendered,
+.cw-page .cw-cust .select2-container--default .select2-selection--single .select2-selection__rendered{
+    color:#0f172a;line-height:29px !important;padding-left:.5rem!important;padding-right:1.75rem!important;
     font-size:.875rem !important;font-weight:500;
 }
-.cw-page .cust-layout .select2-container--default .select2-selection--single .select2-selection__placeholder{color:#94a3b8}
-.cw-page .cust-layout .select2-container--default .select2-selection--single .select2-selection__arrow{
-    height:29px !important;width:26px;top:0;right:2px;
+.cw-page .cust-layout .select2-container--default .select2-selection--single .select2-selection__placeholder,
+.cw-page .cw-cust .select2-container--default .select2-selection--single .select2-selection__placeholder{color:#94a3b8}
+.cw-page .cust-layout .select2-container--default .select2-selection--single .select2-selection__clear,
+.cw-page .cw-cust .select2-container--default .select2-selection--single .select2-selection__clear{
+    display:none!important;
+}
+.cw-page .cust-layout .select2-container--default .select2-selection--single .select2-selection__arrow,
+.cw-page .cw-cust .select2-container--default .select2-selection--single .select2-selection__arrow{
+    height:29px !important;width:26px;top:0!important;right:2px!important;
 }
 .cw-page .cust-layout .select2-container--default.select2-container--focus .select2-selection--single,
-.cw-page .cust-layout .select2-container--default.select2-container--open .select2-selection--single{
+.cw-page .cust-layout .select2-container--default.select2-container--open .select2-selection--single,
+.cw-page .cw-cust .select2-container--default.select2-container--focus .select2-selection--single,
+.cw-page .cw-cust .select2-container--default.select2-container--open .select2-selection--single{
     border-color:var(--theme-300);box-shadow:0 0 0 3px var(--theme-primary-ring);
 }
 /* Relationship Self — blue face, dropdown options stay readable */
@@ -748,12 +855,21 @@
 .cw-page .cust-party-toggle{
     background:#F1F5F9;border-radius:999px;padding:3px;border:1px solid #E2E8F0;
 }
-.cw-page .cust-party-btn{
+.cw-page .cust-party-btn:not(.cw-party-head){
     border:0 !important;background:transparent;color:#0f172a;font-weight:600;font-size:.72rem;
     border-radius:999px !important;padding:.28rem .85rem;min-width:100px;
 }
-.cw-page .cust-party-btn.active{
+.cw-page .cust-party-btn.active:not(.cw-party-head){
     background:var(--theme-primary) !important;color:#fff !important;box-shadow:0 4px 12px var(--theme-primary-ring);
+}
+/* Residence / Employment party tabs keep column-head look; dim inactive on mobile only */
+.cw-page .cw-emp-party-heads .cust-party-btn.cw-party-head{
+    border:0 !important;box-shadow:none !important;min-width:0;
+}
+@media (max-width: 1023.98px){
+    .cw-page .cw-emp-party-heads .cust-party-btn.cw-party-head:not(.active){
+        opacity:.5;
+    }
 }
 .cw-page .cust-party-panel{display:none}
 .cw-page .cust-party-panel.is-active{display:block}
@@ -847,7 +963,24 @@
 .cw-page .cust-ref-title{
     font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#64748B;margin-bottom:10px;
 }
-.cw-page .cust-product-input{background:var(--theme-50) !important;border-color:var(--theme-200) !important;font-weight:600;color:#1E3A8A}
+.cw-page .cust-product-input,
+.cw-page .cw-product-input{background:var(--theme-50) !important;border-color:var(--theme-200) !important;font-weight:600;color:#1E3A8A}
+.cw-page select.cw-product-input + .select2-container .select2-selection--single{
+    background:var(--theme-50)!important;border-color:var(--theme-200)!important;
+}
+.cw-page select.cw-product-input + .select2-container .select2-selection__rendered{
+    color:#1E3A8A!important;font-weight:600;padding-right:1.75rem!important;
+}
+.cw-page select.cw-product-input + .select2-container .select2-selection__clear{display:none!important}
+.cw-page select.cw-product-input + .select2-container .select2-selection__arrow{
+    height:29px!important;width:26px;top:0;right:2px;
+}
+.cw-page select.cw-product-input + .select2-container .select2-selection__arrow b{
+    border-color:#1E3A8A transparent transparent transparent;
+}
+.cw-page select.cw-product-input + .select2-container.select2-container--open .select2-selection__arrow b{
+    border-color:transparent transparent #1E3A8A transparent;
+}
 .cw-page .cust-consent{
     min-height:34px;border-radius:999px;display:inline-flex;align-items:center;gap:8px;
     padding:0 12px;font-size:.78rem;font-weight:600;width:100%;
@@ -1223,7 +1356,7 @@
             <a href="{{ route('goal.cases.index') }}" class="cw-back" title="Back"><i class="bi bi-arrow-left"></i></a>
             <div>
                 <h1 class="cw-title">Loan Case Workspace</h1>
-                <p class="cw-subtitle">Manage customer information, documents and loan processing milestones.</p>
+                <p class="cw-subtitle">Manage customer information and loan processing milestones.</p>
                 <div class="cw-crumb">
                     <a href="{{ url('/') }}">Home</a> &gt;
                     <a href="{{ route('goal.cases.index') }}">Loan Cases</a> &gt;
@@ -1237,6 +1370,9 @@
             @endif
             @if($canReassign)
                 <button type="button" class="btn-ghost" data-bs-toggle="modal" data-bs-target="#cwReassignModal"><i class="bi bi-person"></i> Reassign</button>
+            @endif
+            @if(!empty($canAdvanceStatus) && $next !== [])
+                <button type="button" class="btn-ghost" data-bs-toggle="modal" data-bs-target="#cwAdvanceStatusModal"><i class="bi bi-arrow-right-circle"></i> Advance Status</button>
             @endif
             @if($canEdit)
                 <button type="button" class="btn-primary-cw" data-bs-toggle="modal" data-bs-target="#cwAddLenderModal"><i class="bi bi-plus-lg"></i> Add Lender Application</button>
@@ -1327,7 +1463,7 @@
                 <div class="rb-text">
                     <div class="rb-label">Status</div>
                     <div class="rb-value">
-                        <span class="status-pill {{ $statusClass }}">{{ $case->status }}</span>
+                        <span class="status-pill {{ $statusClass }}">{{ $displayCaseStatus }}</span>
                     </div>
                 </div>
             </div>
@@ -1529,7 +1665,7 @@
                                     <thead>
                                         <tr>
                                             <th>Lender</th>
-                                            <th>Application Reference</th>
+                                            <th>Bank Login ID</th>
                                             <th>Login Date</th>
                                             <th>Status</th>
                                             <th>Assigned Follow-up</th>
@@ -1569,7 +1705,7 @@
                                                         <span class="fw-semibold">{{ $ba->lender_name }}</span>
                                                     </div>
                                                 </td>
-                                                <td data-label="App Ref">{{ $ba->application_ref ?: '—' }}</td>
+                                                <td data-label="Bank Login ID">{{ $ba->application_ref ?: 'Not added' }}</td>
                                                 <td data-label="Login">{{ optional($ba->login_date)->format('d M Y') ?: '—' }}</td>
                                                 <td data-label="Status"><span class="status-pill {{ $baStatusClass }}">{{ $ba->status }}</span></td>
                                                 <td data-label="Follow-up">{{ optional($ba->follow_up_at)->format('d M Y') ?: '—' }}</td>
@@ -1586,6 +1722,7 @@
                     </div>
                 </div>
 
+                @if(!empty($documentsFeatureEnabled))
                 <div class="sec-card cw-table-card">
                     <div class="sec-head has-line">
                         <div class="sec-head-left">
@@ -1657,6 +1794,7 @@
                         @endif
                     </div>
                 </div>
+                @endif
             </div>
 
             <div class="overview-side">
@@ -1810,11 +1948,23 @@
                         <ul class="timeline">
                             @forelse($case->events->take(5) as $ev)
                                 @php
-                                    $dot = match($ev->event_type){
-                                        'created','status' => 'green',
-                                        'document' => 'teal',
-                                        'application','disbursement' => 'blue',
-                                        'query','assignment' => 'amber',
+                                    $evMeta = is_array($ev->meta ?? null) ? $ev->meta : [];
+                                    $isRecoRejected = $ev->event_type === 'bm_reco'
+                                        && (
+                                            ($evMeta['action'] ?? null) === 'Rejected'
+                                            || str_contains((string) $ev->title, 'Rejected')
+                                        );
+                                    $rejectDetail = filled($evMeta['rejection_reason'] ?? null)
+                                        ? (string) $evMeta['rejection_reason']
+                                        : (filled($ev->body) && str_starts_with((string) $ev->body, 'Reason:')
+                                            ? trim(substr((string) $ev->body, 7))
+                                            : null);
+                                    $dot = match(true){
+                                        $isRecoRejected => 'amber',
+                                        in_array($ev->event_type, ['created','status'], true) => 'green',
+                                        $ev->event_type === 'document' => 'teal',
+                                        in_array($ev->event_type, ['application','disbursement'], true) => 'blue',
+                                        in_array($ev->event_type, ['query','assignment'], true) => 'amber',
                                         default => 'blue',
                                     };
                                     $ico = match($ev->event_type){
@@ -1825,13 +1975,21 @@
                                         'query' => 'bi-chat-left-text',
                                         'assignment' => 'bi-person-check',
                                         'status' => 'bi-arrow-right-circle',
+                                        'bm_reco' => $isRecoRejected ? 'bi-x-circle' : 'bi-lightbulb',
                                         default => 'bi-dot',
                                     };
                                 @endphp
                                 <li>
                                     <span class="tl-dot {{ $dot }}"><i class="bi {{ $ico }}"></i></span>
                                     <div class="tl-body">
-                                        <span class="tl-title">{{ $ev->title }}</span>
+                                        <div class="tl-copy">
+                                            <span class="tl-title">{{ $ev->title }}</span>
+                                            @if($rejectDetail)
+                                                <span class="tl-detail tl-detail-reject">Reason: {{ $rejectDetail }}</span>
+                                            @elseif(filled($ev->body) && ! $isRecoRejected)
+                                                <span class="tl-detail">{{ $ev->body }}</span>
+                                            @endif
+                                        </div>
                                         <span class="tl-time">{{ $ev->created_at?->format('d M Y, h:i a') }}</span>
                                     </div>
                                 </li>
@@ -1870,24 +2028,98 @@
 
     {{-- ===================== BM RECOMMENDATION ===================== --}}
     <div class="cw-pane {{ $activeTab === 'recommendation' ? 'active' : '' }}" data-pane="recommendation">
+        @php
+            $canEditReco = $canEditReco ?? $canEdit;
+            $canSubmitReco = $canSubmitReco ?? false;
+            $canApproveReco = $canApproveReco ?? false;
+            $recoStatus = $recoStatus ?? 'Draft';
+            $roPage = $ro;
+            $disPage = $dis;
+            $ro = $canEditReco ? '' : 'readonly';
+            $dis = $canEditReco ? '' : 'disabled';
+        @endphp
         <form method="POST" action="{{ route('goal.cases.workspace', $case) }}" id="cwRecommendationForm" class="js-cw-ajax-save" data-no-loader novalidate>
             @csrf
             <input type="hidden" name="cw_tab" value="recommendation" data-cw-fixed-tab="1">
             <input type="hidden" name="customer_name" value="{{ old('customer_name', $case->customer_name) }}">
             <input type="hidden" name="mobile" value="{{ old('mobile', $case->mobile) }}">
             @include('goal.cases.partials.customer_extras')
-            @if($canEdit)
-            <div class="cw-footer">
-                <div class="hint mb-0">Saves BM recommendation, existing loans and collateral.</div>
-                <div class="d-flex align-items-center gap-2">
-                    <a href="{{ route('goal.cases.show', ['case' => $case, 'tab' => 'overview']) }}" class="btn btn-outline-secondary" style="height:42px;border-radius:10px;display:inline-flex;align-items:center;">Cancel</a>
-                    <button type="submit" class="btn-save"><i class="bi bi-check2"></i> Save Recommendation</button>
+            @if($canEditReco || $canSubmitReco || $canApproveReco || in_array($recoStatus, ['Submitted', 'Approved', 'Rejected'], true))
+            @php
+                $recoStickyTone = match ($recoStatus) {
+                    'Submitted' => 'is-submitted',
+                    'Approved' => 'is-approved',
+                    'Rejected' => 'is-rejected',
+                    default => '',
+                };
+                $brSticky = is_array($case->bm_reco ?? null) ? $case->bm_reco : [];
+            @endphp
+            <div class="cw-footer cw-reco-sticky-bar {{ $recoStickyTone }}">
+                <div class="hint mb-0 cw-reco-sticky-hint">
+                    @if($canApproveReco)
+                        Status: <strong>Submitted</strong> — approve to push bank details into Banking, or reject with a reason.
+                    @elseif($recoStatus === 'Submitted')
+                        Status: <strong>Submitted</strong> — awaiting Cluster / RD / MD approval before banking.
+                    @elseif($recoStatus === 'Approved')
+                        Status: <strong>Approved</strong> — bank details are available under Banking.
+                    @elseif($recoStatus === 'Rejected')
+                        Status: <strong>Rejected</strong> — revise, save, then resubmit for approval.
+                        @if(!empty($brSticky['rejection_reason']))
+                            <span class="cw-reco-sticky-reason">Reason: {{ $brSticky['rejection_reason'] }}</span>
+                        @endif
+                    @elseif($canSubmitReco)
+                        Status: <strong>Draft</strong> — save first if you changed fields, then submit for Cluster / RD / MD.
+                    @else
+                        Status: <strong>Draft</strong> — save, then submit for Cluster / RD / MD approval.
+                    @endif
+                </div>
+                <div class="cw-reco-sticky-actions">
+                    @if($canApproveReco)
+                        <div class="cw-reco-review-group">
+                            <input type="text" id="cwBmRecoRejectReason" class="cw-reco-reject-input" placeholder="Rejection reason (required to reject)" autocomplete="off">
+                            <button type="button" class="btn-reco-reject"
+                                    onclick="var r=document.getElementById('cwBmRecoRejectReason'); var f=document.getElementById('cwBmRecoRejectForm'); if(!r||!f||!String(r.value||'').trim()){alert('Rejection reason is required.'); r && r.focus(); return;} var reasonInput=f.querySelector('[name=rejection_reason]'); if(reasonInput) reasonInput.value=String(r.value).trim(); if(window.jQuery){jQuery(f).trigger('submit');}else if(f.requestSubmit){f.requestSubmit();}else{f.submit();}">
+                                <i class="bi bi-x-circle"></i> Reject
+                            </button>
+                        </div>
+                        <button type="submit" form="cwBmRecoApproveForm" class="btn-reco-approve">
+                            <i class="bi bi-check2-circle"></i> Approve
+                        </button>
+                    @else
+                        <a href="{{ route('goal.cases.show', ['case' => $case, 'tab' => 'overview']) }}" class="btn btn-outline-secondary" style="height:42px;border-radius:10px;display:inline-flex;align-items:center;white-space:nowrap;">Cancel</a>
+                        @if($canEditReco)
+                            <button type="submit" class="btn-save"><i class="bi bi-check2"></i> Save Recommendation</button>
+                        @endif
+                        @if($canSubmitReco)
+                            <button type="submit" form="cwBmRecoSubmitForm" class="btn-reco-submit">
+                                <i class="bi bi-send-check"></i> Submit for Approval
+                            </button>
+                        @endif
+                    @endif
                 </div>
             </div>
             @endif
         </form>
+
+        @if($canSubmitReco)
+        <form id="cwBmRecoSubmitForm" method="POST" action="{{ route('goal.cases.bm-reco.submit', $case) }}" class="js-cw-ajax-save" data-no-loader data-ajax-reload="1">
+            @csrf
+        </form>
+        @endif
+        @if($canApproveReco)
+        <form id="cwBmRecoApproveForm" method="POST" action="{{ route('goal.cases.bm-reco.review', $case) }}" class="js-cw-ajax-save" data-no-loader data-ajax-reload="1">
+            @csrf
+            <input type="hidden" name="review_action" value="Approved">
+        </form>
+        <form id="cwBmRecoRejectForm" method="POST" action="{{ route('goal.cases.bm-reco.review', $case) }}" class="js-cw-ajax-save" data-no-loader data-ajax-reload="1">
+            @csrf
+            <input type="hidden" name="review_action" value="Rejected">
+            <input type="hidden" name="rejection_reason" value="">
+        </form>
+        @endif
+
         {{-- Equifax forms live outside cwRecommendationForm (HTML forbids nested forms). --}}
-        @if($canEdit)
+        @if($canEditReco)
         <form id="cwEquifaxUploadForm" method="POST" action="{{ route('goal.cases.bm-reco.equifax', $case) }}" enctype="multipart/form-data" class="d-none js-cw-ajax-save" data-no-loader data-ajax-reload="1" aria-hidden="true">
             @csrf
         </form>
@@ -1896,12 +2128,18 @@
             @method('DELETE')
         </form>
         @endif
+        @php
+            $ro = $roPage;
+            $dis = $disPage;
+        @endphp
     </div>
 
     {{-- ===================== DOCUMENTS ===================== --}}
+    @if(!empty($documentsFeatureEnabled))
     <div class="cw-pane {{ $activeTab === 'documents' ? 'active' : '' }}" data-pane="documents">
         @include('goal.cases.partials.tab_documents')
     </div>
+    @endif
 
     {{-- ===================== BANKING (Lenders · Queries · Sanction · Disbursement) ===================== --}}
     @php $bankSection = $activeSection ?? 'lenders'; @endphp
@@ -2400,6 +2638,7 @@
                 ['customer_details[applicant][age]', app.age],
                 ['customer_details[applicant][pan]', app.pan],
                 ['customer_details[applicant][marital_status]', app.marital_status],
+                ['customer_details[applicant][marriage_date]', app.marriage_date],
                 ['customer_details[co_applicant][name]', co.name],
                 ['customer_details[co_applicant][mobile]', co.mobile],
                 ['customer_details[co_applicant][email]', co.email],
@@ -2410,6 +2649,7 @@
                 ['customer_details[co_applicant][age]', co.age],
                 ['customer_details[co_applicant][pan]', co.pan],
                 ['customer_details[co_applicant][marital_status]', co.marital_status],
+                ['customer_details[co_applicant][marriage_date]', co.marriage_date],
                 ['customer_details[co_applicant][relationship]', co.relationship],
                 ['customer_details[employment][type_applicant]', emp.type_applicant],
                 ['customer_details[employment][type_co]', emp.type_co],
@@ -2510,7 +2750,10 @@
             }
 
             var token = document.querySelector('meta[name="csrf-token"]');
-            fetch(form.action, {
+            // Prefer getAttribute: a control named "action" shadows HTMLFormElement.action
+            // (became "[object HTMLInputElement]" on BM reco approve/reject).
+            var formAction = form.getAttribute('action') || form.getAttribute('data-action') || '';
+            fetch(formAction, {
                 method: 'POST',
                 body: new FormData(form),
                 headers: {
@@ -2612,6 +2855,18 @@
 
     var custLayout = document.getElementById('cwCustomerLayout');
     if (custLayout) {
+        function syncEmpPartyRequired(party) {
+            var mobileOnly = window.matchMedia('(max-width: 1023.98px)').matches;
+            custLayout.querySelectorAll('.cw-emp-grid [data-party-field]').forEach(function (field) {
+                var match = field.getAttribute('data-party-field') === party;
+                field.querySelectorAll('input, select, textarea').forEach(function (el) {
+                    if (!Object.prototype.hasOwnProperty.call(el.dataset, 'origRequired')) {
+                        el.dataset.origRequired = (el.required || el.hasAttribute('required')) ? '1' : '0';
+                    }
+                    el.required = (!mobileOnly || match) && el.dataset.origRequired === '1';
+                });
+            });
+        }
         function setCustomerParty(party) {
             custLayout.setAttribute('data-party', party);
             custLayout.querySelectorAll('.cust-party-btn').forEach(function (btn) {
@@ -2624,6 +2879,7 @@
                 var match = field.getAttribute('data-party-field') === party;
                 field.classList.toggle('d-none', !match);
             });
+            syncEmpPartyRequired(party);
             if (window.IsarvaSelect2 && typeof window.IsarvaSelect2.init === 'function') {
                 window.IsarvaSelect2.init(custLayout);
             }
@@ -2634,9 +2890,38 @@
             });
         });
         setCustomerParty(custLayout.getAttribute('data-party') || 'applicant');
+        window.addEventListener('resize', function () {
+            syncEmpPartyRequired(custLayout.getAttribute('data-party') || 'applicant');
+        });
         if (window.IsarvaSelect2 && typeof window.IsarvaSelect2.init === 'function') {
             window.IsarvaSelect2.init(custLayout);
         }
+
+        function syncMarriageDateRow(selectEl) {
+            if (!selectEl) return;
+            var targetId = selectEl.getAttribute('data-marriage-target');
+            var row = targetId ? document.getElementById(targetId) : null;
+            if (!row) return;
+            var married = String(selectEl.value || '') === 'Married';
+            row.style.display = married ? '' : 'none';
+            var input = row.querySelector('input[name*="[marriage_date]"]');
+            if (!married && input) {
+                if (input._flatpickr) input._flatpickr.clear();
+                else input.value = '';
+            } else if (married && input && window.IsarvaDatepicker && typeof window.IsarvaDatepicker.initOne === 'function') {
+                window.IsarvaDatepicker.initOne(input);
+            }
+        }
+
+        custLayout.querySelectorAll('.js-marital-status').forEach(function (el) {
+            syncMarriageDateRow(el);
+            el.addEventListener('change', function () { syncMarriageDateRow(el); });
+            if (window.jQuery) {
+                window.jQuery(el).on('change select2:select select2:clear', function () {
+                    syncMarriageDateRow(el);
+                });
+            }
+        });
     }
 
     page.querySelectorAll('.js-mobile').forEach(function (el) {
@@ -2740,6 +3025,74 @@
     setTimeout(bindAllDobAge, 0);
     setTimeout(bindAllDobAge, 200);
 
+    (function initBmSuggestedBank() {
+        if (!window.jQuery || !jQuery.fn.select2) return;
+        var $sel = jQuery('#cwBmSuggestedBank');
+        if (!$sel.length) return;
+
+        var searchUrl = $sel.data('bank-search-url') || '';
+        var $id = jQuery('#cwBmBankId');
+        var $name = jQuery('#cwBmBankName');
+        var $nameDisplay = jQuery('#cwBmBankNameDisplay');
+        var $code = jQuery('#cwBmBankCode');
+
+        function applyBank(data) {
+            var name = (data && (data.name || data.text)) ? String(data.name || data.text) : '';
+            var code = (data && data.code) ? String(data.code) : '';
+            var id = (data && data.id != null) ? String(data.id) : '';
+            if (name && name.indexOf(' (') !== -1 && !data.name) {
+                name = name.replace(/\s*\([^)]*\)\s*$/, '');
+            }
+            $id.val(id);
+            $name.val(name);
+            $nameDisplay.val(name);
+            $code.val(code);
+        }
+
+        function clearBank() {
+            $id.val('');
+            $name.val('');
+            $nameDisplay.val('');
+            $code.val('');
+        }
+
+        if ($sel.data('select2')) {
+            try { $sel.select2('destroy'); } catch (e) {}
+        }
+
+        $sel.select2({
+            width: '100%',
+            placeholder: $sel.data('placeholder') || 'Type bank name or code',
+            allowClear: true,
+            dropdownParent: jQuery(document.body),
+            minimumInputLength: 0,
+            ajax: {
+                url: searchUrl,
+                dataType: 'json',
+                delay: 200,
+                data: function (params) { return { q: params.term || '' }; },
+                processResults: function (data) {
+                    return { results: (data && data.results) ? data.results : [] };
+                }
+            }
+        });
+
+        $sel.on('select2:select', function (e) {
+            applyBank(e.params && e.params.data ? e.params.data : null);
+        });
+        $sel.on('select2:clear', clearBank);
+
+        var selected = $sel.find('option:selected');
+        if (selected.length && selected.val()) {
+            applyBank({
+                id: selected.val(),
+                name: selected.data('name') || selected.text(),
+                code: selected.data('code') || '',
+                text: selected.text()
+            });
+        }
+    })();
+
     (function initBtSourceRows() {
         var list = document.getElementById('cwBtSourceList');
         var tpl = document.getElementById('cwBtRowTpl');
@@ -2782,75 +3135,6 @@
             var row = btn.closest('[data-bt-row]');
             if (row) row.remove();
             reindexBt();
-        });
-    })();
-
-    (function initLoanDetailRows() {
-        var body = document.getElementById('cwLoanRowsBody');
-        var tpl = document.getElementById('cwLoanRowTpl');
-        var addBtn = document.getElementById('cwAddLoanRow');
-        if (!body || !tpl) return;
-
-        function reindexLoan() {
-            body.querySelectorAll('[data-loan-row]').forEach(function (tr, i) {
-                var idx = tr.querySelector('.cw-loan-idx');
-                if (idx) idx.textContent = String(i + 1);
-                tr.querySelectorAll('[name]').forEach(function (el) {
-                    el.name = String(el.name || '').replace(/existing_loans\[rows\]\[\d+\]/, 'existing_loans[rows][' + i + ']');
-                });
-            });
-        }
-
-        if (addBtn) {
-            addBtn.addEventListener('click', function () {
-                var idx = body.querySelectorAll('[data-loan-row]').length;
-                var html = tpl.innerHTML
-                    .replace(/__i__/g, String(idx))
-                    .replace(/__n__/g, String(idx + 1));
-                var wrap = document.createElement('tbody');
-                wrap.innerHTML = html.trim();
-                var row = wrap.firstElementChild;
-                if (!row) return;
-                body.appendChild(row);
-                reindexLoan();
-            });
-        }
-
-        body.addEventListener('click', function (e) {
-            var btn = e.target.closest('[data-remove-loan]');
-            if (!btn) return;
-            var rows = body.querySelectorAll('[data-loan-row]');
-            if (rows.length <= 1) {
-                var only = rows[0];
-                if (!only) return;
-                only.querySelectorAll('input, select').forEach(function (el) {
-                    if (el.tagName === 'SELECT') {
-                        el.selectedIndex = 0;
-                    } else if (el.type === 'hidden' && el.name && el.name.indexOf('[party]') !== -1) {
-                        el.value = 'applicant';
-                        var dd = el.closest('[data-party-dd]');
-                        if (dd) {
-                            dd.classList.add('is-app');
-                            dd.classList.remove('is-co', 'is-open');
-                            var label = dd.querySelector('.cw-party-label');
-                            if (label) label.textContent = 'Applicant';
-                            dd.querySelectorAll('.cw-party-menu [data-value]').forEach(function (opt) {
-                                opt.classList.toggle('is-selected', opt.getAttribute('data-value') === 'applicant');
-                            });
-                            var menu = dd.querySelector('.cw-party-menu');
-                            if (menu) menu.hidden = true;
-                            var chip = dd.querySelector('.cw-party-chip');
-                            if (chip) chip.setAttribute('aria-expanded', 'false');
-                        }
-                    } else if (el.type !== 'hidden') {
-                        el.value = '';
-                    }
-                });
-                return;
-            }
-            var row = btn.closest('[data-loan-row]');
-            if (row) row.remove();
-            reindexLoan();
         });
     })();
 

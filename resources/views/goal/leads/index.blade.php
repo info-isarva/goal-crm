@@ -146,7 +146,11 @@
     color:var(--theme-primary-hover);font-weight:800;font-size:.78rem;
 }
 .ll-page .cust-name{font-weight:700;color:#0f172a;line-height:1.25}
-.ll-page .cust-mobile{font-size:.78rem;color:#64748b;margin-top:2px}
+.ll-page .cust-mobile{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:.78rem;color:#64748b;margin-top:2px;
+}
+.ll-page .cust-mobile i{font-size:.72rem;color:#94a3b8;flex-shrink:0;line-height:1}
 .ll-page .amount-cell{font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
 .ll-page .amount-cell .muted{color:#94a3b8;font-weight:500}
 .ll-page .meta-stack{display:flex;flex-direction:column;gap:6px;min-width:0;align-items:flex-start}
@@ -155,12 +159,15 @@
     font-size:.72rem;color:#64748b;line-height:1.35;font-weight:500;
     white-space:normal;max-width:160px;
 }
+.ll-page .role-chip,
 .ll-page .created-by{
     display:inline-flex;align-items:center;gap:5px;
     padding:3px 8px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;
     color:#64748b;font-size:.7rem;font-weight:600;line-height:1.3;max-width:170px;
 }
-.ll-page .created-by i{color:#94a3b8;font-size:.7rem;flex-shrink:0}
+.ll-page .role-chip i,
+.ll-page .created-by i{color:#64748b;font-size:.72rem;flex-shrink:0;line-height:1}
+.ll-page .role-chip span,
 .ll-page .created-by span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ll-page .amount-cell .currency{color:#64748b;font-weight:600;margin-right:2px}
 .ll-page .type-pill,
@@ -388,6 +395,29 @@
     height:42px;padding:0 14px;font-weight:600;
 }
 .ll-status-drawer .select2-container{width:100%!important}
+.ll-status-drawer .select2-container--default .select2-selection--single{
+    min-height:42px;height:42px;border-radius:10px;border:1px solid #d1d5db;
+    display:flex;align-items:center;
+}
+.ll-status-drawer .select2-container--default .select2-selection--single .select2-selection__rendered{
+    line-height:40px;padding-left:12px;padding-right:28px;font-size:.9rem;color:#0f172a;
+}
+.ll-status-drawer .select2-container--default .select2-selection--single .select2-selection__arrow{
+    height:40px;width:28px;top:0;right:4px;
+}
+.ll-status-drawer .select2-container--default .select2-selection--single .select2-selection__clear{
+    display:none!important;
+}
+.ll-status-drawer .select2-container--default.select2-container--focus .select2-selection--single,
+.ll-status-drawer .select2-container--default.select2-container--open .select2-selection--single{
+    border-color:var(--theme-300);box-shadow:0 0 0 3px var(--theme-primary-ring);
+}
+.ll-status-drawer .select2-dropdown{
+    border:1px solid #d1d5db;border-radius:10px;overflow:hidden;z-index:10660;
+    box-shadow:0 10px 28px rgba(15,23,42,.12);
+}
+.ll-status-drawer .select2-results__option{font-size:.9rem;padding:.55rem .85rem}
+.ll-status-drawer .select2-results__option--highlighted{background:var(--theme-primary)!important}
 .ll-status-drawer .status-pill,
 .ll-status-drawer .source-pill,
 .ll-status-drawer .product-pill,
@@ -569,9 +599,9 @@ body.ll-status-open{overflow:hidden}
         $s = strtolower((string) $status);
         if (str_contains($s, 'closed') || str_contains($s, 'reject') || str_contains($s, 'lost')) return 'closed';
         if (str_contains($s, 'future')) return 'future';
-        if (str_contains($s, 'assigned') || str_contains($s, 'contact') || str_contains($s, 'qualified')) return 'assigned';
+        if (str_contains($s, 'assigned') || str_contains($s, 'contact') || str_contains($s, 'qualified') || str_contains($s, 'appointment')) return 'assigned';
         if (str_contains($s, 'pending') || str_contains($s, 'follow')) return 'pending';
-        if (str_contains($s, 'document') || str_contains($s, 'bank') || str_contains($s, 'ready')) return 'active';
+        if (str_contains($s, 'document') || str_contains($s, 'bank') || str_contains($s, 'ready') || str_contains($s, 'create case')) return 'active';
         return '';
     };
     $sourceClass = function ($source) {
@@ -753,7 +783,7 @@ body.ll-status-open{overflow:hidden}
                                     <span class="cust-avatar">{{ $initials($lead->customer_name) }}</span>
                                     <div>
                                         <div class="cust-name">{{ $lead->customer_name }}</div>
-                                        <div class="cust-mobile">{{ $lead->mobile ?: '-' }}</div>
+                                        <div class="cust-mobile"><i class="bi bi-phone"></i><span>{{ $lead->mobile ?: '-' }}</span></div>
                                         @if($lead->disposition)
                                             <span class="disp-pill mt-1">{{ $lead->disposition }}</span>
                                         @endif
@@ -786,15 +816,20 @@ body.ll-status-open{overflow:hidden}
                             <td data-label="Assignee">
                                 <div class="meta-stack">
                                     @if($lead->assignee)
-                                        <span class="assign-pill">{{ $lead->assignee->name }}</span>
+                                        <span class="assign-pill" title="{{ $lead->assignee->name }}{{ $assigneeRole ? ' · '.$assigneeRole : '' }}">
+                                            <i class="bi bi-person-check"></i> {{ $lead->assignee->name }}
+                                        </span>
                                         @if($assigneeRole)
-                                            <span class="meta-sub">{{ $assigneeRole }}</span>
+                                            <span class="role-chip" title="Role: {{ $assigneeRole }}">
+                                                <i class="bi bi-person-badge"></i>
+                                                <span>{{ $assigneeRole }}</span>
+                                            </span>
                                         @endif
                                     @else
-                                        <span class="assign-pill empty">Unassigned</span>
+                                        <span class="assign-pill empty"><i class="bi bi-person-x"></i> Unassigned</span>
                                         @if($creatorLabel !== '')
                                             <span class="created-by" title="Created by {{ $creatorLabel }}">
-                                                <i class="bi bi-person"></i>
+                                                <i class="bi bi-person-badge"></i>
                                                 <span>{{ $creatorLabel }}</span>
                                             </span>
                                         @endif
@@ -1254,12 +1289,12 @@ body.ll-status-open{overflow:hidden}
                            class="form-control js-datetimepicker" data-min-date="today"
                            placeholder="dd-mm-yyyy --:--" autocomplete="off">
                 </div>
-                <div class="form-text">Required when moving to Future Prospect.</div>
+                <div class="form-text" id="ll_status_follow_hint">Required for Appointment Fixed / Future Prospect.</div>
             </div>
             <div class="field mb-3">
                 <label class="form-label" for="ll_status_product">Product</label>
                 <select name="product" id="ll_status_product" class="form-select js-select2 no-select2"
-                        data-select2-skip="1" data-placeholder="Select product" data-allow-clear="true">
+                        data-select2-skip="1" data-placeholder="Select product" data-allow-clear="false" data-search="false">
                     <option value=""></option>
                     @foreach($products as $p)
                         <option value="{{ $p->product_name }}">{{ $p->product_name }}</option>
@@ -1287,7 +1322,7 @@ body.ll-status-open{overflow:hidden}
             </div>
             <div class="ll-status-hint">
                 <i class="bi bi-info-circle"></i>
-                <span>Allocation to sales is done from <strong>BM Allocation</strong>. Moving to Documents Pending creates the case automatically.</span>
+                <span>After BM Allocation, move to <strong>Contact Pending</strong> / <strong>Appointment Fixed</strong>. Choosing <strong>Create Case</strong> creates the case.</span>
             </div>
         </div>
         <div class="ll-drawer-foot">
@@ -1486,6 +1521,46 @@ body.ll-status-open{overflow:hidden}
         }
     }
 
+    function normalizeFollowUpValue(raw) {
+        let v = String(raw || '').trim();
+        if (!v) return '';
+        const dm = v.match(/^(\d{2})-(\d{2})-(\d{4})(?:\s+(\d{2}):(\d{2}))?$/);
+        if (dm) {
+            v = dm[3] + '-' + dm[2] + '-' + dm[1] + (dm[4] ? (' ' + dm[4] + ':' + dm[5]) : '');
+        }
+        return v;
+    }
+
+    function isPastFollowUp(raw) {
+        const v = normalizeFollowUpValue(raw);
+        if (!v) return false;
+        const dt = new Date(v.replace(' ', 'T'));
+        if (Number.isNaN(dt.getTime())) return false;
+        const startToday = new Date();
+        startToday.setHours(0, 0, 0, 0);
+        return dt < startToday;
+    }
+
+    function setFollowUpVal(id, value) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        let v = normalizeFollowUpValue(value);
+        if (isPastFollowUp(v)) v = '';
+        if (el._flatpickr) {
+            if (v) el._flatpickr.setDate(v, true);
+            else el._flatpickr.clear();
+            return;
+        }
+        el.value = v;
+        if (window.IsarvaDatepicker && typeof window.IsarvaDatepicker.initOne === 'function') {
+            window.IsarvaDatepicker.initOne(el);
+            if (el._flatpickr) {
+                if (v) el._flatpickr.setDate(v, true);
+                else el._flatpickr.clear();
+            }
+        }
+    }
+
     function escapeHtml(str) {
         return String(str == null ? '' : str)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -1496,9 +1571,9 @@ body.ll-status-open{overflow:hidden}
         const s = String(status || '').toLowerCase();
         if (s.indexOf('closed') !== -1 || s.indexOf('lost') !== -1) return 'closed';
         if (s.indexOf('future') !== -1) return 'future';
-        if (s.indexOf('assigned') !== -1 || s.indexOf('contact') !== -1 || s.indexOf('qualified') !== -1) return 'assigned';
+        if (s.indexOf('assigned') !== -1 || s.indexOf('contact') !== -1 || s.indexOf('qualified') !== -1 || s.indexOf('appointment') !== -1) return 'assigned';
         if (s.indexOf('pending') !== -1) return 'pending';
-        if (s.indexOf('document') !== -1 || s.indexOf('bank') !== -1 || s.indexOf('ready') !== -1) return 'active';
+        if (s.indexOf('document') !== -1 || s.indexOf('bank') !== -1 || s.indexOf('ready') !== -1 || s.indexOf('create case') !== -1) return 'active';
         return '';
     }
 
@@ -1512,13 +1587,16 @@ body.ll-status-open{overflow:hidden}
         const closureInput = document.getElementById('ll_status_closure');
         const consentReq = document.getElementById('ll_status_consent_req');
         const consentHint = document.getElementById('ll_status_consent_hint');
-        if (followWrap) followWrap.style.display = to === 'Future Prospect' ? '' : 'none';
+        const needFollow = to === 'Future Prospect' || to === 'Appointment Fixed';
+        const productEl = document.getElementById('ll_status_product');
+        if (followWrap) followWrap.style.display = needFollow ? '' : 'none';
         if (closureWrap) closureWrap.style.display = to === 'Closed / Lost' ? '' : 'none';
-        if (followInput) followInput.required = to === 'Future Prospect';
+        if (followInput) followInput.required = needFollow;
         if (closureInput) {
             closureInput.required = to === 'Closed / Lost';
             if (to !== 'Closed / Lost') closureInput.value = '';
         }
+        if (productEl) productEl.required = to === 'Create Case';
         const needConsent = to === 'Qualified';
         if (consentReq) consentReq.classList.toggle('d-none', !needConsent);
         if (consentHint) consentHint.style.display = needConsent ? '' : 'none';
@@ -1575,14 +1653,21 @@ body.ll-status-open{overflow:hidden}
         }
         el.classList.remove('no-select2');
         el.removeAttribute('data-select2-skip');
+        const parent = modalEl || document.body;
         if (window.IsarvaSelect2 && typeof window.IsarvaSelect2.initOne === 'function') {
-            window.IsarvaSelect2.initOne(el);
+            window.IsarvaSelect2.initOne(el, parent);
         } else if ($ && $.fn.select2) {
+            const allowClearAttr = el.getAttribute('data-allow-clear');
+            const allowClear = allowClearAttr === null
+                ? !!el.querySelector('option[value=""]')
+                : allowClearAttr !== 'false';
+            const searchMode = el.getAttribute('data-search');
             $(el).select2({
                 width: '100%',
-                dropdownParent: $(modalEl || document.body),
-                allowClear: true,
-                placeholder: el.getAttribute('data-placeholder') || ''
+                dropdownParent: $(parent),
+                allowClear: allowClear,
+                placeholder: el.getAttribute('data-placeholder') || '',
+                minimumResultsForSearch: (searchMode === 'false' || searchMode === '0') ? Infinity : 0
             });
         }
         if ($) {
@@ -1738,7 +1823,7 @@ body.ll-status-open{overflow:hidden}
             }
             const consent = document.getElementById('ll_status_consent');
             if (consent) consent.checked = statusBtn.getAttribute('data-consent') === '1';
-            setVal('ll_status_follow_up', statusBtn.getAttribute('data-follow-up'));
+            setFollowUpVal('ll_status_follow_up', statusBtn.getAttribute('data-follow-up'));
             setVal('ll_status_closure', '');
             setVal('ll_status_note', '');
 

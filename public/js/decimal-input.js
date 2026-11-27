@@ -1,12 +1,33 @@
 /**
- * Restrict text inputs to numbers + optional single decimal.
- * Usage: <input type="text" class="js-decimal" inputmode="decimal">
- * Optional: data-decimals="2" (default unlimited fractional digits while typing)
+ * Restrict text inputs to numbers + optional decimal, with Indian comma grouping.
+ * Usage: <input type="text" class="js-decimal" inputmode="decimal" data-decimals="2">
+ * Displays: 2,00,000.00  |  Stores/typing: commas added automatically.
  */
 (function () {
     'use strict';
 
-    function sanitize(value, maxDecimals) {
+    function digitCountBefore(str, index) {
+        var count = 0;
+        var limit = Math.min(index, str.length);
+        for (var i = 0; i < limit; i++) {
+            if (/\d/.test(str.charAt(i))) count++;
+        }
+        return count;
+    }
+
+    function indexAfterDigits(str, digitCount) {
+        if (digitCount <= 0) return 0;
+        var seen = 0;
+        for (var i = 0; i < str.length; i++) {
+            if (/\d/.test(str.charAt(i))) {
+                seen++;
+                if (seen >= digitCount) return i + 1;
+            }
+        }
+        return str.length;
+    }
+
+    function sanitizeRaw(value, maxDecimals) {
         value = String(value || '');
         value = value.replace(/[^\d.]/g, '');
 
@@ -21,6 +42,46 @@
         }
 
         return value;
+    }
+
+    function formatIndianInt(intPart) {
+        intPart = String(intPart || '0').replace(/^0+(?=\d)/, '');
+        if (intPart === '') intPart = '0';
+        var last3 = intPart.slice(-3);
+        var rest = intPart.slice(0, -3);
+        if (rest) {
+            rest = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',');
+            return rest + ',' + last3;
+        }
+        return last3;
+    }
+
+    function formatIndian(raw, maxDecimals, opts) {
+        opts = opts || {};
+        raw = sanitizeRaw(raw, maxDecimals);
+        if (raw === '' || raw === '.') return raw === '.' ? '0.' : '';
+
+        var negative = false;
+        if (raw.charAt(0) === '-') {
+            negative = true;
+            raw = raw.slice(1);
+        }
+
+        var hasDot = raw.indexOf('.') !== -1;
+        var parts = raw.split('.');
+        var intPart = parts[0] || '0';
+        var decPart = parts[1] || '';
+
+        var formatted = formatIndianInt(intPart);
+        if (hasDot || (opts.forceDecimals && typeof maxDecimals === 'number' && maxDecimals > 0)) {
+            if (opts.forceDecimals && typeof maxDecimals === 'number' && maxDecimals > 0) {
+                while (decPart.length < maxDecimals) decPart += '0';
+                if (maxDecimals >= 0) decPart = decPart.slice(0, maxDecimals);
+            }
+            formatted += '.' + decPart;
+        }
+
+        return (negative ? '-' : '') + formatted;
     }
 
     function bind(el) {
@@ -39,35 +100,40 @@
             ? parseInt(maxDecimalsAttr, 10)
             : null;
 
-        el.addEventListener('input', function () {
-            var next = sanitize(el.value, Number.isFinite(maxDecimals) ? maxDecimals : null);
-            if (el.value !== next) {
-                var start = el.selectionStart;
-                var diff = el.value.length - next.length;
-                el.value = next;
-                if (typeof start === 'number') {
-                    var pos = Math.max(0, start - diff);
-                    try { el.setSelectionRange(pos, pos); } catch (e) {}
-                }
+        function applyFormat(forceDecimals) {
+            var prev = el.value;
+            var caret = el.selectionStart;
+            var digitsBefore = typeof caret === 'number' ? digitCountBefore(prev, caret) : null;
+            var next = formatIndian(prev, Number.isFinite(maxDecimals) ? maxDecimals : null, {
+                forceDecimals: !!forceDecimals
+            });
+            if (prev === next) return;
+            el.value = next;
+            if (digitsBefore !== null && document.activeElement === el) {
+                var pos = indexAfterDigits(next, digitsBefore);
+                try { el.setSelectionRange(pos, pos); } catch (e) {}
             }
+        }
+
+        // Format existing server-rendered value on bind
+        if (String(el.value || '').trim() !== '') {
+            applyFormat(true);
+        }
+
+        el.addEventListener('input', function () {
+            applyFormat(false);
         });
 
         el.addEventListener('blur', function () {
             var v = el.value.trim();
-            if (v === '' || v === '.') {
+            if (v === '' || v === '.' || v === '0.') {
+                if (v === '.' || v === '0.') el.value = '0';
                 return;
             }
-            if (v.startsWith('.')) {
-                v = '0' + v;
-            }
-            if (v.endsWith('.')) {
-                v = v.slice(0, -1);
-            }
-            el.value = sanitize(v, Number.isFinite(maxDecimals) ? maxDecimals : null);
+            applyFormat(true);
         });
 
         el.addEventListener('keydown', function (e) {
-            // Allow control shortcuts and navigation
             if (e.ctrlKey || e.metaKey || e.altKey) return;
             var allowedKeys = [
                 'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
@@ -76,9 +142,13 @@
             ];
             if (allowedKeys.indexOf(e.key) !== -1) return;
             if (e.key === '.' || e.key === 'Decimal') {
-                if (String(el.value).indexOf('.') !== -1) {
+                if (sanitizeRaw(el.value, null).indexOf('.') !== -1) {
                     e.preventDefault();
                 }
+                return;
+            }
+            if (e.key === ',') {
+                e.preventDefault();
                 return;
             }
             if (!/^\d$/.test(e.key)) {
@@ -89,11 +159,10 @@
         el.addEventListener('paste', function (e) {
             e.preventDefault();
             var text = (e.clipboardData || window.clipboardData).getData('text') || '';
-            var next = sanitize(text, Number.isFinite(maxDecimals) ? maxDecimals : null);
             var start = el.selectionStart || 0;
             var end = el.selectionEnd || 0;
-            var merged = el.value.slice(0, start) + next + el.value.slice(end);
-            el.value = sanitize(merged, Number.isFinite(maxDecimals) ? maxDecimals : null);
+            var merged = el.value.slice(0, start) + text + el.value.slice(end);
+            el.value = formatIndian(merged, Number.isFinite(maxDecimals) ? maxDecimals : null, {});
             el.dispatchEvent(new Event('input', { bubbles: true }));
         });
     }
@@ -110,5 +179,9 @@
         init(e.target || document);
     });
 
-    window.DecimalInput = { init: init, sanitize: sanitize };
+    window.DecimalInput = {
+        init: init,
+        sanitize: sanitizeRaw,
+        formatIndian: formatIndian
+    };
 })();

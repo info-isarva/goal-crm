@@ -218,6 +218,10 @@ class GoalLoanLeadController extends Controller
             abort_unless($canCreate || $canChannel, 403);
         }
 
+        $request->merge([
+            'follow_up_at' => $this->normalizeDateTimeInput($request->input('follow_up_at')),
+        ]);
+
         $dispositionNames = GoalVrmDisposition::activeNames();
         $data = $request->validate([
             'customer_name' => 'required|string|max:150',
@@ -229,12 +233,13 @@ class GoalLoanLeadController extends Controller
             'loan_amount' => 'nullable|numeric|min:0',
             'lead_type' => 'nullable|in:immediate,future',
             'disposition' => ['required', 'string', 'max:40', Rule::in($dispositionNames !== [] ? $dispositionNames : array_filter([(string) $request->input('disposition')]))],
-            'follow_up_at' => 'nullable|date',
+            'follow_up_at' => 'nullable|date|after_or_equal:today',
             'notes' => 'nullable|string',
             'goal_org_unit_id' => 'nullable|exists:goal_org_units,id,is_active,1',
             'consent_recorded' => 'nullable|boolean',
         ], array_merge(PhoneNumber::messages('mobile'), [
             'disposition.required' => 'Disposition is required.',
+            'follow_up_at.after_or_equal' => 'Follow-up must be today or a future date/time.',
         ]));
 
         $dispositionMaster = GoalVrmDisposition::findByName($data['disposition'] ?? null);
@@ -341,8 +346,8 @@ class GoalLoanLeadController extends Controller
         $leadSources = LeadSource::query()->orderBy('name')->get(['id', 'name']);
 
         $canAllocate = auth()->user()->hasCrmPermission('bm_allocation_guard');
-        $canConvert = !$lead->loanCase
-            && in_array('Documents Pending', $allNext, true);
+        $canConvert = ! $lead->loanCase
+            && (in_array('Documents Pending', $allNext, true) || in_array('Create Case', $allNext, true));
         $canOpenCase = (bool) $lead->loanCase;
         $needsAllocation = $lead->status === 'Pending BM Allocation' && $canAllocate;
         $canEditLead = $this->canEditLeadDetails($lead);
@@ -405,6 +410,10 @@ class GoalLoanLeadController extends Controller
             $sourceNames[] = $lead->source;
         }
 
+        $request->merge([
+            'follow_up_at' => $this->normalizeDateTimeInput($request->input('follow_up_at')),
+        ]);
+
         $data = $request->validate([
             'customer_name' => ($canEdit ? 'required' : 'nullable') . '|string|max:150',
             'mobile' => PhoneNumber::mobileRules($canEdit),
@@ -416,10 +425,12 @@ class GoalLoanLeadController extends Controller
             'disposition' => 'nullable|string|max:40',
             'consent_recorded' => 'nullable|boolean',
             'to_status' => 'nullable|string|max:80',
-            'follow_up_at' => 'nullable|date',
+            'follow_up_at' => 'nullable|date|after_or_equal:today',
             'closure_reason' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:2000',
-        ], PhoneNumber::messages('mobile'));
+        ], array_merge(PhoneNumber::messages('mobile'), [
+            'follow_up_at.after_or_equal' => 'Follow-up must be today or a future date/time.',
+        ]));
 
         $messages = [];
 
@@ -612,8 +623,12 @@ class GoalLoanLeadController extends Controller
         $this->requireGoalPermission('view_leads_guard');
         $this->assertLeadInScope($lead);
 
+        $request->merge([
+            'follow_up_at' => $this->normalizeDateTimeInput($request->input('follow_up_at')),
+        ]);
+
         $data = $request->validate([
-            'follow_up_at' => 'required|date|after_or_equal:now',
+            'follow_up_at' => 'required|date|after_or_equal:today',
         ], [
             'follow_up_at.after_or_equal' => 'Follow-up must be today or a future date/time.',
         ]);
@@ -682,10 +697,10 @@ class GoalLoanLeadController extends Controller
             return redirect()->route('goal.cases.show', $lead->loanCase);
         }
 
-        $next = GoalWorkflow::LEAD_TRANSITIONS[$lead->status] ?? [];
-        if (!in_array('Documents Pending', $next, true)) {
+        $next = $this->manageableNextStatuses($lead);
+        if (! in_array('Create Case', $next, true) && ! in_array('Documents Pending', $next, true)) {
             return back()->withErrors([
-                'convert' => 'Lead must reach Qualified before converting to a case. Current status: ' . $lead->status,
+                'convert' => 'This lead cannot be converted to a case from the current status (' . $lead->status . ').',
             ]);
         }
         if (! filled($lead->product) && ! filled($request->input('product'))) {
@@ -695,7 +710,7 @@ class GoalLoanLeadController extends Controller
         }
 
         $request->merge([
-            'to_status' => 'Documents Pending',
+            'to_status' => 'Create Case',
             'consent_recorded' => $lead->consent_recorded ? 1 : $request->input('consent_recorded'),
             'product' => $request->input('product', $lead->product),
         ]);
@@ -708,9 +723,13 @@ class GoalLoanLeadController extends Controller
         $this->requireGoalPermission('view_leads_guard');
         $this->assertLeadInScope($lead);
 
+        $request->merge([
+            'follow_up_at' => $this->normalizeDateTimeInput($request->input('follow_up_at')),
+        ]);
+
         $data = $request->validate([
             'to_status' => 'required|string',
-            'follow_up_at' => 'nullable|date|after_or_equal:now',
+            'follow_up_at' => 'nullable|date|after_or_equal:today',
             'closure_reason' => 'nullable|string|max:255',
             'consent_recorded' => 'nullable|boolean',
             'product' => 'nullable|string|max:100',
@@ -764,9 +783,17 @@ class GoalLoanLeadController extends Controller
             ]);
         }
 
-        $gate = GoalWorkflow::validateLead($lead->status, $data['to_status'], $ctx);
+        $requestedStatus = (string) ($data['to_status'] ?? '');
+        $createCaseRequested = $requestedStatus === 'Create Case';
+
+        $gate = GoalWorkflow::validateLead($lead->status, $requestedStatus, $ctx);
         if (! $gate['ok']) {
             return back()->withErrors(['to_status' => implode(' ', $gate['errors'])]);
+        }
+
+        // "Create Case" is the action label; stored workflow status is Documents Pending.
+        if ($createCaseRequested) {
+            $data['to_status'] = 'Documents Pending';
         }
 
         $fromStatus = $lead->status;
@@ -855,6 +882,12 @@ class GoalLoanLeadController extends Controller
                     ],
                     'documents' => $seedDocs,
                 ], fn ($v) => $v !== null && $v !== ''),
+                'bm_reco' => array_filter([
+                    'amount' => $lead->loan_amount,
+                    'requirement' => $lead->product,
+                    'approval_status' => 'Draft',
+                    'status' => 'Draft',
+                ], fn ($v) => $v !== null && $v !== ''),
             ]);
             app(\App\Services\Goal\GoalPartyService::class)->attachCase($case, $lead);
 
@@ -862,12 +895,12 @@ class GoalLoanLeadController extends Controller
                 $lead,
                 'case',
                 'Case Created · ' . $case->case_no,
-                'Converted from lead workflow',
+                $createCaseRequested ? 'Created via Create Case status move' : 'Converted from lead workflow',
                 ['to_status' => $data['to_status'], 'meta' => ['case_id' => $case->id, 'case_no' => $case->case_no]]
             );
 
             return back()
-                ->with('success', 'Status updated and case ' . $case->case_no . ' created. Continue from Loan Leads or open the case when needed.')
+                ->with('success', 'Case ' . $case->case_no . ' created.')
                 ->with('ld_tab', 'overview');
         }
 
@@ -942,6 +975,7 @@ class GoalLoanLeadController extends Controller
         $pipelineStatuses = [
             'Pending BM Allocation',
             'Contact Pending',
+            'Appointment Fixed',
             'Qualified',
             'Documents Pending',
             'Ready for Bank Login',
@@ -1021,7 +1055,7 @@ class GoalLoanLeadController extends Controller
     /**
      * Who may edit customer/loan fields on a lead.
      * Before allocation: VRM/creator + managers.
-     * After allocation: assigned sales + BM/managers only (VRM view/notes only).
+     * After BM allocation: assigned sales + creating VRM + BM/managers.
      * After case creation: nobody edits from Loan Leads.
      */
     protected function canEditLeadDetails(GoalLoanLead $lead): bool
@@ -1040,17 +1074,12 @@ class GoalLoanLeadController extends Controller
             return true;
         }
 
-        $preAllocation = in_array($lead->status, ['New', 'Pending BM Allocation', 'Future Prospect'], true);
-
         if (in_array($role, [10, 11, 12], true) || in_array(strtolower((string) ($user->job_role ?? '')), ['jsm', 'sm', 'ssm'], true)) {
             return (int) ($lead->assigned_to ?? 0) === (int) $user->id;
         }
 
         if ($role === 9 || strtolower((string) ($user->job_role ?? '')) === 'vrm') {
-            if (! $preAllocation) {
-                return false;
-            }
-
+            // Creator VRM can edit before and after BM allocation (until case is created).
             return (int) ($lead->created_by ?? 0) === (int) $user->id;
         }
 
@@ -1058,10 +1087,26 @@ class GoalLoanLeadController extends Controller
     }
 
     /**
+     * Preferred move-to options for assigned sales / VRM after BM allocation.
+     *
+     * @return list<string>
+     */
+    protected function postAllocationMoveStatuses(): array
+    {
+        return [
+            'Contact Pending',
+            'Appointment Fixed',
+            'Create Case',
+            'Future Prospect',
+            'Closed / Lost',
+        ];
+    }
+
+    /**
      * Statuses the current user may pick for this lead.
      * - Assigned is never manual (BM Allocation only).
      * - After case creation: no status updates from Loan Leads.
-     * - VRM: no status updates once lead is assigned to sales; before that only Closed / Lost.
+     * - After BM allocation: assigned sales + creator VRM can move Contact Pending / Appointment Fixed / Create Case.
      *
      * @return list<string>
      */
@@ -1073,6 +1118,11 @@ class GoalLoanLeadController extends Controller
 
         $next = GoalWorkflow::LEAD_TRANSITIONS[$lead->status] ?? [];
         $next = array_values(array_filter($next, fn ($status) => $status !== 'Assigned'));
+        // Prefer Create Case label over raw Documents Pending in the picker.
+        $next = array_values(array_unique(array_map(
+            fn ($status) => $status === 'Documents Pending' ? 'Create Case' : $status,
+            $next
+        )));
         if ($next === []) {
             return [];
         }
@@ -1085,24 +1135,31 @@ class GoalLoanLeadController extends Controller
             return $next;
         }
 
-        // Sales (JSM / SM / SSM): only leads assigned to them, after allocation.
+        $postAllocationMoves = array_values(array_intersect($next, $this->postAllocationMoveStatuses()));
+
+        // Sales (JSM / SM / SSM): assigned leads — Contact Pending / Appointment Fixed / Create Case.
         if (in_array($role, [10, 11, 12], true) || in_array(strtolower((string) ($user->job_role ?? '')), ['jsm', 'sm', 'ssm'], true)) {
             if ((int) ($lead->assigned_to ?? 0) !== (int) $user->id) {
                 return [];
             }
 
-            return $next;
+            return $postAllocationMoves !== [] ? $postAllocationMoves : $next;
         }
 
-        // VRM: once assigned to anyone, no status changes. Before assign, may only close/lost.
+        // VRM creator: before BM allocation only Closed / Lost; after allocation same moves as sales.
         if ($role === 9 || strtolower((string) ($user->job_role ?? '')) === 'vrm') {
-            if ((int) ($lead->assigned_to ?? 0) > 0) {
-                return [];
-            }
-            if (! in_array($lead->status, ['Pending BM Allocation', 'Future Prospect', 'New'], true)) {
-                return [];
-            }
             if ((int) ($lead->created_by ?? 0) !== (int) $user->id && ! $user->hasCrmPermission('bm_allocation_guard')) {
+                return [];
+            }
+
+            $allocated = (int) ($lead->assigned_to ?? 0) > 0
+                || in_array($lead->status, ['Assigned', 'Contact Pending', 'Appointment Fixed', 'Qualified'], true);
+
+            if ($allocated) {
+                return $postAllocationMoves !== [] ? $postAllocationMoves : $next;
+            }
+
+            if (! in_array($lead->status, ['Pending BM Allocation', 'Future Prospect', 'New'], true)) {
                 return [];
             }
 
@@ -1211,7 +1268,7 @@ class GoalLoanLeadController extends Controller
             $index = 1;
         } elseif ($status === 'Assigned') {
             $index = 1;
-        } elseif (in_array($status, ['Contact Pending', 'Future Prospect'], true)) {
+        } elseif (in_array($status, ['Contact Pending', 'Appointment Fixed', 'Future Prospect'], true)) {
             $index = 2;
         } elseif ($status === 'Qualified') {
             $index = 3;
@@ -1475,5 +1532,33 @@ class GoalLoanLeadController extends Controller
             'manual' => 'Manual',
             default => $source ? ucfirst($source) : '',
         };
+    }
+
+    /**
+     * Accept UI formats (d-m-Y H:i / Y-m-d H:i) and normalize for Laravel date rules.
+     */
+    protected function normalizeDateTimeInput(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return null;
+        }
+        if (preg_match('/^(\d{2})-(\d{2})-(\d{4})(?:\s+(\d{2}):(\d{2})(?::\d{2})?)?$/', $raw, $m)) {
+            $normalized = $m[3].'-'.$m[2].'-'.$m[1];
+            if (! empty($m[4])) {
+                $normalized .= ' '.$m[4].':'.$m[5].':00';
+            }
+
+            return $normalized;
+        }
+
+        try {
+            return Carbon::parse($raw)->format('Y-m-d H:i:s');
+        } catch (\Throwable) {
+            return $raw;
+        }
     }
 }

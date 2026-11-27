@@ -904,7 +904,12 @@ class GoalLoanCaseController extends Controller
                     'product' => $data['product'],
                     'loan_amount' => $loanAmount,
                     'customer_details' => $customerDetails,
-                    'bm_reco' => null,
+                    'bm_reco' => array_filter([
+                        'amount' => $loanAmount,
+                        'requirement' => $data['product'] ?? null,
+                        'approval_status' => 'Draft',
+                        'status' => 'Draft',
+                    ], fn ($v) => $v !== null && $v !== ''),
                 ]);
 
                 $details = $case->customer_details ?? [];
@@ -998,7 +1003,20 @@ class GoalLoanCaseController extends Controller
         $case->load([
             'owner:id,name,job_role,crm_role_type,reports_to_user_id,mobile,goal_org_unit_id',
             'orgUnit:id,name',
-            'lead:id,ref_no,status,source,assigned_to,consent_recorded',
+            'lead:id,ref_no,status,source,assigned_to,consent_recorded,loan_amount,product',
+        ]);
+
+        // Backfill Requested Amount from lead when case amount was never set / wiped.
+        if (($case->loan_amount === null || $case->loan_amount === '' || (float) $case->loan_amount == 0.0)
+            && $case->lead
+            && $case->lead->loan_amount !== null
+            && (float) $case->lead->loan_amount > 0
+        ) {
+            $case->loan_amount = $case->lead->loan_amount;
+            $case->saveQuietly();
+        }
+
+        $case->load([
             'tasks' => fn ($q) => $q->with('assignee:id,name')->latest()->limit(50),
             'disbursements' => fn ($q) => $q->latest(),
             'disbursements.application',
@@ -1042,6 +1060,22 @@ class GoalLoanCaseController extends Controller
             && (! $workspaceLocked || $canOverrideLock);
         $canPms = $user->hasCrmPermission('pms_verification_guard');
 
+        $brShow = is_array($case->bm_reco) ? $case->bm_reco : [];
+        $recoStatus = (string) ($brShow['approval_status'] ?? $brShow['status'] ?? 'Draft');
+        if ($recoStatus === '') {
+            $recoStatus = 'Draft';
+        }
+        $recoLocked = in_array($recoStatus, ['Submitted', 'Approved'], true);
+        $canEditReco = $canEdit && ! $recoLocked;
+        $canSubmitReco = $canEdit && in_array($recoStatus, ['Draft', 'Rejected'], true);
+        $higherAuthority = in_array((int) ($user->crm_role_type ?? -1), [0, 4, 5, 6, 7], true) // Super/MD/CEO/RD/Cluster
+            || $user->isSuperAdmin()
+            || $user->hasCrmPermission('approve_bm_reco_guard')
+            || $user->hasCrmPermission('manage_permissions_guard');
+        $canApproveReco = (! $workspaceLocked || $canOverrideLock)
+            && $recoStatus === 'Submitted'
+            && $higherAuthority;
+
         $bmId = $this->resolveCaseBranchManagerId($case);
         $branchManager = $bmId
             ? User::query()->find($bmId, ['id', 'name', 'job_role', 'crm_role_type', 'mobile'])
@@ -1057,13 +1091,17 @@ class GoalLoanCaseController extends Controller
             || $user->hasCrmPermission('edit_case_workspace_guard')
             || $user->hasCrmPermission('manage_permissions_guard');
 
+        // Documents checklist UI is deferred for a later release.
+        $documentsFeatureEnabled = false;
         $workspaceTabs = [
             'overview' => ['label' => 'Overview', 'icon' => 'bi-grid'],
             'customer' => ['label' => 'Customer', 'icon' => 'bi-person'],
             'recommendation' => ['label' => 'Recommendation', 'icon' => 'bi-lightbulb'],
-            'documents' => ['label' => 'Documents', 'icon' => 'bi-file-earmark'],
-            'banking' => ['label' => 'Banking', 'icon' => 'bi-bank'],
         ];
+        if ($documentsFeatureEnabled) {
+            $workspaceTabs['documents'] = ['label' => 'Documents', 'icon' => 'bi-file-earmark'];
+        }
+        $workspaceTabs['banking'] = ['label' => 'Banking', 'icon' => 'bi-bank'];
         if ($canViewMis) {
             $workspaceTabs['mis'] = ['label' => 'Branch MIS', 'icon' => 'bi-clipboard-data'];
         }
@@ -1118,10 +1156,19 @@ class GoalLoanCaseController extends Controller
             'rejected' => $case->bankApplications->where('status', 'Rejected')->count(),
         ];
 
+        $products = Product::query()
+            ->where('product_status', 1)
+            ->orderBy('product_name')
+            ->get(['id', 'product_name']);
+
         return view('goal.cases.show', compact(
             'case',
             'next',
             'canEdit',
+            'canEditReco',
+            'canSubmitReco',
+            'canApproveReco',
+            'recoStatus',
             'canAdvanceStatus',
             'workspaceLocked',
             'canDisburse',
@@ -1140,7 +1187,9 @@ class GoalLoanCaseController extends Controller
             'pendingDisbTotal',
             'sanctionCap',
             'docSummary',
-            'lenderSummary'
+            'lenderSummary',
+            'products',
+            'documentsFeatureEnabled'
         ));
     }
 
@@ -1309,7 +1358,17 @@ class GoalLoanCaseController extends Controller
             $case->product = $data['product'] ?? $case->product;
         }
         if (array_key_exists('loan_amount', $data)) {
-            $case->loan_amount = $this->parseAmount($data['loan_amount']);
+            $parsedAmount = $this->parseAmount($data['loan_amount']);
+            if ($parsedAmount !== null && (float) $parsedAmount > 0) {
+                $case->loan_amount = $parsedAmount;
+            } elseif ($case->loan_amount === null || (float) $case->loan_amount == 0.0) {
+                // Blank / 0.00 from form — keep lead amount instead of wiping.
+                $case->loadMissing('lead:id,loan_amount');
+                if ($case->lead && $case->lead->loan_amount !== null && (float) $case->lead->loan_amount > 0) {
+                    $case->loan_amount = $case->lead->loan_amount;
+                }
+            }
+            // else keep the existing positive case amount
         }
         $case->lender_name = $data['lender_name'] ?? $case->lender_name;
         $case->application_ref = $data['application_ref'] ?? $case->application_ref;
@@ -1322,14 +1381,51 @@ class GoalLoanCaseController extends Controller
 
         $case->customer_details = $mergedCd;
         $prevEquifax = data_get($case->bm_reco, 'equifax');
+        $prevBm = is_array($case->bm_reco) ? $case->bm_reco : [];
+        $prevRecoStatus = (string) ($prevBm['approval_status'] ?? $prevBm['status'] ?? 'Draft');
+        $cwTabEarly = (string) ($data['cw_tab'] ?? $request->input('cw_tab', 'customer'));
         // Prefer full posted bm_reco / collateral / loans (same validated()-key trap as customer_details).
         $incomingBm = $request->input('bm_reco');
         if (is_array($incomingBm)) {
             unset($incomingBm['equifax']); // Equifax managed via dedicated record route
+            // Approval workflow fields are controlled by submit/review routes only.
+            unset(
+                $incomingBm['approval_status'],
+                $incomingBm['status'],
+                $incomingBm['submitted_at'],
+                $incomingBm['submitted_by'],
+                $incomingBm['submitted_by_id'],
+                $incomingBm['approved_at'],
+                $incomingBm['approved_by'],
+                $incomingBm['approved_by_id'],
+                $incomingBm['rejected_at'],
+                $incomingBm['rejected_by'],
+                $incomingBm['rejected_by_id'],
+                $incomingBm['rejection_reason']
+            );
         } else {
             $incomingBm = $data['bm_reco'] ?? null;
         }
+        if ($cwTabEarly === 'recommendation' && in_array($prevRecoStatus, ['Submitted', 'Approved'], true)) {
+            return $this->ajaxFail([
+                'bm_reco' => 'Recommendation is '.$prevRecoStatus.' and locked. Cluster must reject to allow edits, or wait for banking after approval.',
+            ], 'recommendation');
+        }
         $case->bm_reco = $this->mergeWorkspaceJson($case->bm_reco, $incomingBm);
+        if ($cwTabEarly === 'recommendation') {
+            $authUser = auth()->user();
+            $mergedBmStamp = is_array($case->bm_reco) ? $case->bm_reco : [];
+            $mergedBmStamp['by'] = (string) ($authUser->name ?? '');
+            $mergedBmStamp['by_user_id'] = (int) $authUser->id;
+            if (! filled($mergedBmStamp['date'] ?? null)) {
+                $mergedBmStamp['date'] = now()->format('d-m-Y');
+            }
+            if (! filled($mergedBmStamp['approval_status'] ?? null) && ! filled($mergedBmStamp['status'] ?? null)) {
+                $mergedBmStamp['approval_status'] = 'Draft';
+                $mergedBmStamp['status'] = 'Draft';
+            }
+            $case->bm_reco = $mergedBmStamp;
+        }
         if (is_array($prevEquifax) && (
             ! empty($prevEquifax['path'])
             || ! empty($prevEquifax['received'])
@@ -1857,12 +1953,14 @@ class GoalLoanCaseController extends Controller
         }
 
         $case->loadMissing(['bankApplications', 'bankQueries', 'sanctions', 'disbursements']);
-        $docs = collect(data_get($case->customer_details, 'documents', []) ?: []);
-        $mandatory = $docs->where('mandatory', true);
-        // Only docs marked Required on the case must be verified. None required = gate passes.
-        $requiredDocsComplete = $mandatory->isEmpty()
-            || $mandatory->every(fn ($d) => ($d['status'] ?? '') === 'Verified');
-        $caseDetailsComplete = filled($case->customer_name) && filled($case->product) && (float) $case->loan_amount > 0;
+        // Document checklist gate deferred — do not block Draft → Ready for Login.
+        $requiredDocsComplete = true;
+        // Customer name + product are enough to leave Draft (amount can be completed later).
+        $caseDetailsComplete = filled($case->customer_name) && filled($case->product);
+        $bmRecoStatus = (string) (data_get($case->bm_reco, 'approval_status')
+            ?: data_get($case->bm_reco, 'status')
+            ?: 'Draft');
+        $bmRecoApproved = $bmRecoStatus === 'Approved';
         $hasLender = $case->bankApplications->isNotEmpty() || filled($data['lender_name'] ?? $case->lender_name);
         $queriesCleared = !$case->bankQueries
             ->where('blocks_processing', true)
@@ -1881,6 +1979,7 @@ class GoalLoanCaseController extends Controller
             'reason' => $data['rejection_reason'] ?? null,
             'requiredDocsComplete' => $requiredDocsComplete,
             'caseDetailsComplete' => $caseDetailsComplete,
+            'bmRecoApproved' => $bmRecoApproved,
             'queriesCleared' => $queriesCleared,
             'verifiedDisbursement' => $case->disbursements->whereNotNull('verified_at')->isNotEmpty(),
             'pmsEligible' => $case->status === 'Disbursed' && $case->disbursements->whereNotNull('verified_at')->isNotEmpty(),

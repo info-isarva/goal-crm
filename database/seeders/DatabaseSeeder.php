@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             GoalVrmDispositionSeeder::class,
             GoalLeadSourceSeeder::class,
             GoalLoanPurposeSeeder::class,
+            GoalBankSeeder::class,
             GoalOrgUnitSeeder::class,
             GoalHierarchyUsersSeeder::class,
         ]);

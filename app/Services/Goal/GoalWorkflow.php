@@ -7,10 +7,14 @@ class GoalWorkflow
     public const LEAD_TRANSITIONS = [
         'New' => ['Pending BM Allocation', 'Closed / Lost'],
         'Pending BM Allocation' => ['Assigned', 'Closed / Lost'],
-        'Assigned' => ['Contact Pending', 'Closed / Lost'],
-        'Contact Pending' => ['Qualified', 'Future Prospect', 'Closed / Lost'],
-        'Qualified' => ['Documents Pending', 'Closed / Lost'],
-        'Future Prospect' => ['Contact Pending', 'Closed / Lost'],
+        // After BM allocation: sales / VRM move through contact → appointment → create case.
+        'Assigned' => ['Contact Pending', 'Appointment Fixed', 'Create Case', 'Closed / Lost'],
+        'Contact Pending' => ['Appointment Fixed', 'Create Case', 'Future Prospect', 'Closed / Lost'],
+        'Appointment Fixed' => ['Contact Pending', 'Create Case', 'Closed / Lost'],
+        'Qualified' => ['Create Case', 'Documents Pending', 'Closed / Lost'],
+        'Future Prospect' => ['Contact Pending', 'Appointment Fixed', 'Closed / Lost'],
+        // "Create Case" is a move-to action; stored status becomes Documents Pending when applied.
+        'Create Case' => [],
         'Documents Pending' => ['Ready for Bank Login', 'Closed / Lost'],
         'Ready for Bank Login' => ['Bank Login', 'Closed / Lost'],
         'Bank Login' => ['Closed / Lost'],
@@ -94,8 +98,11 @@ class GoalWorkflow
         if ($to === 'Qualified' && empty($ctx['consent'])) {
             $errors[] = 'Consent must be recorded.';
         }
-        if ($to === 'Documents Pending' && empty($ctx['product'])) {
-            $errors[] = 'Product is required before Documents Pending.';
+        if (in_array($to, ['Documents Pending', 'Create Case'], true) && empty($ctx['product'])) {
+            $errors[] = 'Product is required before creating a case.';
+        }
+        if ($to === 'Appointment Fixed' && empty($ctx['follow_up'])) {
+            $errors[] = 'Appointment / follow-up date and time required.';
         }
         if ($to === 'Ready for Bank Login' && empty($ctx['docsVerified'])) {
             $errors[] = 'Mandatory documents must be uploaded and verified before Ready for Bank Login.';
@@ -113,11 +120,12 @@ class GoalWorkflow
         }
         $errors = [];
         if ($from === 'Draft' && $to === 'Ready for Login') {
-            if (empty($ctx['requiredDocsComplete'])) {
-                $errors[] = 'Required documents must be verified before Ready for Login.';
-            }
+            // Document checklist is deferred; only require core customer/product details.
             if (empty($ctx['caseDetailsComplete'])) {
-                $errors[] = 'Required customer and loan details must be completed.';
+                $errors[] = 'Customer name and product are required before Ready for Login.';
+            }
+            if (empty($ctx['bmRecoApproved'])) {
+                $errors[] = 'BM Recommendation must be approved by Cluster before Ready for Login / Banking.';
             }
         }
         if ($from === 'Ready for Login' && $to === 'Bank Login' && empty($ctx['lender'])) {

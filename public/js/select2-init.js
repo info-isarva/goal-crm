@@ -29,16 +29,31 @@
         'select[multiple]:not(.js-select2):not(.select2)'
     ].join(', ');
 
+    // Containers that use transform/overflow — Select2 must attach inside them.
+    var PARENT_SELECTOR = [
+        '.modal',
+        '.offcanvas',
+        '.ll-status-drawer',
+        '.ll-lead-modal',
+        '.ld-modal',
+        '.tw-modal',
+        '[data-select2-parent]'
+    ].join(', ');
+
     function resolveParent($el) {
-        // Filters/tables → body (above KPI cards). Modals/offcanvas keep local parent.
-        var $modal = $el.closest('.modal');
-        if ($modal.length) {
-            return $modal;
+        var explicit = $el.attr('data-dropdown-parent') || $el.data('dropdownParent');
+        if (explicit) {
+            var $explicit = $(explicit);
+            if ($explicit.length) {
+                return $explicit.first();
+            }
         }
-        var $offcanvas = $el.closest('.offcanvas');
-        if ($offcanvas.length) {
-            return $offcanvas;
+
+        var $parent = $el.closest(PARENT_SELECTOR);
+        if ($parent.length) {
+            return $parent.first();
         }
+
         return $(document.body);
     }
 
@@ -51,7 +66,7 @@
         return false;
     }
 
-    function buildOptions($el) {
+    function buildOptions($el, parentOverride) {
         var placeholder = $el.data('placeholder') || $el.attr('placeholder') || $el.find('option[value=""]').first().text() || '';
         var allowClear = $el.data('allow-clear');
         if (typeof allowClear === 'undefined') {
@@ -70,11 +85,16 @@
             minSearch = optionCount <= 12 ? Infinity : 0;
         }
 
+        var $parent = parentOverride ? $(parentOverride) : resolveParent($el);
+        if (!$parent || !$parent.length) {
+            $parent = $(document.body);
+        }
+
         var opts = {
             width: '100%',
             placeholder: placeholder || undefined,
             allowClear: !!allowClear,
-            dropdownParent: resolveParent($el),
+            dropdownParent: $parent,
             minimumResultsForSearch: minSearch
         };
 
@@ -85,12 +105,12 @@
         return opts;
     }
 
-    function initOne(el) {
+    function initOne(el, parentOverride) {
         var $el = $(el);
         if (shouldSkip($el)) {
             return;
         }
-        $el.select2(buildOptions($el));
+        $el.select2(buildOptions($el, parentOverride));
     }
 
     function initAll(root) {
@@ -110,7 +130,8 @@
     window.IsarvaSelect2 = {
         init: initAll,
         initOne: initOne,
-        refresh: refresh
+        refresh: refresh,
+        resolveParent: resolveParent
     };
 
     $(function () {
@@ -139,12 +160,27 @@
         lockedScrollY = window.scrollY || window.pageYOffset || 0;
     });
 
-    $(document).on('select2:open', function () {
+    $(document).on('select2:open', function (e) {
         restoreScroll();
         window.requestAnimationFrame(restoreScroll);
         window.setTimeout(function () {
             restoreScroll();
-            var $open = $('body > .select2-container--open').last();
+            var $select = $(e.target);
+            var inst = $select.data('select2');
+            // Re-anchor after scroll restore so the menu isn't left floating with a gap.
+            if (inst && inst.dropdown && typeof inst.dropdown._positionDropdown === 'function') {
+                try {
+                    inst.dropdown._positionDropdown();
+                } catch (err) { /* ignore */ }
+            }
+            var $container = $select.next('.select2-container');
+            var $open = $container.filter('.select2-container--open');
+            if (!$open.length) {
+                $open = $select.closest(PARENT_SELECTOR).find('> .select2-container--open').last();
+            }
+            if (!$open.length) {
+                $open = $('body > .select2-container--open').last();
+            }
             if (!$open.length) {
                 $open = $('.select2-container--open').last();
             }
@@ -165,5 +201,17 @@
     $(document).on('select2:closing select2:close', function () {
         restoreScroll();
         lockedScrollY = null;
+    });
+
+    // Label click must open the Select2 UI (not the hidden native select).
+    $(document).on('click', 'label[for]', function (e) {
+        var id = this.getAttribute('for');
+        if (!id) return;
+        var el = document.getElementById(id);
+        if (!el || el.tagName !== 'SELECT') return;
+        var $el = $(el);
+        if (!$el.hasClass('select2-hidden-accessible')) return;
+        e.preventDefault();
+        $el.select2('open');
     });
 })(window, window.jQuery);

@@ -121,11 +121,20 @@
                     </div>
                     <div class="cw-field-row">
                         <label class="cw-label-inline">Marital Status{!! $reqMark('applicant.marital_status') !!}</label>
-                        <select class="cw-select js-select2" name="customer_details[applicant][marital_status]" {{ $dis }} {{ $reqAttr('applicant.marital_status') }}>
+                        <select class="cw-select js-select2 js-marital-status" name="customer_details[applicant][marital_status]" data-search="false" data-allow-clear="false" data-marriage-target="applicant_marriage_date" {{ $dis }} {{ $reqAttr('applicant.marital_status') }}>
                             @foreach($maritalOpts as $val => $label)
                                 <option value="{{ $val }}" @selected(($app['marital_status'] ?? '') === $val)>{{ $label }}</option>
                             @endforeach
                         </select>
+                    </div>
+                    <div class="cw-field-row js-marriage-date-row" id="applicant_marriage_date" @if(($app['marital_status'] ?? '') !== 'Married') style="display:none" @endif>
+                        <label class="cw-label-inline">Marriage Date{!! $reqMark('applicant.marriage_date') !!}</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-calendar-heart"></i></span>
+                            <input type="text" class="cw-input js-datepicker" name="customer_details[applicant][marriage_date]"
+                                   value="{{ $app['marriage_date'] ?? '' }}" placeholder="dd-mm-yyyy" autocomplete="off"
+                                   data-max-date="today" {{ $ro }} {{ $reqAttr('applicant.marriage_date') }}>
+                        </div>
                     </div>
                     <input type="hidden" name="customer_details[applicant][relationship]" value="Self">
                     <div class="cw-field-row">
@@ -190,16 +199,25 @@
                     </div>
                     <div class="cw-field-row">
                         <label class="cw-label-inline">Marital Status{!! $reqMark('co_applicant.marital_status') !!}</label>
-                        <select class="cw-select js-select2" name="customer_details[co_applicant][marital_status]" {{ $dis }} {{ $reqAttr('co_applicant.marital_status') }}>
+                        <select class="cw-select js-select2 js-marital-status" name="customer_details[co_applicant][marital_status]" data-search="false" data-allow-clear="false" data-marriage-target="co_applicant_marriage_date" {{ $dis }} {{ $reqAttr('co_applicant.marital_status') }}>
                             @foreach($maritalOpts as $val => $label)
                                 <option value="{{ $val }}" @selected(($co['marital_status'] ?? '') === $val)>{{ $label }}</option>
                             @endforeach
                         </select>
                     </div>
+                    <div class="cw-field-row js-marriage-date-row" id="co_applicant_marriage_date" @if(($co['marital_status'] ?? '') !== 'Married') style="display:none" @endif>
+                        <label class="cw-label-inline">Marriage Date{!! $reqMark('co_applicant.marriage_date') !!}</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-calendar-heart"></i></span>
+                            <input type="text" class="cw-input js-datepicker" name="customer_details[co_applicant][marriage_date]"
+                                   value="{{ $co['marriage_date'] ?? '' }}" placeholder="dd-mm-yyyy" autocomplete="off"
+                                   data-max-date="today" {{ $ro }} {{ $reqAttr('co_applicant.marriage_date') }}>
+                        </div>
+                    </div>
                     <div class="cw-field-row">
                         <label class="cw-label-inline">Relationship with applicant{!! $reqMark('co_applicant.relationship') !!}</label>
                         <select class="cw-select js-select2" name="customer_details[co_applicant][relationship]"
-                                data-search="true" data-placeholder="Select relationship" {{ $dis }} {{ $reqAttr('co_applicant.relationship') }}>
+                                data-search="true" data-allow-clear="false" data-placeholder="Select relationship" {{ $dis }} {{ $reqAttr('co_applicant.relationship') }}>
                             @foreach($relCoOpts as $val => $label)
                                 <option value="{{ $val }}" @selected($relCo === $val)>{{ $label }}</option>
                             @endforeach
@@ -232,21 +250,25 @@
         </div>
         <div class="px-4 pb-4">
             <div class="cw-emp-grid">
-                <div class="cw-emp-row">
-                    <div></div>
-                    <div class="cw-party-head cw-party-head-app mb-0"><i class="bi bi-person-fill"></i><span>Applicant</span></div>
-                    <div class="cw-party-head cw-party-head-co mb-0"><i class="bi bi-people-fill"></i><span>Co-Applicant</span></div>
+                <div class="cw-emp-row cw-emp-party-heads">
+                    <div class="cw-emp-party-spacer" aria-hidden="true"></div>
+                    <button type="button" class="cw-party-head cw-party-head-app mb-0 cust-party-btn active" data-party="applicant">
+                        <i class="bi bi-person-fill"></i><span>Applicant</span>
+                    </button>
+                    <button type="button" class="cw-party-head cw-party-head-co mb-0 cust-party-btn" data-party="co_applicant">
+                        <i class="bi bi-people-fill"></i><span>Co-Applicant</span>
+                    </button>
                 </div>
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">Present Residence Address</label>
-                    <div>
+                    <div data-party-field="applicant">
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
                             <input class="cw-input" name="customer_details[residence][present_address]" value="{{ $res['present_address'] ?? '' }}" placeholder="Enter present address" {{ $ro }} {{ $reqAttr('residence.present_address') }}>
                         </div>
                     </div>
-                    <div>
+                    <div data-party-field="co_applicant">
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
                             <input class="cw-input" name="customer_details[residence][present_address_co]" value="{{ $res['present_address_co'] ?? '' }}" placeholder="Enter present address" {{ $ro }} {{ $reqAttr('residence.present_address_co') }}>
@@ -256,33 +278,33 @@
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">Pincode</label>
-                    <div>
+                    <div data-party-field="applicant">
                         <input class="cw-input" name="customer_details[residence][present_pincode]" value="{{ $res['present_pincode'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }} {{ $reqAttr('residence.present_pincode') }}>
                     </div>
-                    <div>
+                    <div data-party-field="co_applicant">
                         <input class="cw-input" name="customer_details[residence][present_pincode_co]" value="{{ $res['present_pincode_co'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }} {{ $reqAttr('residence.present_pincode_co') }}>
                     </div>
                 </div>
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">No. of Years at above Residence</label>
-                    <div>
+                    <div data-party-field="applicant">
                         <input class="cw-input" name="customer_details[residence][years_applicant]" value="{{ $res['years_applicant'] ?? '' }}" placeholder="Enter years" {{ $ro }} {{ $reqAttr('residence.years_applicant') }}>
                     </div>
-                    <div>
+                    <div data-party-field="co_applicant">
                         <input class="cw-input" name="customer_details[residence][years_co]" value="{{ $res['years_co'] ?? '' }}" placeholder="Enter years" {{ $ro }} {{ $reqAttr('residence.years_co') }}>
                     </div>
                 </div>
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">Permanent Address</label>
-                    <div>
+                    <div data-party-field="applicant">
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
                             <input class="cw-input" name="customer_details[residence][permanent_address]" value="{{ $res['permanent_address'] ?? '' }}" placeholder="Enter permanent address" {{ $ro }} {{ $reqAttr('residence.permanent_address') }}>
                         </div>
                     </div>
-                    <div>
+                    <div data-party-field="co_applicant">
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
                             <input class="cw-input" name="customer_details[residence][permanent_address_co]" value="{{ $res['permanent_address_co'] ?? '' }}" placeholder="Enter permanent address" {{ $ro }} {{ $reqAttr('residence.permanent_address_co') }}>
@@ -292,10 +314,10 @@
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">Permanent Pincode</label>
-                    <div>
+                    <div data-party-field="applicant">
                         <input class="cw-input" name="customer_details[residence][permanent_pincode]" value="{{ $res['permanent_pincode'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }} {{ $reqAttr('residence.permanent_pincode') }}>
                     </div>
-                    <div>
+                    <div data-party-field="co_applicant">
                         <input class="cw-input" name="customer_details[residence][permanent_pincode_co]" value="{{ $res['permanent_pincode_co'] ?? '' }}" placeholder="Pincode" maxlength="6" {{ $ro }} {{ $reqAttr('residence.permanent_pincode_co') }}>
                     </div>
                 </div>
@@ -311,21 +333,25 @@
         </div>
         <div class="px-4 pb-4">
             <div class="cw-emp-grid">
-                <div class="cw-emp-row">
-                    <div></div>
-                    <div class="cw-party-head cw-party-head-app mb-0"><i class="bi bi-person-fill"></i><span>Applicant</span></div>
-                    <div class="cw-party-head cw-party-head-co mb-0"><i class="bi bi-people-fill"></i><span>Co-Applicant</span></div>
+                <div class="cw-emp-row cw-emp-party-heads">
+                    <div class="cw-emp-party-spacer" aria-hidden="true"></div>
+                    <button type="button" class="cw-party-head cw-party-head-app mb-0 cust-party-btn active" data-party="applicant">
+                        <i class="bi bi-person-fill"></i><span>Applicant</span>
+                    </button>
+                    <button type="button" class="cw-party-head cw-party-head-co mb-0 cust-party-btn" data-party="co_applicant">
+                        <i class="bi bi-people-fill"></i><span>Co-Applicant</span>
+                    </button>
                 </div>
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">Office Address</label>
-                    <div>
+                    <div data-party-field="applicant">
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
                             <input class="cw-input" name="customer_details[employment][office_address]" value="{{ $emp['office_address'] ?? '' }}" placeholder="Enter office address" {{ $ro }}>
                         </div>
                     </div>
-                        <div>
+                    <div data-party-field="co_applicant">
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-geo-alt"></i></span>
                             <input class="cw-input" name="customer_details[employment][office_address_co]" value="{{ $emp['office_address_co'] ?? '' }}" placeholder="Enter office address" {{ $ro }}>
@@ -335,51 +361,51 @@
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">Employment Type</label>
-                    <div>
-                        <select class="cw-select js-select2" name="customer_details[employment][type_applicant]" {{ $dis }} {{ $reqAttr('employment.type_applicant') }}>
+                    <div data-party-field="applicant">
+                        <select class="cw-select js-select2" name="customer_details[employment][type_applicant]" data-search="false" data-allow-clear="false" {{ $dis }} {{ $reqAttr('employment.type_applicant') }}>
                             @foreach($empTypeOpts as $val => $label)
                                 <option value="{{ $val }}" @selected($empTypeApp === $val)>{{ $label }}</option>
-                                        @endforeach
-                                    </select>
+                            @endforeach
+                        </select>
                     </div>
-                    <div>
-                        <select class="cw-select js-select2" name="customer_details[employment][type_co]" {{ $dis }} {{ $reqAttr('employment.type_co') }}>
+                    <div data-party-field="co_applicant">
+                        <select class="cw-select js-select2" name="customer_details[employment][type_co]" data-search="false" data-allow-clear="false" {{ $dis }} {{ $reqAttr('employment.type_co') }}>
                             @foreach(['' => 'Select', 'Salaried' => 'Salaried', 'Self Employed' => 'Self Employed', 'Business' => 'Business', 'Professional' => 'Professional', 'Other' => 'Other'] as $val => $label)
                                 <option value="{{ $val }}" @selected($empTypeCo === $val)>{{ $label }}</option>
-                                        @endforeach
-                                    </select>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">Total job experience</label>
-                    <div><input class="cw-input" name="customer_details[employment][total_exp_applicant]" value="{{ $emp['total_exp_applicant'] ?? ($cd['work_experience_years'] ?? '') }}" placeholder="Enter years" {{ $ro }}></div>
-                    <div><input class="cw-input" name="customer_details[employment][total_exp_co]" value="{{ $emp['total_exp_co'] ?? '' }}" placeholder="Enter years" {{ $ro }}></div>
+                    <div data-party-field="applicant"><input class="cw-input" name="customer_details[employment][total_exp_applicant]" value="{{ $emp['total_exp_applicant'] ?? ($cd['work_experience_years'] ?? '') }}" placeholder="Enter years" {{ $ro }}></div>
+                    <div data-party-field="co_applicant"><input class="cw-input" name="customer_details[employment][total_exp_co]" value="{{ $emp['total_exp_co'] ?? '' }}" placeholder="Enter years" {{ $ro }}></div>
                 </div>
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">Present company job experience</label>
-                    <div><input class="cw-input" name="customer_details[employment][present_exp_applicant]" value="{{ $emp['present_exp_applicant'] ?? '' }}" placeholder="Enter years" {{ $ro }}></div>
-                    <div><input class="cw-input" name="customer_details[employment][present_exp_co]" value="{{ $emp['present_exp_co'] ?? '' }}" placeholder="Enter years" {{ $ro }}></div>
+                    <div data-party-field="applicant"><input class="cw-input" name="customer_details[employment][present_exp_applicant]" value="{{ $emp['present_exp_applicant'] ?? '' }}" placeholder="Enter years" {{ $ro }}></div>
+                    <div data-party-field="co_applicant"><input class="cw-input" name="customer_details[employment][present_exp_co]" value="{{ $emp['present_exp_co'] ?? '' }}" placeholder="Enter years" {{ $ro }}></div>
                 </div>
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">Designation</label>
-                    <div><input class="cw-input" name="customer_details[employment][designation_applicant]" value="{{ $emp['designation_applicant'] ?? '' }}" placeholder="Enter designation" {{ $ro }}></div>
-                    <div><input class="cw-input" name="customer_details[employment][designation_co]" value="{{ $emp['designation_co'] ?? '' }}" placeholder="Enter designation" {{ $ro }}></div>
+                    <div data-party-field="applicant"><input class="cw-input" name="customer_details[employment][designation_applicant]" value="{{ $emp['designation_applicant'] ?? '' }}" placeholder="Enter designation" {{ $ro }}></div>
+                    <div data-party-field="co_applicant"><input class="cw-input" name="customer_details[employment][designation_co]" value="{{ $emp['designation_co'] ?? '' }}" placeholder="Enter designation" {{ $ro }}></div>
                 </div>
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">Industry Type</label>
-                    <div>
-                        <select class="cw-select js-select2" name="customer_details[employment][industry_applicant]" {{ $dis }}>
+                    <div data-party-field="applicant">
+                        <select class="cw-select js-select2" name="customer_details[employment][industry_applicant]" data-search="false" data-allow-clear="false" {{ $dis }}>
                             @foreach($industryOpts as $val => $label)
                                 <option value="{{ $val }}" @selected($indApp === $val)>{{ $label }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <select class="cw-select js-select2" name="customer_details[employment][industry_co]" {{ $dis }}>
+                    <div data-party-field="co_applicant">
+                        <select class="cw-select js-select2" name="customer_details[employment][industry_co]" data-search="false" data-allow-clear="false" {{ $dis }}>
                             @foreach($industryOpts as $val => $label)
                                 <option value="{{ $val }}" @selected($indCo === $val)>{{ $label }}</option>
                             @endforeach
@@ -389,19 +415,19 @@
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">Employer / Business Name</label>
-                    <div><input class="cw-input" name="customer_details[employment][employer_applicant]" value="{{ $emp['employer_applicant'] ?? ($cd['employer_name'] ?? '') }}" placeholder="Enter employer / business name" {{ $ro }} {{ $reqAttr('employment.employer_applicant') }}></div>
-                    <div><input class="cw-input" name="customer_details[employment][employer_co]" value="{{ $emp['employer_co'] ?? '' }}" placeholder="Enter employer / business name" {{ $ro }} {{ $reqAttr('employment.employer_co') }}></div>
+                    <div data-party-field="applicant"><input class="cw-input" name="customer_details[employment][employer_applicant]" value="{{ $emp['employer_applicant'] ?? ($cd['employer_name'] ?? '') }}" placeholder="Enter employer / business name" {{ $ro }} {{ $reqAttr('employment.employer_applicant') }}></div>
+                    <div data-party-field="co_applicant"><input class="cw-input" name="customer_details[employment][employer_co]" value="{{ $emp['employer_co'] ?? '' }}" placeholder="Enter employer / business name" {{ $ro }} {{ $reqAttr('employment.employer_co') }}></div>
                 </div>
 
                 <div class="cw-emp-row">
                     <label class="cw-label-inline">Monthly / Net Income</label>
-                    <div>
+                    <div data-party-field="applicant">
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
                             <input class="cw-input js-decimal" data-decimals="2" name="customer_details[employment][income_applicant]" value="{{ $emp['income_applicant'] ?? ($cd['monthly_income'] ?? '') }}" placeholder="Enter amount" {{ $ro }} {{ $reqAttr('employment.income_applicant') }}>
                         </div>
                     </div>
-                    <div>
+                    <div data-party-field="co_applicant">
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
                             <input class="cw-input js-decimal" data-decimals="2" name="customer_details[employment][income_co]" value="{{ $emp['income_co'] ?? '' }}" placeholder="Enter amount" {{ $ro }} {{ $reqAttr('employment.income_co') }}>
@@ -518,13 +544,30 @@
         <div class="cw-case-info-grid">
             <div>
                 <label class="cw-label">Product</label>
-                <input class="cw-input cw-product-input" name="product" value="{{ old('product', $case->product) }}" placeholder="e.g. Home Loan" {{ $ro }}>
+                @php
+                    $productOptions = collect($products ?? []);
+                    $selectedProduct = old('product', $case->product);
+                    $selectedInMaster = $selectedProduct
+                        && $productOptions->contains(fn ($p) => $p->product_name === $selectedProduct);
+                @endphp
+                <select class="cw-select cw-product-input js-select2" name="product" data-search="false" data-allow-clear="false" {{ $dis }}>
+                    <option value="">Select product</option>
+                    @foreach($productOptions as $p)
+                        <option value="{{ $p->product_name }}" @selected($selectedInMaster && $selectedProduct === $p->product_name)>{{ $p->product_name }}</option>
+                    @endforeach
+                </select>
             </div>
             <div>
                 <label class="cw-label">Requested Amount</label>
+                @php
+                    $requestedAmount = old('loan_amount', $case->loan_amount);
+                    if ($requestedAmount === null || $requestedAmount === '' || (is_numeric($requestedAmount) && (float) $requestedAmount == 0.0)) {
+                        $requestedAmount = $case->lead->loan_amount ?? $requestedAmount;
+                    }
+                @endphp
                 <div class="cw-input-group">
                     <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
-                    <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal" name="loan_amount" value="{{ old('loan_amount', $case->loan_amount) }}" placeholder="0.00" {{ $ro }}>
+                    <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal" name="loan_amount" value="{{ $requestedAmount }}" placeholder="From lead loan amount" {{ $ro }}>
                 </div>
             </div>
             <div>

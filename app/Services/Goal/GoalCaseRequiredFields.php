@@ -22,6 +22,7 @@ class GoalCaseRequiredFields
             'applicant.dob' => ['label' => 'Applicant — Date of Birth', 'group' => 'Applicant (Identity & Contact)', 'default' => false],
             'applicant.pan' => ['label' => 'Applicant — PAN', 'group' => 'Applicant (Identity & Contact)', 'default' => false],
             'applicant.marital_status' => ['label' => 'Applicant — Marital Status', 'group' => 'Applicant (Identity & Contact)', 'default' => false],
+            'applicant.marriage_date' => ['label' => 'Applicant — Marriage Date', 'group' => 'Applicant (Identity & Contact)', 'default' => false],
             'applicant.email' => ['label' => 'Applicant — Personal Mail ID', 'group' => 'Applicant (Identity & Contact)', 'default' => false],
             'applicant.official_email' => ['label' => 'Applicant — Official Mail ID', 'group' => 'Applicant (Identity & Contact)', 'default' => false],
 
@@ -33,6 +34,7 @@ class GoalCaseRequiredFields
             'co_applicant.dob' => ['label' => 'Co-Applicant — Date of Birth', 'group' => 'Co-Applicant (Identity & Contact)', 'default' => false],
             'co_applicant.pan' => ['label' => 'Co-Applicant — PAN', 'group' => 'Co-Applicant (Identity & Contact)', 'default' => false],
             'co_applicant.marital_status' => ['label' => 'Co-Applicant — Marital Status', 'group' => 'Co-Applicant (Identity & Contact)', 'default' => false],
+            'co_applicant.marriage_date' => ['label' => 'Co-Applicant — Marriage Date', 'group' => 'Co-Applicant (Identity & Contact)', 'default' => false],
             'co_applicant.relationship' => ['label' => 'Co-Applicant — Relationship', 'group' => 'Co-Applicant (Identity & Contact)', 'default' => false],
             'co_applicant.email' => ['label' => 'Co-Applicant — Personal Mail ID', 'group' => 'Co-Applicant (Identity & Contact)', 'default' => false],
             'co_applicant.official_email' => ['label' => 'Co-Applicant — Official Mail ID', 'group' => 'Co-Applicant (Identity & Contact)', 'default' => false],

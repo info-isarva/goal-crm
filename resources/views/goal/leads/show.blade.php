@@ -1176,7 +1176,7 @@
                             <div><div class="ld-field-label">Amount</div><div class="ld-field-val">{{ $fmtInr($lead->loanCase->loan_amount) }}</div></div>
                         </div>
                     @else
-                        <div class="ld-empty">No case linked yet. Use Update Status → Documents Pending when the lead is Qualified.</div>
+                        <div class="ld-empty">No case linked yet. Use Update Status → <strong>Create Case</strong> when ready.</div>
                     @endif
                 </div></div>
             </div>
@@ -1516,10 +1516,10 @@
                                    class="form-control js-datetimepicker"
                                    data-min-date="today"
                                    placeholder="dd-mm-yyyy --:--"
-                                   value="{{ optional($lead->follow_up_at)->format('Y-m-d H:i') }}"
+                                   value="{{ ($lead->follow_up_at && $lead->follow_up_at->gte(now()->startOfDay())) ? $lead->follow_up_at->format('Y-m-d H:i') : '' }}"
                                    autocomplete="off">
                         </div>
-                        <div class="form-text" id="ldFollowUpHint" style="display:none;">Required when moving to Future Prospect.</div>
+                        <div class="form-text" id="ldFollowUpHint" style="display:none;">Required for Appointment Fixed / Future Prospect.</div>
                     </div>
                     <div class="ld-field">
                         <label class="form-label">Product</label>
@@ -1552,10 +1552,10 @@
                             <i class="bi bi-info-circle"></i>
                             <span>Use <strong>BM Allocation</strong> to assign sales. Status becomes Assigned automatically.</span>
                         </div>
-                    @elseif($canConvert)
+                    @elseif(collect($next)->intersect(['Contact Pending', 'Appointment Fixed', 'Create Case'])->isNotEmpty())
                         <div class="ld-hint">
                             <i class="bi bi-info-circle"></i>
-                            <span>Moving to <strong>Documents Pending</strong> creates the case automatically. No separate Open Case step.</span>
+                            <span>Move to <strong>Contact Pending</strong> / <strong>Appointment Fixed</strong>. Choosing <strong>Create Case</strong> creates the case.</span>
                         </div>
                     @endif
                 @endif
@@ -1591,7 +1591,7 @@
                         <input type="text" name="follow_up_at" class="form-control js-datetimepicker" required
                                data-min-date="today"
                                placeholder="dd-mm-yyyy --:--"
-                               value="{{ optional($lead->follow_up_at)->format('Y-m-d H:i') }}"
+                               value="{{ ($lead->follow_up_at && $lead->follow_up_at->gte(now()->startOfDay())) ? $lead->follow_up_at->format('Y-m-d H:i') : '' }}"
                                autocomplete="off">
                     </div>
                 </div>
@@ -1754,13 +1754,17 @@
     function syncTransitionRequired() {
         if (!toStatus) return;
         var v = toStatus.value || '';
-        var needFollow = v === 'Future Prospect';
+        var needFollow = v === 'Future Prospect' || v === 'Appointment Fixed';
         var needConsent = v === 'Qualified';
         var needClosure = v === 'Closed / Lost';
+        var needProduct = v === 'Create Case';
+        var productEl = document.querySelector('#ldTransitionForm select[name="product"]');
 
         if (followUpAt) followUpAt.required = needFollow;
         if (followUpReq) followUpReq.classList.toggle('d-none', !needFollow);
         if (followUpHint) followUpHint.style.display = needFollow ? 'block' : 'none';
+
+        if (productEl) productEl.required = needProduct;
 
         if (consentReq) consentReq.classList.toggle('d-none', !needConsent);
         if (consentHint) consentHint.style.display = needConsent ? 'block' : 'none';

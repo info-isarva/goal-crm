@@ -251,7 +251,7 @@
 
 <p class="cw-docs-hint">
     Add documents for this case, toggle Required when needed, then mark Received and Verify manually.
-    Only required items must be verified before Ready for Login.
+    Document checklist can be enabled in a future release.
 </p>
 
 <div class="sec-card cw-docs-wrap">

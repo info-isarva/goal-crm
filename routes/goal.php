@@ -22,6 +22,7 @@ use App\Http\Middleware\EnsureGoalTargetSubtree;
 use App\Http\Controllers\Goal\GoalVrmController;
 use App\Http\Controllers\Goal\GoalContactImportController;
 use App\Http\Controllers\Goal\GoalLeadSourceController;
+use App\Http\Controllers\Goal\GoalBankController;
 use App\Http\Controllers\Goal\GoalLoanPurposeController;
 use App\Http\Controllers\Goal\GoalVrmDispositionController;
 use Illuminate\Support\Facades\Route;
@@ -67,6 +68,11 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::get('masters/purposes', [GoalLoanPurposeController::class, 'index'])->name('masters.purposes.index');
     Route::post('masters/purposes', [GoalLoanPurposeController::class, 'store'])->name('masters.purposes.store');
     Route::put('masters/purposes/{purpose}', [GoalLoanPurposeController::class, 'update'])->name('masters.purposes.update');
+
+    Route::get('masters/banks/search', [GoalBankController::class, 'search'])->name('masters.banks.search');
+    Route::get('masters/banks', [GoalBankController::class, 'index'])->name('masters.banks.index');
+    Route::post('masters/banks', [GoalBankController::class, 'store'])->name('masters.banks.store');
+    Route::put('masters/banks/{bank}', [GoalBankController::class, 'update'])->name('masters.banks.update');
     Route::get('vrm/calls', [GoalVrmController::class, 'calls'])->name('vrm.calls');
     Route::get('vrm/calls/export', [GoalVrmController::class, 'exportCalls'])->name('vrm.calls.export');
     Route::get('vrm/calls/import', [GoalVrmController::class, 'importForm'])->name('vrm.calls.import');
@@ -139,6 +145,8 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::post('cases/{case}/tasks', [GoalLoanCaseController::class, 'storeTask'])->name('cases.tasks');
     Route::post('cases/{case}/reassign', [GoalCaseWorkspaceController::class, 'reassign'])->name('cases.reassign');
     Route::get('cases/{case}/bm-reco/export', [GoalCaseWorkspaceController::class, 'exportBmReco'])->name('cases.bm-reco.export');
+    Route::post('cases/{case}/bm-reco/submit', [GoalCaseWorkspaceController::class, 'submitBmReco'])->name('cases.bm-reco.submit');
+    Route::post('cases/{case}/bm-reco/review', [GoalCaseWorkspaceController::class, 'reviewBmReco'])->name('cases.bm-reco.review');
     Route::post('cases/{case}/bm-reco/equifax', [GoalCaseWorkspaceController::class, 'uploadBmRecoEquifax'])->name('cases.bm-reco.equifax');
     Route::get('cases/{case}/bm-reco/equifax', [GoalCaseWorkspaceController::class, 'downloadBmRecoEquifax'])->name('cases.bm-reco.equifax.download');
     Route::delete('cases/{case}/bm-reco/equifax', [GoalCaseWorkspaceController::class, 'removeBmRecoEquifax'])->name('cases.bm-reco.equifax.remove');
@@ -147,6 +155,7 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::post('cases/{case}/documents/receive', [GoalCaseWorkspaceController::class, 'receiveDocument'])->name('cases.documents.receive');
     Route::post('cases/{case}/documents/verify', [GoalCaseWorkspaceController::class, 'verifyDocument'])->name('cases.documents.verify');
     Route::post('cases/{case}/bank-applications', [GoalCaseWorkspaceController::class, 'storeApplication'])->name('cases.bank-applications.store');
+    Route::patch('bank-applications/{application}/login-id', [GoalCaseWorkspaceController::class, 'updateApplicationLoginId'])->name('bank-applications.login-id');
     Route::patch('bank-applications/{application}/status', [GoalCaseWorkspaceController::class, 'updateApplicationStatus'])->name('bank-applications.status');
     Route::post('bank-applications/{application}/queries', [GoalCaseWorkspaceController::class, 'storeQuery'])->name('bank-applications.queries.store');
     Route::post('bank-queries/{query}/resolve', [GoalCaseWorkspaceController::class, 'resolveQuery'])->name('bank-queries.resolve');

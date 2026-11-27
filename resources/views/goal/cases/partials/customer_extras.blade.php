@@ -1,14 +1,58 @@
 <div class="cw-cust cw-reco">
     {{-- ========== BM RECO ========== --}}
     <div class="cw-extra-section" id="cwBmReco">
-        <div class="cw-reco-banner">
+        @php
+            $recoStatusUi = $recoStatus ?? (string) ($br['approval_status'] ?? $br['status'] ?? 'Draft');
+            if ($recoStatusUi === '') { $recoStatusUi = 'Draft'; }
+            $recoStatusClass = match ($recoStatusUi) {
+                'Submitted' => 'is-submitted',
+                'Approved' => 'is-approved',
+                'Rejected' => 'is-rejected',
+                default => 'is-draft',
+            };
+            $authName = auth()->user()?->name ?? '';
+            $recommendedBy = (!empty($canEditReco) || in_array($recoStatusUi, ['Draft', 'Rejected'], true))
+                ? ($authName !== '' ? $authName : ($br['by'] ?? $br['recommended_by'] ?? ''))
+                : ($br['by'] ?? $br['recommended_by'] ?? $authName);
+            $fmtRecoAt = static function ($raw): ?string {
+                if (! filled($raw)) {
+                    return null;
+                }
+                try {
+                    return \Illuminate\Support\Carbon::parse($raw)->timezone(config('app.timezone'))->format('d M Y, h:i a');
+                } catch (\Throwable $e) {
+                    return (string) $raw;
+                }
+            };
+            $approvedAtUi = $fmtRecoAt($br['approved_at'] ?? null);
+            $rejectedAtUi = $fmtRecoAt($br['rejected_at'] ?? null);
+        @endphp
+        <div class="cw-reco-banner {{ $recoStatusClass }}">
             <div class="min-w-0">
                 <div class="cw-reco-banner-title">
-                    <i class="bi bi-lightbulb"></i>
+                    @if($recoStatusUi === 'Rejected')
+                        <i class="bi bi-x-octagon"></i>
+                    @elseif($recoStatusUi === 'Approved')
+                        <i class="bi bi-check2-circle"></i>
+                    @elseif($recoStatusUi === 'Submitted')
+                        <i class="bi bi-hourglass-split"></i>
+                    @else
+                        <i class="bi bi-lightbulb"></i>
+                    @endif
                     BM Recommendation — Goal Corporation
+                    <span class="cw-reco-status {{ $recoStatusClass }}">{{ $recoStatusUi }}</span>
                 </div>
                 <div class="cw-reco-banner-sub">
                     Proposal brief for <strong>{{ strtoupper($case->customer_name) }}</strong>
+                    @if($recoStatusUi === 'Submitted')
+                        · Awaiting Cluster / RD / MD approval
+                    @elseif($recoStatusUi === 'Approved')
+                        · Approved{{ !empty($br['approved_by']) ? ' by '.$br['approved_by'] : '' }}
+                        @if($approvedAtUi) · {{ $approvedAtUi }} @endif
+                        · Ready for Banking
+                    @elseif($recoStatusUi === 'Rejected')
+                        · Revise the recommendation, save, then resubmit for approval
+                    @endif
                 </div>
             </div>
             <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -17,6 +61,31 @@
                 </a>
             </div>
         </div>
+
+        @if($recoStatusUi === 'Rejected')
+        <div class="cw-reco-reject-notice" role="status">
+            <div class="cw-reco-reject-notice-icon" aria-hidden="true"><i class="bi bi-exclamation-octagon"></i></div>
+            <div class="cw-reco-reject-notice-body">
+                <div class="cw-reco-reject-notice-title">Recommendation rejected</div>
+                <div class="cw-reco-reject-notice-meta">
+                    @if(!empty($br['rejected_by']))
+                        By <strong>{{ $br['rejected_by'] }}</strong>
+                    @else
+                        By higher authority
+                    @endif
+                    @if($rejectedAtUi)
+                        · {{ $rejectedAtUi }}
+                    @endif
+                </div>
+                @if(!empty($br['rejection_reason']))
+                    <div class="cw-reco-reject-notice-reason">
+                        <span class="k">Reason</span>
+                        <span class="v">{{ $br['rejection_reason'] }}</span>
+                    </div>
+                @endif
+            </div>
+        </div>
+        @endif
 
         <div class="cw-reco-top">
             {{-- Borrower Profile --}}
@@ -152,33 +221,127 @@
             </div>
 
             {{-- Requirement & Eligibility --}}
+            @php
+                $sugBankName = (string) ($br['suggested_bank'] ?? '');
+                $sugBankCode = (string) ($br['bank_code'] ?? '');
+                $sugBankId = (string) ($br['bank_id'] ?? '');
+                $sugBankLabel = $sugBankName !== ''
+                    ? ($sugBankCode !== '' ? $sugBankName.' ('.$sugBankCode.')' : $sugBankName)
+                    : '';
+            @endphp
             <div class="cw-card-tw cw-reco-req">
                 <div class="cw-card-head">
                     <span class="cw-ico cw-ico-blue"><i class="bi bi-clipboard-check"></i></span>
                     <h6 class="cw-card-title">Requirement &amp; Eligibility</h6>
                 </div>
                 <div class="cw-reco-req-body">
+                    <div class="cw-reco-bank-block">
+                        <div class="cw-reco-bank-title">Bank information</div>
+                        <div class="cw-reco-req-bank">
+                            <div class="cw-reco-bank-search">
+                                <label class="cw-label">Suggested Bank</label>
+                                <select id="cwBmSuggestedBank"
+                                        class="cw-select js-bank-master-select"
+                                        data-select2-skip="1"
+                                        data-placeholder="Type bank name or code"
+                                        data-allow-clear="true"
+                                        data-bank-search-url="{{ route('goal.masters.banks.search') }}"
+                                        {{ $dis }}>
+                                    <option value=""></option>
+                                    @if($sugBankId !== '' || $sugBankName !== '')
+                                        <option value="{{ $sugBankId !== '' ? $sugBankId : $sugBankName }}"
+                                                data-name="{{ $sugBankName }}"
+                                                data-code="{{ $sugBankCode }}"
+                                                selected>{{ $sugBankLabel !== '' ? $sugBankLabel : 'Selected bank' }}</option>
+                                    @endif
+                                </select>
+                                <input type="hidden" name="bm_reco[bank_id]" id="cwBmBankId" value="{{ $sugBankId }}">
+                                <input type="hidden" name="bm_reco[suggested_bank]" id="cwBmBankName" value="{{ $sugBankName }}">
+                            </div>
+                            <div>
+                                <label class="cw-label">Bank Name</label>
+                                <input class="cw-input" id="cwBmBankNameDisplay" value="{{ $sugBankName }}" placeholder="Fetched from master" readonly tabindex="-1">
+                            </div>
+                            <div>
+                                <label class="cw-label">Bank Code</label>
+                                <input class="cw-input" name="bm_reco[bank_code]" id="cwBmBankCode" value="{{ $sugBankCode }}" placeholder="Fetched from master" readonly tabindex="-1">
+                            </div>
+                        </div>
+                        <div class="cw-reco-req-banker">
+                            <div>
+                                <label class="cw-label">Banker Name</label>
+                                <div class="cw-input-group">
+                                    <span class="cw-input-group-ico"><i class="bi bi-person"></i></span>
+                                    <input class="cw-input" name="bm_reco[banker_name]" value="{{ $br['banker_name'] ?? '' }}" placeholder="Enter banker name" {{ $ro }}>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="cw-label">Banker Contact</label>
+                                <div class="cw-input-group">
+                                    <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
+                                    <input class="cw-input js-mobile" name="bm_reco[banker_contact]" value="{{ $br['banker_contact'] ?? '' }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="cw-label">Banker Mail</label>
+                                <div class="cw-input-group">
+                                    <span class="cw-input-group-ico"><i class="bi bi-envelope"></i></span>
+                                    <input type="email" class="cw-input" name="bm_reco[banker_mail]" value="{{ $br['banker_mail'] ?? '' }}" placeholder="name@bank.com" {{ $ro }}>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @php
+                        $recoAmountRaw = $br['amount'] ?? $br['recommended_amount'] ?? null;
+                        $recoAmountNorm = is_string($recoAmountRaw)
+                            ? str_replace([',', ' '], '', trim($recoAmountRaw))
+                            : $recoAmountRaw;
+                        $recoAmountEmpty = $recoAmountRaw === null
+                            || $recoAmountRaw === ''
+                            || (is_numeric($recoAmountNorm) && (float) $recoAmountNorm == 0.0);
+                        $recoAmountValue = ! $recoAmountEmpty
+                            ? $recoAmountRaw
+                            : ($case->loan_amount ?? ($case->lead->loan_amount ?? ''));
+                        $recoRequirementValue = filled($br['requirement'] ?? null)
+                            ? (string) $br['requirement']
+                            : (string) ($case->product ?? '');
+                        $requirementOptions = collect($products ?? []);
+                        $requirementInMaster = $recoRequirementValue !== ''
+                            && $requirementOptions->contains(fn ($p) => $p->product_name === $recoRequirementValue);
+                    @endphp
                     <div class="cw-reco-req-top">
                         <div>
                             <label class="cw-label">Recommended Amount</label>
                             <div class="cw-input-group">
                                 <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
                                 <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal"
-                                       name="bm_reco[amount]" value="{{ $br['amount'] ?? $br['recommended_amount'] ?? '' }}"
-                                       placeholder="0.00" {{ $ro }}>
+                                       name="bm_reco[amount]" value="{{ $recoAmountValue }}"
+                                       placeholder="From lead loan amount" {{ $ro }}>
                             </div>
+                            <div class="cw-field-hint">Prefills from lead / case loan amount; you can revise before submit.</div>
                         </div>
                         <div>
                             <label class="cw-label">Requirement</label>
-                            <input class="cw-input" name="bm_reco[requirement]" value="{{ $br['requirement'] ?? '' }}" placeholder="Requirement" {{ $ro }}>
+                            <select class="cw-select js-select2" name="bm_reco[requirement]"
+                                    data-placeholder="Select requirement" data-allow-clear="false" data-search="true" {{ $dis }}>
+                                <option value="">Select requirement</option>
+                                @if($recoRequirementValue !== '' && ! $requirementInMaster)
+                                    <option value="{{ $recoRequirementValue }}" selected>{{ $recoRequirementValue }}</option>
+                                @endif
+                                @foreach($requirementOptions as $p)
+                                    <option value="{{ $p->product_name }}" @selected($requirementInMaster && $recoRequirementValue === $p->product_name)>{{ $p->product_name }}</option>
+                                @endforeach
+                            </select>
                         </div>
                         <div>
                             <label class="cw-label">Eligibility</label>
-                            <input class="cw-input" name="bm_reco[eligibility]" value="{{ $br['eligibility'] ?? '' }}" placeholder="Eligibility" {{ $ro }}>
-                        </div>
-                        <div>
-                            <label class="cw-label">Suggested Bank</label>
-                            <input class="cw-input" name="bm_reco[suggested_bank]" value="{{ $br['suggested_bank'] ?? '' }}" placeholder="Bank name" {{ $ro }}>
+                            <div class="cw-input-group">
+                                <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
+                                <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal"
+                                       name="bm_reco[eligibility]" value="{{ $br['eligibility'] ?? '' }}"
+                                       placeholder="0.00" {{ $ro }}>
+                            </div>
                         </div>
                     </div>
 
@@ -210,9 +373,10 @@
                             <div class="cw-input-group">
                                 <span class="cw-input-group-ico"><i class="bi bi-person"></i></span>
                                 <input class="cw-input" name="bm_reco[by]"
-                                       value="{{ $br['by'] ?? $br['recommended_by'] ?? ($branchManager?->name ?? '') }}"
-                                       placeholder="Name" {{ $ro }}>
+                                       value="{{ $recommendedBy }}"
+                                       placeholder="Logged-in user" readonly tabindex="-1">
                             </div>
+                            <div class="cw-field-hint">Locked to the logged-in user who saves / submits.</div>
                         </div>
                         <div>
                             <label class="cw-label">Recommendation Date</label>
@@ -236,6 +400,30 @@
             <div class="cw-reco-contacts">
                 <div class="cw-reco-contact-col">
                     <div class="cw-field-row">
+                        <label class="cw-label-inline">BM Name</label>
+                        <input class="cw-input" name="bm_reco[contacts][bm_name]" value="{{ data_get($br, 'contacts.bm_name', $branchManager?->name) }}" placeholder="Enter BM name" {{ $ro }}>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">BM Contact Number</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
+                            <input class="cw-input js-mobile" name="bm_reco[contacts][bm_mobile]" value="{{ data_get($br, 'contacts.bm_mobile', $branchManager?->mobile) }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
+                        </div>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">SSM Name</label>
+                        <input class="cw-input" name="bm_reco[contacts][rsm_name]" value="{{ data_get($br, 'contacts.rsm_name') }}" placeholder="Enter SSM name" {{ $ro }}>
+                    </div>
+                    <div class="cw-field-row">
+                        <label class="cw-label-inline">SSM Contact Number</label>
+                        <div class="cw-input-group">
+                            <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
+                            <input class="cw-input js-mobile" name="bm_reco[contacts][rsm_mobile]" value="{{ data_get($br, 'contacts.rsm_mobile') }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
+                        </div>
+                    </div>
+                </div>
+                <div class="cw-reco-contact-col">
+                    <div class="cw-field-row">
                         <label class="cw-label-inline">SM Name</label>
                         <input class="cw-input" name="bm_reco[contacts][sm_name]" value="{{ data_get($br, 'contacts.sm_name', $case->owner?->name) }}" placeholder="Enter SM name" {{ $ro }}>
                     </div>
@@ -247,12 +435,6 @@
                         </div>
                     </div>
                     <div class="cw-field-row">
-                        <label class="cw-label-inline">BM Name</label>
-                        <input class="cw-input" name="bm_reco[contacts][bm_name]" value="{{ data_get($br, 'contacts.bm_name', $branchManager?->name) }}" placeholder="Enter BM name" {{ $ro }}>
-                    </div>
-                </div>
-                <div class="cw-reco-contact-col">
-                    <div class="cw-field-row">
                         <label class="cw-label-inline">JSM Name</label>
                         <input class="cw-input" name="bm_reco[contacts][asm_name]" value="{{ data_get($br, 'contacts.asm_name') }}" placeholder="Enter JSM name" {{ $ro }}>
                     </div>
@@ -261,26 +443,6 @@
                         <div class="cw-input-group">
                             <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
                             <input class="cw-input js-mobile" name="bm_reco[contacts][asm_mobile]" value="{{ data_get($br, 'contacts.asm_mobile') }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
-                        </div>
-                    </div>
-                    <div class="cw-field-row">
-                        <label class="cw-label-inline">BM Contact Number</label>
-                        <div class="cw-input-group">
-                            <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
-                            <input class="cw-input js-mobile" name="bm_reco[contacts][bm_mobile]" value="{{ data_get($br, 'contacts.bm_mobile', $branchManager?->mobile) }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
-                        </div>
-                    </div>
-                </div>
-                <div class="cw-reco-contact-col">
-                    <div class="cw-field-row">
-                        <label class="cw-label-inline">SSM Name</label>
-                        <input class="cw-input" name="bm_reco[contacts][rsm_name]" value="{{ data_get($br, 'contacts.rsm_name') }}" placeholder="Enter SSM name" {{ $ro }}>
-                    </div>
-                    <div class="cw-field-row">
-                        <label class="cw-label-inline">SSM Contact Number</label>
-                        <div class="cw-input-group">
-                            <span class="cw-input-group-ico"><i class="bi bi-telephone"></i></span>
-                            <input class="cw-input js-mobile" name="bm_reco[contacts][rsm_mobile]" value="{{ data_get($br, 'contacts.rsm_mobile') }}" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit mobile" {{ $ro }}>
                         </div>
                     </div>
                 </div>
@@ -394,168 +556,6 @@
             </template>
         </div>
 
-        <div class="cw-card-tw">
-            <div class="cw-card-head cw-card-head-soft">
-                <span class="cw-ico cw-ico-violet"><i class="bi bi-list-ul"></i></span>
-                <h6 class="cw-card-title">Loan Details of Applicant / Co-Applicant</h6>
-                @if($canEdit)
-                    <button type="button" class="cw-add-row-btn ms-auto" id="cwAddLoanRow"><i class="bi bi-plus-lg"></i> Add Row</button>
-                @endif
-            </div>
-            <div class="cw-bp-table-wrap">
-                <table class="cw-bp-table cw-loan-table">
-                    <thead>
-                        <tr>
-                            <th class="cw-loan-num">#</th>
-                            <th>Applicant</th>
-                            <th>Type of Loan</th>
-                            <th>Bank Details</th>
-                            <th>Sanction Amount</th>
-                            <th>Outstanding</th>
-                            <th>EMI</th>
-                            <th>EMI Paid</th>
-                            <th>EMI Pending</th>
-                            <th>Bounces</th>
-                            @if($canEdit)<th class="cw-loan-actions"></th>@endif
-                        </tr>
-                    </thead>
-                    <tbody id="cwLoanRowsBody">
-                        @foreach($loanRows as $i => $row)
-                            @php
-                                $row = is_array($row) ? $row : [];
-                                $party = $row['party'] ?? 'applicant';
-                                $rowType = $row['type'] ?? '';
-                                $rowTypeOpts = $loanTypeOpts;
-                                if ($rowType !== '' && !array_key_exists($rowType, $rowTypeOpts)) {
-                                    $rowTypeOpts[$rowType] = $rowType;
-                                }
-                            @endphp
-                            <tr data-loan-row>
-                                <td class="cw-loan-num"><span class="cw-loan-idx">{{ $i + 1 }}</span></td>
-                                <td>
-                                    @php $isCo = $party === 'co_applicant'; @endphp
-                                    <div class="cw-party-dd {{ $isCo ? 'is-co' : 'is-app' }}" data-party-dd>
-                                        <button type="button" class="cw-party-chip" aria-haspopup="listbox" aria-expanded="false" {{ $dis }}>
-                                            <span class="cw-party-label">{{ $isCo ? 'Co-Applicant' : 'Applicant' }}</span>
-                                            <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                                        </button>
-                                        <div class="cw-party-menu" role="listbox" hidden>
-                                            <button type="button" role="option" data-value="applicant" class="{{ ! $isCo ? 'is-selected' : '' }}">Applicant</button>
-                                            <button type="button" role="option" data-value="co_applicant" class="{{ $isCo ? 'is-selected' : '' }}">Co-Applicant</button>
-                                        </div>
-                                        <input type="hidden" name="existing_loans[rows][{{ $i }}][party]" value="{{ $isCo ? 'co_applicant' : 'applicant' }}">
-                                    </div>
-                                </td>
-                                <td>
-                                    <select class="cw-select" name="existing_loans[rows][{{ $i }}][type]" {{ $dis }}>
-                                        @foreach($rowTypeOpts as $val => $lab)
-                                            <option value="{{ $val }}" @selected($rowType === $val)>{{ $lab }}</option>
-                                        @endforeach
-                                    </select>
-                                </td>
-                                <td><input class="cw-input" name="existing_loans[rows][{{ $i }}][bank]" value="{{ $row['bank'] ?? '' }}" placeholder="Bank name" {{ $ro }}></td>
-                                <td>
-                                    <div class="cw-input-group">
-                                        <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
-                                        <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal" name="existing_loans[rows][{{ $i }}][sanction]" value="{{ $row['sanction'] ?? '' }}" placeholder="0.00" {{ $ro }}>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="cw-input-group">
-                                        <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
-                                        <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal" name="existing_loans[rows][{{ $i }}][outstanding]" value="{{ $row['outstanding'] ?? '' }}" placeholder="0.00" {{ $ro }}>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="cw-input-group">
-                                        <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
-                                        <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal" name="existing_loans[rows][{{ $i }}][emi]" value="{{ $row['emi'] ?? '' }}" placeholder="0.00" {{ $ro }}>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="cw-input-group">
-                                        <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
-                                        <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal" name="existing_loans[rows][{{ $i }}][paid]" value="{{ $row['paid'] ?? '' }}" placeholder="0.00" {{ $ro }}>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="cw-input-group">
-                                        <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
-                                        <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal" name="existing_loans[rows][{{ $i }}][pending]" value="{{ $row['pending'] ?? '' }}" placeholder="0.00" {{ $ro }}>
-                                    </div>
-                                </td>
-                                <td><input class="cw-input" name="existing_loans[rows][{{ $i }}][bounces]" value="{{ $row['bounces'] ?? '' }}" placeholder="0" {{ $ro }}></td>
-                                @if($canEdit)
-                                    <td class="cw-loan-actions">
-                                        <button type="button" class="cw-row-remove" data-remove-loan title="Remove row"><i class="bi bi-trash3"></i></button>
-                                    </td>
-                                @endif
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <template id="cwLoanRowTpl">
-                <tr data-loan-row>
-                    <td class="cw-loan-num"><span class="cw-loan-idx">__n__</span></td>
-                    <td>
-                        <div class="cw-party-dd is-app" data-party-dd>
-                            <button type="button" class="cw-party-chip" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="cw-party-label">Applicant</span>
-                                <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                            </button>
-                            <div class="cw-party-menu" role="listbox" hidden>
-                                <button type="button" role="option" data-value="applicant" class="is-selected">Applicant</button>
-                                <button type="button" role="option" data-value="co_applicant">Co-Applicant</button>
-                            </div>
-                            <input type="hidden" name="existing_loans[rows][__i__][party]" value="applicant">
-                        </div>
-                    </td>
-                    <td>
-                        <select class="cw-select" name="existing_loans[rows][__i__][type]">
-                            @foreach($loanTypeOpts as $val => $lab)
-                                <option value="{{ $val }}">{{ $lab }}</option>
-                            @endforeach
-                        </select>
-                    </td>
-                    <td><input class="cw-input" name="existing_loans[rows][__i__][bank]" placeholder="Bank name"></td>
-                    <td>
-                        <div class="cw-input-group">
-                            <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
-                            <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal" name="existing_loans[rows][__i__][sanction]" placeholder="0.00">
-                        </div>
-                    </td>
-                    <td>
-                        <div class="cw-input-group">
-                            <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
-                            <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal" name="existing_loans[rows][__i__][outstanding]" placeholder="0.00">
-                        </div>
-                    </td>
-                    <td>
-                        <div class="cw-input-group">
-                            <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
-                            <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal" name="existing_loans[rows][__i__][emi]" placeholder="0.00">
-                        </div>
-                    </td>
-                    <td>
-                        <div class="cw-input-group">
-                            <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
-                            <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal" name="existing_loans[rows][__i__][paid]" placeholder="0.00">
-                        </div>
-                    </td>
-                    <td>
-                        <div class="cw-input-group">
-                            <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
-                            <input type="text" inputmode="decimal" data-decimals="2" class="cw-input js-decimal" name="existing_loans[rows][__i__][pending]" placeholder="0.00">
-                        </div>
-                    </td>
-                    <td><input class="cw-input" name="existing_loans[rows][__i__][bounces]" placeholder="0"></td>
-                    <td class="cw-loan-actions">
-                        <button type="button" class="cw-row-remove" data-remove-loan title="Remove row"><i class="bi bi-trash3"></i></button>
-                    </td>
-                </tr>
-            </template>
-        </div>
     </div>
 
     {{-- ========== EQUIFAX ========== --}}

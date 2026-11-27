@@ -113,10 +113,15 @@
 
     <h2>Requirement</h2>
     <table class="kv">
+        <tr><td class="k">Approval Status</td><td>{{ $txt($br['approval_status'] ?? $br['status'] ?? 'Draft') }}</td></tr>
+        <tr><td class="k">Suggested Bank</td><td>{{ $txt($br['suggested_bank'] ?? $case->lender_name) }}</td></tr>
+        <tr><td class="k">Bank Code</td><td>{{ $txt($br['bank_code'] ?? null) }}</td></tr>
+        <tr><td class="k">Banker Name</td><td>{{ $txt($br['banker_name'] ?? null) }}</td></tr>
+        <tr><td class="k">Banker Contact</td><td>{{ $txt($br['banker_contact'] ?? null) }}</td></tr>
+        <tr><td class="k">Banker Mail</td><td>{{ $txt($br['banker_mail'] ?? null) }}</td></tr>
         <tr><td class="k">Requirement</td><td>{{ $txt($br['requirement'] ?? $case->product) }}</td></tr>
         <tr><td class="k">Amount</td><td>{{ $money($br['amount'] ?? $br['recommended_amount'] ?? $case->loan_amount) }}</td></tr>
         <tr><td class="k">Eligibility</td><td>{{ $txt($br['eligibility'] ?? null) }}</td></tr>
-        <tr><td class="k">Suggested Bank</td><td>{{ $txt($br['suggested_bank'] ?? $case->lender_name) }}</td></tr>
     </table>
 
     @if($btRows !== [])
@@ -144,40 +149,6 @@
             </tbody>
         </table>
     @endif
-
-    <h2>Existing Loans — Applicant / Co-Applicant</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Party</th>
-                <th>Type</th>
-                <th>Bank</th>
-                <th>Sanction</th>
-                <th>Outstanding</th>
-                <th>EMI</th>
-                <th>Paid</th>
-                <th>Pending</th>
-                <th>Bounces</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($loanRows as $row)
-                <tr>
-                    <td>{{ $txt($row['party'] ?? null) }}</td>
-                    <td>{{ $txt($row['type'] ?? null) }}</td>
-                    <td>{{ $txt($row['bank'] ?? null) }}</td>
-                    <td>{{ $money($row['sanction'] ?? null) }}</td>
-                    <td>{{ $money($row['outstanding'] ?? null) }}</td>
-                    <td>{{ $money($row['emi'] ?? null) }}</td>
-                    <td>{{ $txt($row['paid'] ?? null) }}</td>
-                    <td>{{ $txt($row['pending'] ?? null) }}</td>
-                    <td>{{ $txt($row['bounces'] ?? null) }}</td>
-                </tr>
-            @empty
-                <tr><td colspan="9" style="text-align:center;color:#94a3b8">No existing loan rows</td></tr>
-            @endforelse
-        </tbody>
-    </table>
 
     <h2>App &amp; Co-App Background</h2>
     <div class="block">{{ $txt($br['background'] ?? null) }}</div>
@@ -212,10 +183,10 @@
             </tr>
         </thead>
         <tbody>
+            <tr><td>BM</td><td>{{ $txt($contacts['bm_name'] ?? null) }}</td><td>{{ $txt($contacts['bm_mobile'] ?? null) }}</td></tr>
+            <tr><td>SSM</td><td>{{ $txt($contacts['rsm_name'] ?? null) }}</td><td>{{ $txt($contacts['rsm_mobile'] ?? null) }}</td></tr>
             <tr><td>SM</td><td>{{ $txt($contacts['sm_name'] ?? $case->owner?->name) }}</td><td>{{ $txt($contacts['sm_mobile'] ?? $case->owner?->mobile) }}</td></tr>
             <tr><td>JSM</td><td>{{ $txt($contacts['asm_name'] ?? null) }}</td><td>{{ $txt($contacts['asm_mobile'] ?? null) }}</td></tr>
-            <tr><td>SSM</td><td>{{ $txt($contacts['rsm_name'] ?? null) }}</td><td>{{ $txt($contacts['rsm_mobile'] ?? null) }}</td></tr>
-            <tr><td>BM</td><td>{{ $txt($contacts['bm_name'] ?? null) }}</td><td>{{ $txt($contacts['bm_mobile'] ?? null) }}</td></tr>
         </tbody>
     </table>
 

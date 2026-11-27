@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Goal\GoalNotify;
 use App\Library\MpdfDocument;
 use App\Services\Goal\GoalCaseAudit;
+use App\Services\Goal\GoalWorkflow;
 use App\Services\Goal\Pd01Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -71,7 +72,7 @@ class GoalCaseWorkspaceController extends Controller
 
         $data = $request->validate([
             'lender_name' => 'required|string|max:150',
-            'application_ref' => 'nullable|string|max:100',
+            'application_ref' => 'required|string|max:100',
             'login_date' => 'nullable|date',
             'status' => 'nullable|in:Bank Login,Bank Query,Processing,Sanctioned,Rejected,Disbursed',
             'requested_amount' => 'nullable|numeric|min:0',
@@ -81,6 +82,8 @@ class GoalCaseWorkspaceController extends Controller
             'banker_email' => 'nullable|email|max:150',
             'notes' => 'nullable|string|max:1000',
             'evidence' => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,webp',
+        ], [
+            'application_ref.required' => 'Bank Login ID is required when adding a lender application.',
         ]);
 
         $path = null;
@@ -125,10 +128,60 @@ class GoalCaseWorkspaceController extends Controller
             'to' => $app->lender_name,
             'related_type' => GoalBankApplication::class,
             'related_id' => $app->id,
-            'body' => $app->application_ref,
+            'body' => 'Bank Login ID: '.$app->application_ref,
+            'meta' => ['application_ref' => $app->application_ref],
         ]);
 
         return $this->ajaxOk('Lender application saved.', 'lenders');
+    }
+
+    /**
+     * Set / update Bank Login ID (application_ref) on a lender application.
+     */
+    public function updateApplicationLoginId(Request $request, GoalBankApplication $application)
+    {
+        $this->requireGoalPermission('edit_case_workspace_guard');
+        $case = $application->loanCase;
+        $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'lenders')) {
+            return $redirect;
+        }
+
+        $data = $request->validate([
+            'application_ref' => 'required|string|max:100',
+        ], [
+            'application_ref.required' => 'Bank Login ID is required.',
+        ]);
+
+        $from = $application->application_ref;
+        $loginId = trim((string) $data['application_ref']);
+        $application->application_ref = $loginId;
+        if (! $application->login_date) {
+            $application->login_date = now()->toDateString();
+        }
+        if (! filled($application->status)) {
+            $application->status = 'Bank Login';
+        }
+        $application->save();
+
+        if (! filled($case->application_ref) || (string) $case->lender_name === (string) $application->lender_name) {
+            $case->application_ref = $loginId;
+            if (! filled($case->lender_name)) {
+                $case->lender_name = $application->lender_name;
+            }
+            $case->save();
+        }
+
+        GoalCaseAudit::record($case, 'application', 'Bank Login ID '.($from ? 'updated' : 'added'), auth()->user(), [
+            'from' => $from,
+            'to' => $loginId,
+            'related_type' => GoalBankApplication::class,
+            'related_id' => $application->id,
+            'body' => 'Bank Login ID: '.$loginId,
+            'meta' => ['application_ref' => $loginId, 'lender_name' => $application->lender_name],
+        ]);
+
+        return $this->ajaxOk('Bank Login ID saved.', 'lenders');
     }
 
     public function updateApplicationStatus(Request $request, GoalBankApplication $application)
@@ -891,6 +944,226 @@ class GoalCaseWorkspaceController extends Controller
         GoalCaseAudit::record($case, 'document', 'Equifax cleared from BM Reco', auth()->user());
 
         return $this->ajaxOk('Equifax cleared.', 'recommendation');
+    }
+
+    /**
+     * Submit BM Recommendation for Cluster approval.
+     */
+    public function submitBmReco(Request $request, GoalLoanCase $case)
+    {
+        $this->requireGoalPermission('edit_case_workspace_guard');
+        $this->assertCaseInScope($case);
+        if ($redirect = $this->assertCaseWorkspaceUnlocked($case, 'recommendation')) {
+            return $redirect;
+        }
+
+        $br = is_array($case->bm_reco) ? $case->bm_reco : [];
+        $status = (string) ($br['approval_status'] ?? $br['status'] ?? 'Draft');
+        if (! in_array($status, ['Draft', 'Rejected', ''], true)) {
+            return $this->ajaxFail([
+                'bm_reco' => 'Recommendation is already '.$status.'.',
+            ], 'recommendation');
+        }
+
+        if (! filled($br['suggested_bank'] ?? null) && ! filled($br['bank_id'] ?? null)) {
+            return $this->ajaxFail([
+                'bm_reco' => 'Select a Suggested Bank before submitting for approval.',
+            ], 'recommendation');
+        }
+
+        $user = auth()->user();
+        $br['approval_status'] = 'Submitted';
+        $br['status'] = 'Submitted';
+        $br['by'] = (string) ($user->name ?? '');
+        $br['by_user_id'] = (int) $user->id;
+        $br['submitted_at'] = now()->toDateTimeString();
+        $br['submitted_by'] = (string) ($user->name ?? '');
+        $br['submitted_by_id'] = (int) $user->id;
+        if (! filled($br['date'] ?? null)) {
+            $br['date'] = now()->format('d-m-Y');
+        }
+        unset($br['rejection_reason'], $br['rejected_at'], $br['rejected_by'], $br['rejected_by_id']);
+
+        $case->bm_reco = $br;
+        $case->save();
+
+        GoalCaseAudit::record($case, 'bm_reco', 'BM Recommendation submitted for Cluster approval', $user, [
+            'by' => $br['by'],
+            'suggested_bank' => $br['suggested_bank'] ?? null,
+        ]);
+
+        return $this->ajaxOk('Recommendation submitted for Cluster approval.', 'recommendation');
+    }
+
+    /**
+     * Cluster review — Approve or Reject BM Recommendation.
+     */
+    public function reviewBmReco(Request $request, GoalLoanCase $case)
+    {
+        $user = auth()->user();
+        $canApprove = in_array((int) ($user->crm_role_type ?? -1), [0, 4, 5, 6, 7], true) // Super/MD/CEO/RD/Cluster
+            || $user->isSuperAdmin()
+            || $user->hasCrmPermission('approve_bm_reco_guard')
+            || $user->hasCrmPermission('manage_permissions_guard');
+        if (! $canApprove) {
+            abort(403, 'You do not have permission to approve BM Recommendations.');
+        }
+        $this->assertCaseInScope($case);
+
+        $data = $request->validate([
+            'review_action' => 'required|in:Approved,Rejected',
+            'rejection_reason' => 'nullable|string|max:500',
+        ]);
+        // Back-compat if any older clients still post "action"
+        $reviewAction = (string) ($data['review_action'] ?? $request->input('action') ?? '');
+
+        $br = is_array($case->bm_reco) ? $case->bm_reco : [];
+        $status = (string) ($br['approval_status'] ?? $br['status'] ?? 'Draft');
+        if ($status !== 'Submitted') {
+            return $this->ajaxFail([
+                'bm_reco' => 'Only a Submitted recommendation can be reviewed.',
+            ], 'recommendation');
+        }
+
+        if ($reviewAction === 'Rejected' && ! filled(trim((string) ($data['rejection_reason'] ?? '')))) {
+            return $this->ajaxFail([
+                'rejection_reason' => 'Rejection reason is required.',
+            ], 'recommendation');
+        }
+
+        if ($reviewAction === 'Approved') {
+            $br['approval_status'] = 'Approved';
+            $br['status'] = 'Approved';
+            $br['approved_at'] = now()->toDateTimeString();
+            $br['approved_by'] = (string) ($user->name ?? '');
+            $br['approved_by_id'] = (int) $user->id;
+            unset($br['rejection_reason'], $br['rejected_at'], $br['rejected_by'], $br['rejected_by_id']);
+        } else {
+            $br['approval_status'] = 'Rejected';
+            $br['status'] = 'Rejected';
+            $br['rejection_reason'] = trim((string) $data['rejection_reason']);
+            $br['rejected_at'] = now()->toDateTimeString();
+            $br['rejected_by'] = (string) ($user->name ?? '');
+            $br['rejected_by_id'] = (int) $user->id;
+        }
+
+        $case->bm_reco = $br;
+
+        $advanced = false;
+        $bankAppCreated = false;
+        if ($reviewAction === 'Approved') {
+            $bankAppCreated = $this->syncApprovedRecoToBanking($case, $br, $user);
+
+            if ($case->status === 'Draft') {
+                $detailsOk = filled($case->customer_name) && filled($case->product);
+                if ($detailsOk) {
+                    $gate = GoalWorkflow::validateCase('Draft', 'Ready for Login', [
+                        'caseDetailsComplete' => true,
+                        'bmRecoApproved' => true,
+                    ]);
+                    if ($gate['ok']) {
+                        $case->status = 'Ready for Login';
+                        $advanced = true;
+                    }
+                }
+            }
+        }
+
+        $case->save();
+
+        $auditTitle = 'BM Recommendation '.$reviewAction;
+        if ($reviewAction === 'Rejected' && filled($br['rejection_reason'] ?? null)) {
+            $auditTitle .= ' — '.$br['rejection_reason'];
+        } else {
+            $auditTitle .= ($advanced ? ' — case moved to Ready for Login' : '')
+                .($bankAppCreated ? ' — bank application created' : '');
+        }
+
+        GoalCaseAudit::record(
+            $case,
+            'bm_reco',
+            $auditTitle,
+            $user,
+            [
+                'body' => $reviewAction === 'Rejected' && filled($br['rejection_reason'] ?? null)
+                    ? ('Reason: '.$br['rejection_reason'])
+                    : null,
+                'meta' => [
+                    'action' => $reviewAction,
+                    'rejection_reason' => $br['rejection_reason'] ?? null,
+                    'rejected_by' => $br['rejected_by'] ?? null,
+                    'approved_by' => $br['approved_by'] ?? null,
+                    'case_status' => $case->status,
+                    'suggested_bank' => $br['suggested_bank'] ?? null,
+                ],
+            ]
+        );
+
+        $msg = $reviewAction === 'Approved'
+            ? ('Recommendation approved.'
+                .($bankAppCreated ? ' Bank details added under Banking.' : '')
+                .($advanced ? ' Case is Ready for Login.' : ''))
+            : 'Recommendation rejected. BM can revise and resubmit.';
+
+        return $this->ajaxOk($msg, $reviewAction === 'Approved' ? 'banking' : 'recommendation');
+    }
+
+    /**
+     * Push approved BM Reco bank details into Banking (case lender + application).
+     */
+    protected function syncApprovedRecoToBanking(GoalLoanCase $case, array $br, $user): bool
+    {
+        $lender = trim((string) ($br['suggested_bank'] ?? ''));
+        if ($lender === '') {
+            return false;
+        }
+
+        $case->lender_name = $lender;
+        $amount = \App\Helpers\MoneyFormatter::parseAmount(
+            $br['amount'] ?? $br['recommended_amount'] ?? $br['eligibility'] ?? $case->loan_amount
+        );
+        if ($amount === null) {
+            $amount = \App\Helpers\MoneyFormatter::parseAmount($case->loan_amount);
+        }
+        $amount = $amount !== null ? round($amount, 2) : null;
+
+        $notes = trim(implode("\n", array_filter([
+            filled($br['bank_code'] ?? null) ? 'Bank code: '.$br['bank_code'] : null,
+            filled($br['requirement'] ?? null) ? 'Requirement: '.$br['requirement'] : null,
+            'Approved BM Recommendation by '.($br['approved_by'] ?? ($user->name ?? 'Authority')),
+        ])));
+
+        $existing = GoalBankApplication::query()
+            ->where('goal_loan_case_id', $case->id)
+            ->whereRaw('LOWER(lender_name) = ?', [mb_strtolower($lender)])
+            ->first();
+
+        if ($existing) {
+            $existing->fill([
+                'requested_amount' => $amount ?? $existing->requested_amount,
+                'banker_name' => $br['banker_name'] ?? $existing->banker_name,
+                'banker_contact' => $br['banker_contact'] ?? $existing->banker_contact,
+                'banker_email' => $br['banker_mail'] ?? $existing->banker_email,
+                'notes' => $notes !== '' ? $notes : $existing->notes,
+            ])->save();
+
+            return false;
+        }
+
+        GoalBankApplication::create([
+            'goal_loan_case_id' => $case->id,
+            'lender_name' => $lender,
+            'login_date' => now()->toDateString(),
+            'status' => 'Bank Login',
+            'requested_amount' => $amount,
+            'banker_name' => $br['banker_name'] ?? null,
+            'banker_contact' => $br['banker_contact'] ?? null,
+            'banker_email' => $br['banker_mail'] ?? null,
+            'notes' => $notes !== '' ? $notes : null,
+            'created_by' => $user->id ?? auth()->id(),
+        ]);
+
+        return true;
     }
 
     /**

@@ -93,6 +93,7 @@
             'sanction' => ['Sanction', 'ok', 'bi-award'],
             'disbursement' => ['Disbursement', 'ok', 'bi-cash-coin'],
             'status' => ['Status', 'info', 'bi-arrow-right-circle'],
+            'bm_reco' => ['BM Reco', 'warn', 'bi-lightbulb'],
             'revenue' => ['Revenue', 'ok', 'bi-currency-rupee'],
             'visit' => ['Visit', 'teal', 'bi-geo-alt'],
             default => [ucfirst((string) ($type ?: 'Event')), 'slate', 'bi-dot'],
@@ -194,6 +195,21 @@
         @forelse($case->events as $ev)
             @php
                 [$typeLabel, $tone, $ico] = $typeMeta($ev->event_type);
+                $evMeta = is_array($ev->meta ?? null) ? $ev->meta : [];
+                $isRecoRejected = $ev->event_type === 'bm_reco'
+                    && (($evMeta['action'] ?? null) === 'Rejected' || str_contains((string) $ev->title, 'Rejected'));
+                if ($isRecoRejected) {
+                    $tone = 'bad';
+                    $ico = 'bi-x-circle';
+                    $typeLabel = 'Rejected';
+                } elseif ($ev->event_type === 'bm_reco' && (($evMeta['action'] ?? null) === 'Approved' || str_contains((string) $ev->title, 'Approved'))) {
+                    $tone = 'ok';
+                    $ico = 'bi-check2-circle';
+                    $typeLabel = 'Approved';
+                }
+                $rejectDetail = filled($evMeta['rejection_reason'] ?? null)
+                    ? (string) $evMeta['rejection_reason']
+                    : null;
                 $role = match ((int) ($ev->user?->crm_role_type ?? -1)) {
                     8 => 'BM', 10 => 'JSM', 11 => 'SM', 12 => 'SSM',
                     default => strtoupper((string) ($ev->user?->job_role ?: 'User')),
@@ -241,7 +257,9 @@
                         </div>
                     @endif
 
-                    @if(filled($ev->body))
+                    @if($rejectDetail)
+                        <div class="act-note" style="color:#be123c;font-weight:600">Reason: {{ $rejectDetail }}</div>
+                    @elseif(filled($ev->body))
                         <div class="act-note">{{ $ev->body }}</div>
                     @endif
                 </div>
