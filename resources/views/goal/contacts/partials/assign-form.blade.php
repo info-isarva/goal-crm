@@ -663,6 +663,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!r.checked) return;
                 methodInput.value = r.value;
                 sync();
+                document.dispatchEvent(new CustomEvent('cg-assign-method', { detail: { uid: uid, method: r.value } }));
             });
         });
         document.querySelectorAll('input[name="' + uid + '_alloc_ui"]').forEach(function (r) {

@@ -140,6 +140,8 @@
 .cg-meter.bad{background:#fef2f2;color:#b91c1c}
 
 .cg-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cg-summary.is-remain-only{grid-template-columns:1fr}
+.cg-summary.is-remain-only .cg-sum-card.is-meta{display:none}
 .cg-sum-card{display:flex;align-items:center;gap:8px;padding:10px;border-radius:10px;border:1px solid #e8eef2;background:#fff;border-left:3px solid var(--sum-accent,#94a3b8)}
 .cg-sum-card .sum-ico{width:34px;height:34px;border-radius:8px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--sum-soft,#f1f5f9);color:var(--sum-ink,#475569);font-size:.95rem}
 .cg-sum-card .l{margin:0;font-size:.65rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.03em}
@@ -164,6 +166,7 @@
   .cg-block:nth-child(2){border-right:0}
   .cg-block-sum{grid-column:1 / -1;border-right:0;border-bottom:0;background:#fff}
   .cg-summary{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .cg-summary.is-remain-only{grid-template-columns:1fr}
 }
 @media (min-width:1100px){
   .cg-page{padding:1rem 1.25rem 2rem}
@@ -197,10 +200,12 @@
     $assignedToVrm = (bool) ($assignedToVrm ?? false);
     $canAssignNow = (bool) ($canAssignNow ?? (! $isEdit));
     $batchSummary = $batchSummary ?? ['total' => 0, 'valid' => 0, 'duplicates' => 0, 'invalid' => 0, 'unassigned' => 0];
+    // Edit + assign to particular users (VRM): keep only "Remain to assign"
+    $summaryRemainOnly = $isEdit && ($assignedToVrm || ($defaultMethod ?? '') === 'vrm');
     $pageTitle = $isEdit ? 'Edit Campaign' : 'Add Campaign';
     $pageSub = $isEdit
         ? ($canAssignNow
-            ? 'Update file or details, then finish assigning open contacts.'
+            ? 'Update file or details, then finish assigning remaining contacts.'
             : 'Update campaign details. All contacts are already assigned to VRMs.')
         : 'Import contacts, set campaign details, assign to Cluster / Branch / VRM, then track from the list.';
     $formAction = $isEdit
@@ -377,15 +382,15 @@
                     <span class="cg-sec-ico summary"><i class="bi bi-bar-chart-line"></i></span>
                     Summary
                 </h3>
-                <div class="cg-summary">
-                    <div class="cg-sum-card tone-total">
+                <div class="cg-summary{{ $summaryRemainOnly ? ' is-remain-only' : '' }}" id="cgSummary" data-remain-only="{{ $summaryRemainOnly ? '1' : '0' }}">
+                    <div class="cg-sum-card tone-total is-meta">
                         <span class="sum-ico"><i class="bi bi-people-fill"></i></span>
                         <div class="sum-meta">
                             <p class="l">Total</p>
                             <p class="v" id="sumTotal">{{ $isEdit ? number_format((int) ($batchSummary['total'] ?? $import->total_rows ?? 0)) : '0' }}</p>
                         </div>
                     </div>
-                    <div class="cg-sum-card tone-ok">
+                    <div class="cg-sum-card tone-ok is-meta">
                         <span class="sum-ico"><i class="bi bi-check2-circle"></i></span>
                         <div class="sum-meta">
                             <p class="l">Valid</p>
@@ -395,11 +400,11 @@
                     <div class="cg-sum-card tone-warn">
                         <span class="sum-ico"><i class="bi bi-hourglass-split"></i></span>
                         <div class="sum-meta">
-                            <p class="l">Open</p>
+                            <p class="l">Remain to assign</p>
                             <p class="v" id="sumDup">{{ $isEdit ? number_format($unassignedCount) : '0' }}</p>
                         </div>
                     </div>
-                    <div class="cg-sum-card tone-bad">
+                    <div class="cg-sum-card tone-bad is-meta">
                         <span class="sum-ico"><i class="bi bi-x-octagon"></i></span>
                         <div class="sum-meta">
                             <p class="l">Invalid</p>
@@ -409,7 +414,7 @@
                 </div>
                 <p class="cg-sum-note">
                     @if($isEdit)
-                        {{ $canAssignNow ? 'Open contacts still need assignment. Replacing the file removes all current contacts and loads the new list only.' : 'Campaign is fully assigned to VRMs. You can still update details.' }}
+                        {{ $canAssignNow ? 'Contacts still remain to assign. Replacing the file removes all current contacts and loads the new list only.' : 'Campaign is fully assigned to VRMs. You can still update details.' }}
                     @else
                         Duplicates are allowed and imported as new contacts. Final after Import &amp; Assign.
                     @endif
@@ -461,6 +466,35 @@
     var isEdit = form && form.getAttribute('data-edit') === '1';
     var canAssignNow = !form || form.getAttribute('data-can-assign') !== '0';
     var defaultSubmitLabel = @json($submitLabel);
+    var assignedToVrm = @json($assignedToVrm);
+
+    function setSummaryRemainOnly(on) {
+        var wrap = document.getElementById('cgSummary');
+        if (!wrap) return;
+        wrap.classList.toggle('is-remain-only', !!on);
+        wrap.setAttribute('data-remain-only', on ? '1' : '0');
+    }
+
+    function syncSummaryForAssignMethod(method) {
+        if (!isEdit) {
+            setSummaryRemainOnly(false);
+            return;
+        }
+        if (assignedToVrm) {
+            setSummaryRemainOnly(true);
+            return;
+        }
+        if (method == null) {
+            var methodEl = document.getElementById('newMethod') || document.querySelector('#cgCampaignForm input[name="method"]');
+            method = methodEl ? String(methodEl.value || '') : '';
+        }
+        setSummaryRemainOnly(String(method) === 'vrm');
+    }
+
+    document.addEventListener('cg-assign-method', function (e) {
+        syncSummaryForAssignMethod(e && e.detail ? e.detail.method : null);
+    });
+    syncSummaryForAssignMethod();
 
     function applyPreviewCounts(total, valid, dup, invalid) {
         setSummary(total, valid, dup, invalid);
