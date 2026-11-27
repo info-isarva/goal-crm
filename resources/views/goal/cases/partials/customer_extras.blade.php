@@ -26,9 +26,18 @@
                     <h6 class="cw-card-title">Borrower Profile</h6>
                 </div>
                 @php
-                    $bpVal = function (string $party, string $key, $fallback = '') use ($br) {
+                    $bpFilled = static function ($v): bool {
+                        return $v !== null && !(is_string($v) && trim($v) === '');
+                    };
+                    // Customer Details is source of truth for identity; BM profile only fills gaps / extras.
+                    $bpIdentityKeys = ['name', 'age', 'dob', 'pan', 'relationship'];
+                    $bpVal = function (string $party, string $key, $fallback = '') use ($br, $bpFilled, $bpIdentityKeys) {
                         $stored = data_get($br, "profile.$party.$key");
-                        if ($stored !== null && $stored !== '') {
+                        $isIdentity = in_array($key, $bpIdentityKeys, true);
+                        if ($isIdentity && $bpFilled($fallback)) {
+                            return $fallback;
+                        }
+                        if ($bpFilled($stored)) {
                             return $stored;
                         }
 
@@ -67,8 +76,8 @@
                         <tbody>
                             @foreach([
                                 ['name', 'Name', 'text', 'Enter name'],
-                                ['age', 'Age', 'text', 'Age'],
                                 ['dob', 'DOB', 'date', 'dd-mm-yyyy'],
+                                ['age', 'Age', 'age', 'Auto from DOB'],
                                 ['relationship', 'Relationship', 'text', 'Relationship'],
                                 ['profession', 'Profession', 'text', 'Profession'],
                                 ['gross_income', 'Gross Income', 'money', '0.00'],
@@ -85,10 +94,15 @@
                                         @if($type === 'date')
                                             <div class="cw-input-group">
                                                 <span class="cw-input-group-ico"><i class="bi bi-calendar3"></i></span>
-                                                <input type="text" class="cw-input js-datepicker" name="bm_reco[profile][applicant][{{ $key }}]"
+                                                <input type="text" class="cw-input js-datepicker js-dob-input" name="bm_reco[profile][applicant][{{ $key }}]"
                                                        value="{{ $appVal }}"
-                                                       placeholder="{{ $ph }}" autocomplete="off" {{ $ro }}>
+                                                       placeholder="{{ $ph }}" autocomplete="off"
+                                                       data-party="bm_applicant" data-min-age="18" {{ $ro }}>
                                             </div>
+                                        @elseif($type === 'age')
+                                            <input class="cw-input js-age-from-dob" name="bm_reco[profile][applicant][{{ $key }}]"
+                                                   value="{{ $appVal }}"
+                                                   placeholder="{{ $ph }}" data-party="bm_applicant" readonly tabindex="-1" {{ $ro }}>
                                         @elseif($type === 'money')
                                             <div class="cw-input-group">
                                                 <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>
@@ -107,10 +121,15 @@
                                         @if($type === 'date')
                                             <div class="cw-input-group">
                                                 <span class="cw-input-group-ico"><i class="bi bi-calendar3"></i></span>
-                                                <input type="text" class="cw-input js-datepicker" name="bm_reco[profile][co_applicant][{{ $key }}]"
+                                                <input type="text" class="cw-input js-datepicker js-dob-input" name="bm_reco[profile][co_applicant][{{ $key }}]"
                                                        value="{{ $coVal }}"
-                                                       placeholder="{{ $ph }}" autocomplete="off" {{ $ro }}>
+                                                       placeholder="{{ $ph }}" autocomplete="off"
+                                                       data-party="bm_co_applicant" data-min-age="18" {{ $ro }}>
                                             </div>
+                                        @elseif($type === 'age')
+                                            <input class="cw-input js-age-from-dob" name="bm_reco[profile][co_applicant][{{ $key }}]"
+                                                   value="{{ $coVal }}"
+                                                   placeholder="{{ $ph }}" data-party="bm_co_applicant" readonly tabindex="-1" {{ $ro }}>
                                         @elseif($type === 'money')
                                             <div class="cw-input-group">
                                                 <span class="cw-input-group-ico font-semibold text-blue-900">₹</span>

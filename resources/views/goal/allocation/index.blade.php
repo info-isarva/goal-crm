@@ -1145,16 +1145,29 @@ window.BA_SALES = @json($salesPayload);
         }
     });
 
-    // Reassign modal
-    $('#reassignModal').on('show.bs.modal', function (event) {
-        var btn = event.relatedTarget;
-        if (!btn) return;
+    // Reassign modal — read trigger from click (jQuery's show.bs.modal often lacks relatedTarget)
+    function hydrateReassignModal(btn) {
+        if (!btn || !btn.getAttribute) return;
+        btn = btn.closest ? (btn.closest('.btn-reassign') || btn) : btn;
         var branchId = btn.getAttribute('data-branch-id');
-        $('#reassignForm').attr('action', btn.getAttribute('data-assign-url'));
-        $('#reassignLeadMeta').text((btn.getAttribute('data-lead-ref') || '') + ' · ' + (btn.getAttribute('data-customer') || ''));
+        $('#reassignForm').attr('action', btn.getAttribute('data-assign-url') || '');
+        $('#reassignLeadMeta').text(
+            ((btn.getAttribute('data-lead-ref') || '') + ' · ' + (btn.getAttribute('data-customer') || '')).replace(/^\s*·\s*$/, '—').trim() || '—'
+        );
         $('#reassignCurrent').val(btn.getAttribute('data-current') || '—');
         fillSelect($('#reassignAssignee'), branchId, '');
         $('#reassignReason').val('');
+    }
+
+    $(document).on('click', '.btn-reassign', function () {
+        hydrateReassignModal(this);
+    });
+
+    $('#reassignModal').on('show.bs.modal', function (event) {
+        var btn = event.relatedTarget
+            || (event.originalEvent && event.originalEvent.relatedTarget)
+            || null;
+        if (btn) hydrateReassignModal(btn);
     });
 
     $('#reassignForm').on('submit', function (e) {

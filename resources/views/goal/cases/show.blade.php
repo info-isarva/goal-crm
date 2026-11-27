@@ -1299,28 +1299,28 @@
                 <i class="bi bi-person rb-ico" aria-hidden="true"></i>
                 <div class="rb-text">
                     <div class="rb-label">Customer</div>
-                    <div class="rb-value"><span>{{ $case->customer_name }}</span></div>
+                    <div class="rb-value"><span data-cw-live="customer_name">{{ $case->customer_name }}</span></div>
                 </div>
             </div>
             <div class="rb-item">
                 <i class="bi bi-layers rb-ico" aria-hidden="true"></i>
                 <div class="rb-text">
                     <div class="rb-label">Product</div>
-                    <div class="rb-value"><span>{{ $case->product ?: '—' }}</span></div>
+                    <div class="rb-value"><span data-cw-live="product">{{ $case->product ?: '—' }}</span></div>
                 </div>
             </div>
             <div class="rb-item">
                 <i class="bi bi-currency-rupee rb-ico" aria-hidden="true"></i>
                 <div class="rb-text">
                     <div class="rb-label">Requested Amount</div>
-                    <div class="rb-value"><span>{{ $fmtInr($case->loan_amount) }}</span></div>
+                    <div class="rb-value"><span data-cw-live="loan_amount_display">{{ $fmtInr($case->loan_amount) }}</span></div>
                 </div>
             </div>
             <div class="rb-item">
                 <i class="bi bi-bank rb-ico" aria-hidden="true"></i>
                 <div class="rb-text">
                     <div class="rb-label">Branch</div>
-                    <div class="rb-value"><span>{{ $case->orgUnit?->name ?? '—' }}</span></div>
+                    <div class="rb-value"><span data-cw-live="branch">{{ $case->orgUnit?->name ?? '—' }}</span></div>
                 </div>
             </div>
             <div class="rb-item rb-status">
@@ -1419,18 +1419,12 @@
                     <div class="sec-body">
                         <div class="detail-mobile-hero">
                             <div class="dmh-top">
-                                <div class="dmh-name">{{ $case->customer_name ?: '—' }}</div>
-                                @if($case->product)
-                                    <span class="pill-soft product">{{ $case->product }}</span>
-                                @endif
+                                <div class="dmh-name" data-cw-live="customer_name">{{ $case->customer_name ?: '—' }}</div>
+                                <span class="pill-soft product" data-cw-live="product" data-cw-live-hide-empty="1" @if(!$case->product) style="display:none" @endif>{{ $case->product }}</span>
                             </div>
                             <div class="dmh-meta">
-                                @if($mobileDisplay)
-                                    <a href="tel:+91{{ $mobileDigits }}"><i class="bi bi-telephone"></i>{{ $mobileDisplay }}</a>
-                                @endif
-                                @unless($cwBlank($amountVal))
-                                    <span class="dmh-amt">{{ $amountVal }}</span>
-                                @endunless
+                                <a data-cw-live="mobile_display" data-cw-live-tel="1" href="{{ $mobileDisplay ? 'tel:+91'.$mobileDigits : '#' }}" @if(!$mobileDisplay) style="display:none" @endif><i class="bi bi-telephone"></i><span data-cw-live="mobile_display">{{ $mobileDisplay }}</span></a>
+                                <span class="dmh-amt" data-cw-live="loan_amount_display" data-cw-live-hide-blank="1">{{ $amountVal }}</span>
                             </div>
                         </div>
                         <div class="detail-grid">
@@ -1439,34 +1433,34 @@
                                     <div class="d-label" data-short="Ref">Customer Reference</div><div class="d-sep">:</div>
                                     <div class="d-value">{{ $customerRef }}</div>
                                 </div>
-                                <div class="detail-row is-key {{ $cwBlank($case->customer_name) ? 'is-empty' : '' }}">
+                                <div class="detail-row is-key {{ $cwBlank($case->customer_name) ? 'is-empty' : '' }}" data-cw-live-row="customer_name">
                                     <div class="d-label" data-short="Name">Customer Name</div><div class="d-sep">:</div>
-                                    <div class="d-value is-strong">{{ $case->customer_name }}</div>
+                                    <div class="d-value is-strong" data-cw-live="customer_name">{{ $case->customer_name }}</div>
                                 </div>
-                                <div class="detail-row is-key {{ $mobileDisplay ? '' : 'is-empty' }}">
+                                <div class="detail-row is-key {{ $mobileDisplay ? '' : 'is-empty' }}" data-cw-live-row="mobile_display">
                                     <div class="d-label" data-short="Mobile">Mobile Number</div><div class="d-sep">:</div>
-                                    <div class="d-value">
+                                    <div class="d-value" data-cw-live-html="mobile_link">
                                         @if($mobileDisplay)
-                                            <i class="bi bi-telephone"></i><a href="tel:+91{{ $mobileDigits }}">{{ $mobileDisplay }}</a>
+                                            <i class="bi bi-telephone"></i><a href="tel:+91{{ $mobileDigits }}" data-cw-live="mobile_display" data-cw-live-tel="1">{{ $mobileDisplay }}</a>
                                         @else
                                             —
                                         @endif
                                     </div>
                                 </div>
-                                <div class="detail-row {{ $em ? '' : 'is-empty' }}">
+                                <div class="detail-row {{ $em ? '' : 'is-empty' }}" data-cw-live-row="email">
                                     <div class="d-label">Email</div><div class="d-sep">:</div>
-                                    <div class="d-value">
+                                    <div class="d-value" data-cw-live-html="email_link">
                                         @if($em)
-                                            <i class="bi bi-envelope"></i><a href="mailto:{{ $em }}">{{ $em }}</a>
+                                            <i class="bi bi-envelope"></i><a href="mailto:{{ $em }}" data-cw-live="email" data-cw-live-mailto="1">{{ $em }}</a>
                                         @else
                                             —
                                         @endif
                                     </div>
                                 </div>
-                                <div class="detail-row {{ $prefContact ? '' : 'is-empty' }}">
+                                <div class="detail-row {{ $prefContact ? '' : 'is-empty' }}" data-cw-live-row="preferred_contact_time">
                                     <div class="d-label" data-short="Contact time">Preferred Contact Time</div><div class="d-sep">:</div>
                                     <div class="d-value">
-                                        @if($prefContact)<i class="bi bi-clock"></i><span>{{ $prefContact }}</span>@else — @endif
+                                        <span data-cw-live-pref-contact="1">@if($prefContact)<i class="bi bi-clock"></i><span data-cw-live="preferred_contact_time">{{ $prefContact }}</span>@else — @endif</span>
                                     </div>
                                 </div>
                                 <div class="detail-row">
@@ -1480,39 +1474,39 @@
                                 </div>
                             </div>
                             <div class="detail-col" data-section="Loan">
-                                <div class="detail-row is-key {{ $case->product ? '' : 'is-empty' }}">
+                                <div class="detail-row is-key {{ $case->product ? '' : 'is-empty' }}" data-cw-live-row="product">
                                     <div class="d-label">Product</div><div class="d-sep">:</div>
-                                    <div class="d-value">
+                                    <div class="d-value" data-cw-live-html="product_pill">
                                         @if($case->product)
-                                            <span class="pill-soft product">{{ $case->product }}</span>
+                                            <span class="pill-soft product" data-cw-live="product">{{ $case->product }}</span>
                                         @else
                                             —
                                         @endif
                                     </div>
                                 </div>
-                                <div class="detail-row is-key {{ $cwBlank($amountVal) ? 'is-empty' : '' }}">
+                                <div class="detail-row is-key {{ $cwBlank($amountVal) ? 'is-empty' : '' }}" data-cw-live-row="loan_amount_display">
                                     <div class="d-label" data-short="Amount">Requested Amount</div><div class="d-sep">:</div>
-                                    <div class="d-value is-strong">{{ $amountVal }}</div>
+                                    <div class="d-value is-strong" data-cw-live="loan_amount_display">{{ $amountVal }}</div>
                                 </div>
-                                <div class="detail-row {{ $cwBlank($purposeVal) ? 'is-empty' : '' }}">
+                                <div class="detail-row {{ $cwBlank($purposeVal) ? 'is-empty' : '' }}" data-cw-live-row="purpose">
                                     <div class="d-label">Purpose</div><div class="d-sep">:</div>
-                                    <div class="d-value">{{ $purposeVal }}</div>
+                                    <div class="d-value" data-cw-live="purpose">{{ $purposeVal }}</div>
                                 </div>
-                                <div class="detail-row {{ $cwBlank($tenureVal) ? 'is-empty' : '' }}">
+                                <div class="detail-row {{ $cwBlank($tenureVal) ? 'is-empty' : '' }}" data-cw-live-row="tenure_display">
                                     <div class="d-label">Tenure</div><div class="d-sep">:</div>
-                                    <div class="d-value">{{ $tenureVal }}</div>
+                                    <div class="d-value" data-cw-live="tenure_display">{{ $tenureVal }}</div>
                                 </div>
-                                <div class="detail-row {{ $cwBlank($empTypeVal) ? 'is-empty' : '' }}">
+                                <div class="detail-row {{ $cwBlank($empTypeVal) ? 'is-empty' : '' }}" data-cw-live-row="employment_type">
                                     <div class="d-label" data-short="Employment">Employment Type</div><div class="d-sep">:</div>
-                                    <div class="d-value">{{ $empTypeVal }}</div>
+                                    <div class="d-value" data-cw-live="employment_type">{{ $empTypeVal }}</div>
                                 </div>
-                                <div class="detail-row {{ $cwBlank($incomeVal) ? 'is-empty' : '' }}">
+                                <div class="detail-row {{ $cwBlank($incomeVal) ? 'is-empty' : '' }}" data-cw-live-row="monthly_income_display">
                                     <div class="d-label" data-short="Income">Monthly Income</div><div class="d-sep">:</div>
-                                    <div class="d-value is-strong">{{ $incomeVal }}</div>
+                                    <div class="d-value is-strong" data-cw-live="monthly_income_display">{{ $incomeVal }}</div>
                                 </div>
-                                <div class="detail-row {{ $cwBlank($obligVal) ? 'is-empty' : '' }}">
+                                <div class="detail-row {{ $cwBlank($obligVal) ? 'is-empty' : '' }}" data-cw-live-row="obligations_display">
                                     <div class="d-label" data-short="Obligations">Existing Obligations</div><div class="d-sep">:</div>
-                                    <div class="d-value is-strong">{{ $obligVal }}</div>
+                                    <div class="d-value is-strong" data-cw-live="obligations_display">{{ $obligVal }}</div>
                                 </div>
                             </div>
                         </div>
@@ -2252,6 +2246,250 @@
             if (window.confirm(title + (text ? '\n\n' + text : ''))) onYes();
         }
 
+        function setProfileInput(form, party, key, value) {
+            if (!form || value === undefined || value === null) return;
+            var el = form.querySelector('[name="bm_reco[profile][' + party + '][' + key + ']"]');
+            if (!el) return;
+            var str = String(value);
+            if (el._flatpickr) {
+                try { el._flatpickr.setDate(str || null, true); } catch (e) { el.value = str; }
+            } else {
+                el.value = str;
+            }
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function isBlankLive(v) {
+            var s = String(v == null ? '' : v).trim();
+            return s === '' || s === '—' || s === '-' || s === '–';
+        }
+
+        function setFormFieldValue(form, name, value) {
+            if (!form || value === undefined || value === null) return;
+            var el = form.querySelector('[name="' + name + '"]');
+            if (!el) return;
+            var str = String(value);
+            if (el.tagName === 'SELECT') {
+                el.value = str;
+                if (window.jQuery && jQuery(el).data('select2')) {
+                    jQuery(el).val(str).trigger('change');
+                } else {
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                return;
+            }
+            if (el._flatpickr) {
+                try { el._flatpickr.setDate(str || null, true); } catch (e) { el.value = str; }
+            } else {
+                el.value = str;
+            }
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function applyLiveDisplays(live) {
+            if (!live || !page) return;
+            page.querySelectorAll('[data-cw-live]').forEach(function (el) {
+                var key = el.getAttribute('data-cw-live');
+                if (!key || !(key in live)) return;
+                var val = live[key];
+                var text = isBlankLive(val) ? '—' : String(val);
+                if (el.getAttribute('data-cw-live-tel') === '1') {
+                    var digits = String(live.mobile_digits || '').replace(/\D+/g, '');
+                    if (digits) {
+                        el.setAttribute('href', 'tel:+91' + digits);
+                        el.style.display = '';
+                        var span = el.querySelector('span[data-cw-live="mobile_display"]');
+                        if (span) span.textContent = text;
+                        else if (!el.querySelector('i')) el.textContent = text;
+                        else {
+                            var label = el.childNodes[el.childNodes.length - 1];
+                            if (label && label.nodeType === 3) label.textContent = text;
+                            else el.innerHTML = '<i class="bi bi-telephone"></i>' + text;
+                        }
+                    } else {
+                        el.style.display = 'none';
+                    }
+                    return;
+                }
+                if (el.getAttribute('data-cw-live-mailto') === '1') {
+                    if (isBlankLive(val) || text === '—') {
+                        el.removeAttribute('href');
+                    } else {
+                        el.setAttribute('href', 'mailto:' + text);
+                        el.textContent = text;
+                    }
+                    return;
+                }
+                if (el.getAttribute('data-cw-live-hide-empty') === '1') {
+                    if (isBlankLive(val) || text === '—') {
+                        el.style.display = 'none';
+                        el.textContent = '';
+                    } else {
+                        el.style.display = '';
+                        el.textContent = text;
+                    }
+                    return;
+                }
+                if (el.getAttribute('data-cw-live-hide-blank') === '1' && isBlankLive(val)) {
+                    el.style.display = 'none';
+                    return;
+                }
+                if (el.getAttribute('data-cw-live-hide-blank') === '1') el.style.display = '';
+                el.textContent = text;
+            });
+
+            page.querySelectorAll('[data-cw-live-row]').forEach(function (row) {
+                var key = row.getAttribute('data-cw-live-row');
+                if (!key || !(key in live)) return;
+                row.classList.toggle('is-empty', isBlankLive(live[key]));
+            });
+
+            // Rebuild simple linked / pill cells when empty ↔ filled flips
+            page.querySelectorAll('[data-cw-live-html="mobile_link"]').forEach(function (box) {
+                var digits = String(live.mobile_digits || '').replace(/\D+/g, '');
+                var disp = live.mobile_display;
+                if (digits && !isBlankLive(disp)) {
+                    box.innerHTML = '<i class="bi bi-telephone"></i><a href="tel:+91' + digits + '" data-cw-live="mobile_display" data-cw-live-tel="1">' + String(disp) + '</a>';
+                } else {
+                    box.textContent = '—';
+                }
+            });
+            page.querySelectorAll('[data-cw-live-html="email_link"]').forEach(function (box) {
+                var email = live.email;
+                if (!isBlankLive(email) && email !== '—') {
+                    box.innerHTML = '<i class="bi bi-envelope"></i><a href="mailto:' + String(email) + '" data-cw-live="email" data-cw-live-mailto="1">' + String(email) + '</a>';
+                } else {
+                    box.textContent = '—';
+                }
+            });
+            page.querySelectorAll('[data-cw-live-html="product_pill"]').forEach(function (box) {
+                var product = live.product;
+                if (!isBlankLive(product) && product !== '—') {
+                    box.innerHTML = '<span class="pill-soft product" data-cw-live="product">' + String(product) + '</span>';
+                } else {
+                    box.textContent = '—';
+                }
+            });
+            page.querySelectorAll('[data-cw-live-pref-contact]').forEach(function (box) {
+                var pref = live.preferred_contact_time;
+                if (!isBlankLive(pref) && pref !== '—') {
+                    box.innerHTML = '<i class="bi bi-clock"></i><span data-cw-live="preferred_contact_time">' + String(pref) + '</span>';
+                } else {
+                    box.textContent = '—';
+                }
+            });
+        }
+
+        function applyCustomerFormFromSave(payload) {
+            var form = document.getElementById('cwWorkspaceForm');
+            if (!form || !payload) return;
+            var cd = payload.customer_details || {};
+            var app = cd.applicant || {};
+            var co = cd.co_applicant || {};
+            var emp = cd.employment || {};
+            var pairs = [
+                ['customer_details[applicant][name]', app.name || payload.customer_name],
+                ['customer_details[applicant][mobile]', app.mobile || payload.mobile],
+                ['customer_details[applicant][email]', app.email],
+                ['customer_details[applicant][official_email]', app.official_email],
+                ['customer_details[applicant][father_name]', app.father_name],
+                ['customer_details[applicant][mother_name]', app.mother_name],
+                ['customer_details[applicant][dob]', app.dob],
+                ['customer_details[applicant][age]', app.age],
+                ['customer_details[applicant][pan]', app.pan],
+                ['customer_details[applicant][marital_status]', app.marital_status],
+                ['customer_details[co_applicant][name]', co.name],
+                ['customer_details[co_applicant][mobile]', co.mobile],
+                ['customer_details[co_applicant][email]', co.email],
+                ['customer_details[co_applicant][official_email]', co.official_email],
+                ['customer_details[co_applicant][father_name]', co.father_name],
+                ['customer_details[co_applicant][mother_name]', co.mother_name],
+                ['customer_details[co_applicant][dob]', co.dob],
+                ['customer_details[co_applicant][age]', co.age],
+                ['customer_details[co_applicant][pan]', co.pan],
+                ['customer_details[co_applicant][marital_status]', co.marital_status],
+                ['customer_details[co_applicant][relationship]', co.relationship],
+                ['customer_details[employment][type_applicant]', emp.type_applicant],
+                ['customer_details[employment][type_co]', emp.type_co],
+                ['customer_details[employment][designation_applicant]', emp.designation_applicant],
+                ['customer_details[employment][designation_co]', emp.designation_co],
+                ['customer_details[employment][income_applicant]', emp.income_applicant],
+                ['customer_details[employment][income_co]', emp.income_co],
+                ['customer_details[employment][employer_applicant]', emp.employer_applicant],
+                ['customer_details[employment][employer_co]', emp.employer_co]
+            ];
+            pairs.forEach(function (pair) {
+                if (pair[1] !== undefined && pair[1] !== null && String(pair[1]).trim() !== '') {
+                    setFormFieldValue(form, pair[0], pair[1]);
+                }
+            });
+        }
+
+        function applyBorrowerProfileFromSave(payload) {
+            var recoForm = document.getElementById('cwRecommendationForm');
+            if (!payload) return;
+            if (recoForm) {
+                var profile = payload.borrower_profile || {};
+                ['applicant', 'co_applicant'].forEach(function (party) {
+                    var row = profile[party] || {};
+                    ['name', 'age', 'dob', 'pan', 'relationship', 'profession', 'gross_income', 'net_income'].forEach(function (key) {
+                        if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+                            setProfileInput(recoForm, party, key, row[key]);
+                        }
+                    });
+                });
+                var cd = payload.customer_details || {};
+                var map = {
+                    applicant: {
+                        name: (cd.applicant && cd.applicant.name) || payload.customer_name,
+                        age: cd.applicant && cd.applicant.age,
+                        dob: cd.applicant && cd.applicant.dob,
+                        pan: cd.applicant && cd.applicant.pan,
+                        relationship: (cd.applicant && cd.applicant.relationship) || 'Self',
+                        profession: cd.employment && (cd.employment.designation_applicant || cd.employment.type_applicant),
+                        net_income: cd.employment && cd.employment.income_applicant,
+                        gross_income: cd.employment && (cd.employment.gross_income_applicant || cd.employment.income_applicant)
+                    },
+                    co_applicant: {
+                        name: cd.co_applicant && cd.co_applicant.name,
+                        age: cd.co_applicant && cd.co_applicant.age,
+                        dob: cd.co_applicant && cd.co_applicant.dob,
+                        pan: cd.co_applicant && cd.co_applicant.pan,
+                        relationship: cd.co_applicant && cd.co_applicant.relationship,
+                        profession: cd.employment && (cd.employment.designation_co || cd.employment.type_co),
+                        net_income: cd.employment && cd.employment.income_co,
+                        gross_income: cd.employment && (cd.employment.gross_income_co || cd.employment.income_co)
+                    }
+                };
+                Object.keys(map).forEach(function (party) {
+                    Object.keys(map[party]).forEach(function (key) {
+                        var next = map[party][key];
+                        if (next !== undefined && next !== null && String(next).trim() !== '') {
+                            setProfileInput(recoForm, party, key, next);
+                        }
+                    });
+                });
+                var hiddenName = recoForm.querySelector('input[name="customer_name"]');
+                var hiddenMob = recoForm.querySelector('input[name="mobile"]');
+                if (hiddenName && payload.customer_name) hiddenName.value = payload.customer_name;
+                if (hiddenMob && payload.mobile) hiddenMob.value = payload.mobile;
+                var banner = recoForm.querySelector('.cw-reco-banner-sub strong');
+                if (banner && payload.customer_name) banner.textContent = String(payload.customer_name).toUpperCase();
+            }
+            applyCustomerFormFromSave(payload);
+            applyLiveDisplays(payload.live || {
+                customer_name: payload.customer_name,
+                mobile: payload.mobile,
+                mobile_display: payload.mobile,
+                email: (payload.customer_details && payload.customer_details.applicant && payload.customer_details.applicant.email) || '—',
+                employment_type: (payload.customer_details && payload.customer_details.employment && payload.customer_details.employment.type_applicant) || '—',
+                monthly_income_display: (payload.customer_details && payload.customer_details.employment && payload.customer_details.employment.income_applicant) || '—'
+            });
+            if (typeof bindAllDobAge === 'function') bindAllDobAge();
+        }
+
         function submitAjaxForm(form) {
             if (form.id === 'cwWorkspaceForm') {
                 var nameEl = form.querySelector('[name="customer_details[applicant][name]"]');
@@ -2310,6 +2548,12 @@
                         window.location.href = window.location.pathname + tabQuery(tab);
                         return;
                     }
+                    // Refresh Overview / Recommendation / Customer displays without full page reload.
+                    if (form.id === 'cwWorkspaceForm' || form.id === 'cwRecommendationForm' || form.classList.contains('js-cw-ajax-save')) {
+                        if (result.payload.live || result.payload.borrower_profile || result.payload.customer_details) {
+                            applyBorrowerProfileFromSave(result.payload);
+                        }
+                    }
                     if (window.GoalPageLoader) GoalPageLoader.hide();
                     return;
                 }
@@ -2338,6 +2582,8 @@
                 }
             });
         }
+
+        window.__cwApplyWorkspaceSave = applyBorrowerProfileFromSave;
 
         window.CwAjaxSave = {
             submit: function (form, opts) {
@@ -2405,38 +2651,94 @@
         });
     });
 
-    function parseDobToAge(raw) {
+    function parseDobToAge(raw, minAge) {
         var s = String(raw || '').trim();
-        if (!s) return '';
+        if (!s && !(raw && typeof raw.getFullYear === 'function')) return '';
         var d = null;
-        var m1 = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-        var m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-        if (m1) d = new Date(parseInt(m1[3], 10), parseInt(m1[2], 10) - 1, parseInt(m1[1], 10));
+        var m1 = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/); // dd-mm-yyyy
+        var m2 = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/); // yyyy-mm-dd
+        if (raw && typeof raw.getFullYear === 'function') d = new Date(raw.getTime());
+        else if (m1) d = new Date(parseInt(m1[3], 10), parseInt(m1[2], 10) - 1, parseInt(m1[1], 10));
         else if (m2) d = new Date(parseInt(m2[1], 10), parseInt(m2[2], 10) - 1, parseInt(m2[3], 10));
         if (!d || isNaN(d.getTime())) return '';
         var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        d.setHours(0, 0, 0, 0);
+        if (d > today) return '';
         var age = today.getFullYear() - d.getFullYear();
         var md = today.getMonth() - d.getMonth();
         if (md < 0 || (md === 0 && today.getDate() < d.getDate())) age--;
+        var need = parseInt(minAge, 10);
+        if (!isNaN(need) && need > 0 && age < need) return '';
         return age >= 0 && age < 130 ? String(age) : '';
     }
 
     function syncAgeFromDob(dobEl) {
         if (!dobEl) return;
         var party = dobEl.getAttribute('data-party') || '';
+        if (!party) return;
         var ageEl = page.querySelector('.js-age-from-dob[data-party="' + party + '"]');
         if (!ageEl) return;
-        var age = parseDobToAge(dobEl.value);
-        if (age !== '') ageEl.value = age;
+        ageEl.readOnly = true;
+        var raw = dobEl.value;
+        if (dobEl._flatpickr && dobEl._flatpickr.selectedDates && dobEl._flatpickr.selectedDates[0]) {
+            raw = dobEl._flatpickr.selectedDates[0];
+        }
+        var minAge = dobEl.getAttribute('data-min-age') || '18';
+        var age = parseDobToAge(raw, minAge);
+        ageEl.value = age;
+        ageEl.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
-    page.querySelectorAll('.js-dob-input').forEach(function (el) {
-        el.addEventListener('change', function () { syncAgeFromDob(el); });
-        el.addEventListener('blur', function () { syncAgeFromDob(el); });
-        if (el._flatpickr) {
-            el._flatpickr.config.onChange.push(function () { syncAgeFromDob(el); });
+    function hookDobAge(el) {
+        if (!el) return;
+
+        function run() { syncAgeFromDob(el); }
+
+        if (el.dataset.ageBound !== '1') {
+            el.dataset.ageBound = '1';
+            el.addEventListener('change', run);
+            el.addEventListener('input', run);
+            el.addEventListener('blur', run);
         }
-    });
+
+        function attachFlatpickrHook() {
+            var fp = el._flatpickr;
+            if (!fp) return false;
+            if (fp.__ageHooked) return true;
+            fp.__ageHooked = true;
+            fp.config.onChange.push(function () { run(); });
+            if (fp.altInput) {
+                fp.altInput.addEventListener('change', run);
+                fp.altInput.addEventListener('blur', run);
+            }
+            return true;
+        }
+
+        if (!attachFlatpickrHook() && el.dataset.agePoll !== '1') {
+            el.dataset.agePoll = '1';
+            var tries = 0;
+            var timer = setInterval(function () {
+                tries += 1;
+                if (attachFlatpickrHook() || tries > 40) {
+                    clearInterval(timer);
+                    run();
+                }
+            }, 50);
+        } else {
+            run();
+        }
+    }
+
+    function bindAllDobAge() {
+        page.querySelectorAll('.js-dob-input[data-party]').forEach(hookDobAge);
+    }
+
+    bindAllDobAge();
+    document.addEventListener('DOMContentLoaded', bindAllDobAge);
+    // Flatpickr global init also runs on DOMContentLoaded — re-bind shortly after
+    setTimeout(bindAllDobAge, 0);
+    setTimeout(bindAllDobAge, 200);
 
     (function initBtSourceRows() {
         var list = document.getElementById('cwBtSourceList');

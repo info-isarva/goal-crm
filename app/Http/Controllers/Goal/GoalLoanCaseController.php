@@ -1406,11 +1406,28 @@ class GoalLoanCaseController extends Controller
 
         $tab = $data['cw_tab'] ?? 'customer';
         if ($request->expectsJson() || $request->ajax()) {
+            $live = $this->workspaceLivePayload($case);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Case workspace saved.',
                 'cw_tab' => $tab,
                 'reload' => false,
+                'customer_name' => $live['customer_name'] ?? $case->customer_name,
+                'mobile' => $live['mobile'] ?? $case->mobile,
+                'borrower_profile' => data_get($case->bm_reco, 'profile', []) ?: [],
+                'customer_details' => [
+                    'applicant' => data_get($case->customer_details, 'applicant', []) ?: [],
+                    'co_applicant' => data_get($case->customer_details, 'co_applicant', []) ?: [],
+                    'employment' => data_get($case->customer_details, 'employment', []) ?: [],
+                    'residence' => data_get($case->customer_details, 'residence', []) ?: [],
+                    'property' => data_get($case->customer_details, 'property', []) ?: [],
+                    'purpose' => data_get($case->customer_details, 'purpose'),
+                    'tenure' => data_get($case->customer_details, 'tenure', data_get($case->customer_details, 'loan.tenure')),
+                    'preferred_contact_time' => data_get($case->customer_details, 'preferred_contact_time'),
+                    'obligations' => data_get($case->customer_details, 'obligations'),
+                ],
+                'live' => $live,
             ]);
         }
 
@@ -1467,6 +1484,69 @@ class GoalLoanCaseController extends Controller
         }
 
         return array_replace_recursive($base, $in);
+    }
+
+    /**
+     * Snapshot used by the case workspace JS to refresh Overview / header / cross-tab UI without reload.
+     *
+     * @return array<string, mixed>
+     */
+    protected function workspaceLivePayload(GoalLoanCase $case): array
+    {
+        $cd = is_array($case->customer_details) ? $case->customer_details : [];
+        $app = is_array($cd['applicant'] ?? null) ? $cd['applicant'] : [];
+        $emp = is_array($cd['employment'] ?? null) ? $cd['employment'] : [];
+        $mobileDigits = preg_replace('/\D+/', '', (string) ($case->mobile ?? '')) ?: '';
+        $mobileDisplay = strlen($mobileDigits) === 10
+            ? ('+91 '.substr($mobileDigits, 0, 5).' '.substr($mobileDigits, 5))
+            : ($case->mobile ? ('+91 '.$case->mobile) : '—');
+        $email = trim((string) ($app['email'] ?? ($cd['email'] ?? '')));
+        $ten = data_get($cd, 'tenure', data_get($cd, 'loan.tenure'));
+        $fmt = function ($n): string {
+            if ($n === null || $n === '') {
+                return '—';
+            }
+            $num = (float) $n;
+            $neg = $num < 0;
+            $num = abs($num);
+            $int = (string) (int) floor($num);
+            $dec = round($num - floor($num), 2);
+            $last3 = substr($int, -3);
+            $rest = substr($int, 0, -3);
+            if ($rest !== '') {
+                $rest = preg_replace('/\B(?=(\d{2})+(?!\d))/', ',', $rest);
+                $int = $rest.','.$last3;
+            }
+            $out = '₹ '.$int;
+            if ($dec > 0) {
+                $out .= '.'.str_pad((string) (int) round($dec * 100), 2, '0', STR_PAD_LEFT);
+            }
+
+            return ($neg ? '-' : '').$out;
+        };
+
+        return [
+            'customer_name' => (string) ($case->customer_name ?? ''),
+            'mobile' => (string) ($case->mobile ?? ''),
+            'mobile_digits' => $mobileDigits,
+            'mobile_display' => $mobileDisplay,
+            'email' => $email !== '' ? $email : '—',
+            'product' => (string) ($case->product ?: '—'),
+            'loan_amount' => $case->loan_amount,
+            'loan_amount_display' => $fmt($case->loan_amount),
+            'branch' => (string) ($case->orgUnit?->name ?? '—'),
+            'status' => (string) ($case->status ?? ''),
+            'employment_type' => (string) (($emp['type_applicant'] ?? $cd['employment_type'] ?? '') ?: '—'),
+            'monthly_income_display' => $fmt($emp['income_applicant'] ?? ($cd['monthly_income'] ?? null)),
+            'purpose' => (string) (($cd['purpose'] ?? data_get($cd, 'loan.purpose')) ?: '—'),
+            'tenure_display' => $ten ? ($ten.' months') : '—',
+            'obligations_display' => $fmt($cd['obligations'] ?? null),
+            'preferred_contact_time' => (string) (($cd['preferred_contact_time'] ?? '') ?: '—'),
+            'applicant_name' => (string) ($app['name'] ?? $case->customer_name ?? ''),
+            'applicant_age' => (string) ($app['age'] ?? ''),
+            'applicant_dob' => (string) ($app['dob'] ?? ''),
+            'applicant_pan' => (string) ($app['pan'] ?? ''),
+        ];
     }
 
     /**
@@ -1531,7 +1611,7 @@ class GoalLoanCaseController extends Controller
             ];
 
             if ($tab === 'recommendation') {
-                // Recommendation edits write back into Customer.
+                // Recommendation edits write back into Customer when filled.
                 foreach (['name', 'age', 'dob', 'pan', 'relationship'] as $field) {
                     $v = $profile[$field] ?? null;
                     if ($filled($v)) {
@@ -1558,42 +1638,23 @@ class GoalLoanCaseController extends Controller
                     $grossPath = $cdKey === 'applicant' ? 'employment.gross_income_applicant' : 'employment.gross_income_co';
                     data_set($customerDetails, $grossPath, $profile['gross_income']);
                 }
-            } else {
-                // Customer (and other tabs): push customer values into empty BM profile slots,
-                // and overwrite shared identity fields when customer has them.
-                foreach ($customerMap as $field => $value) {
-                    if (! $filled($value)) {
-                        continue;
-                    }
-                    if (in_array($field, ['name', 'age', 'dob', 'pan', 'relationship'], true) || ! $filled($profile[$field] ?? null)) {
-                        $profile[$field] = is_string($value) ? trim($value) : $value;
-                    }
-                }
-                data_set($bmReco, "profile.$bmParty", $profile);
             }
 
-            // Always ensure BM profile mirrors latest customer identity when customer tab saved.
-            if ($tab === 'customer') {
-                foreach (['name', 'age', 'dob', 'pan', 'relationship'] as $field) {
-                    $v = $customerMap[$field] ?? null;
-                    if ($filled($v)) {
-                        data_set($bmReco, "profile.$bmParty.$field", is_string($v) ? trim($v) : $v);
-                    }
+            // Always keep BM Borrower Profile filled from Customer when profile slot is empty,
+            // and overwrite shared borrower fields from Customer after Customer-tab saves.
+            // Prevents AJAX Customer save + stale empty Recommendation form from wiping profile.
+            foreach ($customerMap as $field => $value) {
+                if (! $filled($value)) {
+                    continue;
                 }
-                if ($filled($customerMap['profession'])) {
-                    data_set($bmReco, "profile.$bmParty.profession", $customerMap['profession']);
-                }
-                if ($filled($customerMap['net_income'])) {
-                    data_set($bmReco, "profile.$bmParty.net_income", $customerMap['net_income']);
-                }
-                if ($filled($customerMap['gross_income'])) {
-                    data_set($bmReco, "profile.$bmParty.gross_income", $customerMap['gross_income']);
+                $shouldWrite = $tab === 'customer'
+                    ? true
+                    : ! $filled($profile[$field] ?? null);
+                if ($shouldWrite) {
+                    $profile[$field] = is_string($value) ? trim($value) : $value;
                 }
             }
-        }
-
-        if ($tab === 'recommendation') {
-            // Keep posted recommendation profile as-is (already merged); customer updated above.
+            data_set($bmReco, "profile.$bmParty", $profile);
         }
 
         return [$customerDetails, $bmReco];

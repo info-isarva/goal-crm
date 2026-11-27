@@ -26,6 +26,29 @@
         return el.getAttribute('data-min-date');
     }
 
+    function resolveMaxDate(el) {
+        var minAge = parseInt(el.getAttribute('data-min-age') || '', 10);
+        if (!isNaN(minAge) && minAge > 0) {
+            var d = new Date();
+            d.setHours(0, 0, 0, 0);
+            d.setFullYear(d.getFullYear() - minAge);
+            return d;
+        }
+        var raw = (el.getAttribute('data-max-date') || '').trim().toLowerCase();
+        if (!raw) return undefined;
+        if (raw === 'today' || raw === 'now') return 'today';
+        // Support "-18y" / "18y-ago" style caps (no future + min age)
+        var ageMatch = raw.match(/^(\d+)\s*y(?:ears?)?(?:-ago)?$/i) || raw.match(/^-(\d+)y$/i);
+        if (ageMatch) {
+            var years = parseInt(ageMatch[1], 10);
+            var cap = new Date();
+            cap.setHours(0, 0, 0, 0);
+            cap.setFullYear(cap.getFullYear() - years);
+            return cap;
+        }
+        return el.getAttribute('data-max-date');
+    }
+
     function altInputClassFor(el) {
         var classes = (el.className || 'form-control form-control-sm').split(/\s+/).filter(function (c) {
             return c && PICKER_CLASSES.indexOf(c) === -1;
@@ -38,6 +61,7 @@
 
     function baseOptions(el) {
         var minDate = resolveMinDate(el);
+        var maxDate = resolveMaxDate(el);
         var opts = {
             allowInput: false,
             clickOpens: true,
@@ -77,6 +101,9 @@
         };
         if (minDate !== undefined) {
             opts.minDate = minDate;
+        }
+        if (maxDate !== undefined) {
+            opts.maxDate = maxDate;
         }
         return opts;
     }
